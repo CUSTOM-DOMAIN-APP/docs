@@ -1,0 +1,72 @@
+---
+title: Configuration
+description: Optional observability environment variables for self-hosted deployments — all opt-in, no-op when unset, and repointable to your own backends.
+---
+
+Customdomain's default `docker-compose.yml` / `docker-compose.prod.yml` stack runs
+with **zero third-party egress**. The cloud observability integrations documented
+here are strictly opt-in: each is a no-op until you set its environment variable,
+and every one can be re-pointed at a backend you host yourself.
+
+> The cloud observability integrations (Sentry errors, OTLP tracing → Grafana Cloud via a Grafana Alloy forwarder, PostHog analytics) are opt-in and no-op when their env vars are unset — the default docker-compose.yml/.prod.yml stack makes zero calls to any of them. A self-hoster gets zero third-party egress by default, or can point OTEL_EXPORTER_OTLP_ENDPOINT / the /metrics scrape at their own backend. There is no forced SaaS dependency; the Apache-2.0 "run the whole thing yourself" guarantee is preserved.
+
+## Environment variables
+
+Every variable in this section is optional. Leaving one unset disables the
+corresponding integration — the service starts and runs normally, it just emits
+no telemetry to that destination.
+
+| Variable | When unset | What it does |
+|----------|------------|--------------|
+| `SENTRY_DSN` | Sentry not initialized | Error reporting for the Go services (control-plane, edge, MCP). |
+| `SENTRY_ENVIRONMENT` | events unlabeled | Environment label (e.g. `development`, `production`); only read when `SENTRY_DSN` is set. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no OTLP export | OTLP/HTTP endpoint the Go services export traces (and metrics) to. |
+| `METRICS_ADDR` | endpoint off | Serves the control-plane Prometheus `/metrics` on a separate internal port. |
+| `EDGE_METRICS` | endpoint off | Set to `1` to expose `/metrics` on the edge's internal health port (`:8081`). |
+| `NEXT_PUBLIC_POSTHOG_KEY` | analytics off | PostHog project key for product analytics in the console. |
+| `NEXT_PUBLIC_POSTHOG_HOST` | — | PostHog ingestion host; only used when the key is set. |
+
+These keys also appear, commented out, in [`.env.example`](https://github.com/ever-just/justeasy/blob/main/.env.example).
+
+### Error monitoring (Sentry)
+
+Set `SENTRY_DSN` to your Sentry project DSN to enable error and exception
+reporting in the three Go services. When it is unset, the Sentry client is never
+initialized and the services make no calls to Sentry. `SENTRY_ENVIRONMENT` labels
+the events (for example `production`). Tracing is **not** sent to Sentry — the
+Sentry `TracesSampleRate` is `0`; distributed tracing stays on OpenTelemetry (see
+below). The DSN can point at Sentry's SaaS or at a self-hosted Sentry instance.
+
+### Traces and metrics (OpenTelemetry / Prometheus)
+
+`OTEL_EXPORTER_OTLP_ENDPOINT` is the OTLP/HTTP endpoint the Go services export to.
+In Customdomain's hosted stack this points at the Grafana Alloy forwarder
+(`http://alloy:4318`), which fans telemetry out to Grafana Cloud. A self-hoster can
+point it at **any** OTLP-compatible collector they run — Grafana Alloy, the
+OpenTelemetry Collector, Tempo, or Jaeger — or leave it unset for no export.
+
+`METRICS_ADDR` serves the control-plane's Prometheus `/metrics` endpoint on a
+separate internal port (for example `:9090`). Keep it on the compose network or
+loopback only — never the public API port. `EDGE_METRICS=1` exposes `/metrics` on
+the edge's internal health port. Scrape either with your own Prometheus-compatible
+collector.
+
+### Product analytics (PostHog)
+
+`NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` configure product
+analytics in the console. Because they are `NEXT_PUBLIC_*`, they are exposed to the
+browser — never put a secret in them. Point the host at PostHog Cloud or at your
+own self-hosted PostHog instance. When the key is unset, no analytics are sent.
+
+> **Note:** PostHog is provisioned in `terraform/posthog` but the browser SDK is not
+> yet wired into the running stack, so these keys are a no-op today regardless of
+> value. They are documented here so self-hosters can plan their own backend.
+
+## Running the Grafana Alloy overlay
+
+The base stack does not run Grafana Alloy. Customdomain ships an out-of-band
+overlay (`infra/docker-compose.alloy.yml`, driven by `infra/config.alloy`) that
+runs one Alloy forwarder to collect OTLP traces, metrics, and logs and ship them to
+Grafana Cloud. Before you enable it, read the caveat below.
+
+> infra/config.alloy is pre-wired to Customdomain's own Grafana Cloud tenant (hardcoded basic-auth users + prod-us-east endpoints) and infra/observability.env ships a real token; a self-hoster who runs docker-compose.alloy.yml as-is forwards THEIR logs/metrics/traces into Customdomain's tenant. The Alloy path is NOT a simple env-var repoint — config.alloy must be replaced/re-pointed at the self-hoster's own Grafana stack (and observability.env supplied with their own token). The default no-overlay zero-egress claim for the base stack remains true.

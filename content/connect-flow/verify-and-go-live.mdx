@@ -1,0 +1,126 @@
+---
+title: Apply records & go live
+description: The three automatic rails, the manual fallback, propagation to live, and cert issuance.
+---
+
+Once a connection exists, get its [desired records](/docs/connect-flow/create-a-connection#response)
+into the customer's DNS via one of the four
+[rails](/docs/connect-flow/overview#the-four-rails). All of them move the
+connection `pending → propagating → live`.
+
+## Rail C — OAuth into the provider (flagship)
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>/oauth:start \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"return_origin":"https://app.acme.example"}'
+# → { "authorize_url": "https://<provider>/authorize?..." }
+```
+
+The widget opens `authorize_url` in a popup. The provider redirects the customer
+to `GET /v1/connect/oauth/callback`, which consumes the HMAC-signed single-use
+`state`, exchanges the code, writes the records with the **one-time** access
+token (discarded immediately, never stored), and returns an HTML page that
+postMessages `{ type: "customdomain:oauth", payload }` to the vetted
+`return_origin`. The connection is now `propagating`.
+
+## Rail A — provider-hosted one-click setup
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>/domainconnect:start \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+# → { "apply_url": "https://<provider>/domainconnect/...", "service_id": "...", "dc_provider": "..." }
+```
+
+Redirect the customer to `apply_url`; their provider applies the signed template.
+Both the synchronous redirect and the asynchronous variant are supported.
+`service_id` may be omitted when a single/default template is loaded.
+
+## Rail B — API token (BYO)
+
+The customer supplies a **scoped** provider credential; it writes the records
+once and is discarded afterwards **by default** (persisted only if the user opts
+in to [remembering it](/docs/dns/provider-setup#remembering-a-key-optional)). In
+the console, multi-part credentials are collected as separate labeled fields
+(GoDaddy: API key + secret; Namecheap: username + API key; Route 53: access key
+ID + secret access key) and joined into `credential.token` for you — see
+[Provider setup](/docs/dns/provider-setup) for each provider's exact steps.
+Calling the API directly:
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "cloudflare",
+    "zone": "customer.com",
+    "credential": { "token": "<scoped-provider-token>" },
+    "records": [ { "type": "CNAME", "host": "app", "value": "edge.customdomain.ai", "ttl": 3600 } ]
+  }'
+```
+
+`SPFM` records are merged into any existing SPF TXT at write time (never
+clobbered); mark a record `essential: true` to fail the apply if it can't be
+written.
+
+## Bulk connect: more domains on one account
+
+After a Rail B apply, one provider key can connect the **other** domains on that
+same account in a single step. In the console this is the **"Connect more
+domains"** panel: it lists the account's other zones and lets you **Select all**
+or pick a subset, then connects them without re-entering the key.
+
+Listing is supported for **Cloudflare, GoDaddy, Amazon Route 53, and Namecheap**.
+Other providers can't enumerate an account's domains, so they degrade to
+connecting one domain at a time.
+
+Two control-plane endpoints back it:
+
+```bash
+# 1. List the other zones on the account (credential passed once, not persisted)
+curl -X POST http://localhost:8080/v1/providers/cloudflare/zones:list \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"credential":{"token":"<scoped-provider-token>"}}'
+# → { "provider": "cloudflare", "zones": ["acme.com", "beta.com"] }
+# A provider that can't list returns 422 { "error": "list_not_supported", … }
+
+# 2. Create connections for the selected domains (idempotent, up to 200)
+curl -X POST http://localhost:8080/v1/connections:bulk \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"domains":["beta.com","gamma.com"]}'
+# → { "results": [
+#      { "domain": "beta.com",  "connection_id": "con_…", "status": "connected" },
+#      { "domain": "gamma.com", "connection_id": "con_…", "status": "already" }
+#    ] }
+```
+
+Each result carries a **per-domain `status`**: `connected` (a new connection),
+`already` (one already existed — the call is idempotent, so re-running is safe),
+or `failed` (that domain errored; the batch continues and reports its `message`).
+Each new connection then applies records and goes live on its own rail exactly
+like a single connect.
+
+## Manual
+
+If no automatic rail is available, show the records from
+`GET /v1/connections/{id}/records` for the customer to add by hand. Nothing else
+is required — the poller watches for them.
+
+## Watch propagation → live
+
+You don't poll the API for propagation — the control-plane's background poller
+(running automatically on a 1-minute interval) resolves each desired record
+against public DNS and, when they all match their intended values, flips the
+connection to `live`.
+On that transition the edge issues the TLS certificate on the next handshake and
+a `connection.live` [webhook](/docs/webhooks/overview) fires (exactly once). Read
+current state any time with `GET /v1/connections/{id}`.
+
+A `propagating` connection whose records never appear within 24 hours becomes
+`failed` (and fires `connection.failed`). Manual `pending` connections don't time
+out — a customer may take days.

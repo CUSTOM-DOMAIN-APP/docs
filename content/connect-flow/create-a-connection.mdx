@@ -1,0 +1,54 @@
+---
+title: Create a connection
+description: POST /v1/connections — the request, the idempotent replay, and the record set it returns.
+---
+
+A connection is created against an **application** and authorized by a
+[widget JWT](/docs/authentication/widget-tokens) (or an `sk_` API key for
+server-side use). The only required field is the domain:
+
+```bash
+curl -X POST http://localhost:8080/v1/connections \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"app.customer.com"}'
+```
+
+## Response
+
+The response is the connection plus its authoritative desired record set:
+
+```json
+{
+  "id": "con_…",
+  "application_id": "app_…",
+  "domain": "app.customer.com",
+  "provider_id": "cloudflare",
+  "setup_type": "automatic",
+  "status": "pending",
+  "created_at": "2026-07-07T12:00:00Z",
+  "records": [
+    { "type": "CNAME", "host": "app.customer.com", "value": "edge.customdomain.ai", "ttl": 3600 }
+  ]
+}
+```
+
+- `id` doubles as the `jobId` used by the widget and webhooks.
+- `setup_type` (`automatic` / `manual` / `async` / `mcp`) is chosen from
+  provider detection — it steers which [rail](/docs/connect-flow/overview#the-four-rails)
+  the widget offers.
+- `records` is the same set you can re-fetch any time from
+  `GET /v1/connections/{id}/records`. Before a rail writes records, the default
+  edge `CNAME` is synthesized server-side.
+
+## Idempotency
+
+`POST /v1/connections` is idempotent per application + domain. If the calling app
+already has a non-failed connection for the domain, that existing connection is
+returned with `200` (instead of `201`) — safe to call on every widget open. This
+is also what makes an abandoned setup resumable: the console's **Finish setup**
+(on the Domains list) reopens the guided flow against the existing connection and
+picks up at the right step. A domain-bound widget JWT may only create a
+connection for the hostname it was minted for.
+
+Next: [apply the records and go live](/docs/connect-flow/verify-and-go-live).

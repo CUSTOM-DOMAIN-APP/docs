@@ -1,0 +1,69 @@
+---
+title: Overview
+description: The three credential types, member roles, and the unauthenticated surfaces.
+---
+
+Authenticated requests send `Authorization: Bearer <token>`. Three credential
+types share the surface, each with a different blast radius.
+
+## API keys (tenant)
+
+- Prefix `sk_live_` / `sk_test_`, sent as `Authorization: Bearer sk_…`.
+- Stored only as a hash — the full key is shown **once**, at creation.
+- **Tenant-scoped**: an API key carries the full authority of its tenant across
+  that tenant's applications, connections, webhooks, and billing.
+- Revocable; a revoked key stops authenticating on its next request.
+
+Manage keys under an application:
+
+```
+POST   /v1/applications/{id}/keys           # create (key returned once)
+GET    /v1/applications/{id}/keys           # list (metadata only, never the secret)
+DELETE /v1/applications/{id}/keys/{keyId}   # revoke
+```
+
+Each application also has a `client_secret` (returned once at application
+creation, or from `tenants:provision`). The `client_secret` is **not** an API
+key — its only job is to mint [widget JWTs](/docs/authentication/widget-tokens).
+
+## Widget JWTs (browser)
+
+Short-lived JWTs minted server-side via `POST /v1/tokens`. Scoped to one
+application and, optionally, one domain. They authorize only the browser-facing
+Connect endpoints. This is the only credential that ever reaches the browser —
+see [Widget tokens](/docs/authentication/widget-tokens).
+
+## Management & provision secrets (operator)
+
+- The **management key** gates operator provisioning (`POST /v1/tenants`,
+  `GET /v1/tenants/{id}`) and cross-tenant reads (e.g. the full audit log). In
+  production the control-plane refuses to start these routes open.
+- The **provision secret** gates only `POST /v1/tenants:provision` (one-call
+  signup), sent as `X-Provision-Secret` (or a Bearer token). The customer
+  console's server holds this narrow secret instead of the management key.
+
+## Member roles
+
+Human access is governed by tenant **membership**, not per-key scopes. A member
+has a role — `owner`, `admin`, `member`, or `viewer` — invited and managed via
+`POST /v1/members`, `PATCH /v1/members/{id}`, and `POST /v1/members:accept`. The
+role/permission matrix is served as static reference at `GET /v1/rbac`.
+
+Roles are **enforced at the control-plane**, not just the console: each sensitive
+mutation re-checks the acting member's role server-side. Managing members and
+minting/revoking API keys require `admin` or `owner`; billing requires `owner`;
+and only an owner can create or demote an owner. See
+[Roles & permissions](/docs/security/overview#roles--permissions) for the full
+matrix.
+
+## Unauthenticated surfaces
+
+- `GET /healthz` — liveness + database readiness. No secrets, no tenant data.
+- `POST /internal/ask` — the edge host-authorization gate. Not bearer-auth: it
+  uses a shared secret (`X-Edge-Auth` / `EDGE_ASK_SECRET`) and must be
+  network-isolated to the edge in production. It answers only `{ approved }`.
+- `GET /v1/connect/oauth/callback` — the OAuth redirect target, authenticated by
+  its signed single-use `state` rather than a bearer token.
+
+Public catalog reads (`GET /v1/providers`, `/v1/plans`, `/v1/rbac`,
+`/v1/templates`) require no credential.

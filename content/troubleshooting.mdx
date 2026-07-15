@@ -1,0 +1,74 @@
+---
+title: Troubleshooting
+description: Common failure modes — stuck connections, propagation delays, rail errors, and drift.
+---
+
+## A connection is stuck in `pending`
+
+`pending` means no records have been observed in public DNS yet — nobody has
+applied them, or they haven't propagated.
+
+- **Manual flow:** confirm the customer added the exact records from
+  `GET /v1/connections/{id}/records` (host, type, and value must match). Manual
+  connections never time out; the poller keeps checking.
+- **A rail was supposed to write them:** check that the
+  [rail](/docs/connect-flow/overview#the-four-rails) actually completed — an
+  OAuth popup that was closed, a one-click setup redirect that was abandoned, or
+  a rejected API token all leave the connection in `pending`.
+
+## A connection is stuck in `propagating`
+
+Records were written but aren't all resolving to their intended values yet.
+
+- DNS propagation can take minutes to hours depending on the previous record's
+  TTL and the customer's resolver/registrar.
+- Verify the records at the provider's dashboard — a rail write can succeed at the
+  API but land on the wrong host, or a customer may have edited them afterward.
+- `propagating` connections that never resolve within **24 hours** transition to
+  `failed` and fire `connection.failed`.
+
+## `service_unavailable` on a rail
+
+`POST /v1/connections/{id}/apply` (and the OAuth / one-click setup starts)
+return `503 service_unavailable` when the corresponding engine isn't wired for
+your plan or environment: no DNS provider registry, no OAuth client for the
+provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
+(`DC_SIGNING_KEY_FILE`). Contact support if you hit this on the hosted service.
+
+## Rail B write failed
+
+`apply` returns an error carrying the provider's message when the scoped token is
+wrong-scoped, expired, or the zone doesn't match. Confirm the token has DNS
+**edit** rights on the exact `zone` you passed, and mind provider gates (GoDaddy
+account tier, Namecheap IP allowlist) — see
+[Provider setup](/docs/dns/provider-setup).
+
+## OAuth (Rail C) never returns
+
+- **PopupBlockedError** — the browser blocked the authorize window; trigger
+  `oauth:start` from a direct user gesture.
+- The callback only postMessages to a `return_origin` on the server's allowlist
+  (`OAUTH_ALLOWED_RETURN_ORIGINS`) — a mismatched origin silently drops the result.
+- An expired or replayed `state` returns `400` from the callback; re-run
+  `oauth:start` to get a fresh one.
+
+## A live domain stopped working
+
+The lifecycle doesn't demote a `live` connection, but
+[Monitor](/docs/webhooks/overview#event-catalog) fires `domain.record_missing`
+when a live domain's records stop resolving. Have the customer restore the
+records (or re-apply them via a rail). Run `POST /v1/monitor:check` to compare on
+demand.
+
+## Certificate not issuing
+
+Certificates are issued **on demand at the TLS handshake**, gated by
+`POST /internal/ask` returning `{ approved: true }` — which happens only once the
+connection is `propagating` or `live`. If the edge can't reach the gate, check
+`EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
+
+## Widget shows "session expired"
+
+Widget tokens expire (default 60 minutes — see
+[Widget tokens](/docs/authentication/widget-tokens)). Mint a fresh token
+server-side and reopen the widget.

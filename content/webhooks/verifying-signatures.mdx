@@ -1,0 +1,35 @@
+---
+title: Verifying signatures
+description: HMAC-SHA256 signature verification and replay protection.
+---
+
+Each delivery carries two headers:
+
+- `X-JE-Timestamp: <unix seconds>` — when the delivery was signed.
+- `X-JE-Signature: sha256=<hex>` — an HMAC-SHA256, keyed by your endpoint's
+  signing secret (`whsec_…`), over the string `${timestamp}.${rawBody}` (the
+  timestamp, a dot, then the **exact bytes** of the request body).
+
+Binding the timestamp into the signature lets you reject **replays**: check that
+the timestamp is recent (a 5-minute window is recommended) before trusting the
+payload. Each attempt — including retries — is re-signed with a fresh timestamp.
+
+```js
+const crypto = require('crypto');
+
+function verify(rawBody, tsHeader, sigHeader, secret, toleranceSec = 300) {
+  const ts = parseInt(tsHeader, 10);
+  if (!Number.isFinite(ts)) return false;
+  if (Math.abs(Date.now() / 1000 - ts) > toleranceSec) return false; // replay window
+  const expected = 'sha256=' + crypto
+    .createHmac('sha256', secret)
+    .update(`${ts}.`)
+    .update(rawBody)
+    .digest('hex');
+  const a = Buffer.from(sigHeader || ''), b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+```
+
+Compute the HMAC over the exact bytes received (don't re-serialize the JSON) and
+prepend `${timestamp}.` before hashing. The comparison must be constant-time.

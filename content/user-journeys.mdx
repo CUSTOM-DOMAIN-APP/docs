@@ -1,0 +1,80 @@
+---
+title: User journeys
+description: Every user-facing flow and the surface that implements it.
+---
+
+Every user-facing flow and the surface that implements it — the completeness map.
+
+## Personas
+
+- **Developer / operator** — integrates the product, works in the **console** and
+  via the **API**.
+- **End customer** — the SaaS's customer connecting their own domain, works in the
+  **widget**.
+- **Platform operator** — runs and monitors the stack.
+
+## End-customer journeys (widget)
+
+| # | As a customer, I want to… | Surface / path |
+| --- | --- | --- |
+| C1 | Enter my domain and have its DNS provider detected | Widget → Domain analysis (`POST /v1/domains:check`) |
+| C2 | Connect automatically when possible | Widget → OAuth (`oauth:start` → callback) or one-click setup (`domainconnect:start`) |
+| C3 | Get exact records to add when manual | Widget → Manual config from `GET /v1/connections/{id}/records` (copy buttons) |
+| C4 | Enter a scoped provider credential to auto-write | Widget → API-token apply (`POST /v1/connections/{id}/apply`) |
+| C5 | See progress until my domain is live | Widget → In progress (polls status) → Success |
+| C6 | Recover from errors / switch to manual | Widget → Error screen (retry / switch) |
+| C7 | Not lose my place accidentally | Widget → exit-confirm + session-expired overlays |
+
+## Developer journeys (console + API)
+
+| # | As a developer, I want to… | Surface / path |
+| --- | --- | --- |
+| D1 | Create and manage applications | Console → Applications (`POST`/`GET /v1/applications`, `GET /v1/applications/{id}`) |
+| D2 | Create, list, and revoke API keys | Console → API keys (`POST`/`GET`/`DELETE /v1/applications/{id}/keys`) |
+| D3 | Invite teammates and set roles | Console → Members (`POST /v1/members`, `PATCH /v1/members/{id}`, `:accept`) |
+| D4 | Connect a domain from the console | Console → Domains (`POST /v1/connections`) |
+| D5 | Inspect a connection and drive it | Console → Domain detail (`GET /v1/connections/{id}`, `/records`, the apply rails) |
+| D6 | See which providers auto-configure | Console → Providers (`GET /v1/providers`, `/v1/providers/census`) |
+| D7 | Receive events and inspect deliveries | Console → Webhooks (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`) |
+| D8 | Track usage against quota | Console → Usage (`GET /v1/billing/usage`) |
+| D9 | View and change plan | Console → Billing (`GET /v1/plans`, `POST /v1/billing/checkout`, `/portal`) |
+| D10 | Embed the widget safely | `POST /v1/tokens` server-side; the widget JWT is app- (and optionally domain-) scoped |
+| D11 | Buy a new domain, [money-safe](/docs/sell/buying-a-domain) | Console → Sell (`/app/sell`: search → embedded checkout authorizes → registration → capture; auto-connected) |
+| D12 | Resume an abandoned setup | Console → Domains → **Finish setup** (reopens the guided flow at the right step) |
+| D13 | Point an agent at the MCP server | Console → Integrate → MCP server (`/app/mcp`: endpoint, credentials, client configs) |
+
+## AI-agent journeys (MCP)
+
+An agent drives domains through the [MCP server](/docs/mcp/overview) — hosted at
+`https://mcp.customdomain.ai/mcp` — which wraps the same `/v1` API with eleven tools.
+
+| # | As an agent, I want to… | Tool |
+| --- | --- | --- |
+| M1 | Check if a domain is available and priced | `search-domain-availability` |
+| M2 | Suggest available domains from keywords | `generate-domain-suggestions` |
+| M3 | Register a domain (fail-closed behind an authz callback) | `create-domain-order` → `check-order-status` |
+| M4 | Connect a domain the user already owns | `connect-domain` → `check-connection-status` |
+| M5 | See how a domain can be configured before acting | `discover-provider` |
+| M6 | Forward a domain to another URL (301) | `forward-domain` → `check-connection-status` |
+| M7 | Set up email (MX/SPF/DKIM/DMARC) for a domain | `add-email` → `check-connection-status` |
+| M8 | Re-apply or tear down a managed connection | `reapply-connection` / `disconnect-domain` |
+
+## Platform-operator journeys
+
+| # | As an operator, I want to… | Surface / path |
+| --- | --- | --- |
+| O1 | Run the whole stack locally | `make up` |
+| O2 | Serve HTTPS for live domains automatically | Edge on-demand TLS gated by `ask` |
+| O3 | Provision tenants for signups | `POST /v1/tenants:provision` (provision secret) |
+| O4 | Keep tenants isolated | Tenant-scoped handlers; cross-tenant → 404 |
+| O5 | Keep secrets safe | Hashed keys, one-time provider tokens, sealed console key, no key material in logs |
+
+## Coverage note
+
+The `setup_type` values `automatic` and `manual` (plus the OAuth, one-click
+setup, and API-token rails) are the paths the **widget** drives today; `async` additionally
+powers [managed connections](/docs/connect-flow/managed-connections), and `mcp`
+covers agent-driven setup through the [MCP server](/docs/mcp/overview). A connection
+can be disconnected with `DELETE /v1/connections/{id}` (reverting a managed template
+first) — see
+[Offboarding](/docs/connect-flow/offboarding).

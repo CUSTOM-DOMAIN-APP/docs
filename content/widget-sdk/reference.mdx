@@ -1,0 +1,111 @@
+---
+title: Reference
+description: The seven methods, the six window events and callbacks, full config, statuses, and theming tokens.
+---
+
+## Methods
+
+`window.customdomain` exposes seven methods:
+
+| Method | Purpose |
+| --- | --- |
+| `open(config)` | Open the connect modal (or embedded panel). Returns `{ close }`. |
+| `purchaseDomain(config)` | Open the in-widget domain **purchase** flow (Sell). Returns `{ close }`. |
+| `loadSharedFlow(url, config?)` | Open a shared/delegated setup link in the modal. Returns `{ close }`. |
+| `checkDomain(domain, { token, apiBase? })` | Pre-flight feature detection. Resolves a `CheckDomainResult`. |
+| `checkRecords(domain, { token, dnsRecords, apiBase? })` | Verify a desired record set against live public DNS. Resolves a `CheckRecordsResult`. |
+| `load()` | Resolve when the SDK is ready (CDN/npm loader parity). |
+| `close()` | Close and tear down the current modal. |
+
+`checkDomain` calls `POST /v1/domains:check` and returns camelCase fields:
+`provider`, `setupType`, `supportsAutomatic`, `oauthAvailable`, `domainConnect`,
+`registered`, `NSSupport`, `wildcardSupport`, `cnameFlattening`,
+`spfOverrideSupport`, `caaSupport`, `supportsSocialLogin`, `recordConflicts`.
+`checkRecords` rides `POST /v1/monitor:check` and returns `{ inSync, records[] }`.
+
+## Events & callbacks
+
+Every meaningful transition fires **both** a `window` `CustomEvent` (read
+`event.detail`) and, where you provided one, the matching `open()` callback.
+
+| Window event | Callback | Fires | `detail` / arg |
+| --- | --- | --- | --- |
+| `customdomain:step` | `onStepChange(step)` | on every screen change | `{ step }` |
+| `customdomain:success` | `onSuccess(result)` | when the domain reaches `live` | `{ jobId, domain, setupType }` |
+| `customdomain:close` | `onClose(detail)` | when the modal closes | `{ lastStatus, error? }` |
+| `customdomain:request-close` | — | host-delegated dismissal (`whiteLabel.delegateClose`) | provider payload; you call `close()` |
+| `customdomain:doc-click` | — | user clicked a documentation link | link payload |
+| `customdomain:shared` | — | a shared/delegated setup link was produced | share payload |
+
+`onError(err)` receives a `CustomDomainError` (`{ code, message, details? }`) —
+error codes are an open, stable union (e.g. `SessionError`,
+`AccessDeniedError`, `PopupBlockedError`, `DomainConnectError`, `ProviderError`,
+`TimeoutError`, `RateLimitError`, `NetworkError`, `GenericError`).
+
+> `customdomain:success` is an event, not a dismissal — the widget stays on the
+> success screen and closes itself when the user is done (or when you call
+> `close()`).
+
+## `open()` / `OpenConfig`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `applicationId` *(required)* | `string` | Public application id. |
+| `token` *(required)* | `string` | Widget JWT from `POST /v1/tokens`. |
+| `domain` | `string` | Pre-filled domain. |
+| `prefilledDomain` | `string \| string[]` | Alias accepted for the pre-fill. |
+| `dnsRecords` | `DNSRecord[] \| Record<string, DNSRecord[]>` | Records to apply. Array, or per-domain object mode `{ "acme.com": [...] }`. Omit to use the control-plane's authoritative per-connection set. |
+| `applicationName` / `applicationUrl` | `string` | Branding shown in the flow. |
+| `locale` | `string` | UI locale. |
+| `whiteLabel` | `WhiteLabel` | Theming + behavior (below). |
+| `forceManualSetup` | `boolean` | Skip automatic rails; always show records. |
+| `supportForSubdomains` / `defaultSubdomain` / `hostRequired` | | Subdomain-entry behavior. |
+| `manualSetupDocumentation` | `string` | Deep-link to your own manual-setup guide. |
+| `enableDkim` | `boolean` | Offer the DKIM screen. |
+| `userId` | `string` | End-user id, echoed to your webhooks. |
+| `container` | `string` | CSS selector for embedded mode (implies `whiteLabel.embedded`). |
+| `apiBase` / `widgetBase` | `string` | Override the default control-plane / widget hosts (e.g. for a staging environment). |
+| `onSuccess` / `onClose` / `onStepChange` / `onError` | fn | Callbacks (mirror the events above). |
+
+A `DNSRecord` is `{ type, host, value, ttl?, priority?, purpose? }`. Supported
+types include `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `TXT`, plus the meta-types
+`SPFM` (SPF-merge) and `REDIR301`.
+
+## White-label configuration
+
+`whiteLabel` accepts quick keys, a full raw-token override, per-screen disables,
+and two layout behaviors:
+
+| Key | Effect |
+| --- | --- |
+| `colors` | `primary`, `primaryHover`, `background`, `text`, `success`, `error`, … mapped onto tokens. |
+| `font` / `borderRadius` / `logo` | Font family, corner radius, header logo. |
+| `hideLogo` | Hide the powered-by footer. |
+| `hideConfetti` | Disable the success confetti. |
+| `tokens` | Override any of the ~90 raw design tokens (`modal-width`, `color-primary`, `radius-md`, `shadow-modal`, …). |
+| `screens.disable` | Array of optional screens to hide. |
+| `delegateClose` | The widget never tears itself down; it posts `customdomain:request-close` and you call `close()`. |
+| `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
+
+Tokens are emitted as CSS custom properties (`--je-<token>`) on the widget's
+shadow host, so they cannot affect your page.
+
+## Widget statuses
+
+`onStepChange` / `customdomain:step` emit the widget's public status, one of a
+fixed 15-value set of stable names: `INITIAL`, `ENTER_DOMAIN`,
+`DOMAIN_ANALYSIS`, `DOMAIN_SETUP`, `IN_PROGRESS`, `EXISTING_RECORDS`, `LOGIN`,
+`LOGIN_2FA`, `MANUAL_CONFIGURATION`, `PROVIDER_MANUAL_SELECTION`,
+`EXIT_WITH_ERROR`, `DKIM_SETUP`, `FINISHED_SUCCESSFULLY`,
+`FINISHED_SUCCESSFULLY_MANUAL`, `FINISHED_SUCCESSFULLY_LINK_SHARED`.
+
+## Token lifecycle & accessibility
+
+Widget tokens expire (default 60 minutes). On expiry the widget surfaces a
+session-expired state; mint a fresh token server-side and reopen. A
+domain-bound token may only act on the hostname it was minted for.
+
+Focus trap, `aria-modal`, a live-region announcer, generous touch targets,
+safe-area insets, `prefers-reduced-motion`, and `prefers-color-scheme` dark mode
+are built in. The iframe is sandboxed with `allow-popups`/
+`allow-popups-to-escape-sandbox` so provider OAuth windows can open.

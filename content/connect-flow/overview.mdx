@@ -1,0 +1,46 @@
+---
+title: Overview
+description: The create → apply → live pipeline and the four rails that write DNS.
+---
+
+Connecting a domain is a short pipeline on top of the
+[connection lifecycle](/docs/concepts/connections):
+
+1. [**Create a connection**](/docs/connect-flow/create-a-connection) —
+   `POST /v1/connections` starts the process and returns the connection plus its
+   authoritative desired DNS records.
+2. [**Apply the records**](/docs/connect-flow/verify-and-go-live) — pick a
+   **rail** (below) to get the records into the customer's DNS.
+3. **Go live** — the propagation poller promotes the connection to `live` once
+   every desired record resolves; the edge then issues TLS on the next handshake
+   and you receive a `connection.live` [webhook](/docs/webhooks/overview).
+4. [**Offboarding**](/docs/connect-flow/offboarding) — how a domain is removed.
+
+## The four rails
+
+A connection reaches `live` through one of four rails. The best available one is
+chosen from `POST /v1/domains:check`; the widget drives them automatically.
+
+| Rail | Endpoint | How it applies records |
+| --- | --- | --- |
+| **OAuth into provider** (flagship, "Mode C") | `POST /v1/connections/{id}/oauth:start` → `GET /v1/connect/oauth/callback` | Customer authorizes with their DNS provider in a popup; the callback writes records with a **one-time** token, never stored. |
+| **One-click setup** (sync + async) | `POST /v1/connections/{id}/domainconnect:start` | Returns a provider-hosted apply URL; the provider applies a signed template. No server-to-server token. |
+| **API token** (BYO) | `POST /v1/connections/{id}/apply` | You pass a scoped provider token in the request; it writes the records **once** and is discarded afterwards — unless you opt in to [remembering it](/docs/dns/provider-setup#remembering-a-key-optional). |
+| **Manual** | (none — just the record set) | Customer copies the records from `GET /v1/connections/{id}/records`; the poller waits for them to appear. |
+
+All four converge on the same outcome: the desired records land in DNS, the
+connection moves `pending → propagating → live`, and the edge serves the domain.
+
+## Resuming an abandoned setup
+
+A setup that was started but not finished isn't lost. In the console, the
+Domains list shows **Finish setup** on any connection that isn't `live` yet —
+it reopens the guided flow at the right step, rehydrated from the existing
+connection. Programmatically, the same replay is safe because
+[`POST /v1/connections` is idempotent](/docs/connect-flow/create-a-connection#idempotency)
+per application + domain.
+
+For the fastest path with real `curl`, see the
+[Quickstart](/docs/getting-started/quickstart). To let customers drive the flow
+themselves, embed [the widget](/docs/widget-sdk/overview). What each rail needs
+operationally is covered in [DNS providers](/docs/dns/providers).

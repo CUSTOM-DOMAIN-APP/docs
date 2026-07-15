@@ -1,0 +1,68 @@
+---
+title: Connections
+description: The connection lifecycle, the authoritative record set, tenancy, and drift.
+---
+
+A **connection** is one customer domain being onboarded under an application. Its
+`id` doubles as the `jobId` the widget and webhooks report. Every connection
+carries an authoritative **desired record set** (the records that point the
+domain at the edge) and a **status**.
+
+## The connection lifecycle
+
+The status machine is deliberately small:
+
+```
+                 apply a rail (OAuth / one-click setup / API token)
+  pending ─────────────────────────────────────────────▶ propagating ──▶ live
+     │                                                          │
+     └──────────── manual: records seen in public DNS ─────────┘        │
+                                                                        │
+                        propagating > 24h with records unseen ──▶ failed
+```
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | Created; records not yet written or not yet observed. |
+| `propagating` | Records were written (by a rail) and are being checked against public DNS. |
+| `live` | Every desired record resolves to its intended value. The edge serves TLS for the host. |
+| `failed` | A `propagating` connection's records never appeared within the 24-hour window. |
+
+There is no separate ownership-challenge step. Control is proven **by the rail
+itself**: an OAuth authorization, a one-click setup apply, or a scoped API token
+each demonstrate the customer controls the zone. In the manual flow, the poller
+simply waits for the records to appear — manual (`pending`) connections never
+time out.
+
+## The authoritative record set
+
+`GET /v1/connections/{id}/records` returns the single source of truth the widget
+renders, the OAuth callback writes, and the poller verifies. Before anything is
+applied, the control-plane synthesizes the default edge record
+(`CNAME <host> → edge.customdomain.ai`, TTL 3600, or your configured edge
+target). Once a rail writes records, the stored set is returned instead.
+
+## Propagation → live
+
+A background poller (running automatically on a 1-minute interval) drains
+`propagating` and `pending` connections, resolving each desired record against
+public DNS with **value checking** (a CNAME must resolve to the expected target;
+an A/AAAA must contain the exact address). When all records resolve, the
+connection flips to `live` and `connection.live` fires — exactly once, guarded by
+a compare-and-swap so the API and the worker can't double-fire.
+
+## Idempotency & tenancy
+
+`POST /v1/connections` is idempotent per application + domain: if the app already
+has a non-failed connection for the domain, that connection is replayed (`200`)
+instead of a duplicate being created. Every object is tenant-scoped — an `sk_`
+API key sees all its tenant's connections; a widget JWT sees only its
+application's. Cross-tenant ids return `404`, never another tenant's data.
+
+## Drift
+
+After go-live, the [Monitor](/docs/webhooks/overview#event-catalog) sweep
+re-checks declared records against live DNS. If a record disappears or is
+repointed, `domain.record_missing` fires; when it returns, `domain.record_restored`
+fires — so you can alert the customer. The synchronous `POST /v1/monitor:check`
+(and the SDK's `checkRecords`) runs the same comparison on demand.

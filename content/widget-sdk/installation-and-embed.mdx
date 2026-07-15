@@ -1,0 +1,124 @@
+---
+title: Installation & embed
+description: Install customdomain-js, mint a widget token server-side, and open the modal.
+---
+
+## 1. Mint a token server-side
+
+The browser must never see your `client_secret` or an API key. On your backend,
+exchange the application's `client_secret` for a short-lived widget JWT:
+
+```js
+// POST /my-backend/mint-widget-token  (your server)
+const res = await fetch(`${API_BASE}/v1/tokens`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    application_id: process.env.CD_APPLICATION_ID,
+    client_secret: process.env.CD_CLIENT_SECRET, // server-only
+    domain: "app.customer.com",                  // optional: bind to one host
+  }),
+});
+const { token } = await res.json(); // → hand `token` (+ application_id) to the browser
+```
+
+See [Widget tokens](/docs/authentication/widget-tokens) for the token lifecycle.
+
+## 2. Install and open
+
+```bash
+npm install customdomain-js
+```
+
+```js
+import { customdomain } from "customdomain-js";
+// (a browser <script> build also attaches window.customdomain)
+
+document.getElementById("connect").addEventListener("click", async () => {
+  const { application_id, token } = await fetch("/my-backend/mint-widget-token", {
+    method: "POST",
+  }).then((r) => r.json());
+
+  window.customdomain.open({
+    applicationId: application_id,
+    token,
+    domain: "app.customer.com", // optional prefill
+    onSuccess: (r) => console.log("live:", r.domain, r.jobId, r.setupType),
+    onClose: (d) => console.log("closed:", d.lastStatus),
+    onStepChange: (step) => console.log("step:", step),
+    onError: (err) => console.error(err.code, err.message),
+  });
+});
+```
+
+`open()` returns `{ close }` so you can dismiss the modal programmatically. Only
+one modal is shown at a time. The default control-plane and widget hosts can be
+overridden with `apiBase` / `widgetBase` (e.g. for a staging environment).
+
+## React example
+
+```jsx
+import { useCallback } from "react";
+import { customdomain } from "customdomain-js";
+
+export function ConnectDomainButton({ domain }) {
+  const onConnect = useCallback(async () => {
+    const { application_id, token } = await fetch("/api/widget-token", {
+      method: "POST",
+    }).then((r) => r.json());
+
+    customdomain.open({
+      applicationId: application_id,
+      token,
+      domain,
+      onSuccess: ({ domain }) => console.log(`${domain} is live`),
+    });
+  }, [domain]);
+
+  return <button onClick={onConnect}>Connect your domain</button>;
+}
+```
+
+## Embedded mode
+
+Render the flow inside your own layout instead of a fullscreen modal by passing a
+`container` selector (implies `whiteLabel.embedded`):
+
+```js
+window.customdomain.open({
+  applicationId, token,
+  container: "#connect-panel",        // a positioned element you own
+  whiteLabel: { delegateClose: true },// you own dismissal (see request-close event)
+});
+```
+
+## White-label theming
+
+Pass a `whiteLabel` object. Quick keys map onto the token surface; `tokens`
+overrides any of the ~90 raw design tokens; `screens.disable` hides optional
+screens. Theme values are applied as CSS custom properties on the widget's
+Shadow-DOM host, so they never leak into your page.
+
+```js
+window.customdomain.open({
+  applicationId, token,
+  whiteLabel: {
+    colors: { primary: "#0ea5e9", background: "#ffffff", text: "#111827" },
+    borderRadius: "10px",
+    logo: "https://yourcdn.example/logo.svg",
+    hideLogo: true,      // hide the powered-by footer
+    hideConfetti: true,
+    tokens: { "modal-width": "460px" }, // any raw token
+  },
+});
+```
+
+See the [reference](/docs/widget-sdk/reference#white-label-configuration) for the
+full `whiteLabel` surface and the token list.
+
+## Security note
+
+The widget JWT is the only credential in the browser. It is short-lived
+(default 60 minutes), scoped to one application, and — when you pass `domain` at
+mint time — may only act on that hostname. Mint it per session on your server;
+never embed a long-lived API key or `client_secret` in client code.

@@ -1,0 +1,85 @@
+---
+title: FAQ
+description: Short answers to common questions about connecting domains.
+---
+
+### Which DNS providers auto-configure records?
+
+38 providers have a built-in adapter (Cloudflare, Route 53, Google Cloud DNS,
+Azure DNS, GoDaddy, Namecheap, and more), plus provider-hosted one-click setup
+as a redirect-based, tokenless option, and a full parity census routing ~63
+targets to their working
+mode. See [DNS providers](/docs/dns/providers) for the fleet and
+[Provider setup](/docs/dns/provider-setup) for per-provider credential steps and
+eligibility gates.
+
+### Can I buy a new domain here too?
+
+Yes — **Sell → Buy a domain** in the console. Checkout only *authorizes* your
+card; the domain is registered server-side, and the card is captured only after
+registration succeeds (a failure releases the hold — you pay nothing). The
+purchased domain shows up in Domains already connected. See
+[Buying a domain](/docs/sell/buying-a-domain).
+
+### How does a domain actually get configured?
+
+Through one of four [rails](/docs/connect-flow/overview#the-four-rails): the
+customer authorizes their DNS provider via OAuth (records written with a one-time
+token), a one-click setup redirect, a scoped API token you pass once, or the
+guided-manual copy-paste flow. `POST /v1/domains:check` tells you which are
+available for a given domain.
+
+### Is my provider API key stored?
+
+Not by default — it's used once to write records and then discarded. You can
+**optionally** tick **"Remember this key"** to save it (encrypted at rest, scoped
+to your tenant + that provider) so you can reuse it for other domains in one
+click; the plaintext never leaves the server, and you can revoke it any time
+under **Settings → Connected provider accounts**. See
+[Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
+
+### Can I connect several domains on the same provider account at once?
+
+Yes, for **Cloudflare, GoDaddy, Route 53, and Namecheap**. After you apply a key
+to one domain, the console offers to list the account's other domains and connect
+them (all or a subset) in one step. See
+[Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
+
+### Does it support apex domains as well as subdomains?
+
+Yes — a connection's `host` is empty for the apex or the subdomain label
+otherwise. Apex support depends on the provider's capabilities (ALIAS/ANAME/CNAME
+flattening); `POST /v1/domains:check` returns `cname_flattening` and `ns_support`
+so you can steer the customer to the right setup.
+
+### Does it support wildcard domains?
+
+`POST /v1/domains:check` returns a `wildcard_support` flag per detected provider.
+Whether you offer wildcard in your product depends on how you use that flag in
+your onboarding flow.
+
+### How long does DNS propagation usually take?
+
+It depends on the TTL of any records being replaced and the customer's
+resolver/registrar — from minutes (a fresh record via a rail) to longer if a
+previous record had a long TTL. The connection sits in `propagating` until every
+desired record resolves; `GET /v1/connections/{id}` shows current status.
+
+### What happens if I revoke or delete an API key?
+
+Revocation is immediate — a revoked key stops authenticating on its next request.
+Keys are never returned by list endpoints after creation; only metadata (`last4`,
+`created_at`, `revoked_at`) is visible.
+
+### Can a connection lose its "live" status?
+
+The lifecycle is forward-only, so a `live` connection isn't demoted
+automatically. But [Monitor](/docs/webhooks/overview#event-catalog) detects when a
+live domain's records stop resolving and fires `domain.record_missing`, so you can
+react. See [Offboarding](/docs/connect-flow/offboarding).
+
+### Is there a sandbox / test mode?
+
+Yes — API keys and applications carry an environment (`production` / `staging` /
+`development`), and keys are prefixed `sk_test_` / `sk_live_`. `make up` runs the
+full stack locally (see the [Quickstart](/docs/getting-started/quickstart)).

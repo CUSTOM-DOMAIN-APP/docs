@@ -1,0 +1,68 @@
+---
+title: API reference
+description: Base URL, auth schemes, versioning, the error envelope, and the full generated operation reference.
+---
+
+Base URL (local): `http://localhost:8080/v1`. All requests and responses are
+JSON. The pages below this one are **generated** from the OpenAPI document
+`openapi-v1.yaml` (see [how this stays in sync](#keeping-this-in-sync)) — this
+page is the only hand-written one in the section. The control-plane also serves
+the machine-readable document live at `GET /v1/openapi.json`.
+
+## Discovery endpoints
+
+Three unauthenticated meta endpoints sit outside the generated reference:
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /healthz` | Liveness + database readiness (`{ status, service, env, db }`); no tenant data. |
+| `GET /v1/config` | Public capabilities: `{ service, env, version, api_version, products }`. `version` is the running build string (`APP_VERSION`); `products` lists the wired engines (`connect`, `secure`, `sell`, `power`, `monitor`, `mcp`). |
+| `GET /v1/openapi.json` | The OpenAPI document these reference pages are generated from. |
+
+## Authentication
+
+Every authenticated request sends `Authorization: Bearer <token>`. There are
+three token types (see [Authentication](/docs/authentication/overview)):
+
+| Credential | Prefix / form | Used for |
+| --- | --- | --- |
+| **Management key** | opaque | operator provisioning and cross-tenant reads |
+| **API key** | `sk_live_…` / `sk_test_…` | long-lived server-to-server calls, tenant-scoped |
+| **Widget JWT** | JWT | the browser widget; minted server-side via `POST /v1/tokens`, scoped to one application (and optionally one domain) |
+
+The one-call signup endpoint `POST /v1/tenants:provision` uses a dedicated
+provision secret sent as `X-Provision-Secret` (or a Bearer token).
+
+## Error envelope
+
+Every error is the same shape:
+
+```json
+{ "code": "invalid_request", "title": "The request was invalid.", "details": "domain is required" }
+```
+
+`code` is a stable machine string (`invalid_request`, `unauthorized`,
+`not_found`, `service_unavailable`, `internal_error`). `title` is human-readable;
+`details` is optional. Internal errors return a generic `title` — the specifics
+are logged server-side under a request id, never returned.
+
+## Conventions
+
+- **Idempotency** — `POST /v1/connections` is idempotent per application +
+  domain (an existing, non-failed connection is replayed with `200`).
+  `POST /v1/registrar/purchase` **requires** an `Idempotency-Key` header so a
+  registration is never charged twice.
+- **Scoping** — list endpoints are tenant-scoped by the authenticated
+  credential, never by a query parameter. Cross-tenant ids simply match nothing.
+- **Versioning** — the surface is under `/v1`, additive-only within a version —
+  see the [changelog](/docs/changelog#api-versioning-policy).
+- **Not-configured** — optional engines (Sell, setup templates,
+  billing checkout, webhooks) return `503 service_unavailable` when the
+  deployment hasn't wired them.
+
+## Keeping this in sync
+
+`openapi-v1.yaml` is the single source of truth for the wire contract — this
+reference, and request validation, derive from it. Every change to the spec
+regenerates these pages, so the reference can never drift from the API, and the
+same document is served live at `GET /v1/openapi.json`.

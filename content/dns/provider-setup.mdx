@@ -1,0 +1,123 @@
+---
+title: Provider setup
+description: Exactly what to do at each DNS provider to create the credential its adapter needs.
+---
+
+Exactly what a customer (or you, on their behalf) must do to create the
+credential each adapter needs, plus any account-eligibility gates. In the
+console's connect flow the customer enters each part of the credential as a
+**separate labeled field** (e.g. GoDaddy asks for *API key* and *API secret*;
+Namecheap for *Username* and *API key*) with a direct link to the provider's
+credential page and numbered steps — nobody has to know the wire format. Calling
+the API directly, you pass the parts colon-joined to
+`POST /v1/connections/{id}/apply` as `credential.token` with the matching
+`provider` key — see [DNS providers](/docs/dns/providers). Either way the
+credential is used **once** to write the records and then discarded **by
+default** — unless you explicitly opt in to remembering it (see
+[Remembering a key](#remembering-a-key-optional)).
+
+> Scope every credential to the minimum needed (edit rights on the target
+> zone). Never reuse an account-wide admin token.
+
+## BYO API token
+
+| Provider | `provider` key | How to create the credential | Gate |
+| --- | --- | --- | --- |
+| Cloudflare | `cloudflare` | [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) → Create Token → *Edit zone DNS* template, scoped to the zone. A single token — copy it when shown. | none |
+| DigitalOcean | `digitalocean` | API → Tokens → Generate (write scope). | none |
+| Gandi | `gandi` | Account → Security → API key (LiveDNS). | none |
+| deSEC | `desec` | Account → generate a token. | none |
+| Hetzner | `hetzner` | DNS Console → API tokens. | none |
+| Vercel | `vercel` | Account Settings → Tokens. | none |
+| DNSimple | `dnsimple` | Account → Automation → API tokens. | none |
+| Porkbun | `porkbun` | Account → API Access → enable + create key/secret → credential `apikey:secretapikey`. | must enable API per domain |
+| Linode | `linode` | Cloud Manager → API Tokens (Domains: read/write). | none |
+| Vultr | `vultr` | Account → API → enable + key. | IP allowlist optional |
+| Name.com | `namecom` | Account → API → token → credential `user:token`. | none |
+| Netlify | `netlify` | User Settings → Applications → Personal access token. | domain must be a Netlify DNS zone |
+| **GoDaddy** | `godaddy` | [developer.godaddy.com/keys](https://developer.godaddy.com/keys) → Create New API Key → **Production** environment (test keys can't change live DNS). Two parts: API key + API secret (the secret is shown only once); API wire format `key:secret`. | **Production API access is gated by account tier (historically ≥10 domains / eligible reseller/pro).** Verify current eligibility. |
+
+## Machine credential (cloud / OAuth2)
+
+These are still "bring your own credential" — the customer creates a machine
+identity in their cloud console. No approval of *your* service is required, but
+the customer needs cloud-admin access.
+
+### Amazon Route 53 — `route53`
+- In the [AWS IAM console](https://console.aws.amazon.com/iam/), create an IAM
+  user/role with a policy allowing `route53:ChangeResourceRecordSets`
+  and `route53:ListResourceRecordSets`/`GetHostedZone` on the target hosted zone,
+  then create an access key for it.
+- Two parts: **Access key ID** + **Secret access key** (separate fields in the
+  console); API wire format `accessKeyId:secretAccessKey` (optionally
+  `:sessionToken` for temporary credentials).
+- The connection's `zone` is the **Hosted Zone ID** (e.g. `Z123ABC`), not the name.
+- Auth is AWS SigV4 (implemented in-adapter; no AWS SDK).
+
+### Google Cloud DNS — `gcpdns`
+- Create a service account with role `roles/dns.admin` (or narrower) on the project.
+- Download its JSON key. Credential = that JSON with a `managed_zone` field added
+  (the Cloud DNS zone name). `project_id` is read from the key.
+- Auth is OAuth2 via a signed (RS256) JWT assertion (implemented in-adapter).
+
+### Azure DNS — `azuredns`
+- Register an app in Entra ID; create a client secret; grant it *DNS Zone
+  Contributor* on the resource group holding the zone.
+- Credential JSON: `{tenant_id, client_id, client_secret, subscription_id, resource_group}`.
+- Auth is the Entra client-credentials flow (implemented in-adapter).
+
+### Namecheap — `namecheap`
+- Enable API access (Profile → Tools → **API Access**) and copy the API key.
+- **Whitelist the calling IP** — Namecheap rejects every request from an
+  unlisted IP. Whitelist the hosted service's calling IP, `34.234.249.128`
+  (the control-plane sends it as `CONNECT_CLIENT_IP`).
+- Two parts: **Username** + **API key** (separate fields in the console). API
+  wire format `apiUser:apiKey` — optionally `apiUser:apiKey:userName` or
+  `apiUser:apiKey:userName:clientIp`; when omitted, `userName` defaults to
+  `apiUser` and the client IP comes from the server's `CONNECT_CLIENT_IP`.
+- **Gate:** API access requires meeting Namecheap's threshold (e.g. 20+ domains,
+  or a balance/spend minimum). Verify eligibility.
+
+## Redirect / no-token
+
+- **One-click setup** (`domain-connect`) — no stored credential; the customer is
+  redirected to their provider to apply a template. See
+  [DNS providers](/docs/dns/providers#one-click-setup-rail-a).
+- **Squarespace** — no third-party write API; use one-click setup or guided-manual.
+
+## Remembering a key (optional)
+
+By default a provider API key is used once and discarded. When you connect a
+domain with a key in the console, you can instead tick **"Remember this key for
+my *&lt;provider&gt;* account"** to save it for reuse. It is **off by default** —
+nothing is stored unless you opt in.
+
+A remembered key is:
+
+- **sealed at rest** — encrypted with AES-256-GCM under the console's
+  `WEB_SECRET_KEY`, scoped to one **tenant + provider** pair (one saved key per
+  provider account, not per domain);
+- **server-side only** — the plaintext never leaves the server; the browser only
+  ever sees masked metadata (provider, a label, and last-used time);
+- **one-click reusable** — the next time you connect a domain at that provider,
+  **"Use saved key"** applies the records without re-entering anything;
+- **revocable any time** — **Settings → Connected provider accounts** lists every
+  saved key with a **Revoke** button; revoking deletes it outright.
+
+See [Ownership & setup types](/docs/concepts/ownership-and-setup-types#optional-credential-reuse)
+and [Security](/docs/security/overview#provider-credentials).
+
+## Connecting more domains on the same account
+
+For **Cloudflare, GoDaddy, Amazon Route 53, and Namecheap**, one key can connect
+the *other* domains on that account in a single step. After the first apply, the
+console offers **"Connect more domains"**, lists the account's other zones, and
+lets you **Select all** or pick a subset — no need to re-enter the key. See
+[Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
+
+## The frictionless "connect account" UX
+
+The one-click *"Log in with your provider, click Allow"* experience needs a
+3-legged OAuth app **registered and approved with each provider under your
+company's identity** — a business/legal step, not code. Until then, BYO-token,
+machine-credential, and one-click setup cover the same providers without it.

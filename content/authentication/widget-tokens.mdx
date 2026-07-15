@@ -1,0 +1,39 @@
+---
+title: Widget tokens
+description: Minting short-lived JWTs via POST /v1/tokens for the browser widget.
+---
+
+The widget must never see an API key or `client_secret`. Instead your backend
+exchanges the application's `client_secret` for a short-lived JWT and hands only
+that to the browser:
+
+```bash
+curl -X POST http://localhost:8080/v1/tokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "application_id": "<APP_ID>",
+    "client_secret": "<CLIENT_SECRET>",
+    "domain": "app.customer.com"
+  }'
+# → { "token": "eyJ…", "token_type": "Bearer", "expires_in": 3600 }
+```
+
+- `POST /v1/tokens` is **not** bearer-authenticated — it authenticates by the
+  `client_secret` in the body, which is why it must run server-side only.
+- The token is bound to the application and, if you pass `domain`, to a single
+  hostname — a domain-bound token may only act on that host.
+- Default TTL is 60 minutes (`expires_in` is seconds). On expiry the widget
+  surfaces a session-expired state; mint a fresh token and reopen.
+
+## What the token can do
+
+A widget JWT is accepted only on the browser-facing Connect endpoints:
+`POST /v1/domains:check`, `POST /v1/connections`, `GET /v1/connections/{id}`,
+`GET /v1/connections/{id}/records`, the three apply rails
+(`/apply`, `/oauth:start`, `/domainconnect:start`), `POST /v1/monitor:check`,
+and the registrar (Sell) endpoints. It cannot create applications, manage keys,
+or manage members — those require an API key or the management key.
+
+See [The widget SDK](/docs/widget-sdk/overview) for how the browser uses the
+token, and [Create a connection](/docs/connect-flow/create-a-connection) for the
+calls it drives.

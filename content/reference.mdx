@@ -1,0 +1,71 @@
+---
+title: Reference
+description: Enums, environment variables, error codes, and other lookup tables.
+---
+
+## Enums
+
+**ConnectionStatus** — `pending`, `propagating`, `live`, `failed`.
+
+**SetupType** — `automatic`, `manual`, `async`, `mcp`.
+
+**Role** — `owner`, `admin`, `member`, `viewer`.
+
+**PlanId** — `free`, `startup`, `growth`, `premium`, `enterprise`.
+
+**Environment** — `production`, `staging`, `development`.
+
+**DNS record types** — `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `TXT`, plus the
+meta-types `SPFM` (SPF-merge) and `REDIR301`.
+
+**One-click setup template shapes** (the provider-hosted one-click protocol;
+customdomain.ai catalog shipped in prod) —
+web: `apex-a`, `apex-aaaa`, `apex-cname`, `apex-www`, `subdomain`, `www`,
+`wildcard`; ownership: `verify`, `connect-verified` (apex A + ownership TXT
+applied together); `caa`; email: `email-spf`, `email-dkim`, `email-dmarc`,
+`email-mx`, `email-full`; and `redirect` (301 forward).
+
+**Webhook events** — `connection.created`, `connection.applied`,
+`connection.live`, `connection.failed`, `domain.record_missing`,
+`domain.record_restored`, `domain.purchased` (the broader emitted vocabulary also
+includes `domain.flow.completed` and `domain.propagation.timeout`).
+
+## Error envelope & codes
+
+Every error is `{ "code", "title", "details"? }`. `code` is a stable machine
+string:
+
+| `code` | HTTP | Meaning |
+| --- | --- | --- |
+| `invalid_request` | 400 | Malformed or missing input. |
+| `unauthorized` | 401 | Missing/invalid credential. |
+| `not_found` | 404 | Object doesn't exist or isn't in your tenant. |
+| `service_unavailable` | 503 | An optional engine (Sell, templates, billing, webhooks) isn't configured. |
+| `internal_error` | 500 | Server error (generic `title` + a logged request id). |
+
+## Environment variables
+
+Control-plane variables read `CUSTOMDOMAIN_*` first and fall back to the legacy
+`JUSTEASY_*` prefix. Variables that matter for API consumers are called out on
+the page that uses them.
+
+## Webhook signature
+
+- Headers: `X-JE-Timestamp: <unix seconds>` and `X-JE-Signature: sha256=<hex>`.
+- Algorithm: HMAC-SHA256 over `${timestamp}.${rawBody}` (the timestamp, a dot,
+  then the exact request body), keyed by the endpoint's signing secret
+  (`whsec_…`). Reject deliveries whose timestamp is outside a ~5-minute window.
+  See [Verifying signatures](/docs/webhooks/verifying-signatures).
+
+## Default edge record
+
+A connection with no applied records yet points at the edge with a synthesized
+`CNAME <host> → edge.customdomain.ai` (TTL 3600), overridable with
+`JUSTEASY_EDGE_CNAME_TARGET`.
+
+## Resources
+
+- [Architecture](/docs/concepts/architecture) — the two-plane design, data
+  model, and request flows.
+- [`openapi-v1.yaml`](/docs/api-reference) — the OpenAPI document the API
+  reference is generated from; also served live at `GET /v1/openapi.json`.

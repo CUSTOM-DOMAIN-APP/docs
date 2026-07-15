@@ -1,0 +1,39 @@
+---
+title: Overview
+description: A drop-in "Connect your domain" modal, gated by a widget JWT, with no keys in the browser.
+---
+
+`customdomain-js` is a framework-free SDK that renders a drop-in **"Connect your
+domain"** modal. The UI runs in a sandboxed iframe (host CSS can't leak in or
+out), is keyboard-accessible, and adapts to mobile as a bottom sheet. The global
+is `window.customdomain`.
+
+## How it fits together
+
+1. Your backend mints a short-lived [widget JWT](/docs/authentication/widget-tokens)
+   with your application's `client_secret` (never expose the secret or an API
+   key to the browser).
+2. The browser loads `customdomain-js` and calls `window.customdomain.open({ applicationId, token })`.
+3. The widget drives the [connect flow](/docs/connect-flow/overview): it detects
+   the customer's DNS provider and applies records through whichever
+   [rail](/docs/connect-flow/overview#the-four-rails) fits — OAuth into the
+   provider, provider-hosted one-click setup, an API token, or guided-manual —
+   then watches propagation to `live`.
+
+The SDK bridges the widget's `postMessage` protocol onto **both** callback props
+(`onSuccess`, `onClose`, `onStepChange`, `onError`) and native `customdomain:*`
+window `CustomEvent`s, so you can integrate imperatively or declaratively.
+
+## The flow (screens)
+
+- **Enter domain** → validates the domain.
+- **Domain analysis** → detects the DNS provider and setup type (`domains:check`).
+- **Setup** → the best available rail: authorize with the provider, a Domain
+  Connect redirect, or copy the exact records to add.
+- **In progress** → polls propagation; shows a stall hint after a while.
+- **Success** → the domain is `live`; the certificate is issued on the next
+  TLS handshake.
+- **Error** → retry, or switch to manual.
+
+Next: [install and embed the widget](/docs/widget-sdk/installation-and-embed),
+then the full [SDK reference](/docs/widget-sdk/reference).

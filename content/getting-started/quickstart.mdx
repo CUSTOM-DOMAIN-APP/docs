@@ -1,0 +1,108 @@
+---
+title: Quickstart
+description: Connect your first custom domain end to end in about five minutes.
+---
+
+Connect your first custom domain end to end. This uses the API directly; to embed
+the UI instead, see [The widget SDK](/docs/widget-sdk/overview).
+
+## 0. Run the stack (local)
+
+```bash
+make up   # docker compose: Postgres + control-plane + edge
+```
+
+The local control-plane listens on `http://localhost:8080`. In production you
+talk to the hosted control-plane at `https://api.customdomain.ai` instead —
+the calls below are identical apart from the base URL.
+
+## 1. Provision a tenant, app, and key
+
+One call creates a tenant, its owner, a default application, and a long-lived API
+key. It's guarded by the provision secret (`X-Provision-Secret`; in local dev the
+management/provision secrets may be unset).
+
+```bash
+curl -X POST http://localhost:8080/v1/tenants:provision \
+  -H "X-Provision-Secret: <PROVISION_SECRET>" \
+  -H "Content-Type: application/json" \
+  -d '{"tenant_name":"Acme","app_name":"Acme Sites","owner_email":"you@acme.example"}'
+# → { "tenant_id": "...", "application_id": "...", "api_key": "sk_...", "client_secret": "..." }
+```
+
+`api_key` and `client_secret` are shown **once** — store them. (You can also
+create tenants and applications individually via `POST /v1/tenants` and
+`POST /v1/applications` with the management key.)
+
+## 2. Mint a widget token
+
+Trade the app's `client_secret` for a short-lived widget JWT (server-side only):
+
+```bash
+curl -X POST http://localhost:8080/v1/tokens \
+  -H "Content-Type: application/json" \
+  -d '{"application_id":"<APP_ID>","client_secret":"<CLIENT_SECRET>","domain":"app.customer.com"}'
+# → { "token": "eyJ...", "token_type": "Bearer", "expires_in": 3600 }
+```
+
+## 3. Detect the domain
+
+```bash
+curl -X POST http://localhost:8080/v1/domains:check \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"app.customer.com"}'
+```
+
+The response tells you the `setup_type`, whether `oauth_available` /
+`domain_connect` rails are on offer, capability flags, and any `record_conflicts`.
+
+## 4. Create a connection
+
+```bash
+curl -X POST http://localhost:8080/v1/connections \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"app.customer.com"}'
+```
+
+The response carries the connection `id` (also the `jobId`), its `status`
+(`pending`), and the authoritative desired `records` — by default a
+`CNAME app.customer.com → edge.customdomain.ai`.
+
+## 5. Apply the records
+
+Pick a [rail](/docs/connect-flow/overview#the-four-rails). The manual path needs
+nothing more than the customer adding the records above. To write them
+programmatically with a scoped provider token (Rail B):
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"cloudflare","zone":"customer.com","credential":{"token":"<scoped>"},
+       "records":[{"type":"CNAME","host":"app","value":"edge.customdomain.ai"}]}'
+```
+
+The connection moves to `propagating`. (Rail C is `oauth:start`, Rail A is
+`domainconnect:start` — see [Apply records & go live](/docs/connect-flow/verify-and-go-live).)
+
+## 6. Go live
+
+The background poller (running automatically) promotes the connection to `live`
+once every desired record resolves. Watch it:
+
+```bash
+curl http://localhost:8080/v1/connections/<ID> -H "Authorization: Bearer <WIDGET_JWT>"
+```
+
+When `status` is `live`, the edge issues the TLS certificate on the next
+handshake and proxies `https://app.customer.com` to your origin. Register a
+[webhook](/docs/webhooks/overview) for `connection.live` to be notified.
+
+## Next steps
+
+- Embed the [widget](/docs/widget-sdk/overview) so customers do steps 3–6 themselves.
+- Register [webhooks](/docs/webhooks/overview) to react to go-live and drift.
+- Review the [connect rails](/docs/connect-flow/overview#the-four-rails) and what
+  each needs to run in production.

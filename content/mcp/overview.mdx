@@ -1,0 +1,120 @@
+---
+title: MCP server
+description: The Model Context Protocol server — eleven domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
+---
+
+Customdomain ships a **Model Context Protocol (MCP) server** so an AI
+agent can search for, register, and connect domains through the same
+control-plane `/v1` API — without ever handling DNS records itself. It runs as a
+separate process (`services/mcp`) and wraps the control-plane; it adds no
+business logic of its own.
+
+The hosted endpoint is live at **`https://mcp.customdomain.ai/mcp`** (Streamable
+HTTP). The console's **MCP server** page (under *Integrate*, at `/app/mcp`) has
+the endpoint, the token URL, and copy-paste client configs for HTTP-native hosts
+and the `mcp-remote` stdio bridge.
+
+The server reports itself as `customdomain-mcp` (protocol revision
+`2025-06-18`) and advertises only the `tools` capability.
+
+## Tools
+
+The server registers **eleven tools**, in a fixed order. None of them takes DNS
+records as input — records always come from the control-plane server-side, so an
+agent can never inject them.
+
+| Tool | Arguments | What it does |
+| --- | --- | --- |
+| `search-domain-availability` | `{ domain }` | Check whether a domain is available to register, with real-time price + renewal price. |
+| `generate-domain-suggestions` | `{ keywords, limit? }` | Return available-to-register suggestions for a set of keywords (default 5, min 5, max 20), each priced; the cheapest is marked the top pick. |
+| `create-domain-order` | `{ domain }` | Start a registration/purchase through the resolved registrar. Enterprise/direct registrars return an `orderId`; sharing registrars return a checkout `link` + `jobId` to poll. |
+| `connect-domain` | `{ domain }` | Start a guided DNS-configuration flow for a domain the user already owns. Returns a `link` for the user and a `jobId` to poll. Never writes DNS directly. |
+| `check-connection-status` | `{ jobId }` | Read the live status of a connection job. Statuses: `pending`, `propagating`, `completed`, `failed`, `error`, `expired`. |
+| `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order — by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
+| `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails if the connection isn't managed or has no grant. |
+| `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. |
+| `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (provider-hosted one-click setup, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. |
+| `forward-domain` | `{ target, domain? , connectionId? }` | Forward (permanent 301) a domain to a destination. Starts a managed one-click setup flow and returns a `link` to authorize plus a `connectionId` to poll. Never writes DNS directly. |
+| `add-email` | `{ domain? , connectionId? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | Configure a domain for a mail provider in one step (MX/SPF/DKIM/DMARC) via server-side templates — supply only provider settings, never raw records. Returns a `link` to authorize plus a `connectionId` to poll. |
+
+> **`generate-domain-suggestions` is deterministic, not AI.** Candidates are
+> keyword joins plus a few common affixes (`get`, `try`, `use`, `my`, `…app`,
+> `…hq`), expanded across TLDs by the registrar search and filtered to what's
+> actually available. No LLM is involved — the same keywords always produce the
+> same candidates, which keeps the tool predictable and testable.
+
+> **`create-domain-order` is fail-closed.** The server places a paid order only
+> after a successful call to the integrator's purchase-authorization callback
+> (`MCP_PURCHASE_AUTHZ_URL`, HTTP Basic). If that callback is unset, every
+> purchase is denied — the safe default. Registrar purchasing is also gated on
+> the control-plane by `SELL_PURCHASE_ENABLED` (fail-closed unless it's set). On
+> the hosted service, purchasing is live through the money-safe checkout — see
+> [Buying a domain](/docs/sell/buying-a-domain).
+
+## Transports
+
+The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
+
+- **`stdio`** (default) — line-delimited JSON-RPC on stdin/stdout, one message
+  per line. This is what a locally-launched host (or `mcp-remote`) uses when it
+  runs the server as a subprocess. It authenticates with a single static
+  control-plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
+- **`http`** — a Streamable-HTTP style endpoint. Three routes:
+
+  | Route | Purpose |
+  | --- | --- |
+  | `POST /mcp` | The MCP JSON-RPC endpoint. **Requires `Authorization: Bearer`** (unless started with `-insecure` for local dev). |
+  | `POST /token` | OAuth 2.0 **client-credentials** grant — exchange `client_id` + `client_secret` for a short-lived Bearer. |
+  | `GET /healthz` | Liveness. |
+
+The hosted server is at `https://mcp.customdomain.ai` (the MCP endpoint is
+`POST https://mcp.customdomain.ai/mcp`).
+
+## Authentication
+
+`POST /token` proxies the control-plane's `POST /v1/tokens`: it exchanges an
+application's `client_id` + `client_secret` (also accepted as `application_id`)
+for a widget JWT. Credentials may be sent as HTTP Basic auth, form fields, or a
+JSON body; the only supported `grant_type` is `client_credentials`.
+
+```bash
+# Mint a short-lived Bearer
+curl -X POST https://mcp.customdomain.ai/token \
+  -u "<APPLICATION_ID>:<CLIENT_SECRET>" \
+  -d "grant_type=client_credentials"
+# → { "access_token": "eyJ…", "token_type": "Bearer", "expires_in": 3600 }
+```
+
+`POST /mcp` accepts **three** Bearer forms, so hosts that can't run the token
+dance still authenticate:
+
+1. a JWT minted by `/token`,
+2. a console API key (`sk_live_…` / `sk_test_…`),
+3. the `mcp-remote` shortcut `CLIENT_ID:CLIENT_SECRET`, which the server exchanges
+   for a JWT on the fly.
+
+The MCP server never validates tokens cryptographically itself — it forwards the
+caller's credential to the control-plane, which is the authority and rejects bad
+credentials on every wrapped call.
+
+```bash
+# Call a tool
+curl -X POST https://mcp.customdomain.ai/mcp \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"search-domain-availability","arguments":{"domain":"example.com"}}}'
+```
+
+## Configuration
+
+The `http` transport reads these (flags shown; each has an env alias):
+
+| Flag / env | Purpose |
+| --- | --- |
+| `-api` / `MCP_API_BASE` | Control-plane base URL (default `https://api.customdomain.ai`). |
+| `-addr` / `MCP_ADDR` | HTTP listen address (default `:8080`). |
+| `-link-base` / `MCP_LINK_BASE` | Console URL prefix for guided-DNS fallback links. |
+| `-preferred-registrar` / `MCP_PREFERRED_REGISTRAR` | Registrar tried first during order resolution. |
+| `-purchase-authz-url/-user/-pass` / `MCP_PURCHASE_AUTHZ_*` | The fail-closed purchase-authorization callback. Unset ⇒ purchases denied. |
+| `-insecure` / `MCP_INSECURE=1` | Serve `/mcp` without Bearer auth — **local development only**. |

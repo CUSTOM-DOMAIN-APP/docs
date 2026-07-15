@@ -1,0 +1,64 @@
+---
+title: Introduction
+description: What Customdomain is, the connect → secure → serve → monitor loop, and where to go next.
+---
+
+**Custom-domain onboarding for multi-tenant SaaS** — DNS
+auto-configuration, automatic SSL, and a reverse proxy, in one fully-managed
+platform. Let your customers point their own domain at your product in minutes,
+with a drop-in widget and a REST API.
+
+## What it does
+
+- **Connect** — a customer enters their domain; the engine detects their DNS
+  provider and applies the records through the best available
+  [rail](/docs/connect-flow/overview#the-four-rails) — OAuth into the provider,
+  provider-hosted one-click setup, a scoped API token, or guided-manual — then
+  watches propagation.
+- **Secure** — the edge issues a TLS certificate **on demand during the
+  handshake**, but only for hostnames a live/propagating connection has authorized.
+  (Certificates come from Let's Encrypt **staging** — not browser-trusted — until
+  the edge is run with `EDGE_ACME_PROD=1`.)
+- **Serve** — the edge reverse-proxies the custom domain to your origin.
+- **Monitor** — webhooks, a developer console, usage metering, and DNS-drift
+  detection keep you informed after go-live.
+
+## The two planes
+
+Two independent planes share one database and talk over HTTP:
+
+- **Connect plane** (the control-plane) — the `/v1` REST API, the connect rails,
+  the propagation poller, quotas/metering, and webhooks.
+- **Edge plane** — on-demand TLS termination + reverse proxy, gated by a single
+  internal `ask` call to the control-plane.
+
+See [Concepts](/docs/concepts/architecture) for the full model.
+
+## Start here
+
+| If you want to… | Read |
+| --- | --- |
+| Connect your first domain end to end | [Quickstart](/docs/getting-started/quickstart) |
+| Understand connections, rails, and status | [Concepts](/docs/concepts/architecture) |
+| Authenticate API calls and the widget | [Authentication](/docs/authentication/overview) |
+| Embed the connect modal | [The widget SDK](/docs/widget-sdk/overview) |
+| Add email records / merge SPF safely | [Email DNS](/docs/dns/email-dns) |
+| Call the API | [API Reference](/docs/api-reference) |
+| React to events | [Webhooks](/docs/webhooks/overview) |
+| See which DNS providers auto-configure | [DNS providers](/docs/dns/providers) |
+| Buy a brand-new domain | [Buying a domain](/docs/sell/buying-a-domain) |
+| Understand the security model | [Security](/docs/security/overview) |
+| Configure plans and quotas | [Plans & quotas](/docs/billing/plans-and-quotas) |
+| Look up enums, env vars, error codes | [Reference](/docs/reference) |
+| Fix a stuck connection | [Troubleshooting](/docs/troubleshooting) |
+
+## For AI agents
+
+A machine-readable index of this documentation is at
+[`/docs/llms.txt`](/docs/llms.txt), with a full-text version at
+[`/docs/llms-full.txt`](/docs/llms-full.txt). Every page is also available as raw
+Markdown at `/llms/<page-slug>`.
+
+Agents can also drive the product directly through the hosted
+[MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp` — six
+tools for searching, buying, and connecting domains.

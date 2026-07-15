@@ -1,0 +1,87 @@
+---
+title: Overview
+description: Register HTTPS endpoints to receive signed events as connections progress.
+---
+
+Register HTTPS endpoints to receive signed events as connections progress and as
+monitored domains drift.
+
+## Register an endpoint
+
+```bash
+curl -X POST http://localhost:8080/v1/webhooks \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://api.acme.example/webhooks/cd","events":["connection.live","domain.record_missing"]}'
+# → { "id": "whk_…", "url": "...", "events": [...], "secret": "whsec_…", "created_at": "..." }
+```
+
+The `secret` (`whsec_…`) is returned **once** — store it to verify signatures. An
+empty `events` array subscribes to all events; `"*"` also matches all.
+
+Manage endpoints: `GET /v1/webhooks` lists them (secrets omitted; tenant-wide
+with an `sk_` key, app-scoped with a widget JWT) and
+`DELETE /v1/webhooks/{id}` removes one.
+
+## Event catalog
+
+| Event | Fires when |
+| --- | --- |
+| `connection.created` | A connection is created. |
+| `connection.applied` | Records were written through a rail (`data.via` = `automatic` for OAuth, `async` for one-click setup, unset for API-token apply). |
+| `connection.live` | Every desired record resolved; the connection is `live`. |
+| `connection.failed` | A `propagating` connection's records never appeared within 24h. |
+| `connection.records.updated` | A [managed](/docs/connect-flow/managed-connections) connection was re-applied (`POST /v1/connections/{id}:reapply`); its desired records were re-written and the connection re-verified. |
+| `connection.reapply.failed` | A managed re-apply push failed; if the stored grant was revoked, the connection is flagged for re-consent. |
+| `connection.disconnected` | A connection was disconnected (`DELETE /v1/connections/{id}`); for a managed connection the template was reverted through the grant first. |
+| `domain.record_missing` | Monitor saw a baseline record disappear or get repointed (drift). |
+| `domain.record_restored` | A previously missing baseline record is observed again. |
+| `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed — the domain is registered (and only then is the card captured). |
+
+You may subscribe to any event string; the broader vocabulary the platform can
+emit also includes `domain.flow.completed`, `domain.propagation.timeout`, and the
+Sell/Secure/Power status events.
+
+> **Status:** the drift events (`domain.record_missing` / `domain.record_restored`)
+> are produced by the hourly Monitor sweep, which **delivers** them only where
+> `MONITOR_ALERTS_ENABLED=1`. With the flag off (the hosted default) the sweep
+> still runs in shadow mode but no drift webhooks are sent. `domain.purchased`
+> (and `purchase.error`) require the Sell purchase path, which is live on the
+> hosted service (gated by `SELL_PURCHASE_ENABLED`).
+
+## Payload envelope
+
+Deliveries are a flat JSON object:
+
+```json
+{
+  "id": "evt_…",
+  "type": "connection.live",
+  "domain": "app.customer.com",
+  "subdomain": "app",
+  "provider": "cloudflare",
+  "setup_type": "automatic",
+  "propagation_status": "success",
+  "data": {
+    "records_propagated": [ { "type": "CNAME", "host": "app.customer.com", "value": "edge.customdomain.ai" } ],
+    "records_non_propagated": []
+  },
+  "created_at": "2026-07-07T12:00:00Z"
+}
+```
+
+`propagation_status` is `pending`, `success`, or `timeout`. On propagation
+events, `data` carries the per-record propagated / non-propagated arrays. Fields
+that don't apply to an event are omitted.
+
+## Delivery & retries
+
+- A delivery succeeds on any `2xx`. Each attempt is persisted.
+- Failures retry with exponential backoff, up to **3 attempts** total.
+- Inspect attempts: `GET /v1/webhook-deliveries` (`attempts`, `status_code`,
+  `delivered`, `error`; filter with `?app_id=` and `?type=`).
+
+Endpoints should be **idempotent** — the same event can arrive more than once on
+retry. Deduplicate on the envelope `id`, or on `domain` + `type`.
+
+Next: [verify signatures](/docs/webhooks/verifying-signatures).

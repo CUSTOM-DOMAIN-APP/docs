@@ -1,0 +1,115 @@
+---
+title: DNS providers
+description: The built-in auto-write fleet, the connect rails, and the parity census.
+---
+
+The Connect engine ships **38 built-in DNS provider adapters** plus a full parity
+census of ~63 target providers, each routed to its best working mode
+(`dc` / `oauth` / `api` / `manual`). When a customer's domain is at a supported
+provider, records can be written automatically through one of the
+[connect rails](/docs/connect-flow/overview#the-four-rails); otherwise the flow
+falls back to guided-manual.
+
+By default no provider credential is **stored**. Rail C (OAuth) uses a one-time
+token that is always discarded, and Rail A (provider-hosted one-click setup)
+uses no server-to-server credential at all. A Rail B (API-token) credential is likewise
+used once and discarded **unless the user opts in** to
+[remembering it](/docs/dns/provider-setup#remembering-a-key-optional), in which
+case it is stored encrypted at rest and revocable any time.
+
+## Auto-write fleet (a sample)
+
+These providers have a libdns-shaped writer registered in the adapter registry.
+Each is idempotent and reconciles full record sets (multi-value rrsets are
+preserved, stale records removed). The live, complete set is returned by
+`GET /v1/providers`, and `GET /v1/providers/census` routes every target provider
+to its working mode.
+
+| Provider | Key | Credential (used once; stored only if you opt in) |
+| --- | --- | --- |
+| Cloudflare | `cloudflare` | Scoped API token (Bearer) |
+| DigitalOcean | `digitalocean` | API token (Bearer) |
+| Gandi | `gandi` | LiveDNS API key |
+| deSEC | `desec` | API token |
+| Hetzner | `hetzner` | DNS API token |
+| Vercel | `vercel` | API token (Bearer) |
+| DNSimple | `dnsimple` | API token (Bearer) |
+| Porkbun | `porkbun` | `apikey:secretapikey` pair |
+| Linode | `linode` | Personal access token (Bearer) |
+| Vultr | `vultr` | API key (Bearer) |
+| Name.com | `namecom` | `user:token` (Basic) |
+| GoDaddy | `godaddy` | `key:secret` (sso-key) |
+| IONOS | `ionos` | API key (`prefix.secret`) |
+| Netlify | `netlify` | API token (Bearer) |
+| Amazon Route 53 | `route53` | `accessKeyId:secretAccessKey[:sessionToken]` (SigV4); zone arg = Hosted Zone ID |
+| Google Cloud DNS | `gcpdns` | Service-account JSON (+ `managed_zone`); OAuth2 JWT → bearer |
+| Azure DNS | `azuredns` | JSON `{tenant_id,client_id,client_secret,subscription_id,resource_group}` |
+| Namecheap | `namecheap` | `apiUser:apiKey[:userName[:clientIp]]` (the calling IP must be whitelisted — `34.234.249.128` on the hosted service) |
+| One-click setup (provider-hosted) | `domain-connect` | Redirect-based (no server token) |
+
+The registry also includes AliDNS, Bunny, ClouDNS, Constellix, DNSMadeEasy,
+DreamHost, Dynadot, EasyDNS, GleSYS, Hostinger, LuaDNS, NameSilo, Njalla, OVH,
+Openprovider, PowerDNS, Simply, Spaceship, TransIP, and WordPress.com.
+
+## Using a provider token (Rail B)
+
+The BYO-token rail writes a connection's records through the customer's provider
+with a scoped token, used once and (by default) not persisted:
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "cloudflare",
+    "zone": "customer.com",
+    "credential": { "token": "<scoped-provider-token>" },
+    "records": [ { "type": "CNAME", "host": "app", "value": "edge.customdomain.ai" } ]
+  }'
+```
+
+Scope the token to the customer's zone(s) with edit rights; it is used for the
+single write and then discarded, unless the user opts in to
+[remembering it](/docs/dns/provider-setup#remembering-a-key-optional) for reuse.
+
+The colon-joined formats in the table above are the **API wire format** for
+`credential.token`. The console never asks anyone to type them: each
+part is a separate labeled field (GoDaddy: API key + API secret; Namecheap:
+username + API key; Route 53: access key ID + secret access key; Cloudflare: one
+token), linked to the provider's credential page with step-by-step instructions,
+and joined for you on submit. See [Provider setup](/docs/dns/provider-setup).
+
+## How connecting works — what you need per provider
+
+There are three real-world requirement classes. **"Code ✅" means the adapter is
+built and tested; the "External" column is what you or your customer must still
+do — the parts code can't remove.**
+
+| Model | Providers | Code | External step |
+| --- | --- | --- | --- |
+| **BYO API token** (Rail B) | Cloudflare, DigitalOcean, Gandi, deSEC, Hetzner, Vercel, DNSimple, Porkbun, Linode, Vultr, Name.com, GoDaddy, IONOS, Netlify | ✅ | Customer generates a scoped token and pastes it. No approval for most — **but GoDaddy gates production API keys by account tier, and Namecheap requires enabling API access + IP-whitelisting + an account threshold.** |
+| **Machine credential (OAuth2 / signed)** (Rail B) | Google Cloud DNS, Azure DNS, Amazon Route 53 | ✅ | Customer creates a service account (GCP) / app registration (Azure) / IAM key (AWS) and pastes the credential. No approval of *your* service; the customer needs cloud-admin access. |
+| **3-legged consumer OAuth** (Rail C — "Log in with your provider, click Allow") | per registered provider | ⚠️ business step | **You** register an OAuth app with each provider and pass its partner/approval process (legal, branding, security review). The code path exists and is wired via `OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`; **provider-hosted one-click setup (Rail A) is the built-in alternative that avoids per-provider OAuth registration.** |
+
+So: the built adapters are code-complete. Going live *as a service* means (a)
+some providers gate who can get API access, and (b) the frictionless "connect
+account" UX (Rail C) requires per-provider OAuth-app approval that only your
+company can obtain.
+
+## One-click setup (Rail A)
+
+Rail A uses the provider-hosted one-click protocol and is redirect-based: the
+customer is sent to their provider, which applies a signed template and returns.
+There is no server-to-server token. Discovery is via
+`TXT _domainconnect.<domain>` → the provider's settings endpoint. It offers a
+smooth connect flow **without** registering a bespoke OAuth app per provider.
+Both the synchronous redirect and the asynchronous variant are supported
+(`POST /v1/connections/{id}/domainconnect:start`).
+
+## Roadmap
+
+- **Squarespace** — no general third-party DNS-record write API; connect via
+  one-click setup / guided-manual instead of a token adapter.
+- Additional libdns providers can be added by implementing a `Writer` +
+  conformance test. Per-provider credential steps live in
+  [Provider setup](/docs/dns/provider-setup).

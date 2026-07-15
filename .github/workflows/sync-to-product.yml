@@ -1,0 +1,52 @@
+name: Sync docs to product repo
+# This repo is the SOURCE OF TRUTH for the product documentation.
+# On every push to main that touches content/, this workflow pushes the
+# content into the product repo (CUSTOM-DOMAIN-APP/custom-domains) on a
+# dedicated `docs-sync` branch. It NEVER touches the product repo's main:
+# a human (or bot) reviews and merges the sync branch via PR.
+on:
+  push:
+    branches: [main]
+    paths: ['content/**']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs (this repo)
+        uses: actions/checkout@v4
+
+      - name: Configure SSH deploy key (write access scoped to the product repo only)
+        env:
+          SYNC_SSH_KEY: ${{ secrets.SYNC_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SYNC_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Clone product repo (shallow, main)
+        run: |
+          git clone --depth 1 --branch main git@github.com:CUSTOM-DOMAIN-APP/custom-domains.git product
+
+      - name: Replace docs content
+        run: |
+          rsync -a --delete content/ product/apps/app/src/content/docs/
+
+      - name: Push docs-sync branch
+        run: |
+          cd product
+          git config user.name "docs-sync-bot"
+          git config user.email "docs-sync@customdomain.ai"
+          git checkout -B docs-sync
+          git add apps/app/src/content/docs
+          if git diff --cached --quiet; then
+            echo "No content changes to sync."; exit 0
+          fi
+          git commit -m "docs: sync from CUSTOM-DOMAIN-APP/docs@${GITHUB_SHA::7}"
+          git push -f origin docs-sync
+          echo "Pushed docs-sync. Open/refresh the PR: https://github.com/CUSTOM-DOMAIN-APP/custom-domains/compare/main...docs-sync"

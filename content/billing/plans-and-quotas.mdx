@@ -1,0 +1,63 @@
+---
+title: Plans & quotas
+description: The plan catalog, metered domain usage, and Stripe checkout.
+---
+
+## Plans
+
+The public catalog is returned by `GET /v1/plans` (along with a
+`billing: { configured, mode }` block). Entitlements gate which products a tenant
+may use.
+
+| Plan | Price | Domains / year | Entitlements | Motion |
+| --- | --- | --- | --- | --- |
+| `free` | $0 | 10 | Connect | self-serve |
+| `startup` | $249/mo | 600 | Connect | self-serve |
+| `growth` | $749/mo | 600 + metered overage (1,000-unit increments) | Connect · Power · Secure/SSL | self-serve |
+| `premium` | demo-gated | 12,000 | + Monitor | contact sales |
+| `enterprise` | custom | 12,000+ | + SCIM · SSO · white-label | contact sales |
+
+Self-serve plans (`free`, `startup`, `growth`) are bought through Stripe
+Checkout. `premium` and `enterprise` route to a "book a demo" CTA and have no
+public price.
+
+> **Status:** the plan catalog is always public, but Checkout and the billing
+> portal are live only where `STRIPE_SECRET_KEY` **and** the `STRIPE_PRICE_*` ids
+> are configured. Until then those routes return `503 service_unavailable`
+> (`billing.configured` is `false`) — the case on the hosted service today. See
+> [Checkout & portal](#checkout--portal).
+
+## Metered usage
+
+`GET /v1/billing/usage` reports the caller tenant's metered **domain
+connections** for the period against the plan's included quota. The tenant is
+derived from the authenticated credential — never a query parameter — and
+`?period=` defaults to the current UTC calendar month.
+
+```json
+{ "period": "2026-07", "plan": "growth", "used": 412, "limit": 600 }
+```
+
+`growth` is metered: usage beyond the included quota is billed in 1,000-unit
+overage increments rather than hard-blocked. The other plans are not metered.
+
+## Checkout & portal
+
+```bash
+# Start a Stripe Checkout session for a self-serve plan
+curl -X POST http://localhost:8080/v1/billing/checkout \
+  -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
+  -d '{"plan":"growth","success_url":"https://app.acme.example/ok","cancel_url":"https://app.acme.example/cancel"}'
+# → { "url": "https://checkout.stripe.com/..." }
+
+# Open the Stripe Billing Portal (requires a prior checkout)
+curl -X POST http://localhost:8080/v1/billing/portal \
+  -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
+  -d '{"return_url":"https://app.acme.example/billing"}'
+```
+
+Checkout and the portal require `STRIPE_SECRET_KEY` (and the `STRIPE_PRICE_*`
+ids) to be configured; without them these routes return
+`503 service_unavailable` while the plan catalog stays public. Enforcement is on
+the control-plane write path only — never on the edge `ask` hot path, so serving
+traffic never blocks on billing.

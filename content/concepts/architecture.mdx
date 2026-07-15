@@ -1,0 +1,35 @@
+---
+title: Architecture
+description: The two independent planes that share one database and talk over HTTP.
+---
+
+## Tenants and applications
+
+Every object belongs to a **tenant**. A tenant holds **members** (with roles),
+**applications**, API keys, connections, webhooks, and billing. An
+**application** is one product surface: connections and widget tokens are minted
+against an application, and its `client_secret` is what your server exchanges for
+[widget JWTs](/docs/authentication/widget-tokens).
+
+## The two planes
+
+- **Connect plane** (the control-plane) — the `/v1` REST API, the four DNS
+  [connect rails](/docs/connect-flow/overview#the-four-rails), the propagation
+  poller, quotas/metering, webhooks, and the OAuth and one-click setup machinery.
+- **Edge plane** — on-demand TLS termination + reverse proxy, gated by a single
+  internal `ask` call to the control-plane.
+
+Both planes share one Postgres database but scale independently and talk only
+over HTTP.
+
+## The edge hot path
+
+`POST /internal/ask` (shared-secret auth via `X-Edge-Auth` / `EDGE_ASK_SECRET`)
+is the only call the edge makes into the control-plane. It answers
+`{ approved }` from a single indexed lookup — no joins, no billing — so the TLS
+handshake never blocks on business logic. A host is approved iff a connection for
+it exists and is `live` or `propagating`; the edge then issues the certificate on
+demand during the handshake. Quota and metering are enforced only on the
+control-plane write path, never here.
+
+See [Connections](/docs/concepts/connections) for the lifecycle.

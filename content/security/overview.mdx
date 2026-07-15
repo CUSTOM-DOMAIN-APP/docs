@@ -1,0 +1,145 @@
+---
+title: Overview
+description: Tenancy, credential model, value-checked DNS, one-time provider tokens, and the unauthenticated surfaces.
+---
+
+## Tenancy & isolation
+
+Every object belongs to a tenant. Tenant-scoped endpoints filter by the caller's
+credential, and all `/applications/{id}/*` mutations verify the application
+belongs to the caller before acting. Cross-tenant access returns `404` — never
+another tenant's data, and never a `403` that would confirm an object exists.
+
+## Credential model
+
+Three credential types with escalating authority (see
+[Authentication](/docs/authentication/overview)):
+
+- **Widget JWTs** are short-lived, scoped to one application (and optionally one
+  domain), and accepted only on the browser-facing Connect endpoints. This is the
+  only credential that reaches the browser.
+- **API keys** carry full tenant authority; they are stored as hashes and shown
+  once at creation, and revocation takes effect on the next request.
+- The **management key** and **provision secret** gate operator/signup routes; in
+  production the control-plane refuses to start with provisioning left open.
+
+Human authorization is by member **role** (`owner`/`admin`/`member`/`viewer`),
+not per-key scopes, and is **enforced at the control-plane** — see
+[Roles & permissions](#roles--permissions).
+
+## Roles & permissions
+
+Each member holds one of four roles on a strict ladder —
+`viewer` &lt; `member` &lt; `admin` &lt; `owner` — which maps to a fixed set of
+permissions. The authoritative matrix is the same one served (unauthenticated,
+as static reference) at `GET /v1/rbac`:
+
+| Permission | viewer | member | admin | owner | Grants |
+| --- | :---: | :---: | :---: | :---: | --- |
+| `stats:read` | ✅ | ✅ | ✅ | ✅ | View stats / usage |
+| `audit:read` | ✅ | ✅ | ✅ | ✅ | Read the audit log |
+| `app:read` | ✅ | ✅ | ✅ | ✅ | View app config |
+| `member:read` | ✅ | ✅ | ✅ | ✅ | List members |
+| `app:write` | | ✅ | ✅ | ✅ | Mutate app settings, rotate secrets |
+| `member:manage` | | | ✅ | ✅ | Invite / remove members, change roles |
+| `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
+| `identity:manage` | | | ✅ | ✅ | SCIM / SSO, white-label |
+| `billing:manage` | | | | ✅ | Billing, plan, payout |
+| `org:delete` | | | | ✅ | Delete / transfer the org |
+
+**Enforcement is at the control-plane, not just the console.** Every sensitive
+mutation re-checks the acting member's role server-side before acting, so a
+`member` or `viewer` who calls the API directly is refused with `403` — the
+console's role gates are defense-in-depth, not the security boundary. In
+particular:
+
+- **Minting or revoking an API key** and **inviting / removing a member or
+  changing a role** require `admin` or `owner`.
+- **Billing** (checkout, portal) requires `owner`.
+- A caller can never grant a role above their own, and **only an owner can
+  create, promote-to, or demote an owner**. The org's **last owner** cannot be
+  demoted or removed.
+
+Unknown or vanished roles are **fail-closed** — denied everything, never
+escalated. See [Authentication](/docs/authentication/overview#member-roles).
+
+## DNS verification is value-checked
+
+Propagation and drift checks require the **exact desired value**: a `CNAME` must
+resolve to the expected target and an `A`/`AAAA` must contain the exact address.
+"The name resolves to something" is never accepted, because the record set is
+controlled by whoever is being verified.
+
+## Provider credentials
+
+By default the automatic rails use a customer's DNS-provider credential exactly
+**once** and discard it:
+
+- **OAuth (Rail C)** exchanges a code for a one-time access token, writes the
+  records, and drops the token — it is never stored. The flow uses **PKCE (S256)**
+  and an **HMAC-signed, single-use `state`**; the callback only postMessages its
+  outcome to a **return origin on the server's allowlist**
+  (`OAUTH_ALLOWED_RETURN_ORIGINS`).
+- **API token (Rail B)** uses the scoped credential you pass on a single write.
+  It is **discarded after that write by default**; it is persisted **only if the
+  user explicitly opts in** to remembering it (see below). The console collects
+  multi-part credentials as separate labeled fields and joins them only for that
+  request.
+- **One-click setup (Rail A)** uses no server-to-server credential; its apply
+  URLs are RS256-signed from `DC_SIGNING_KEY_FILE`.
+
+### Optionally remembered API keys
+
+A Rail B provider key can be **optionally** saved for reuse, off by default and
+opt-in per key. When saved:
+
+- it is **sealed at rest** with **AES-256-GCM** under the console's
+  `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key), scoped to one **tenant + provider**
+  pair;
+- its **plaintext never leaves the server** — it is opened server-side only to
+  drive an apply; the browser sees only masked metadata (provider, label,
+  last-used time);
+- it is **revocable at any time** under **Settings → Connected provider
+  accounts**, which deletes the row.
+
+OAuth one-time tokens and one-click setup (which uses no server token) are
+unaffected — nothing there is ever stored. See
+[Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
+
+## Secrets handling
+
+- API keys and application `client_secret`s are stored only as hashes; the
+  plaintext is shown once and never returned again.
+- Widget JWTs are signed per application (HMAC over the app's secret hash), so a
+  token is only valid for its own application.
+- The console never exposes the tenant's control-plane API key to the browser: it
+  is sealed at rest (AES-256-GCM under `WEB_SECRET_KEY`) and opened server-side
+  per request behind a proxy — see [Architecture](/docs/concepts/architecture).
+- Internal errors return a generic `title`; the specifics (including any driver
+  errors) are logged server-side under a request id, never returned.
+
+## Unauthenticated surfaces
+
+- `GET /healthz` — liveness + DB readiness; no secrets, no tenant data.
+- `POST /internal/ask` — the edge host-authorization gate, authenticated by a
+  shared secret (`EDGE_ASK_SECRET`) and meant to be **network-isolated** to the
+  edge. It answers only `{ approved }` and never reveals the tenant.
+- `GET /v1/connect/oauth/callback` — authenticated by its signed single-use
+  `state`, not a bearer token.
+
+## CORS
+
+The API is bearer-authenticated with no ambient cookies, so it reflects a
+wildcard origin (`Access-Control-Allow-Origin: *`) — safe because there are no
+cookies to abuse. Per-application embed control lives at the widget layer.
+
+## Exactly-once side effects
+
+The `live` transition (and its `connection.live` webhook + usage metering) is
+guarded by a compare-and-swap so the API path and the background poller can't
+double-fire.
+
+## Reporting
+
+Report suspected vulnerabilities privately to the
+maintainers before public disclosure.

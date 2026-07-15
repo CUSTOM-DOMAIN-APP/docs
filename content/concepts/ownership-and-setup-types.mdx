@@ -1,0 +1,76 @@
+---
+title: Setup types & the ask gate
+description: How a domain is classified, the four connect rails, and the status-based edge authorization gate.
+---
+
+## Setup types
+
+`POST /v1/domains:check` classifies a domain into a `setup_type` that steers the
+widget to the smoothest available [rail](/docs/connect-flow/overview#the-four-rails):
+
+- **automatic** — the provider can be configured without the customer copying
+  records: an OAuth-into-provider authorization or a one-click setup apply.
+  `domains:check` reports `oauth_available` and `domain_connect` so the widget
+  knows which is on offer.
+- **manual** — no automatic path; the customer copies the exact records into
+  their DNS provider and the poller watches for them.
+- **async** — a one-click setup flow that completes out-of-band (the provider
+  applies the template after a redirect). This is also the rail that powers
+  [managed connections](/docs/connect-flow/managed-connections): start it with
+  `POST /v1/connections/{id}/domainconnect:start` and `{"managed": true}` (or
+  `{"rail":"async"}`) to get an async consent URL, and the callback
+  (`GET /v1/connect/dc/callback`) exchanges the code for a **durable, encrypted
+  grant** so the platform can re-apply and revert the template server-side later.
+  When the provider does not support the async variant, the call falls back to
+  the sync `apply_url` and the connection stays use-once.
+- **mcp** — reserved for agent-driven setup.
+
+The engine also returns capability flags (`ns_support`, `wildcard_support`,
+`cname_flattening`, `spf_override_support`, `caa_support`) and any
+`record_conflicts` it observes in public DNS, so you can pre-warn the customer.
+
+## Control is proven by the rail
+
+There is **no** separate ownership-TXT challenge. Each rail is itself proof that
+the customer controls the zone:
+
+- an **OAuth** authorization grants a one-time token to that customer's DNS
+  account;
+- a **one-click setup** apply happens inside the customer's provider session; its
+  async ([managed](/docs/connect-flow/managed-connections)) variant additionally
+  leaves a durable, encrypted grant — the one credential the platform keeps, and
+  only to re-apply or revert that same template;
+- an **API token** is a scoped credential only the zone owner can mint;
+- the **manual** flow requires the records to actually appear in the domain's
+  authoritative DNS, value-checked.
+
+For one-click setup specifically, the catalog ships a `connect-verified` template
+that points the apex `A` at the Customdomain edge and publishes the ownership TXT
+token together, applied atomically so serving and proof-of-control go live in one
+step (a `verify`-only template publishes just the token). The token record is
+flagged `essential: OnApply`, so applying the template that carries it is itself
+the ownership proof.
+
+## Optional credential reuse
+
+By default an API-token credential is used once for the apply and then discarded.
+Optionally, when connecting in the console you can tick **"Remember this key"** to
+save that provider key for reuse. It is **off by default** and opt-in per key.
+
+A remembered key is encrypted at rest (AES-256-GCM, scoped to one tenant +
+provider) and its plaintext never leaves the server. On the next connect at that
+provider, **"Use saved key"** applies records in one click without re-entering
+anything, and for Cloudflare / GoDaddy / Route 53 / Namecheap the same key can
+[bulk-connect the account's other domains](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
+Revoke a saved key any time under **Settings → Connected provider accounts**. See
+[Provider setup](/docs/dns/provider-setup#remembering-a-key-optional) and
+[Security](/docs/security/overview#provider-credentials).
+
+## The `ask` gate
+
+Before the edge serves TLS for a hostname, it calls `POST /internal/ask`. The
+control-plane approves the host **iff a connection for it is `live` or
+`propagating`** — a status-based gate, answered from a single indexed lookup so
+the TLS handshake never blocks on business logic. A domain the platform has never
+connected is refused, so the edge will never obtain a certificate for an
+unauthorized host.

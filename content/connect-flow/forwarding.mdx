@@ -1,0 +1,73 @@
+---
+title: Domain forwarding
+description: Redirect a connected domain to another URL, or send the apex to www, with a 301 issued at the edge.
+---
+
+Domain forwarding turns a connected domain into a redirect instead of a proxied
+origin. When a customer wants `oldbrand.example` (or a bare apex) to send visitors
+somewhere else, the edge answers the request with an **HTTP 301 Moved Permanently**
+— it never contacts an origin.
+
+## What it does
+
+There are two forms, both resolved on the edge's hot path right after the
+[ask gate](/docs/connect-flow/verify-and-go-live) approves the host:
+
+- **Redirect to a target URL.** The connection carries a redirect target; every
+  request for the domain 301s to that URL. The incoming request's **path and
+  query are preserved**, so `https://old.example/a/b?x=1` lands on
+  `https://new.example.com/a/b?x=1`.
+- **Apex → www.** For a bare apex host (e.g. `example.com`), the edge 301s to the
+  `www.` counterpart (`https://www.example.com/…`), again preserving path + query.
+  A request already on `www.` is proxied normally, so there is no redirect loop.
+
+Because the 301 is emitted at the edge, the customer's origin never sees the
+request and no certificate on the origin side is required for the old hostname —
+only the edge cert, which is issued automatically once the domain is
+[live](/docs/connect-flow/verify-and-go-live#watch-propagation--live).
+
+## Enabling it (edge-served)
+
+Forwarding is part of the Power feature set and is driven by the control plane:
+the redirect target (`redirect_to`) and the apex→www flag (`www_redirect`) are
+attributes of the connection. Set them on the connection and the edge picks up
+the intent within one ask-cache TTL — no redeploy. When neither is set, the
+domain is proxied to its origin as usual.
+
+## The redirect template (provider-written)
+
+When the domain runs on a provider you automate (a one-click setup / OAuth / API
+rail) rather than being proxied through the edge, forwarding can instead be
+written as a record **at the provider**. The `redirect` service template
+(`serviceName: "Forward this domain"`) declares a single `REDIR301` record on the
+apex (`@`) whose target is the `redirectTarget` variable:
+
+```json
+{ "type": "REDIR301", "host": "@", "target": "%redirectTarget%", "ttl": 3600 }
+```
+
+`REDIR301` is a record type native to the provider-hosted one-click protocol
+(like `SPFM`): the provider's
+forwarding feature — not our edge — issues the 301 to `redirectTarget`, preserving
+path and query. A companion `apex-www` template covers the apex→www case the same
+way.
+
+## Widget forwarding path
+
+The widget applies forwarding through the ordinary one-click setup rail — the same
+`POST /v1/connections/{id}/domainconnect:start` call it uses for connection
+records, but naming the `redirect` template and passing the destination as a
+variable:
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>/domainconnect:start \
+  -H "Authorization: Bearer <WIDGET_JWT>" \
+  -d '{"service_id":"redirect","vars":{"redirectTarget":"https://new.example.com"}}'
+# → 200 { apply_url, service_id: "redirect", dc_provider }
+```
+
+The response's `apply_url` is opened in the provider popup; once the customer
+approves, the provider writes the `REDIR301` record and the propagation poller
+promotes the connection to live. Choose this path when the domain stays on its
+current provider; choose the edge-served `redirect_to` / `www_redirect` above when
+the domain is proxied through the edge.

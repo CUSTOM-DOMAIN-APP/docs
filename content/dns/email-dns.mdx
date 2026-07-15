@@ -1,0 +1,94 @@
+---
+title: Email DNS & SPF merge
+description: Adding MX/SPF/DKIM/DMARC alongside a connection, and how SPFM merges SPF safely.
+---
+
+Connecting a domain points **web** traffic at your product. Many customers also
+want **email** on that domain (Google Workspace, Microsoft 365, Zoho). Email
+records (`MX`, `TXT` for SPF/DKIM/DMARC) can ride the same
+[apply rail](/docs/connect-flow/overview#the-four-rails) as the web records — you
+include them in the `records` array of `POST /v1/connections/{id}/apply`, or the
+customer adds them by hand in the manual flow.
+
+The one email-specific hazard the engine handles for you is **SPF**: a domain
+must have exactly one `v=spf1` record, so blindly writing a second one silently
+breaks mail. That's what the `SPFM` meta-record is for.
+
+## SPF merge (`SPFM`)
+
+Instead of a raw `TXT`, apply an `SPFM` record with the mechanisms you need. At
+write time the engine reads any SPF TXT already published at that host and
+**merges** your mechanisms into it — deduped, with a single terminal `all`, and
+the existing record's qualifier preserved (a merge never loosens the policy):
+
+```
+existing:  v=spf1 include:mailgun.org ~all      (already published)
+SPFM add:  include:_spf.google.com
+→ written: v=spf1 include:mailgun.org include:_spf.google.com ~all
+```
+
+If nothing is published yet, the `SPFM` record is materialized into a fresh
+`v=spf1 … ~all` TXT. This append-never-clobber behavior is applied for both
+Rail B (API-token apply) and the automatic rails.
+
+## Provider records (reference)
+
+| Provider | Typical records |
+| --- | --- |
+| Google Workspace | `MX smtp.google.com`, SPF `include:_spf.google.com`, DKIM `google._domainkey` TXT, DMARC |
+| Microsoft 365 | `MX <domain>.mail.protection.outlook.com`, `autodiscover` CNAME, SPF `include:spf.protection.outlook.com`, DKIM `selector1/2` CNAMEs, DMARC |
+| Zoho | `MX mx/mx2/mx3.zoho.com`, SPF `include:zoho.com`, DKIM TXT, DMARC |
+
+## MX records
+
+`MX` records route inbound mail to the provider's servers and carry a numeric
+**priority** (lower = preferred). Set it with the record's `priority` field — it
+is honored for `MX` and `SRV` and ignored for other types. Most providers publish
+a single MX (e.g. Google's `smtp.google.com` at priority `1`); a few publish a
+ranked set (Zoho's `mx.zoho.com` / `mx2` / `mx3` at `10` / `20` / `50`).
+
+Mark the MX records `essential: true` so the engine treats a missing MX as a hard
+failure rather than ordinary drift — mail is down without them:
+
+```json
+{ "type": "MX", "host": "@", "value": "smtp.google.com", "priority": 1, "essential": true }
+```
+
+## DKIM & DMARC
+
+- **DKIM** keys are generated in the provider's admin console (unique per
+  domain), so they can't be derived — add the provider's `selector._domainkey`
+  record as given. The widget's DKIM step groups records flagged `purpose: "dkim"`
+  onto a dedicated screen (`enableDkim`).
+- **DMARC** should start at `p=none` (monitor only). After confirming legitimate
+  mail passes DKIM/SPF, tighten to `quarantine`, then `reject`.
+
+## Full email setup in one apply
+
+MX, SPF (as `SPFM`), DKIM, and DMARC can all ride a single
+`POST /v1/connections/{id}/apply` `records` array alongside the web records. The
+engine merges the `SPFM` mechanism into any existing SPF and writes the rest
+as-is:
+
+```json
+{
+  "credential": { "token": "<scoped-provider-token>" },
+  "records": [
+    { "type": "MX",   "host": "@",                 "value": "smtp.google.com", "priority": 1, "essential": true },
+    { "type": "SPFM", "host": "@",                 "value": "include:_spf.google.com" },
+    { "type": "TXT",  "host": "google._domainkey", "value": "v=DKIM1; k=rsa; p=MIGf..." },
+    { "type": "TXT",  "host": "_dmarc",            "value": "v=DMARC1; p=none; rua=mailto:dmarc@example.com" }
+  ]
+}
+```
+
+The same set can also be applied by the automatic rails (OAuth / one-click
+setup), which carry an `email-full` template that emits these records grouped
+for the widget's email screen. The one-click catalog also ships the records
+split across single-purpose templates — `email-mx`, `email-spf`, `email-dkim`,
+and `email-dmarc` — so a provider can apply just one piece. Either way the `SPFM`
+merge and MX `priority` behave identically.
+
+> Pre-flight: `POST /v1/domains:check` reports `spf_override_support` and returns
+> any `record_conflicts` (including `spf-merge` clashes) it observes in public
+> DNS, so you can warn the customer before writing anything.

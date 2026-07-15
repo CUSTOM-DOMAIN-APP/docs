@@ -1,0 +1,43 @@
+---
+title: Offboarding
+description: Disconnect a domain with DELETE /v1/connections/{id} — the platform reverts a managed template, then deletes the connection.
+---
+
+Taking a domain off your product is a single call:
+`DELETE /v1/connections/{id}` disconnects the domain and deletes the connection.
+
+## Disconnect a domain
+
+```bash
+curl -X DELETE http://localhost:8080/v1/connections/<ID> \
+  -H "Authorization: Bearer <WIDGET_JWT>"
+# → 204 No Content
+```
+
+What happens depends on whether the connection is
+[managed](/docs/connect-flow/managed-connections):
+
+- **Managed connection** (async one-click setup, stored grant) — the platform
+  first **reverts** the applied template at the customer's provider through the
+  pinned provider API using the stored grant, so the edge records it added are
+  removed automatically. It then deletes the connection.
+- **Use-once connection** (any other rail) — the platform never retained a
+  credential, so it cannot touch the customer's DNS. The connection is simply
+  deleted; the customer removes the edge records at their DNS provider themselves.
+
+Either way the delete cascades to all of the connection's child state — records,
+origin, the monitor watch, and any managed grant — and emits a
+`connection.disconnected` [webhook](/docs/webhooks/overview#event-catalog). The
+call is idempotent-friendly: a missing connection returns `404`.
+
+## After the records are gone
+
+Once the edge records no longer resolve to the edge:
+
+- the domain stops being served — the edge only proxies hosts that resolve to it;
+- for a use-once connection you removed by hand, [Monitor](/docs/webhooks/overview#event-catalog)
+  observes the change and fires `domain.record_missing` before you delete, so your
+  integration can react (e.g. mark the domain disconnected in your own system).
+
+For a **managed** connection you don't need to wait for drift: the revert on
+delete removes the records for you, and `connection.disconnected` confirms it.

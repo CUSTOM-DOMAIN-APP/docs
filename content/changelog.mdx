@@ -1,0 +1,75 @@
+---
+title: Changelog
+description: How the product and API change over time.
+---
+
+Customdomain doesn't yet cut numbered releases — the hosted service is
+continuously updated, and the API is versioned separately (below).
+
+## API versioning policy
+
+The public API is versioned by URI major (`/v1`) and is **additive-only within a
+version** — new optional fields and endpoints can appear, but existing fields
+never change meaning or disappear without a new major version. See the
+[API reference](/docs/api-reference) for the current surface.
+
+## Notable milestones
+
+- **Money-safe domain buying** — embedded checkout that authorizes the card,
+  registers the domain server-side (webhook-driven), and captures only after a
+  successful registration; purchased domains land in the console pre-connected.
+  See [Buying a domain](/docs/sell/buying-a-domain).
+- **Hosted MCP server live** — `https://mcp.customdomain.ai/mcp` (Streamable
+  HTTP) with eleven agent tools, plus a console **MCP server** page under
+  *Integrate* with credentials and client configs.
+- **One-click setup template catalog live upstream** — the full customdomain.ai
+  template catalog (apex A/AAAA/CNAME/www, subdomain, www, wildcard, verify,
+  connect-verified, CAA, and the email set) is merged into the provider-hosted
+  one-click protocol's upstream template registry, and prod embeds the shipped
+  catalog.
+- **One-click sync rail active in prod** — apply URLs are RS256-signed with
+  the `_dck1` selector (pubkey published at `_dck1.customdomain.ai`), providers
+  serve every template, and a conformance CI gate keeps the catalog valid. See
+  [Setup types & the ask gate](/docs/concepts/ownership-and-setup-types).
+- **Share links** — forward a connect flow to a colleague with a link that carries
+  a 30-day expiry; expired share tokens return `404`.
+- **Frontend overhaul** — the console gained a shared component library, dark mode,
+  a `⌘K` command palette, and a mobile-friendly layout.
+- **Shop-style domain search** — buying-domain search now groups results into the
+  exact name, other TLDs (`.com .net .org .io .co .ai .app .dev .xyz .me`), and
+  close name variants. See [Buying a domain](/docs/sell/buying-a-domain#shop-style-search).
+- **Opt-in credential reuse** — you can optionally save a provider API key
+  (encrypted at rest, per tenant + provider) to reuse it for other domains in one
+  click, and revoke it any time under **Settings → Connected provider accounts**.
+  Off by default; the plaintext never leaves the server. See
+  [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
+- **Bulk connect** — after providing a provider key, connect the other domains on
+  that account (all or a subset) in one step, with per-domain status. Supported
+  for Cloudflare, GoDaddy, Route 53, and Namecheap. See
+  [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
+- **Server-enforced roles** — the role → permission matrix is now enforced at the
+  control-plane, not just the console: API-key minting and member/role changes
+  require admin or owner, billing requires owner. See
+  [Roles & permissions](/docs/security/overview#roles--permissions).
+- **Per-provider credential fields** — the console's connect flow collects API
+  credentials as separate labeled fields (with links to each provider's
+  credential portal and numbered steps) instead of a colon-joined paste; used
+  once and discarded by default, unless you opt in to remembering a key.
+- **Resumable setup** — the Domains list's **Finish setup** reopens an abandoned
+  guided connect flow at the right step.
+- **Four connect rails** — OAuth into the DNS provider (flagship), provider-hosted
+  one-click setup (sync + async), BYO API-token apply, and guided-manual, all
+  converging on the same `pending → propagating → live` lifecycle.
+- **Broad DNS auto-write fleet** — 38 built-in provider adapters (Cloudflare,
+  Route 53, Google Cloud DNS, Azure DNS, GoDaddy, Namecheap, and many more) plus a
+  full parity census that routes ~63 target providers to their working mode, and
+  one-click setup for tokenless applies.
+- **Embeddable widget/SDK** — `customdomain-js`, `window.customdomain`, the
+  `customdomain:*` events, ~90-token white-label theming, and embedded mode.
+- **Signed webhooks** — HMAC-SHA256 deliveries with a replay window, retries, and
+  a delivery log at `GET /v1/webhook-deliveries`.
+- **Billing & metering** — a Stripe-backed plan catalog with metered domain
+  usage and overage on the Growth tier.
+- **This documentation site** — a proper information architecture with a
+  generated, always-in-sync API reference (see
+  [how it stays in sync](/docs/api-reference#keeping-this-in-sync)).

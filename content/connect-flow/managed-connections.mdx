@@ -1,0 +1,103 @@
+---
+title: Managed connections
+description: Opt a connection into managed mode so the control plane can silently re-apply and revert its records with a stored, encrypted grant.
+---
+
+Most connections are **use-once**: a [rail](/docs/connect-flow/overview#the-four-rails)
+writes the desired records a single time and the platform keeps no credential.
+**Managed mode** is the opt-in exception. When a connection is managed, the
+control plane holds a durable, **encrypted** *async grant* — issued through the
+provider-hosted one-click protocol — for the customer's provider, so it can
+re-apply or revert the template **server-side — without asking the customer to
+re-consent**.
+
+## What "managed" means
+
+- **Opt-in only.** A connection is never managed by default. It becomes managed
+  when the customer completes the **async one-click** consent flow — start it
+  with `POST /v1/connections/{id}/domainconnect:start` with `{"managed": true}`
+  (equivalently `{"rail":"async"}`). When the provider supports the async
+  variant, the response is an async consent URL; otherwise the call falls
+  through to the ordinary sync `apply_url` and the connection stays use-once.
+- **Encrypted grant, pinned base.** The async callback
+  (`GET /v1/connect/dc/callback`) exchanges the code for a durable grant against
+  the provider API base that was pinned into the signed `state` at start — never
+  re-derived from fresh discovery — and stores it encrypted at rest. The customer's
+  browser token from the sync/OAuth rails is *not* this; those are discarded
+  immediately.
+- **Silent re-apply.** With the grant in hand the platform can recompute the
+  connection's authoritative desired records and push any drift through the
+  provider's async one-click API on demand, with no customer interaction.
+- **Auto-heal-ready.** Because re-apply is a single server-side call, managed
+  connections are the substrate for automatic drift healing: when
+  [Monitor](/docs/webhooks/overview#event-catalog) reports that a record was
+  removed or repointed, a managed connection can be pushed back to its desired
+  state instead of only emitting a `domain.record_missing` alert.
+
+The [connection detail](/docs/connect-flow/create-a-connection#response) response
+carries a `managed` boolean so your dashboard can tell the two kinds apart
+(`false` is omitted on the wire). You *enable* managed mode by running the async
+consent flow above. You can turn it back **off** in two ways: keep the domain
+connected but drop the grant with [disable managed](#disabling-managed-mode)
+(`DELETE /v1/connections/{id}/grant`), or take the domain off entirely by
+[disconnecting](/docs/connect-flow/offboarding) it.
+
+## Re-apply on demand
+
+```bash
+curl -X POST http://localhost:8080/v1/connections/<ID>:reapply \
+  -H "Authorization: Bearer <WIDGET_JWT>"
+# → 200 { connection, records }   (records updated; connection re-verified)
+```
+
+`POST /v1/connections/{id}:reapply` is **managed mode only**. It recomputes the
+desired record set, writes any drift through the stored grant, re-verifies the
+connection, and emits `connection.records.updated`. If the connection is not
+managed or has no stored grant, it responds **`409`**.
+
+If the push fails it emits `connection.reapply.failed`. When the provider reports
+the grant was **revoked** (a `401` kill-switch — the customer withdrew consent at
+their provider), the platform clears the stored grant and flags the connection for
+re-consent; the next `:reapply` returns `409` until the customer re-authorizes.
+
+## Managed lifecycle events
+
+Subscribe to these on a [webhook endpoint](/docs/webhooks/overview) to track the
+managed lifecycle:
+
+| Event | Fires when |
+| --- | --- |
+| `connection.records.updated` | A `:reapply` succeeded — the desired records were (re-)written and the connection re-verified. |
+| `connection.reapply.failed` | A `:reapply` push failed; if the grant was revoked, the connection is flagged for re-consent. |
+| `connection.disconnected` | The connection was [disconnected](/docs/connect-flow/offboarding) — for a managed connection the template was reverted through the grant first. |
+
+## Disabling managed mode
+
+To stop managing a connection **without disconnecting it**, drop the stored grant:
+
+```bash
+curl -X DELETE http://localhost:8080/v1/connections/<ID>/grant \
+  -H "Authorization: Bearer <WIDGET_JWT>"
+# → 200 { "connection_id": "<ID>", "managed": false }
+```
+
+`DELETE /v1/connections/{id}/grant` deletes the encrypted async grant and
+clears the connection's `managed` flag, **leaving the connection and its
+applied records in place**. The records the provider already wrote stay live; the
+platform simply stops holding a credential to re-apply or revert them, so the
+connection reverts to the default use-once posture. A later async consent can
+re-enable managed mode.
+
+This is deliberately **not** `DELETE /v1/connections/{id}` — that path reverts the
+template at the provider and removes the whole connection (see below). Here nothing
+is reverted and the connection survives. The call is **idempotent**: a connection
+that is already unmanaged returns **`200`** with `managed: false`. It does not emit
+a webhook event.
+
+## Ending a managed connection
+
+To take a managed domain off your product, [disconnect it](/docs/connect-flow/offboarding)
+with `DELETE /v1/connections/{id}`. For a managed connection the platform first
+**reverts** the applied template through the stored grant, then deletes the
+connection and all its child state (records, origin, monitor watch, and the grant
+itself), and emits `connection.disconnected`.
