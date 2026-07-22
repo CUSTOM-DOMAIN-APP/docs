@@ -4,7 +4,7 @@ This repo now ships a standalone renderer for its own `content/` at
 [`site/`](site/) (Fumadocs + Next.js — see [`site/README.md`](site/README.md)).
 The infra side (container + reverse proxy) lives in the `custom-domains` repo,
 matching its existing single-box Caddy + Docker Compose pattern exactly —
-see PR `<CUSTOM-DOMAINS-PR-URL>`.
+see [CUSTOM-DOMAIN-APP/custom-domains#78](https://github.com/CUSTOM-DOMAIN-APP/custom-domains/pull/78).
 
 This doc covers what changed operationally and the one manual step a human
 still has to do.
@@ -70,9 +70,11 @@ it just doesn't auto-update yet.
 
 ## The one manual step: DNS
 
-Everything else (the container, the reverse-proxy block, TLS) is ready to go
-the moment DNS resolves. The **only remaining manual step** is adding one DNS
-record in the Cloudflare dashboard for the `customdomain.ai` zone:
+Everything else (the container, the reverse-proxy block, TLS — see
+[CUSTOM-DOMAIN-APP/custom-domains#78](https://github.com/CUSTOM-DOMAIN-APP/custom-domains/pull/78))
+is ready to go the moment DNS resolves. The **only remaining manual step** is
+adding one DNS record in the Cloudflare dashboard for the `customdomain.ai`
+zone:
 
 > **Type:** CNAME
 > **Name:** `docs`
