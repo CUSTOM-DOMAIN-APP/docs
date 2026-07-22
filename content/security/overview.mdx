@@ -110,8 +110,10 @@ unaffected — nothing there is ever stored. See
 
 - API keys and application `client_secret`s are stored only as hashes; the
   plaintext is shown once and never returned again.
-- Widget JWTs are signed per application (HMAC over the app's secret hash), so a
-  token is only valid for its own application.
+- Widget JWTs are signed per application, using a dedicated server-side signing
+  key (`HMAC-SHA256` over the application's id), never the application's own
+  secret hash, so a token is only valid for its own application and a leaked
+  application record can't be used to forge one.
 - The console never exposes the tenant's control-plane API key to the browser: it
   is sealed at rest (AES-256-GCM under `WEB_SECRET_KEY`) and opened server-side
   per request behind a proxy — see [Architecture](/docs/concepts/architecture).

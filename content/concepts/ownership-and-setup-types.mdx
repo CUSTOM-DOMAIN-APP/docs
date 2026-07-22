@@ -29,6 +29,20 @@ The engine also returns capability flags (`ns_support`, `wildcard_support`,
 `cname_flattening`, `spf_override_support`, `caa_support`) and any
 `record_conflicts` it observes in public DNS, so you can pre-warn the customer.
 
+## Entering a domain
+
+The console mirrors exactly what you type. Enter `www.acme.com` and it
+connects `www.acme.com`, a subdomain, matching what the widget and the API
+do. It is never silently rewritten to the apex `acme.com`.
+
+If you type a subdomain, the connect page also offers the root domain as a
+one tap chip ("Meant the root domain? Use acme.com"), so switching to the
+apex is a visible choice, not a guess the platform makes for you.
+
+This also affects the `www` redirect: connecting the apex `acme.com` shows an
+opt in checkbox, "Also redirect www.acme.com", off by default. Turn it on if
+you want `www.acme.com` to redirect to the apex once both are live.
+
 ## Control is proven by the rail
 
 There is **no** separate ownership-TXT challenge. Each rail is itself proof that
