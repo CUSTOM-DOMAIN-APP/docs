@@ -1,0 +1,75 @@
+---
+title: Agent access
+description: Human-first delegated access — how an AI agent gets a scoped, revocable grant to act on your domains through the MCP.
+---
+
+> **Not yet enabled.** Agent access is built, tested, and merged, but it is not
+> turned on for the hosted service yet. Every endpoint described in this section
+> responds `503 temporarily_unavailable` ("agent authentication is not enabled")
+> until an operator activates it — there's no announced activation date. The
+> flow below is accurate for when it does go live; nothing here works today. If
+> you need agent access now, contact us for status.
+
+An AI agent can act on your domains — search, connect, and (optionally) buy them —
+through the [MCP server](/docs/mcp/overview). Before it can, a **real human owner
+approves it**: the agent is a delegated, revocable connected client inside your
+workspace, never a standalone login.
+
+This is **human-first**: the agent registers itself and asks for access, but a
+person signs in to your console and approves exactly which scopes it gets, for how
+long, and (for purchases) with what spend cap. You can revoke it at any time.
+
+## How it will work
+
+The agent runs a standard OAuth 2.0 authorization-code flow with PKCE against the
+control plane, then uses the resulting token at the MCP:
+
+1. **Register** — the agent self-registers as a client (Dynamic Client
+   Registration) and gets a `client_id`.
+2. **Authorize** — the agent sends the human to `GET /oauth/agent/authorize`; the
+   control plane redirects the browser to your console's consent screen.
+3. **Consent** — the owner signs in, reviews the requested scopes (and sets a
+   spend cap + saves a card if purchase access is requested), and approves.
+4. **Token** — the agent exchanges the authorization code (plus its PKCE verifier)
+   for a short-lived **ES256 access token** and a refresh token.
+5. **Act** — the agent calls MCP tools with the token. The MCP verifies the token
+   **locally** against the published JWKS and enforces the tool's required scope.
+
+See [The OAuth flow](/docs/agents/oauth-flow) for the exact endpoints, and
+[Managing access](/docs/agents/managing-access) for the owner console.
+
+## Scopes
+
+A grant carries one or more scopes; each MCP tool requires exactly one:
+
+| Scope | Grants |
+| --- | --- |
+| `domains:read` | Observe only — availability, suggestions, connection + order status, provider discovery, portfolio listing. |
+| `domains:connect` | DNS + connection-config writes — connect, re-apply, forward, email setup, and disconnect. |
+| `domains:purchase` | **Spends money** — registers a domain. Isolated on its own scope, and requires a saved card + a monthly spend cap. |
+
+A read-only token can never connect or buy; a connect token can never buy. The
+owner approves a subset of what the agent requested — never more.
+
+## What makes it safe
+
+- **Human-first** — a real owner consents; an agent can never approve itself. The
+  consent call is authenticated by your server-side workspace credential, never a
+  browser token.
+- **Least privilege** — access is scoped, and purchases are isolated on their own
+  scope behind a spend cap and a required card on file.
+- **Local validation** — access tokens are ES256, verified against the
+  [JWKS](/docs/agents/oauth-flow#discovery) with no per-request callback; they are
+  short-lived (15 minutes) and refreshed.
+- **Revocable** — revoke a grant from the console at any time; the agent's tokens
+  stop working within one token lifetime.
+- **Owner emails** — you're emailed when an agent connects, when it acts, and
+  immediately when it spends money.
+
+## Hosted endpoints (once enabled)
+
+| Surface | URL |
+| --- | --- |
+| Authorization server (register / authorize / token / revoke, JWKS, discovery) | `https://api.customdomain.ai` |
+| MCP (where the agent calls tools) | `https://mcp.customdomain.ai/mcp` |
+| Console (consent + manage access) | `https://app.customdomain.ai` |

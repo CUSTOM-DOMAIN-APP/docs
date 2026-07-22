@@ -50,7 +50,11 @@ them (all or a subset) in one step. See
 Yes — a connection's `host` is empty for the apex or the subdomain label
 otherwise. Apex support depends on the provider's capabilities (ALIAS/ANAME/CNAME
 flattening); `POST /v1/domains:check` returns `cname_flattening` and `ns_support`
-so you can steer the customer to the right setup.
+so you can steer the customer to the right setup. On a provider with none of the
+three, connecting the bare apex returns a distinct `apex_not_supported` error
+instead of a broken write — see [Apex domains](/docs/dns/providers#apex-root-domains)
+for the exact provider list and the fallback options (manual `A` records, a
+different provider, or connecting `www.<domain>` instead).
 
 ### Does it support wildcard domains?
 

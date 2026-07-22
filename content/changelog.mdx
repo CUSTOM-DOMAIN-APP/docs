@@ -13,6 +13,78 @@ version** — new optional fields and endpoints can appear, but existing fields
 never change meaning or disappear without a new major version. See the
 [API reference](/docs/api-reference) for the current surface.
 
+## 2026-07-22
+
+A round of fixes and additions following a full audit of the connect flow,
+widget, and API surface. Purely internal correctness fixes are omitted; this is
+what changes for you.
+
+- **Apex (root) domains, explained and honest.** Customdomain uses a
+  provider-agnostic apex record internally and always shows it to you as
+  **`ALIAS`**. On a provider with no ALIAS/ANAME/flattened-CNAME capability at
+  the root, connecting the bare apex now returns a distinct `apex_not_supported`
+  error with concrete alternatives instead of a broken write. See
+  [Apex domains](/docs/dns/providers#apex-root-domains).
+- **Full Public-Suffix-List domain parsing.** The subdomain / registrable-domain
+  / public-suffix boundary is computed server-side against the complete PSL and
+  is now the single source of truth across the console, widget, and MCP —
+  fixing wrong behavior on long-tail TLDs that client-side heuristics used to
+  get wrong.
+- **The apex→www redirect defaults off.** `www_redirect` on a connection is
+  opt-in; it no longer redirects a bare apex to `www` unless you explicitly set
+  it.
+- **Real share links.** `loadSharedFlow` / "forward to a colleague" now mints an
+  actual link (`POST /v1/sharing/connect`, resumed at `GET /share/{token}`) that
+  expires after 30 days, instead of a broken or fake flow. See
+  [Sharing](/docs/api-reference/sharing/createSharedFlow).
+- **A working embed-token flow.** The console's embed snippet mints a widget
+  token through `api/widget-token` using your tenant API key; no `client_secret`
+  appears in the copy-paste snippet.
+- **Failed connections say why.** A `failed` connection now carries
+  `error_code` / `error_message` (`propagation_timeout` or `setup_incomplete`).
+  Manual connections get a 72-hour window before they're marked `failed` too —
+  previously they wouldn't stop polling.
+- **Managed connections quietly outlive an expired token.** Before treating a
+  `401` as the customer revoking access, the platform now refreshes the stored
+  grant's access token and retries once — fewer unnecessary re-consent prompts.
+  See [Managed connections](/docs/connect-flow/managed-connections).
+- **A new `connection.records_outdated` webhook** for non-managed connections
+  caught by a fleet-wide reconciliation pass (for example after an edge target
+  change) — it carries a heal link since the platform has no stored credential
+  to push the fix itself.
+- **New, branchable error codes:** `InvalidNameservers` and
+  `ProviderAuthenticationError` (422), alongside `apex_not_supported` above, plus
+  a `quota_exceeded` (402) code for plan-quota enforcement (gated on the
+  deployment; not confirmed active on the hosted service yet). The widget SDK
+  maps these to `InvalidNameservers`, `ProviderAuthenticationError`, and
+  `PlanLimitError` on `onError`.
+- **`domains:check` reports its parse verdict** — `subdomain`,
+  `registrable_domain`, and `public_suffix` — on the API and in the console/MCP.
+- **Corrected webhook retry documentation.** Deliveries actually retry up to 12
+  times with backoff over roughly a day before being dead-lettered, not 3; an
+  endpoint that returns `429` (or fails repeatedly) is cooled down for about 5
+  minutes rather than retried immediately.
+- **White-label branding is enforced as an Enterprise entitlement** when a
+  connect is resumed through a share link, not just hidden in the console UI.
+- **API reference backfill.** The **Power** (edge reverse-proxy), **Secure**
+  (TLS certificate lifecycle), and **Sharing** endpoints, plus bulk connection
+  create, provider zone listing, and the embedded-checkout purchase pair
+  (`/registrar/checkout` + `/registrar/fulfill`) were already live but missing
+  from this reference — they're documented now.
+- **Widget SDK:** a twelfth MCP tool (`list-connections`, portfolio inventory);
+  `add-email`'s `provider` preset (`google` / `microsoft365` / `zoho`); new
+  `endUserRef` (customer attribution, distinct from `userId`), `managed`, and
+  `enableEmail` config fields; new white-label keys `fontUrl`, `googleFont`,
+  `customCopy`, `icons`, `darkMode`, and `darkTokens`; a `customdomain:purchase`
+  event for the in-widget buy flow; and multi-domain progress fields on the
+  step/success events. See the [SDK reference](/docs/widget-sdk/reference).
+- **Disconnecting a domain now correctly leaves shared DNS alone** when another
+  of your applications still serves the same domain — only that app's
+  connection is removed.
+- **Faster console and widget.** Backend and bundle-size work cut typical
+  console page loads and the embedded widget's payload noticeably; no behavior
+  changes.
+
 ## Notable milestones
 
 - **Money-safe domain buying** — embedded checkout that authorizes the card,
@@ -20,7 +92,7 @@ never change meaning or disappear without a new major version. See the
   successful registration; purchased domains land in the console pre-connected.
   See [Buying a domain](/docs/sell/buying-a-domain).
 - **Hosted MCP server live** — `https://mcp.customdomain.ai/mcp` (Streamable
-  HTTP) with eleven agent tools, plus a console **MCP server** page under
+  HTTP) with twelve agent tools, plus a console **MCP server** page under
   *Integrate* with credentials and client configs.
 - **One-click setup template catalog live upstream** — the full customdomain.ai
   template catalog (apex A/AAAA/CNAME/www, subdomain, www, wildcard, verify,
@@ -65,7 +137,7 @@ never change meaning or disappear without a new major version. See the
   full parity census that routes ~63 target providers to their working mode, and
   one-click setup for tokenless applies.
 - **Embeddable widget/SDK** — `customdomain-js`, `window.customdomain`, the
-  `customdomain:*` events, ~90-token white-label theming, and embedded mode.
+  `customdomain:*` events, 85-token white-label theming, and embedded mode.
 - **Signed webhooks** — HMAC-SHA256 deliveries with a replay window, retries, and
   a delivery log at `GET /v1/webhook-deliveries`.
 - **Billing & metering** — a Stripe-backed plan catalog with metered domain

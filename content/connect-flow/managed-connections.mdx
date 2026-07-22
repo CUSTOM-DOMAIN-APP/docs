@@ -60,6 +60,28 @@ the grant was **revoked** (a `401` kill-switch — the customer withdrew consent
 their provider), the platform clears the stored grant and flags the connection for
 re-consent; the next `:reapply` returns `409` until the customer re-authorizes.
 
+A `401` isn't automatically treated as a revocation, though: an **expired access
+token looks identical to a revoked one**. Before giving up, the platform rotates
+the grant's access token (`grant_type=refresh_token` against the provider) and
+retries the push once with the fresh token. Only a `401` that survives a refresh
+(or a grant with no refresh token) is treated as a real revocation. This means a
+managed connection keeps re-applying silently across ordinary token expiry, and
+only asks the customer to re-consent when access was actually withdrawn.
+
+## Fleet-wide re-apply (drift after an edge change)
+
+Separately from per-connection `:reapply`, an operator can run a fleet-wide
+reconciliation pass that re-drives every connection still on an older
+"desired-record" generation — for example after the edge's target hostname
+changes. For a **managed** connection this re-applies the template through the
+stored grant with no customer interaction, exactly like `:reapply` above. A
+**non-managed** connection has no stored credential to push through, so instead
+it emits a `connection.records_outdated` [webhook](/docs/webhooks/overview#event-catalog)
+carrying a prefilled heal/reconnect link — it does not rewrite the customer's DNS
+for you. This pass is operator-triggered, not a background guarantee: treat
+`connection.records_outdated` as a real event your integration can receive, not
+as something that fires on a fixed schedule.
+
 ## Managed lifecycle events
 
 Subscribe to these on a [webhook endpoint](/docs/webhooks/overview) to track the
@@ -70,6 +92,7 @@ managed lifecycle:
 | `connection.records.updated` | A `:reapply` succeeded — the desired records were (re-)written and the connection re-verified. |
 | `connection.reapply.failed` | A `:reapply` push failed; if the grant was revoked, the connection is flagged for re-consent. |
 | `connection.disconnected` | The connection was [disconnected](/docs/connect-flow/offboarding) — for a managed connection the template was reverted through the grant first. |
+| `connection.records_outdated` | A fleet-wide reconciliation pass found a **non-managed** connection on an older desired-record generation; carries a heal/reconnect link since the platform has no credential to push the update itself. |
 
 ## Disabling managed mode
 

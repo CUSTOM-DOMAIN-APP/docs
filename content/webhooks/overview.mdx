@@ -34,6 +34,7 @@ with an `sk_` key, app-scoped with a widget JWT) and
 | `connection.records.updated` | A [managed](/docs/connect-flow/managed-connections) connection was re-applied (`POST /v1/connections/{id}:reapply`); its desired records were re-written and the connection re-verified. |
 | `connection.reapply.failed` | A managed re-apply push failed; if the stored grant was revoked, the connection is flagged for re-consent. |
 | `connection.disconnected` | A connection was disconnected (`DELETE /v1/connections/{id}`); for a managed connection the template was reverted through the grant first. |
+| `connection.records_outdated` | A fleet-wide reconciliation pass found a non-managed connection on an older desired-record generation; carries a heal/reconnect link (see [Managed connections](/docs/connect-flow/managed-connections#fleet-wide-re-apply-drift-after-an-edge-change)). |
 | `domain.record_missing` | Monitor saw a baseline record disappear or get repointed (drift). |
 | `domain.record_restored` | A previously missing baseline record is observed again. |
 | `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed — the domain is registered (and only then is the card captured). |
@@ -77,7 +78,14 @@ that don't apply to an event are omitted.
 ## Delivery & retries
 
 - A delivery succeeds on any `2xx`. Each attempt is persisted.
-- Failures retry with exponential backoff, up to **3 attempts** total.
+- Failures retry with exponential backoff (30s, 1m, 2m, doubling, capped at 6h
+  between attempts) for up to **12 attempts total**, spanning up to about a day,
+  before the delivery is **dead-lettered** (given up on). A non-transient `4xx`
+  (other than `429`) is not retried at all — it's a permanent misconfiguration a
+  retry can't fix.
+- After a `429`, or three consecutive failed attempts, deliveries to that
+  endpoint URL are **suppressed for about 5 minutes** (a cooldown) so a
+  struggling receiver isn't hammered while it recovers.
 - Inspect attempts: `GET /v1/webhook-deliveries` (`attempts`, `status_code`,
   `delivered`, `error`; filter with `?app_id=` and `?type=`).
 

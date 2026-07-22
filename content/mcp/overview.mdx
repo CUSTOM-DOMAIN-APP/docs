@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: The Model Context Protocol server — eleven domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
+description: The Model Context Protocol server — twelve domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
 ---
 
 Customdomain ships a **Model Context Protocol (MCP) server** so an AI
@@ -19,7 +19,7 @@ The server reports itself as `customdomain-mcp` (protocol revision
 
 ## Tools
 
-The server registers **eleven tools**, in a fixed order. None of them takes DNS
+The server registers **twelve tools**, in a fixed order. None of them takes DNS
 records as input — records always come from the control-plane server-side, so an
 agent can never inject them.
 
@@ -35,7 +35,8 @@ agent can never inject them.
 | `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. |
 | `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (provider-hosted one-click setup, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. |
 | `forward-domain` | `{ target, domain? , connectionId? }` | Forward (permanent 301) a domain to a destination. Starts a managed one-click setup flow and returns a `link` to authorize plus a `connectionId` to poll. Never writes DNS directly. |
-| `add-email` | `{ domain? , connectionId? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | Configure a domain for a mail provider in one step (MX/SPF/DKIM/DMARC) via server-side templates — supply only provider settings, never raw records. Returns a `link` to authorize plus a `connectionId` to poll. |
+| `add-email` | `{ domain? , connectionId? , provider? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | Configure a domain for a mail provider in one step (MX/SPF/DKIM/DMARC) via server-side templates. `provider` (`google` / `microsoft365` / `zoho`) auto-fills the standard MX and SPF — supply only the DKIM values your platform generated, or set every field manually. Returns a `link` to authorize plus a `connectionId` to poll. |
+| `list-connections` | `{ status? }` | List the domains connected across the account (domain, `connectionId`, live status, `connected` flag, setup type), optionally filtered by status. Read-only. Pair with `reapply-connection` to heal any that aren't live. |
 
 > **`generate-domain-suggestions` is deterministic, not AI.** Candidates are
 > keyword joins plus a few common affixes (`get`, `try`, `use`, `my`, `…app`,
@@ -96,6 +97,13 @@ dance still authenticate:
 The MCP server never validates tokens cryptographically itself — it forwards the
 caller's credential to the control-plane, which is the authority and rejects bad
 credentials on every wrapped call.
+
+> **Coming later: delegated agent tokens.** The MCP also contains a resource-server
+> path that verifies short-lived ES256 tokens locally against the control-plane's
+> JWKS (no per-request callback) and scope-enforces them per tool, for a human
+> owner delegating access to an AI agent. It is built and tested but **not yet
+> enabled** on the hosted service. See [Agent access](/docs/agents/overview) for
+> the human-first consent flow this will support once activated.
 
 ```bash
 # Call a tool

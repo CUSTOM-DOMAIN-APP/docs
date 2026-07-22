@@ -60,6 +60,22 @@ A purchased domain behaves exactly like a domain you brought yourself:
 - it is **manageable via the same connections API** — records, status,
   webhooks, and [offboarding](/docs/connect-flow/offboarding) are identical.
 
+## Buying through the embedded widget
+
+The same money-safe flow is available to integrators embedding
+[the widget](/docs/widget-sdk/overview), not just console users. Call
+`window.customdomain.purchaseDomain(config)` to open the in-widget buy screen;
+once your end user picks a domain, the widget starts a real checkout
+(`POST /v1/registrar/checkout`) and fires a `customdomain:purchase` event
+carrying a Stripe session — mount Stripe Embedded Checkout (or redirect) with
+its `clientSecret` / `url`, then finalize with `POST /v1/registrar/fulfill`,
+which registers the domain, captures the charge, and auto-connects it, exactly
+like the console flow above. See the
+[SDK reference](/docs/widget-sdk/reference#events--callbacks) for the event
+shape and the
+[Registrar API reference](/docs/api-reference/registrar/startDomainCheckout) for
+both endpoints.
+
 ## Availability
 
 Buying is live on the hosted service. The purchase engine is **fail-closed**:
