@@ -12,8 +12,9 @@ Docs used to be rendered only inside `apps/app` (the main product) in the
 `custom-domains` repo, synced in one direction from this repo's `content/` via
 `.github/workflows/sync-to-product.yml`. That workflow still exists and still
 works, but the docs site itself now also runs standalone, straight from this
-repo, deployed independently at its own subdomain. See `../DEPLOYMENT.md` for
-the production deployment and the one remaining manual DNS step.
+repo, built and ready to deploy independently at its own subdomain — not yet
+publicly reachable there. See `../DEPLOYMENT.md` for the production
+deployment, current rollout status, and the one remaining manual DNS step.
 
 ## Layout
 

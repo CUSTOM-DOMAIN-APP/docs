@@ -17,7 +17,7 @@ still has to do.
 | Standalone renderer | `docs` (this repo) | `site/` |
 | Production container definition | `custom-domains` | `infra/docker-compose.prod.yml` (`docs` service) |
 | Reverse proxy + TLS | `custom-domains` | `infra/Caddyfile` (`docs.customdomain.ai` block) |
-| `/docs` in the old product app | `custom-domains` | `apps/app` — now redirects to `docs.customdomain.ai` (see below) |
+| `/docs` in the old product app | `custom-domains` | `apps/app` — will redirect to `docs.customdomain.ai` once the infra PR merges (see below) |
 
 ## How the container gets built
 
@@ -143,9 +143,11 @@ cert + "Full (strict)" is an existing, separate follow-up noted in
 
 ## The old `/docs` route in `apps/app`
 
-`apps/app` now redirects `/docs` and `/docs/*` to the matching path on
-`docs.customdomain.ai` (see that PR). It is a **temporary (307/302, not
-permanent 308)** redirect deliberately: it's one line to flip to
+`apps/app` will redirect `/docs` and `/docs/*` to the matching path on
+`docs.customdomain.ai`, once the companion infra PR (custom-domains#78,
+currently held back pending a deploy-script fix — see that PR) merges. Until
+then, `/docs` keeps rendering in-app exactly as it does today. The redirect
+is a **temporary (307/302, not permanent 308)** one deliberately: it's one line to flip to
 `permanent: true` in `apps/app/next.config.ts` once `docs.customdomain.ai` has
 been live and stable for a while, but starting temporary avoids browsers/CDNs
 hard-caching the redirect before that's confirmed.

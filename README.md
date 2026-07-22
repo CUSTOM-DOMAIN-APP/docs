@@ -32,6 +32,16 @@ This repo is canonical. The product site does not edit docs independently; it co
 
 In practice a merged docs fix usually appears on the live site within the same day. If you spot a discrepancy between this repo and the rendered site, the repo version is newer and the sync simply has not landed yet.
 
+## Moving to a standalone site
+
+This repo also now ships its own standalone renderer at [`site/`](site/)
+(Fumadocs + Next.js, reading `content/` directly, no sync step). It's built
+and verified, but not yet publicly reachable: it will go live at
+`docs.customdomain.ai` once its companion infra PR in `custom-domains` merges
+and one DNS record is added. Until then, [app.customdomain.ai/docs](https://app.customdomain.ai/docs)
+below remains the real, current, live URL. See [`DEPLOYMENT.md`](DEPLOYMENT.md)
+for the full rollout plan and current status.
+
 ## Where to read the docs
 
 GitHub will render most of these files, but the live site renders them best: MDX components, navigation, search, and runnable API examples all work there.
