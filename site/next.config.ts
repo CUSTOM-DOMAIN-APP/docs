@@ -25,6 +25,18 @@ const nextConfig: NextConfig = {
     return [
       // Friendly entry point: docs.customdomain.ai/ -> the docs index.
       { source: "/", destination: "/docs", permanent: false },
+      // Section landing paths that external links (marketing site, older
+      // in-product docs links) point at but that have no page of their own —
+      // send them to the real entry page. Fumadocs only renders routes that
+      // have an .mdx file. (Carried over from apps/app's next.config.ts in the
+      // custom-domains repo, which used to own these same two redirects when
+      // it rendered /docs itself — see that repo's DEPLOYMENT-adjacent PR.)
+      { source: "/docs/mcp", destination: "/docs/mcp/overview", permanent: true },
+      {
+        source: "/docs/widget-sdk",
+        destination: "/docs/authentication/widget-tokens",
+        permanent: true,
+      },
     ];
   },
 };
