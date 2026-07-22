@@ -79,6 +79,30 @@ username + API key; Route 53: access key ID + secret access key; Cloudflare: one
 token), linked to the provider's credential page with step-by-step instructions,
 and joined for you on submit. See [Provider setup](/docs/dns/provider-setup).
 
+## Apex (root) domains
+
+A plain `CNAME` is illegal at a zone's apex (`example.com`, as opposed to
+`app.example.com`) per RFC 1034 — providers instead offer their own
+CNAME-like record for the root: a flattened `CNAME`, an `ALIAS`, or an `ANAME`.
+Customdomain hides that split behind one provider-agnostic record type
+internally and always shows it to you as **`ALIAS`**, whichever spelling the
+provider actually uses underneath:
+
+| Native spelling at the apex | Providers |
+| --- | --- |
+| Flattened `CNAME` | Cloudflare, Netlify, EasyDNS, deSEC, Bunny, Vercel |
+| `ALIAS` | DNSimple, Route 53, Namecheap, Porkbun, PowerDNS |
+| `ANAME` | Constellix, DNSMadeEasy |
+
+If a customer's provider isn't in one of those three groups, it has no
+CNAME-family capability at the root at all, and connecting a bare apex domain
+there returns a distinct `apex_not_supported` error (`422`) instead of sending
+the provider a record type it would reject. The error message names three
+concrete alternatives: add `A` records manually at the provider, connect through
+a provider that does support ALIAS/ANAME, or connect `www.<domain>` instead of
+the bare apex. Subdomains (`app.example.com`) are unaffected either way — a
+plain `CNAME` is always legal there.
+
 ## How connecting works — what you need per provider
 
 There are three real-world requirement classes. **"Code ✅" means the adapter is

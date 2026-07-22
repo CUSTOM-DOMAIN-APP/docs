@@ -9,8 +9,11 @@ description: Common failure modes — stuck connections, propagation delays, rai
 applied them, or they haven't propagated.
 
 - **Manual flow:** confirm the customer added the exact records from
-  `GET /v1/connections/{id}/records` (host, type, and value must match). Manual
-  connections never time out; the poller keeps checking.
+  `GET /v1/connections/{id}/records` (host, type, and value must match). The
+  poller keeps checking for up to 72 hours; past that a manual connection that
+  never received its records becomes `failed` with
+  `error_code: "setup_incomplete"` (re-open the domain in the console to see the
+  records again and restart).
 - **A rail was supposed to write them:** check that the
   [rail](/docs/connect-flow/overview#the-four-rails) actually completed — an
   OAuth popup that was closed, a one-click setup redirect that was abandoned, or
@@ -34,6 +37,17 @@ return `503 service_unavailable` when the corresponding engine isn't wired for
 your plan or environment: no DNS provider registry, no OAuth client for the
 provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
 (`DC_SIGNING_KEY_FILE`). Contact support if you hit this on the hosted service.
+
+## Apex connect fails with `apex_not_supported`
+
+The customer's DNS provider has no CNAME-family record at the zone apex (no
+flattened `CNAME`, `ALIAS`, or `ANAME`) — see
+[Apex domains](/docs/dns/providers#apex-root-domains) for which providers do.
+This is refused up front with a `422 apex_not_supported` rather than sent to the
+provider's API, where it would otherwise reject the record with a confusing
+error. Three ways forward: add `A` records manually at the provider, move the
+domain to a provider that supports ALIAS/ANAME, or connect `www.<domain>`
+instead of the bare apex (subdomains are never affected by this).
 
 ## Rail B write failed
 

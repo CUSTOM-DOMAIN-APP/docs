@@ -21,6 +21,16 @@ Self-serve plans (`free`, `startup`, `growth`) are bought through Stripe
 Checkout. `premium` and `enterprise` route to a "book a demo" CTA and have no
 public price.
 
+**White-label is enforced server-side, not just hidden in the console.** A
+direct widget `open()` always applies whatever branding you configure — that's
+your own client-side config, and the control plane never sees it. But when a
+connect is forwarded through a share link and a teammate resumes it
+(`loadSharedFlow`), the control plane checks the sharing tenant's plan and
+strips any `whiteLabel` branding from the resumed session unless it's on
+`enterprise`; the flow itself still works, it just falls back to default,
+unbranded styling. See
+[Widget SDK reference](/docs/widget-sdk/reference#white-label-configuration).
+
 > **Status:** the plan catalog is always public, but Checkout and the billing
 > portal are live only where `STRIPE_SECRET_KEY` **and** the `STRIPE_PRICE_*` ids
 > are configured. Until then those routes return `503 service_unavailable`
@@ -39,7 +49,15 @@ derived from the authenticated credential — never a query parameter — and
 ```
 
 `growth` is metered: usage beyond the included quota is billed in 1,000-unit
-overage increments rather than hard-blocked. The other plans are not metered.
+overage increments rather than hard-blocked. For the other, unmetered plans
+(`free`, `startup`, `premium`, `enterprise`), the control plane can also
+hard-block a new connection once the included quota is used up, refusing it
+with a distinct `quota_exceeded` error code (`402 Payment Required`, mapped to
+the widget SDK's `PlanLimitError`) instead of a generic failure — but this
+enforcement is gated on the deployment (`BILLING_ENFORCE_QUOTA`, off by
+default) and is **not confirmed enabled on the hosted service today**; treat
+`GET /v1/billing/usage` as the reliable way to know where a tenant stands
+regardless. See [SDK reference](/docs/widget-sdk/reference#events--callbacks).
 
 ## Checkout & portal
 

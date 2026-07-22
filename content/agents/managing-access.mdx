@@ -1,0 +1,78 @@
+---
+title: Managing access
+description: The owner side — approving a grant, spend caps and purchases, owner emails, and revoking access from the console.
+---
+
+> **Not yet enabled.** Agent access is not turned on for the hosted service yet
+> (see [Agent access](/docs/agents/overview)), so there is nothing to consent to
+> or manage today. This page describes the owner experience for when it
+> activates.
+
+Everything an agent can do is gated by a **grant** a human owner approved. This
+page covers the owner side: consenting, controlling spend, and revoking.
+
+## Approving a grant
+
+When an agent starts the [authorization flow](/docs/agents/oauth-flow), the
+control plane parks the request and sends the owner to the console consent screen
+(`/agent/consent`). If you're signed out, you're bounced to sign in first — a
+grant can only be approved by a real, signed-in owner.
+
+The screen shows which agent is asking and the scopes it requested. You approve a
+subset, choose whether access is **persistent** (the default) or expiring, and —
+if `domains:purchase` is requested — set a monthly spend cap and save a card. On
+approval the browser is handed back to the agent to finish the token exchange.
+
+> Consent is recorded by the console **server-side** with your workspace API key,
+> and the approving member must belong to your workspace. A browser/embed token
+> can never approve an agent — so a client can never approve itself.
+
+## Spend caps and purchases
+
+Purchase access (`domains:purchase`) is **fail-closed**. Granting it requires,
+all three:
+
+1. the `domains:purchase` scope is approved,
+2. an explicit **monthly spend cap**, and
+3. a **saved payment method** on file (add one from the consent flow's billing
+   step, which opens a Stripe card-setup — no charge).
+
+At runtime every agent purchase is checked against the grant's cap for the
+current month **before** any money moves. A purchase that would exceed the cap is
+refused, and you're emailed that the cap was reached. A failed registration never
+consumes the cap.
+
+## Owner emails
+
+You're kept in the loop automatically:
+
+- **Connected** — when a new grant is approved, with exactly what it can do.
+- **Acted** — when the agent takes an action (e.g. connects a domain).
+- **Purchased** — immediately when it spends money (an urgent alert).
+- **Revoked** — when access ends.
+
+Every email links to your agent-management screen so you can review or revoke in
+one click.
+
+## Reviewing and revoking
+
+Manage grants under **Settings → Agents** (`/app/settings/agents`): each grant
+shows the agent, its scopes, the spend so far against its cap this month, whether
+access is persistent or expiring, and who approved it. **Revoke** ends it
+immediately — the agent's tokens stop working within one token lifetime, and its
+refresh token is killed.
+
+The same operations are available over the API with your workspace `sk_` key:
+
+```bash
+# List grants
+curl https://api.customdomain.ai/v1/agent/grants \
+  -H "Authorization: Bearer sk_live_…"
+
+# Revoke a grant
+curl -X DELETE https://api.customdomain.ai/v1/agent/grants/grt_… \
+  -H "Authorization: Bearer sk_live_…"
+```
+
+These endpoints require the workspace API key (not a widget/browser token), the
+same credential that records consent.

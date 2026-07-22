@@ -24,6 +24,15 @@ const { token } = await res.json(); // → hand `token` (+ application_id) to th
 
 See [Widget tokens](/docs/authentication/widget-tokens) for the token lifecycle.
 
+> **App created through the console?** Its `client_secret` is sealed at signup
+> and never shown on any page, so the direct `POST /v1/tokens` call above has
+> nothing to authenticate with. Call the console's `POST /api/widget-token`
+> instead, authenticated with one of your **API keys** (`Authorization: Bearer
+> <API_KEY>`, from the Keys page) rather than the client secret — it resolves
+> your application, opens the sealed secret server-side, and mints the widget
+> token on your behalf. The API key never leaves your server and the client
+> secret never leaves ours.
+
 ## 2. Install and open
 
 ```bash
@@ -95,9 +104,15 @@ window.customdomain.open({
 ## White-label theming
 
 Pass a `whiteLabel` object. Quick keys map onto the token surface; `tokens`
-overrides any of the ~90 raw design tokens; `screens.disable` hides optional
+overrides any of the 85 raw design tokens; `screens.disable` hides optional
 screens. Theme values are applied as CSS custom properties on the widget's
 Shadow-DOM host, so they never leak into your page.
+
+> Full custom branding (`whiteLabel`) is an Enterprise-plan entitlement when a
+> connect is resumed through a share link (`loadSharedFlow`) rather than opened
+> directly — see
+> [the reference](/docs/widget-sdk/reference#white-label-configuration) and
+> [Plans & quotas](/docs/billing/plans-and-quotas#plans).
 
 ```js
 window.customdomain.open({

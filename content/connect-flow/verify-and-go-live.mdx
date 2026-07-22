@@ -122,5 +122,7 @@ a `connection.live` [webhook](/docs/webhooks/overview) fires (exactly once). Rea
 current state any time with `GET /v1/connections/{id}`.
 
 A `propagating` connection whose records never appear within 24 hours becomes
-`failed` (and fires `connection.failed`). Manual `pending` connections don't time
-out — a customer may take days.
+`failed` (and fires `connection.failed`) with `error_code: "propagation_timeout"`.
+Manual `pending` connections get a much longer window — **72 hours**, since a
+customer may take days to get to it — but they aren't unlimited: past that they
+also become `failed`, with `error_code: "setup_incomplete"`.

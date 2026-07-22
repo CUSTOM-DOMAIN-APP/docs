@@ -1,0 +1,140 @@
+---
+title: The OAuth flow
+description: The agent authorization endpoints — DCR, authorize + PKCE, consent, token, refresh, revoke — plus JWKS and RFC 8414 discovery.
+---
+
+> **Not yet enabled.** This entire surface is dark on the hosted service today.
+> Every endpoint below returns `503 temporarily_unavailable` ("agent
+> authentication is not enabled") until an operator turns it on. It is documented
+> here so integrators can build against the real, tested contract ahead of
+> activation — not because it is callable right now.
+
+Agent access uses OAuth 2.0 authorization-code with **mandatory PKCE (S256)**,
+against the control plane at `https://api.customdomain.ai`. All of it is
+discoverable — a compliant client can bootstrap from the metadata document alone.
+
+## Discovery
+
+Two well-known documents describe the whole surface:
+
+```bash
+# RFC 8414 Authorization Server Metadata
+curl https://api.customdomain.ai/.well-known/oauth-authorization-server
+# → { "issuer", "authorization_endpoint", "registration_endpoint",
+#     "token_endpoint", "revocation_endpoint", "jwks_uri",
+#     "scopes_supported": ["domains:read","domains:connect","domains:purchase"],
+#     "code_challenge_methods_supported": ["S256"], … }
+
+# RFC 7517 JWKS — the ES256 public keys resource servers verify tokens against
+curl https://api.customdomain.ai/.well-known/jwks.json
+```
+
+Before activation, `/.well-known/jwks.json` has no key published and the
+authorization-server metadata document is unavailable.
+
+## 1. Register (Dynamic Client Registration)
+
+The agent self-registers as a **public** client (PKCE, no secret). Redirect URIs
+must be `https` (or `http` on a loopback host for native apps).
+
+```bash
+curl -X POST https://api.customdomain.ai/oauth/agent/register \
+  -H "Content-Type: application/json" \
+  -d '{"client_name":"Atlas","redirect_uris":["https://atlas.example/cb"]}'
+# → { "client_id":"agc_…", "token_endpoint_auth_method":"none",
+#     "grant_types":["authorization_code","refresh_token"],
+#     "response_types":["code"] }
+```
+
+## 2. Authorize
+
+Send the human to the authorize endpoint with a PKCE challenge. The control plane
+validates the client, the exact redirect URI, and the requested scopes, then
+redirects the browser to your console's consent screen.
+
+```
+GET https://api.customdomain.ai/oauth/agent/authorize
+  ?client_id=agc_…
+  &redirect_uri=https://atlas.example/cb
+  &response_type=code
+  &code_challenge=<BASE64URL(SHA256(verifier))>
+  &code_challenge_method=S256
+  &scope=domains:read domains:connect
+  &state=<opaque>
+```
+
+The redirect URI must **exactly** match one registered in step 1, and
+`code_challenge_method` must be `S256` — plain PKCE is rejected.
+
+## 3. Consent
+
+The console authenticates the owner and shows what the agent is requesting. On
+approval it hands the browser back to the agent's `redirect_uri` with an
+authorization `code` and the original `state`. (The consent record itself is
+written server-side with your workspace credential — see
+[Managing access](/docs/agents/managing-access).)
+
+## 4. Token
+
+Exchange the code and the PKCE **verifier** for tokens. `client_id` and
+`redirect_uri` must match the authorization request.
+
+```bash
+curl -X POST https://api.customdomain.ai/oauth/agent/token \
+  -d "grant_type=authorization_code" \
+  -d "code=cod_…" \
+  -d "code_verifier=<VERIFIER>" \
+  -d "client_id=agc_…" \
+  -d "redirect_uri=https://atlas.example/cb"
+# → { "access_token":"eyJ…", "token_type":"Bearer", "expires_in":900,
+#     "refresh_token":"art_…", "scope":"domains:read domains:connect" }
+```
+
+The **access token** is an ES256 JWT valid for 15 minutes; it carries the tenant,
+the bound application, the granted scopes, and the consenting member. The
+**refresh token** is long-lived and stored hashed at rest.
+
+### Refresh
+
+```bash
+curl -X POST https://api.customdomain.ai/oauth/agent/token \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=art_…" \
+  -d "client_id=agc_…"
+```
+
+Refresh keeps working until the grant is revoked or expires — so revocation takes
+effect within one access-token lifetime.
+
+## 5. Use the token
+
+Call MCP tools with the access token. The MCP **verifies it locally** against the
+JWKS (no introspection) and enforces the tool's required scope:
+
+```bash
+curl -X POST https://mcp.customdomain.ai/mcp \
+  -H "Authorization: Bearer eyJ…" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"connect-domain","arguments":{"domain":"app.customer.com"}}}'
+```
+
+A token whose grant lacks the tool's scope is refused with `insufficient_scope`.
+
+## 6. Revoke
+
+```bash
+curl -X POST https://api.customdomain.ai/oauth/agent/revoke -d "token=art_…"
+```
+
+Per RFC 7009 this always returns `200`. Revoking kills the grant and all its
+refresh tokens; the owner can also revoke from the console.
+
+## Security notes
+
+- **PKCE S256 is mandatory** and verified with a constant-time comparison.
+- **Exact redirect-URI match** — an unregistered URI is refused without
+  redirecting (no open redirect).
+- **Authorization codes are single-use** and short-lived; replay is rejected.
+- Tokens are **ES256** with an alg-confusion guard — an `alg:none` or HS256
+  forgery is never accepted.

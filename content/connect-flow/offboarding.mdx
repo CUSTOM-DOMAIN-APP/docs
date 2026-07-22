@@ -25,6 +25,13 @@ What happens depends on whether the connection is
   credential, so it cannot touch the customer's DNS. The connection is simply
   deleted; the customer removes the edge records at their DNS provider themselves.
 
+**Exception:** if the same domain is also connected under a *different*
+application (the same zone shared across two of your apps, or across two
+tenants), the revert is **skipped** even for a managed connection — the platform
+never pulls out records another app is still actively serving. Only the deleted
+connection's own state goes away; the other application's connection and its
+live records are untouched.
+
 Either way the delete cascades to all of the connection's child state — records,
 origin, the monitor watch, and any managed grant — and emits a
 `connection.disconnected` [webhook](/docs/webhooks/overview#event-catalog). The

@@ -26,13 +26,19 @@ The status machine is deliberately small:
 | `pending` | Created; records not yet written or not yet observed. |
 | `propagating` | Records were written (by a rail) and are being checked against public DNS. |
 | `live` | Every desired record resolves to its intended value. The edge serves TLS for the host. |
-| `failed` | A `propagating` connection's records never appeared within the 24-hour window. |
+| `failed` | A `propagating` connection's records never appeared within the 24-hour window (or, for a manual connection, within 72 hours of `pending`). |
 
 There is no separate ownership-challenge step. Control is proven **by the rail
 itself**: an OAuth authorization, a one-click setup apply, or a scoped API token
 each demonstrate the customer controls the zone. In the manual flow, the poller
-simply waits for the records to appear — manual (`pending`) connections never
-time out.
+simply waits for the records to appear — giving the customer up to **72 hours**
+(long enough for a human to get to it, unlike the 24-hour automatic-rail window)
+before giving up and marking the connection `failed` too.
+
+A `failed` connection carries `error_code` / `error_message` naming why:
+`propagation_timeout` (a `propagating` connection's records never resolved) or
+`setup_incomplete` (a manual connection's records were never added at all).
+Both are cleared automatically if the connection later re-verifies.
 
 ## The authoritative record set
 
