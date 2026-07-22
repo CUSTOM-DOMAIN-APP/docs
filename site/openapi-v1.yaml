@@ -1,0 +1,2282 @@
+# Customdomain public API contract (/v1).
+#
+# This vendored spec is the SINGLE SOURCE OF TRUTH for the Fumadocs API
+# reference: every page under src/content/docs/api-reference/** is generated
+# from THIS file by `npm run gen:api` (scripts/gen-api-docs.ts). It mirrors the
+# routes the control-plane actually registers (services/control-plane/internal/
+# api/api.go) and the machine-readable document served at GET /v1/openapi.json.
+#
+# Versioning: URI major (/v1), additive-only within a version.
+openapi: 3.1.0
+info:
+  title: Customdomain Control-Plane API
+  version: "1.0"
+  description: >-
+    APIs for connecting your customers' domains to your product:
+    Connect (DNS) · Secure (SSL) · Sell (domain resale) · Monitor (DNS drift),
+    plus tenancy, members, billing, and webhooks.
+
+
+    Three credential types authenticate the surface. A **management key** gates
+    operator/provisioning routes. A tenant **API key** (`sk_live_…` / `sk_test_…`)
+    is the long-lived server-to-server credential. A short-lived **widget JWT**,
+    minted server-side via `POST /v1/tokens`, authorizes the browser widget and
+    is scoped to one application (and optionally one domain).
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: https://api.customdomain.ai/v1
+    description: Hosted control-plane
+  - url: http://localhost:8080/v1
+    description: Local control-plane
+security:
+  - apiKey: []
+tags:
+  - name: Tenancy
+    description: Operator provisioning — tenants and one-call signup.
+  - name: Applications
+    description: Applications and their long-lived API keys.
+  - name: Members
+    description: Multi-user tenancy — invites, roles, and membership.
+  - name: Tokens
+    description: Minting short-lived widget JWTs for the browser.
+  - name: Domains
+    description: Read-only domain / DNS-provider feature detection.
+  - name: Connections
+    description: The connect pipeline for one customer domain, across all four rails.
+  - name: Secure
+    description: Edge-managed TLS certificates (SSL) for connected domains — issue, renew, import, deprovision.
+  - name: Power
+    description: The edge reverse-proxy for a connection — origin, apex↔www redirect, and root-path serving.
+  - name: Sharing
+    description: Forward-to-a-colleague share links that resume a connect flow from a server-side prefill.
+  - name: Providers
+    description: The DNS-provider capability catalog and parity census.
+  - name: Templates
+    description: One-click setup service templates and apply-URL building.
+  - name: Registrar
+    description: Domain search, quote, and purchase (Sell).
+  - name: Monitor
+    description: Checking declared records against live public DNS (drift).
+  - name: Webhooks
+    description: Registering receivers and inspecting delivery attempts.
+  - name: Billing
+    description: Plans, metered usage, checkout, and the billing portal.
+  - name: Enterprise
+    description: RBAC reference matrix and the audit log.
+  - name: Meta
+    description: Public service discovery and capability advertisement.
+
+paths:
+  # ------------------------------------------------------------------ Tenancy
+  /tenants:
+    post:
+      operationId: createTenant
+      summary: Create a tenant
+      tags: [Tenancy]
+      description: Operator provisioning endpoint. Requires the management key in production.
+      security:
+        - managementKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /tenants/{id}:
+    get:
+      operationId: getTenant
+      summary: Get a tenant
+      tags: [Tenancy]
+      security:
+        - managementKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /tenants:provision:
+    post:
+      operationId: provisionTenant
+      summary: One-call signup provisioning (tenant + owner + app + API key)
+      tags: [Tenancy]
+      description: >-
+        Atomically creates a tenant, its first owner member, a default
+        application, and a long-lived API key. `api_key` and `client_secret` are
+        returned ONCE. Guarded by the dedicated provision secret (the
+        `X-Provision-Secret` header or a Bearer token) so the customer console's
+        server can hold this narrow secret instead of the operator management key.
+      security:
+        - provisionSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_name]
+              properties:
+                tenant_name: { type: string }
+                app_name: { type: string }
+                owner_email: { type: string }
+                environment: { $ref: '#/components/schemas/Environment' }
+      responses:
+        '201':
+          description: Provisioned (api_key + client_secret shown once)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tenant_id, application_id, api_key, client_secret]
+                properties:
+                  tenant_id: { type: string }
+                  application_id: { type: string }
+                  api_key: { type: string, description: 'sk_live_… / sk_test_… — shown once' }
+                  client_secret: { type: string, description: mints widget JWTs; shown once }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------- Applications
+  /applications:
+    post:
+      operationId: createApplication
+      summary: Create an application (client_secret returned once)
+      tags: [Applications]
+      description: >-
+        Accepts the management key (the body `tenant_id` selects the tenant) or a
+        tenant-scoped `sk_` API key (the app is always created in the key's own
+        tenant; any body `tenant_id` is ignored).
+      security:
+        - managementKey: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, name]
+              properties:
+                tenant_id: { type: string }
+                name: { type: string }
+                environment: { $ref: '#/components/schemas/Environment' }
+      responses:
+        '201':
+          description: Created (client_secret present only here)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Application' }
+                  - type: object
+                    properties:
+                      client_secret: { type: string, description: mints widget JWTs; shown once }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listApplications
+      summary: List applications
+      tags: [Applications]
+      description: >-
+        With an `sk_` API key: the caller's own tenant's apps. With the
+        management key: `?tenant_id=` selects the tenant.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - name: tenant_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: Required only when listing with the management key.
+      responses:
+        '200':
+          description: Applications
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [applications, count]
+                properties:
+                  applications:
+                    type: array
+                    items: { $ref: '#/components/schemas/Application' }
+                  count: { type: integer }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /applications/{id}:
+    get:
+      operationId: getApplication
+      summary: Get an application
+      tags: [Applications]
+      security:
+        - managementKey: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /applications/{id}/keys:
+    post:
+      operationId: createApiKey
+      summary: Issue an API key for an application (key returned once)
+      tags: [Applications]
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                environment: { $ref: '#/components/schemas/Environment' }
+      responses:
+        '201':
+          description: Created; the full secret is present only in this response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/ApiKey' }
+                  - type: object
+                    properties:
+                      key: { type: string, description: 'sk_live_… / sk_test_… — shown once, stored hashed' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listApiKeys
+      summary: List an application's API keys (secrets omitted)
+      tags: [Applications]
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Keys (metadata only — the secret is never returned again)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items: { $ref: '#/components/schemas/ApiKey' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /applications/{id}/keys/{keyId}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoke an API key
+      tags: [Applications]
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Revoked }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Members
+  /members:
+    post:
+      operationId: inviteMember
+      summary: Invite a member to the caller's tenant (invite_token shown once)
+      tags: [Members]
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string }
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '201':
+          description: Invited
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listMembers
+      summary: List the caller tenant's members
+      tags: [Members]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members]
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: '#/components/schemas/Member' }
+        '401': { $ref: '#/components/responses/Error' }
+  /members:accept:
+    post:
+      operationId: acceptMember
+      summary: Accept an invite (single-use token)
+      tags: [Members]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+                email: { type: string, description: "When supplied, must match the invited email." }
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /members/{id}:
+    patch:
+      operationId: updateMemberRole
+      summary: Change a member's role (owner-protected)
+      tags: [Members]
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: removeMember
+      summary: Remove a member or revoke a pending invite (owner-protected)
+      tags: [Members]
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Removed }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------- Tokens
+  /tokens:
+    post:
+      operationId: createWidgetToken
+      summary: Exchange application credentials for a short-lived widget JWT
+      tags: [Tokens]
+      description: >-
+        Server-side only. Trade an application's `client_secret` for a
+        short-lived widget JWT the browser can use on the Connect endpoints.
+        Never ship the `client_secret` or an API key to the browser.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [application_id, client_secret]
+              properties:
+                application_id: { type: string }
+                client_secret: { type: string }
+                domain:
+                  type: string
+                  description: Optional. Binds the token to a single hostname.
+      responses:
+        '201':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, token_type, expires_in]
+                properties:
+                  token: { type: string, description: the widget JWT (Bearer) }
+                  token_type: { type: string, examples: [Bearer] }
+                  expires_in: { type: integer, description: lifetime in seconds (default 3600) }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Domains
+  /domains:check:
+    post:
+      operationId: checkDomain
+      summary: Detect where a domain's DNS lives and how it will be set up
+      tags: [Domains]
+      description: >-
+        Read-only feature detection. Returns the provider, the chosen
+        `setup_type`, whether automatic setup is possible, whether the
+        OAuth-into-provider and one-click setup rails are available, capability
+        flags (`ns_support`, `wildcard_support`, `cname_flattening`,
+        `spf_override_support`, `caa_support`), social-login support, and any
+        `record_conflicts` observed in public DNS. Unknown providers degrade to
+        `setup_type: manual`.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string }
+      responses:
+        '200':
+          description: Detection result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DomainCheck' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  # -------------------------------------------------------------- Connections
+  /connections:
+    post:
+      operationId: createConnection
+      summary: Create a domain connection (idempotent per app + domain)
+      tags: [Connections]
+      description: >-
+        Starts connecting `domain` under the calling application and returns the
+        connection plus its authoritative desired record set. Idempotent: if the
+        app already has a non-failed connection for the domain, that existing
+        connection is replayed with `200`.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string }
+      responses:
+        '201':
+          description: Connection created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
+        '200':
+          description: Existing connection replayed (idempotent)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listConnections
+      summary: List connections
+      tags: [Connections]
+      description: >-
+        With an `sk_` API key: every connection across the tenant's applications
+        (optional `?app_id=` and `?status=` filters). With a widget JWT: the
+        calling application's connections.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters:
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ConnectionStatus' }
+      responses:
+        '200':
+          description: Connections
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connections, count]
+                properties:
+                  connections:
+                    type: array
+                    items: { $ref: '#/components/schemas/Connection' }
+                  count: { type: integer }
+        '401': { $ref: '#/components/responses/Error' }
+  /connections/{id}:
+    get:
+      operationId: getConnection
+      summary: Get a connection with its authoritative record set
+      tags: [Connections]
+      description: >-
+        Returns the connection object and its records. The connection carries a
+        `managed` boolean: `true` when it opted in to **managed
+        mode** (the control plane holds a durable, encrypted async grant so it can
+        re-apply / revert the template server-side without re-consent); `false`
+        (omitted on the wire) for the default use-once connection.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Connection
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: disconnectConnection
+      summary: Disconnect a domain (revert managed records, then delete the connection)
+      tags: [Connections]
+      description: >-
+        **Managed-mode offboarding + delete.** For a managed (async
+        one-click) connection the control plane first **reverts** the applied template
+        through the pinned provider API using the stored grant, then deletes the
+        connection and all its child state (records, origin, monitor watch, managed
+        grant). A non-managed connection is simply deleted. Emits
+        `connection.disconnected`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: "Disconnected (grant reverted, if any, and connection deleted)" }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/records:
+    get:
+      operationId: getConnectionRecords
+      summary: Authoritative desired DNS record set for a connection
+      tags: [Connections]
+      description: >-
+        The single source of truth the widget renders, the OAuth callback
+        writes, and the propagation poller verifies. Before records are applied,
+        the default edge record is synthesized server-side.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connection_id, records]
+                properties:
+                  connection_id: { type: string }
+                  records:
+                    type: array
+                    items: { $ref: '#/components/schemas/DnsRecord' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/grant:
+    delete:
+      operationId: disableManagedConnection
+      summary: Turn managed mode OFF without disconnecting
+      tags: [Connections]
+      description: >-
+        Drops the stored async grant and clears the connection's
+        `managed` flag, leaving the connection and its applied records in place.
+        The records the provider already wrote stay live; the control plane simply
+        stops holding a credential to re-apply / revert them. This is **not**
+        `DELETE /v1/connections/{id}` (which reverts the template at the provider
+        and removes the whole connection). Idempotent: a connection that is already
+        unmanaged returns `200`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Managed mode disabled (grant dropped, managed=false, connection kept)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connection_id, managed]
+                properties:
+                  connection_id: { type: string }
+                  managed: { type: boolean, enum: [false] }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/apply:
+    post:
+      operationId: applyConnection
+      summary: Write a connection's records through the customer's provider (BYO token, used once)
+      tags: [Connections]
+      description: >-
+        **Rail B (API-token apply).** The scoped provider credential is used once
+        to write the records and is never stored. The connection advances to
+        `propagating`; the poller promotes it to `live` once the records appear
+        in public DNS.
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential, records]
+              properties:
+                provider: { type: string, description: DNS provider id; defaults to the detected provider. }
+                zone: { type: string, description: DNS zone the credential manages; defaults to the connection domain. }
+                credential:
+                  type: object
+                  required: [token]
+                  properties:
+                    token: { type: string, description: "Scoped provider API token; used once, never persisted." }
+                records:
+                  type: array
+                  items: { $ref: '#/components/schemas/WritableRecord' }
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connection: { $ref: '#/components/schemas/Connection' }
+                  records:
+                    type: array
+                    items: { $ref: '#/components/schemas/DnsRecord' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}:reapply:
+    post:
+      operationId: reapplyConnection
+      summary: Re-apply a managed connection's desired records (async one-click, no re-consent)
+      tags: [Connections]
+      description: >-
+        **Managed mode only.** Recomputes the connection's authoritative desired
+        record set and writes any drift through the provider's async one-click
+        API using the stored, encrypted grant (the provider API base pinned at
+        onboarding) — the end user does **not** re-consent. On success the
+        connection is re-verified and `connection.records.updated` is emitted. A
+        failure emits `connection.reapply.failed`; if the provider reports the grant
+        was revoked (401 kill-switch) the grant is cleared and the connection is
+        flagged for re-consent.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Re-applied (records updated)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked; re-consent required" }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/oauth:start:
+    post:
+      operationId: startConnectionOAuth
+      summary: Begin the OAuth-into-DNS-provider authorization for a connection
+      tags: [Connections]
+      description: >-
+        **Rail C (flagship).** Returns the provider authorize URL (PKCE S256 +
+        HMAC-signed single-use `state`). The widget opens it in a popup; the
+        provider redirects back to `/v1/connect/oauth/callback`, which writes the
+        connection's records with the one-time access token and never persists it.
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [return_origin]
+              properties:
+                provider: { type: string, description: DNS provider id; defaults to the detected provider. }
+                return_origin:
+                  type: string
+                  description: Web origin the callback page may postMessage the outcome to; must be on the server's allowlist.
+      responses:
+        '200':
+          description: Authorize URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorize_url]
+                properties:
+                  authorize_url: { type: string, format: uri }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connect/oauth/callback:
+    get:
+      operationId: oauthCallback
+      summary: OAuth redirect target (public; authenticated by the signed state)
+      tags: [Connections]
+      description: >-
+        The provider's browser redirect target — **not** a bearer-authenticated
+        endpoint. It consumes the signed single-use `state`, exchanges the code,
+        writes the connection's records with the one-time token (discarded
+        after), and returns an HTML page that postMessages
+        `{ type: "customdomain:oauth", payload }` to the vetted return origin.
+      security: []
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: HTML finish page (postMessages the outcome to the vetted return origin)
+        '400':
+          description: Invalid, expired, or replayed state
+  /connect/dc/callback:
+    get:
+      operationId: dcCallback
+      summary: Async one-click setup redirect target (public; authenticated by the signed state)
+      tags: [Connections]
+      description: >-
+        **Rail A (async one-click setup) redirect target** — distinct from
+        `/connect/oauth/callback` (Mode C), which discards its one-time token. It
+        consumes the signed single-use `state` (rail-bound to async), exchanges the
+        code for a **durable async grant** at the provider API base pinned into the
+        `state` at start (never re-derived from fresh discovery), applies the
+        template, and persists the **encrypted** grant so the connection can be
+        re-applied / reverted server-side. Records are applied with
+        `data.via = async`.
+      security: []
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: HTML finish page (postMessages the outcome to the vetted return origin)
+        '400':
+          description: Invalid, expired, replayed, or wrong-rail state
+  /connections/{id}/domainconnect:start:
+    post:
+      operationId: startDomainConnect
+      summary: Build the one-click apply URL (sync) or start the managed async rail
+      tags: [Connections]
+      description: >-
+        **Rail A (one-click sync-redirect) by default.** `service_id` may be
+        omitted when a default/sole template is loaded; the response carries the
+        provider-hosted `apply_url`, the resolved `service_id`, and the discovered
+        `dc_provider` name. Set `managed: true` (or `rail: "async"`) to request the
+        managed async rail instead — when the provider supports it the response
+        carries a `consent_url` and `rail: "async"` (and the grant lets the control
+        plane re-apply / revert server-side without re-consent). `service_ids`
+        (plural) bundles several templates under one managed consent (async only;
+        the OAuth scope is the space-separated list and the callback applies each);
+        on the sync fallthrough only the first template applies.
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                service_id: { type: string }
+                service_ids:
+                  type: array
+                  items: { type: string }
+                  description: >-
+                    Bundle of templates to authorize under one managed consent
+                    (async rail only). Wins over `service_id` when set.
+                host: { type: string }
+                vars:
+                  type: object
+                  additionalProperties: { type: string }
+                managed:
+                  type: boolean
+                  description: Opt into the managed (async) one-click rail.
+                rail:
+                  type: string
+                  description: Set to "async" to request the managed rail (same effect as managed:true).
+                return_origin:
+                  type: string
+                  description: >-
+                    Vetted web origin the async callback finish page may
+                    postMessage the outcome to; must be on the server allowlist.
+      responses:
+        '200':
+          description: >-
+            Sync rail returns `apply_url`; the managed async rail returns
+            `consent_url` and `rail: "async"`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apply_url: { type: string, format: uri, description: "Sync rail: provider-hosted apply URL." }
+                  consent_url: { type: string, format: uri, description: "Async rail: provider consent URL." }
+                  service_id: { type: string }
+                  service_ids:
+                    type: array
+                    items: { type: string }
+                    description: "Async rail: the resolved template bundle."
+                  dc_provider: { type: string }
+                  rail: { type: string, description: '"async" on the managed rail; omitted on the sync rail.' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # -------------------------------------------------------------------- Sharing
+  /sharing/connect:
+    post:
+      operationId: createSharedFlow
+      summary: Mint a share link that resumes a connect flow from a server-side prefill
+      tags: [Sharing]
+      description: >-
+        **Forward-to-a-colleague.** The widget posts the domain(s) a teammate
+        should connect plus an arbitrary `prefill` (the widget config to resume);
+        the control plane stores that server-side under an opaque token and returns
+        the absolute `link` (ends `/share/{token}`) and a `job_id`. Every domain the
+        link targets must be one the calling token may act on — a share link never
+        widens a domain-bound token's reach. The link's server-side prefill is read
+        back by `GET /share/{token}`, which the teammate's widget bootstraps from
+        instead of a URL that carries the config in the clear. The share token
+        EXPIRES 30 days after it is minted.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain: { type: string, description: Single domain the teammate will connect. }
+                domains:
+                  type: array
+                  items: { type: string }
+                  description: Several domains the teammate will connect.
+                prefill:
+                  type: object
+                  additionalProperties: true
+                  description: >-
+                    Arbitrary widget config to resume. Served back verbatim by
+                    `GET /share/{token}`, stamped with the normalized domain
+                    target(s).
+      responses:
+        '201':
+          description: Share link minted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [link, job_id]
+                properties:
+                  link: { type: string, format: uri, description: "Absolute forwardable URL ending /share/<token>." }
+                  job_id: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /share/{token}:
+    get:
+      operationId: getSharedFlow
+      summary: Read a share link's server-side prefill (token is the bearer credential)
+      tags: [Sharing]
+      description: >-
+        Public by design — the opaque, unguessable `token` in the path IS the
+        credential (mirroring the OAuth callback's state-as-credential pattern), so
+        no bearer is required. Returns the stored `prefill` so a teammate's widget
+        can resume the flow. A share token EXPIRES 30 days after it is minted;
+        unknown OR expired tokens are indistinguishable and both return `404`.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Shared flow prefill
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, application_id, job_id, prefill]
+                properties:
+                  token: { type: string }
+                  application_id: { type: string }
+                  job_id: { type: string }
+                  prefill:
+                    type: object
+                    additionalProperties: true
+        '404': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- Providers
+  /providers:
+    get:
+      operationId: listProviders
+      summary: List the DNS providers the Connect engine can detect and automate
+      tags: [Providers]
+      security: []
+      responses:
+        '200':
+          description: Provider capability catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [providers, count]
+                properties:
+                  providers:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProviderInfo' }
+                  count: { type: integer }
+  /providers/census:
+    get:
+      operationId: providerCensus
+      summary: Full parity census — every target provider routed to its working mode
+      tags: [Providers]
+      security: []
+      responses:
+        '200':
+          description: Census (each provider routed to dc / oauth / api / manual)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [providers, count]
+                properties:
+                  providers:
+                    type: array
+                    items: { type: object }
+                  count: { type: integer }
+
+  # ---------------------------------------------------------------- Templates
+  /templates:
+    get:
+      operationId: listTemplates
+      summary: List one-click setup service templates
+      tags: [Templates]
+      security: []
+      responses:
+        '200':
+          description: Template list
+        '503': { $ref: '#/components/responses/Error' }
+  /templates/{serviceId}:
+    get:
+      operationId: getTemplate
+      summary: Get one setup template
+      tags: [Templates]
+      security: []
+      parameters:
+        - { name: serviceId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Template
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /templates/{serviceId}/apply-url:
+    post:
+      operationId: buildTemplateApplyUrl
+      summary: Build the one-click apply URL for a domain
+      tags: [Templates]
+      security: []
+      parameters:
+        - { name: serviceId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain, provider_base]
+              properties:
+                domain: { type: string }
+                host: { type: string }
+                provider_base: { type: string }
+                vars:
+                  type: object
+                  additionalProperties: { type: string }
+      responses:
+        '200':
+          description: apply_url
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apply_url: { type: string, format: uri }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- Registrar
+  /registrar/search:
+    get:
+      operationId: searchDomains
+      summary: Search domain availability and pricing
+      tags: [Registrar]
+      security:
+        - widgetJWT: []
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Results
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /registrar/quote:
+    post:
+      operationId: quoteDomain
+      summary: Cheapest real-time price for a domain
+      tags: [Registrar]
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string }
+      responses:
+        '200':
+          description: Price
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /registrar/purchase:
+    post:
+      operationId: purchaseDomain
+      summary: Register a domain (fail-closed; requires Idempotency-Key)
+      tags: [Registrar]
+      description: >-
+        Disabled unless `SELL_PURCHASE_ENABLED`. A required `Idempotency-Key`
+        header dedupes retries so a registration is never charged twice.
+      security:
+        - widgetJWT: []
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain, buyer]
+              properties:
+                domain: { type: string }
+                buyer:
+                  type: object
+                  required: [email]
+                  properties:
+                    name: { type: string }
+                    email: { type: string }
+                    country: { type: string }
+      responses:
+        '200':
+          description: Order (idempotent replay)
+        '201':
+          description: Order
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Monitor
+  /monitor:check:
+    post:
+      operationId: checkRecords
+      summary: Check declared baseline records against live public DNS
+      tags: [Monitor]
+      description: >-
+        Resolves each baseline record and reports whether it is still present.
+        This is what the SDK's `checkRecords` rides on. Read-only; performs no
+        writes.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain, baseline]
+              properties:
+                domain: { type: string }
+                baseline:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      subdomain: { type: string }
+                      type: { type: string }
+                      values:
+                        type: array
+                        items: { type: string }
+      responses:
+        '200':
+          description: Drift report
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Webhooks
+  /webhooks:
+    post:
+      operationId: createWebhook
+      summary: Register a webhook endpoint (secret returned once)
+      tags: [Webhooks]
+      description: >-
+        Registers an HTTPS receiver under the calling application. The `secret`
+        (`whsec_…`) is returned ONCE — store it to verify signatures. An empty
+        `events` array subscribes to all events; `"*"` also matches all.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri }
+                events:
+                  type: array
+                  description: >-
+                    Event types to subscribe to; empty subscribes to all events,
+                    and `"*"` also matches all. `connection.records.updated` /
+                    `connection.reapply.failed` / `connection.disconnected` cover
+                    the managed (async one-click) re-apply and disconnect
+                    lifecycle.
+                  items:
+                    type: string
+                    enum:
+                      - '*'
+                      - domain.added
+                      - domain.flow.completed
+                      - domain.propagation.timeout
+                      - domain.record_missing
+                      - domain.record_restored
+                      - domain.purchased
+                      - purchase.error
+                      - purchase.confirmation.expired
+                      - domain.transfer.in.initiated
+                      - domain.transfer.in.completed
+                      - domain.transfer.out.initiated
+                      - domain.transfer.out.completed
+                      - secure_status
+                      - power_status
+                      - connection.created
+                      - connection.applied
+                      - connection.live
+                      - connection.failed
+                      - connection.records.updated
+                      - connection.reapply.failed
+                      - connection.disconnected
+      responses:
+        '201':
+          description: Created (secret returned once)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listWebhooks
+      summary: List webhook endpoints
+      tags: [Webhooks]
+      description: >-
+        With an `sk_` API key: endpoints across all the tenant's apps. With a
+        widget JWT: the calling app's endpoints. Secrets are omitted.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      responses:
+        '200':
+          description: Endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [webhooks]
+                properties:
+                  webhooks:
+                    type: array
+                    items: { $ref: '#/components/schemas/WebhookEndpoint' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /webhooks/{id}:
+    delete:
+      operationId: deleteWebhook
+      summary: Delete a webhook endpoint
+      tags: [Webhooks]
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /webhook-deliveries:
+    get:
+      operationId: listWebhookDeliveries
+      summary: Recent webhook delivery attempts for the caller's tenant
+      tags: [Webhooks]
+      description: >-
+        `sk_` API key: all the tenant's apps. Widget JWT: the calling app.
+        `?app_id=` narrows to one application; `?type=` filters by event type.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters:
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - { name: type, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: Deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deliveries, count]
+                properties:
+                  deliveries:
+                    type: array
+                    items: { $ref: '#/components/schemas/WebhookDelivery' }
+                  count: { type: integer }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------- Billing
+  /plans:
+    get:
+      operationId: listPlans
+      summary: Public plan catalog (plus billing {configured, mode})
+      tags: [Billing]
+      security: []
+      responses:
+        '200':
+          description: Plans
+  /billing/usage:
+    get:
+      operationId: getUsage
+      summary: Metered domain usage, plan, and quota for the caller's tenant
+      tags: [Billing]
+      description: >-
+        The tenant is derived from the authenticated credential, never a query
+        parameter. `?period=` defaults to the current UTC calendar month.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters:
+        - { name: period, in: query, required: false, schema: { type: string, examples: ['2026-07'] } }
+      responses:
+        '200':
+          description: Usage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usage' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/checkout:
+    post:
+      operationId: createCheckout
+      summary: Start a Stripe Checkout session for a self-serve plan
+      tags: [Billing]
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan, success_url, cancel_url]
+              properties:
+                plan: { $ref: '#/components/schemas/PlanId' }
+                success_url: { type: string, format: uri }
+                cancel_url: { type: string, format: uri }
+      responses:
+        '200':
+          description: Checkout session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/portal:
+    post:
+      operationId: createPortalSession
+      summary: Open a Stripe Billing Portal session
+      tags: [Billing]
+      description: Requires the tenant to have completed a checkout (has a Stripe customer).
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [return_url]
+              properties:
+                return_url: { type: string, format: uri }
+      responses:
+        '200':
+          description: Portal session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- Enterprise
+  /rbac:
+    get:
+      operationId: getRbac
+      summary: Role / permission matrix (static reference)
+      tags: [Enterprise]
+      security: []
+      responses:
+        '200':
+          description: Matrix
+  /audit:
+    get:
+      operationId: getAudit
+      summary: Audit log (tenant-scoped for tenant credentials; full log for the management key)
+      tags: [Enterprise]
+      security:
+        - managementKey: []
+        - apiKey: []
+        - widgetJWT: []
+      responses:
+        '200':
+          description: Events
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Secure (SSL)
+  # The whole /ssl surface is gated by SECURE_ENABLED on the deployment; when
+  # unset every route answers 503 ("not configured") and nothing is written.
+  /connections/{id}/ssl:
+    get:
+      operationId: getConnectionCertificate
+      summary: Read the mirrored TLS certificate status for a connection's domain
+      tags: [Secure]
+      description: >-
+        The control-plane's read-mirror of the edge certificate store for this
+        connection's domain. `404` when no certificate is tracked yet.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Certificate status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate: { $ref: '#/components/schemas/Certificate' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deprovisionConnectionCertificate
+      summary: Deprovision a connection's certificate (drop the mirror, stop managing)
+      tags: [Secure]
+      description: >-
+        Drops the mirror row and clears `secure_root_domain`; the edge stops
+        managing the certificate on its next reconcile.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Deprovisioned }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/ssl:eligibility:
+    get:
+      operationId: getConnectionCertificateEligibility
+      summary: Whether a certificate can be issued for this connection yet
+      tags: [Secure]
+      description: >-
+        Advisory: a certificate is only issuable once the domain points at the
+        edge (connection `live` or `propagating`). The widget/console uses this
+        to gate the provision button.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Eligibility
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Eligibility' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/ssl:provision:
+    post:
+      operationId: provisionConnectionCertificate
+      summary: Record intent to issue an edge-managed certificate
+      tags: [Secure]
+      description: >-
+        Creates/updates the mirror row as `pending` + managed. The edge performs
+        the actual ACME issuance on first handshake and reports back. Optionally
+        sets `secure_root_domain` so the edge also secures the registrable apex.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secure_root_domain: { type: boolean, description: also secure the registrable apex. }
+      responses:
+        '202':
+          description: Provisioning requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate: { $ref: '#/components/schemas/Certificate' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/ssl:renew:
+    post:
+      operationId: renewConnectionCertificate
+      summary: Mark a connection's certificate for renewal
+      tags: [Secure]
+      description: >-
+        Records the operator-requested renew and surfaces `renewing`. The edge's
+        autocert manager performs the actual renewal ahead of expiry.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '202':
+          description: Renewal requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate: { $ref: '#/components/schemas/Certificate' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/ssl:import:
+    post:
+      operationId: importConnectionCertificate
+      summary: Record an operator-supplied (externally obtained) certificate's metadata
+      tags: [Secure]
+      description: >-
+        Mirrors the status + validity window of an external certificate for
+        display (`managed=false`, so the edge does not ACME-renew it). Private
+        key material is an edge concern and is not handled here.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                issuer: { type: string }
+                not_before: { type: string, format: date-time, description: RFC3339. }
+                not_after: { type: string, format: date-time, description: RFC3339. }
+      responses:
+        '200':
+          description: Imported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate: { $ref: '#/components/schemas/Certificate' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /ssl:
+    get:
+      operationId: listCertificates
+      summary: List the certificates tracked for the caller's application
+      tags: [Secure]
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      responses:
+        '200':
+          description: Certificates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificates:
+                    type: array
+                    items: { $ref: '#/components/schemas/Certificate' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Power
+  # The whole /power surface is gated by POWER_ENABLED on the deployment; when
+  # unset every route answers 503 ("not enabled") and nothing is written.
+  /connections/{id}/power:
+    get:
+      operationId: getConnectionPower
+      summary: Read a connection's Power (edge reverse-proxy) configuration
+      tags: [Power]
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Power configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  power: { $ref: '#/components/schemas/PowerConfig' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: enableConnectionPower
+      summary: Enable Power — register the origin + redirect/root-path config
+      tags: [Power]
+      description: >-
+        Registers the origin the edge reverse-proxies to (SSRF-validated) plus
+        the redirect / root-path config the ask answer carries. `application_url`
+        is required to enable.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PowerConfigInput' }
+      responses:
+        '201':
+          description: Power enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  power: { $ref: '#/components/schemas/PowerConfig' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: disableConnectionPower
+      summary: Remove Power — drop the origin, clear config, tear down the cert
+      tags: [Power]
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Power removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/power:eligibility:
+    get:
+      operationId: getConnectionPowerEligibility
+      summary: Whether Power can be enabled for this connection yet
+      tags: [Power]
+      description: >-
+        Power needs the domain pointing at the edge (connection `live` or
+        `propagating`) so the reverse proxy receives its traffic.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Eligibility
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Eligibility' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/power:repower:
+    post:
+      operationId: repowerConnection
+      summary: Update an existing Power configuration
+      tags: [Power]
+      description: >-
+        Update the origin and/or config. Omitting `application_url` keeps the
+        current origin (unlike enable, which requires it).
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PowerConfigInput' }
+      responses:
+        '200':
+          description: Power updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  power: { $ref: '#/components/schemas/PowerConfig' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /power:
+    get:
+      operationId: listPoweredConnections
+      summary: List the caller app's powered connections
+      tags: [Power]
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      responses:
+        '200':
+          description: Powered connections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  power:
+                    type: array
+                    items: { $ref: '#/components/schemas/PowerConfig' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Connections (bulk) + Providers (zones)
+  /connections:bulk:
+    post:
+      operationId: bulkCreateConnections
+      summary: Create connections for a set of domains in one call
+      tags: [Connections]
+      description: >-
+        Fans out the same idempotent upsert as single-domain create. Each domain
+        is independent — a bad domain is reported `failed` and the batch
+        continues; a domain already connected under this app returns `already`.
+        Max 200 domains per call.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domains]
+              properties:
+                domains:
+                  type: array
+                  items: { type: string }
+                  maxItems: 200
+                batch_id: { type: string, description: correlates every domain connected in one session. }
+      responses:
+        '200':
+          description: Per-domain results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/BulkResult' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /providers/{provider}/zones:list:
+    post:
+      operationId: listProviderZones
+      summary: Enumerate the connectable domains a provider credential controls
+      tags: [Providers]
+      description: >-
+        For the bulk-connect picker. The credential is used once to list zones
+        and is never persisted here. `422` (`list_not_supported`) when the
+        adapter can't enumerate zones — the console degrades to single-domain
+        connect.
+      security:
+        - widgetJWT: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential:
+                  type: object
+                  required: [token]
+                  properties:
+                    token: { type: string, description: "Scoped provider API token; used once, never persisted." }
+      responses:
+        '200':
+          description: Zones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { type: string }
+                  zones:
+                    type: array
+                    items: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '422':
+          description: The provider can't enumerate zones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, examples: [list_not_supported] }
+                  provider: { type: string }
+                  message: { type: string }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Registrar (purchase flow)
+  /registrar/checkout:
+    post:
+      operationId: startDomainCheckout
+      summary: Start an embedded payment to buy a domain at retail
+      tags: [Registrar]
+      description: >-
+        Authorizes payment (manual capture) for a domain at the retail price.
+        Returns a Stripe checkout session whose `client_secret` drives the
+        embedded payment element. The domain is registered only after payment
+        completes via `POST /v1/registrar/fulfill`; the card is captured strictly
+        after the registrar settles, so a failed registration never charges the
+        buyer. `503` when purchasing is disabled on the deployment.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain, buyer, return_url]
+              properties:
+                domain: { type: string }
+                buyer:
+                  type: object
+                  required: [email]
+                  properties:
+                    name: { type: string }
+                    email: { type: string, format: email }
+                    country: { type: string, description: ISO 3166-1 alpha-2. }
+                return_url: { type: string, format: uri }
+      responses:
+        '200':
+          description: Stripe checkout session (embedded)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckoutSession' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /registrar/fulfill:
+    post:
+      operationId: fulfillDomainPurchase
+      summary: Finalize a domain purchase after the embedded payment completes
+      tags: [Registrar]
+      description: >-
+        Verifies the session, registers the domain, captures the charge, and
+        auto-connects the domain. Idempotent per session id (the Stripe webhook
+        drives the same path server-side, so a closed tab never strands a paid
+        session). `201` on first fulfillment, `200` on an idempotent replay.
+      security:
+        - widgetJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id: { type: string }
+      responses:
+        '200':
+          description: Already fulfilled (idempotent replay)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SellOrder' }
+        '201':
+          description: Purchased
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SellOrder' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '502':
+          description: "Registrar registration failed after payment authorization; the card authorization was released (code: registration_failed)."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /sell/orders/{id}:
+    get:
+      operationId: getSellOrder
+      summary: Read a persisted domain-purchase order's status by id
+      tags: [Registrar]
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SellOrderView' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Meta
+  /config:
+    get:
+      operationId: getConfig
+      summary: Public service discovery — advertised products and version
+      tags: [Meta]
+      security: []
+      responses:
+        '200':
+          description: Service capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service: { type: string }
+                  env: { $ref: '#/components/schemas/Environment' }
+                  version: { type: string }
+                  api_version: { type: string, examples: [v1] }
+                  products:
+                    type: array
+                    items: { type: string }
+                    examples: [[connect, secure, sell, power, monitor, mcp]]
+
+components:
+  securitySchemes:
+    managementKey:
+      type: http
+      scheme: bearer
+      description: Operator management key. Gates provisioning + reads across tenants.
+    provisionSecret:
+      type: apiKey
+      in: header
+      name: X-Provision-Secret
+      description: Narrow secret for the one-call signup provisioning endpoint (also accepted as a Bearer token).
+    apiKey:
+      type: http
+      scheme: bearer
+      description: 'Long-lived tenant API key (sk_live_… / sk_test_…), stored hashed. Scoped to the owning application''s tenant.'
+    widgetJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived widget JWT minted server-side via POST /v1/tokens. Scoped to one application (and optionally one domain).
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: 'Error envelope: {code, title, details}.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [code, title]
+      properties:
+        code: { type: string, description: 'stable machine code, e.g. invalid_request, unauthorized, not_found, service_unavailable, internal_error' }
+        title: { type: string, description: human-readable summary }
+        details: { type: string, description: optional extra context }
+    Environment:
+      type: string
+      enum: [production, staging, development]
+    Role:
+      type: string
+      enum: [owner, admin, member, viewer]
+    PlanId:
+      type: string
+      enum: [free, startup, growth, premium, enterprise]
+    SetupType:
+      type: string
+      description: How a connection reaches live.
+      enum: [automatic, manual, async, mcp]
+    ConnectionStatus:
+      type: string
+      enum: [pending, propagating, live, failed]
+    Tenant:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+    Application:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        name: { type: string }
+        environment: { $ref: '#/components/schemas/Environment' }
+        created_at: { type: string, format: date-time }
+    ApiKey:
+      type: object
+      required: [id, last4]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        last4: { type: string }
+        environment: { $ref: '#/components/schemas/Environment' }
+        created_at: { type: string, format: date-time }
+        revoked_at: { type: [string, 'null'], format: date-time }
+    Member:
+      type: object
+      required: [id, role, status]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        status: { type: string, enum: [invited, active] }
+        invite_token: { type: string, description: present only in the invite response; shown once }
+        created_at: { type: string, format: date-time }
+    DnsRecord:
+      type: object
+      required: [type, host, value]
+      properties:
+        type:
+          type: string
+          examples: [CNAME, APEXCNAME, A, AAAA, TXT, MX]
+          description: >-
+            DNS record type. `APEXCNAME` is the engine's provider-agnostic
+            CNAME-at-the-apex type (a plain CNAME is illegal at a zone apex);
+            it is realized to the host's native ALIAS / ANAME / flattened-CNAME
+            on write, and shown to users as `ALIAS` in manual instructions.
+        host: { type: string, description: fully-qualified record name }
+        value: { type: string }
+        ttl: { type: integer, default: 3600 }
+        priority: { type: [integer, 'null'], description: MX only }
+        applied: { type: boolean, description: true once written through a provider }
+    WritableRecord:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, examples: [CNAME, A, AAAA, TXT, MX, SPFM] }
+        host: { type: string, description: "relative label, apex, or fully-qualified" }
+        value: { type: string }
+        ttl: { type: integer, default: 3600 }
+        priority: { type: integer, description: MX only }
+        essential: { type: boolean, description: fail the apply if this record cannot be written }
+    Connection:
+      type: object
+      required: [id, domain, setup_type, status]
+      properties:
+        id: { type: string }
+        application_id: { type: string }
+        domain: { type: string }
+        host: { type: string, description: subdomain label; empty means the apex }
+        provider_id: { type: string, description: detected / applied DNS provider }
+        setup_type: { $ref: '#/components/schemas/SetupType' }
+        status: { $ref: '#/components/schemas/ConnectionStatus' }
+        managed:
+          type: boolean
+          description: >-
+            `true` when the connection opted into **managed mode** —
+            the control plane holds a durable, encrypted async grant and can
+            re-apply (`POST /v1/connections/{id}:reapply`) or revert
+            (`DELETE /v1/connections/{id}`) the template server-side without
+            re-consent. Omitted (treated as `false`) for the default use-once
+            connection.
+        created_at: { type: string, format: date-time }
+    ConnectionWithRecords:
+      allOf:
+        - { $ref: '#/components/schemas/Connection' }
+        - type: object
+          required: [records]
+          properties:
+            records:
+              type: array
+              items: { $ref: '#/components/schemas/DnsRecord' }
+    DomainCheck:
+      type: object
+      required: [domain, setup_type]
+      properties:
+        domain: { type: string }
+        provider: { type: [string, 'null'] }
+        setup_type: { $ref: '#/components/schemas/SetupType' }
+        supports_automatic: { type: boolean }
+        oauth_available: { type: boolean, description: the OAuth-into-provider rail can be offered }
+        domain_connect: { type: boolean, description: the provider answered one-click setup discovery }
+        registered: { type: boolean }
+        authoritative_dns_provider: { type: [string, 'null'] }
+        ns_support:
+          type: object
+          properties:
+            root: { type: boolean }
+            subdomains: { type: boolean }
+        wildcard_support: { type: boolean }
+        cname_flattening: { type: boolean }
+        spf_override_support: { type: boolean }
+        caa_support: { type: boolean }
+        supports_social_login: { type: string, description: 'yes | no | n-a' }
+        record_conflicts:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, description: 'value-mismatch | cname-collision | spf-merge' }
+              host: { type: string }
+              type: { type: string }
+              existing: { type: string }
+              desired: { type: string }
+    ProviderInfo:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        rail: { type: string, description: 'dc | oauth | api | manual' }
+        oauth: { type: boolean }
+    Usage:
+      type: object
+      properties:
+        period: { type: string, examples: ['2026-07'] }
+        plan: { $ref: '#/components/schemas/PlanId' }
+        used: { type: integer, description: metered domain connections this period }
+        limit: { type: integer, description: the plan's included quota }
+    WebhookEndpoint:
+      type: object
+      required: [id, url]
+      properties:
+        id: { type: string }
+        application_id: { type: string }
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string }
+        secret:
+          type: [string, 'null']
+          description: >-
+            Present ONLY in the creation response (whsec_…). Deliveries are
+            signed with it: each POST carries X-JE-Timestamp (unix seconds) and
+            X-JE-Signature (sha256=hex of HMAC-SHA256 over "<timestamp>.<rawBody>").
+            Reject deliveries whose timestamp is outside a ~5-minute window.
+        created_at: { type: string, format: date-time }
+    WebhookDelivery:
+      type: object
+      required: [id, event_type]
+      properties:
+        id: { type: string }
+        endpoint_id: { type: string }
+        application_id: { type: string }
+        url: { type: string, format: uri }
+        event_id: { type: string }
+        event_type: { type: string }
+        domain: { type: string }
+        attempts: { type: integer }
+        status_code: { type: integer, description: HTTP status of the final attempt (0 = no response) }
+        delivered: { type: boolean }
+        error: { type: string }
+        created_at: { type: string, format: date-time }
+    CertStatus:
+      type: string
+      enum: [pending, issued, renewing, failed, revoked]
+    Certificate:
+      type: object
+      required: [domain, status, managed]
+      properties:
+        id: { type: string }
+        domain: { type: string }
+        application_id: { type: string }
+        status: { $ref: '#/components/schemas/CertStatus' }
+        issuer: { type: string }
+        not_before: { type: string, format: date-time }
+        not_after: { type: string, format: date-time }
+        last_error: { type: string, description: most recent issuance/renewal failure; empty when healthy. }
+        managed: { type: boolean, description: 'true = edge auto-manages (ACME); false = operator-imported.' }
+        renew_after: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Eligibility:
+      type: object
+      required: [domain, eligible]
+      properties:
+        domain: { type: string }
+        eligible: { type: boolean }
+        reason: { type: string, description: "why not, when ineligible; empty when eligible." }
+    PowerConfig:
+      type: object
+      required: [connection_id, domain, powered, www_redirect]
+      properties:
+        connection_id: { type: string }
+        domain: { type: string }
+        origin: { type: string, description: the URL the edge reverse-proxies to. }
+        powered: { type: boolean, description: true when an origin is registered. }
+        www_redirect: { type: boolean, description: serve an apex↔www redirect. }
+        redirect_to: { type: string, description: "when set, the edge 301s the host here." }
+        root_path_access:
+          type: array
+          items: { type: string }
+    PowerConfigInput:
+      type: object
+      properties:
+        application_url: { type: string, format: uri, description: 'origin the edge proxies to; required to enable, optional to re-power (kept if omitted).' }
+        www_redirect: { type: boolean }
+        redirect_to: { type: string, description: set to a URL to 301 the host there; "" clears it. }
+        root_path_access:
+          type: array
+          items: { type: string }
+    BulkResult:
+      type: object
+      required: [domain, status]
+      properties:
+        domain: { type: string }
+        connection_id: { type: string }
+        status: { type: string, enum: [connected, already, failed] }
+        message: { type: string }
+    CheckoutSession:
+      type: object
+      description: A Stripe Checkout session for the embedded payment element.
+      required: [id]
+      properties:
+        id: { type: string, examples: [cs_test_123] }
+        url: { type: string, format: uri, description: hosted checkout URL (unused for embedded sessions). }
+        client_secret: { type: string, description: mount Stripe Embedded Checkout with this. }
+    SellOrderView:
+      type: object
+      description: The stable, documented projection of a domain-purchase order.
+      required: [orderId, domain, status]
+      properties:
+        orderId: { type: string, examples: [ord_1a2b3c] }
+        domain: { type: string }
+        registrar: { type: string }
+        status: { type: string, enum: [quoted, purchased, transferred, failed] }
+        regOrderId: { type: string, description: "the registrar's order reference, once purchased." }
+        jobId: { type: string }
+        link: { type: string, description: "sharing-rail checkout URL, if any." }
+        freeDomain: { type: boolean, description: promo (first-domain-free) registration. }
+    SellOrder:
+      type: object
+      description: >-
+        The finalized order record returned by fulfillment. Its stable,
+        documented projection is available via `GET /v1/sell/orders/{id}`
+        (`SellOrderView`); additional internal fields may be present here.
+      additionalProperties: true
+      properties:
+        Domain: { type: string }
+        Registrar: { type: string }
+        RegOrderID: { type: string }
