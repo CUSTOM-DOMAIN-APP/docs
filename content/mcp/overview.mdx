@@ -59,7 +59,8 @@ The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
 - **`stdio`** (default) — line-delimited JSON-RPC on stdin/stdout, one message
   per line. This is what a locally-launched host (or `mcp-remote`) uses when it
   runs the server as a subprocess. It authenticates with a single static
-  control-plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
+  control-plane credential (`-bearer`, or `CUSTOMDOMAIN_API_TOKEN` — the legacy
+  `JUSTEASY_API_TOKEN` is still read as a fallback).
 - **`http`** — a Streamable-HTTP style endpoint. Three routes:
 
   | Route | Purpose |

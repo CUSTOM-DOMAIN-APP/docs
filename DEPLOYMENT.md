@@ -3,8 +3,9 @@
 This repo now ships a standalone renderer for its own `content/` at
 [`site/`](site/) (Fumadocs + Next.js — see [`site/README.md`](site/README.md)).
 The infra side (container + reverse proxy) lives in the `custom-domains` repo,
-matching its existing single-box Caddy + Docker Compose pattern exactly —
-see [CUSTOM-DOMAIN-APP/custom-domains#78](https://github.com/CUSTOM-DOMAIN-APP/custom-domains/pull/78).
+matching its existing single-box Caddy + Docker Compose pattern exactly. That
+repo is private, so the pull request that introduced it is not linkable from
+here; what it added is described in full below.
 
 This doc covers what changed operationally and the one manual step a human
 still has to do.
@@ -36,8 +37,8 @@ This mirrors how every other service in that file is built (`context:
 deploy time — nothing is pulled from a container registry, matching the
 existing all-built-on-host pattern for this single-box deployment. The
 difference is that this source lives in a **different repo**, so the host
-needs a checkout of it at `<custom-domains checkout>/../docs` (e.g.
-`/home/ubuntu/docs` next to `/home/ubuntu/justeasy`).
+needs a checkout of it as a sibling directory of the product checkout — i.e.
+`<custom-domains checkout>/../docs`.
 
 `CUSTOM-DOMAIN-APP/docs` is a **public** repo, so this is a plain
 unauthenticated clone — no deploy key, no new secret, no new credential
@@ -70,9 +71,8 @@ it just doesn't auto-update yet.
 
 ## The one manual step: DNS
 
-Everything else (the container, the reverse-proxy block, TLS — see
-[CUSTOM-DOMAIN-APP/custom-domains#78](https://github.com/CUSTOM-DOMAIN-APP/custom-domains/pull/78))
-is ready to go the moment DNS resolves. The **only remaining manual step** is
+Everything else — the container, the reverse-proxy block, TLS — is ready to go
+the moment DNS resolves. The **only remaining manual step** is
 adding one DNS record in the Cloudflare dashboard for the `customdomain.ai`
 zone:
 
