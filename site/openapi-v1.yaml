@@ -2505,10 +2505,24 @@ components:
         error_code:
           type: string
           description: >-
-            The last failure reason recorded for this connection by the
-            propagation poller or apply rail. Omitted when healthy or never
-            failed; cleared when the connection re-verifies.
-        error_message: { type: string, description: Human-readable detail for `error_code`. Omitted when there is none. }
+            The last failure reason recorded for this connection, from whichever
+            path failed — not only the background poller. It is persisted by:
+            the propagation poller / `:recheck` verification (e.g.
+            `propagation_timeout`, `setup_incomplete`, `domain_already_connected`);
+            the foreground apply on `POST /connections/{id}/apply` (e.g.
+            `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
+            `apex_not_supported`); the OAuth callback; and the Domain Connect
+            async callback (both e.g. `provider_unavailable`,
+            `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or
+            the provider's own `error` parameter). Rejected request validation
+            (`400`) is deliberately NOT recorded here — a malformed request is
+            not a connection failure. Omitted when healthy or never failed;
+            cleared when the connection next verifies.
+        error_message:
+          type: string
+          description: >-
+            Human-readable detail for `error_code`. Populated on the same paths
+            and cleared alongside it. Omitted when there is none.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }
