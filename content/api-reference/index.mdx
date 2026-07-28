@@ -6,8 +6,9 @@ description: Base URL, auth schemes, versioning, the error envelope, and the ful
 Base URL (local): `http://localhost:8080/v1`. All requests and responses are
 JSON. The pages below this one are **generated** from the OpenAPI document
 `openapi-v1.yaml` (see [how this stays in sync](#keeping-this-in-sync)) — this
-page is the only hand-written one in the section. The control-plane also serves
-the machine-readable document live at `GET /v1/openapi.json`.
+page is the only hand-written one in the section. The control-plane serves a
+generated copy of that same document live at `GET /v1/openapi.json`; CI fails
+if the two ever disagree.
 
 ## Discovery endpoints
 
@@ -48,7 +49,7 @@ so an integration can react specifically:
 
 | `code` | HTTP | Meaning |
 | --- | --- | --- |
-| `quota_exceeded` | 402 | The plan's included quota is used up. Gated on the deployment (`BILLING_ENFORCE_QUOTA`) — not confirmed enforced on the hosted service today; see [Plans & quotas](/docs/billing/plans-and-quotas#metered-usage). |
+| `quota_exceeded` | 402 | The plan's monthly quota is used up. Only `free` is hard-capped, and only where `BILLING_ENFORCE_QUOTA` is on (it is on the hosted service) — no paid tier is ever refused; see [Plans & quotas](/docs/billing/plans-and-quotas#overage). |
 | `InvalidNameservers` | 422 | The domain has no usable nameserver delegation, so its DNS provider can't be determined. |
 | `ProviderAuthenticationError` | 422 | The end-user's DNS provider rejected the authorization or credential. |
 | `apex_not_supported` | 422 | The domain's provider has no ALIAS/ANAME/flattened-CNAME apex capability (see [Apex domains](/docs/dns/providers#apex-root-domains)). |
@@ -78,7 +79,37 @@ sync when a code changes.
 
 ## Keeping this in sync
 
-`openapi-v1.yaml` is the single source of truth for the wire contract — this
-reference, and request validation, derive from it. Every change to the spec
-regenerates these pages, so the reference can never drift from the API, and the
-same document is served live at `GET /v1/openapi.json`.
+`openapi-v1.yaml` is the single source of truth for the wire contract. Two
+things are generated from it, and they are kept honest in different ways.
+
+**The served document.** `GET /v1/openapi.json` does not read the YAML at
+runtime — the control-plane embeds its own copy
+(`services/control-plane/internal/api/openapi.json`) into the binary so the
+endpoint needs no filesystem and no build step. That copy is **generated** from
+`openapi-v1.yaml`, and CI (the `openapi-sync` job, running
+`infra/scripts/check-openapi-sync.sh`) fails any change where the two are not
+byte-identical after canonical rendering. So the served JSON and this reference
+always describe the same contract — but they are two files, and the YAML is the
+one to edit. After changing it, run:
+
+```bash
+infra/scripts/check-openapi-sync.sh --write
+```
+
+and commit the regenerated JSON alongside. Editing the JSON directly is a
+mistake the gate will catch: a hand-patch there is invisible to `npm run
+lint:openapi` and to these pages. (That is not hypothetical — before the gate
+existed, the two files had drifted in *both* directions at once, each holding
+`DomainCheck` fields the other lacked.)
+
+**These reference pages.** They are rendered from the same YAML by
+`npm run gen:api` and the output is committed, so a spec change shows up as a
+reviewable docs diff. That regeneration is a **contributor step, not a CI
+gate** — re-run it in the same PR as any spec change (see `AGENTS.md`, "Docs
+stay in sync"). `next build` will fail on a spec the renderer cannot load, but
+it will not tell you that a committed page is one revision stale.
+
+Note that nothing validates *requests* against this document: the control-plane
+hand-writes its request decoding (with unknown fields rejected). The spec is the
+contract of record, not the enforcement mechanism — which is exactly why the
+drift gate above matters.

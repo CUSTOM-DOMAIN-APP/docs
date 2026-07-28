@@ -34,14 +34,19 @@ with an `sk_` key, app-scoped with a widget JWT) and
 | `connection.records.updated` | A [managed](/docs/connect-flow/managed-connections) connection was re-applied (`POST /v1/connections/{id}:reapply`); its desired records were re-written and the connection re-verified. |
 | `connection.reapply.failed` | A managed re-apply push failed; if the stored grant was revoked, the connection is flagged for re-consent. |
 | `connection.disconnected` | A connection was disconnected (`DELETE /v1/connections/{id}`); for a managed connection the template was reverted through the grant first. |
-| `connection.records_outdated` | A fleet-wide reconciliation pass found a non-managed connection on an older desired-record generation; carries a heal/reconnect link (see [Managed connections](/docs/connect-flow/managed-connections#fleet-wide-re-apply-drift-after-an-edge-change)). |
+| `connection.records_outdated` | A fleet-wide reconciliation pass found a non-managed connection whose applied records were computed against a superseded edge target; the envelope carries a `connect_link` to re-run setup (see [Managed connections](/docs/connect-flow/managed-connections#fleet-wide-re-apply-drift-after-an-edge-change)). |
 | `domain.record_missing` | Monitor saw a baseline record disappear or get repointed (drift). |
 | `domain.record_restored` | A previously missing baseline record is observed again. |
 | `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed — the domain is registered (and only then is the card captured). |
+| `purchase.error` | A purchase failed; the card authorization was released. |
+| `purchase.confirmation.expired` | A pending purchase's checkout session timed out unpaid — the buyer never confirmed. Release the cart. |
+| `secure_status` | A certificate's provisioning status changed (`secure_status` on the envelope). |
+| `power_status` | A reverse-proxy host's provisioning status changed (`power_status` on the envelope). |
 
-You may subscribe to any event string; the broader vocabulary the platform can
-emit also includes `domain.flow.completed`, `domain.propagation.timeout`, and the
-Sell/Secure/Power status events.
+That table is the **complete** vocabulary: it is exactly the set the platform can
+emit, and the `events` enum in the [OpenAPI spec](/v1/openapi.json) matches it.
+An unknown event string is still accepted at registration, but it can never be
+delivered — subscribe only to the events above.
 
 > **Status:** the drift events (`domain.record_missing` / `domain.record_restored`)
 > are produced by the hourly Monitor sweep, which **delivers** them only where
@@ -74,6 +79,14 @@ Deliveries are a flat JSON object:
 `propagation_status` is `pending`, `success`, or `timeout`. On propagation
 events, `data` carries the per-record propagated / non-propagated arrays. Fields
 that don't apply to an event are omitted.
+
+Two more conditional fields ride connection events:
+
+- `updated_objects` — the records a write actually created or changed. Present on
+  `connection.applied` and `connection.records.updated` only; the events that just
+  observe a connection never claim to have written anything.
+- `redirection_status` — `pending`, `success` or `failed` for the apex↔www
+  redirect, and present only on connections created with `www_redirect: true`.
 
 ## Delivery & retries
 
