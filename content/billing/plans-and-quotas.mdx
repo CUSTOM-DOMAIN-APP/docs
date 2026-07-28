@@ -36,9 +36,9 @@ sold (Free's 1/month is 12/year effective).
 > deployment switch.** The plan property is `hard_cap`, and it is `true` only on
 > `free` — see [Overage](#overage) for why no paid tier is ever refused. The
 > switch is `BILLING_ENFORCE_QUOTA`: `infra/docker-compose.prod.yml` ships it
-> defaulted to `1`, so the hosted service does enforce, and `0` runs meter-only
-> everywhere. Both must hold, so a paid tier is never refused under any
-> deployment setting. Note the gate also fails **open** by design even when
+> defaulted to `0`, so the hosted service runs meter-only and refuses nothing;
+> `1` turns enforcement on. Both must hold, so a paid tier is never refused under
+> any deployment setting. Note the gate also fails **open** by design even when
 > enabled: a billing subscribe/subscription/usage lookup error allows the
 > connect rather than blocking a customer during a billing outage. The gate is
 > `enforceQuota` in `services/control-plane/internal/api/billing.go`; the
