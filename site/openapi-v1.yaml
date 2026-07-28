@@ -470,6 +470,13 @@ paths:
         `spf_override_support`, `caa_support`), social-login support, and any
         `record_conflicts` observed in public DNS. Unknown providers degrade to
         `setup_type: manual`.
+
+
+        Apex pre-flight: `apex_supported` reports whether the provider can host
+        a CNAME-like record at the zone root, and `apex_message` is returned
+        when this particular target needs one the provider cannot host — so an
+        apex connection that would be refused at apply time is refused here
+        instead, before any connection is created.
       security:
         - widgetJWT: []
       requestBody:
@@ -510,8 +517,60 @@ paths:
             schema:
               type: object
               required: [domain]
+              description: >-
+                The body is decoded with unknown fields REJECTED, so the
+                properties below are exactly the accepted set — any other key is
+                a `400`. Everything besides `domain` is optional.
               properties:
                 domain: { type: string }
+                application_url:
+                  type: string
+                  format: uri
+                  description: >-
+                    Origin the edge reverse-proxies this connection's traffic to
+                    (Power). Validated on the way in — it must be an absolute
+                    `http(s)` URL with a public host; private, loopback and
+                    cloud-metadata targets are rejected with a `400`. Omit to
+                    leave the edge on its own router.
+                www_redirect: { type: boolean, default: false, description: Serve an apex↔www redirect for this connection. }
+                override_spf: { type: boolean, default: false, description: Replace rather than merge an existing SPF record. }
+                validate_dmarc: { type: boolean, default: false, description: Check DMARC as part of verification. }
+                validate_caa:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Check CAA before issuing certificates; also adds the two
+                    Let's Encrypt-authorizing apex CAA records to the
+                    connection's desired record set.
+                monitor:
+                  type: boolean
+                  default: true
+                  description: >-
+                    Enrol the domain in drift monitoring: once the connection
+                    goes live the control plane registers a drift watch and the
+                    hourly sweeper re-checks the connection's DNS records,
+                    emitting `domain.record.missing` / `domain.record.restored`
+                    when they change. Unlike the four flags above this one
+                    DEFAULTS TO TRUE — omitting it enrols the domain. That is
+                    deliberate back-compat: the watch used to be registered
+                    unconditionally, so every connection created before this
+                    flag was honoured is monitored, and every existing
+                    integrator omits the field. Send `false` to opt a connection
+                    out; the value is echoed on the connection and is the only
+                    thing that decides whether the watch is registered.
+                batch_id:
+                  type: string
+                  description: >-
+                    Caller-supplied id correlating every domain connected in one
+                    multi-domain session. Stamped on each connection and echoed
+                    back; empty for a standalone connect. Set once at create.
+                end_user_ref:
+                  type: string
+                  description: >-
+                    The integrator's OWN identifier for the end user this connect
+                    is attributed to, so the console can render "Connected by …"
+                    and search by customer. Empty ⇒ a console/direct connect.
+                    Set once at create and never mutated.
       responses:
         '201':
           description: Connection created
@@ -531,8 +590,20 @@ paths:
       tags: [Connections]
       description: >-
         With an `sk_` API key: every connection across the tenant's applications
-        (optional `?app_id=` and `?status=` filters). With a widget JWT: the
-        calling application's connections.
+        (optional `?app_id=` and `?status=` filters). With a widget JWT or a
+        delegated agent token: the calling application's connections (`app_id` is
+        ignored — the scope is fixed to that application).
+
+
+        **The response is paginated and always bounded.** `limit` defaults to 500
+        and is clamped to 1000; `next_cursor` is present **only** when more rows
+        remain. To read every connection, follow `next_cursor` until it is
+        absent. Counting rows client-side is not required — see
+        `GET /connections:count`.
+
+
+        A `status` outside the enum is rejected with **400** (it used to reach
+        the database and surface as a 500).
       security:
         - apiKey: []
         - widgetJWT: []
@@ -542,6 +613,18 @@ paths:
           in: query
           required: false
           schema: { $ref: '#/components/schemas/ConnectionStatus' }
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page. Defaults to 500; values above 1000 are clamped to 1000.
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque keyset cursor taken verbatim from a previous response's
+            `next_cursor`. Omit for the first page.
+          schema: { type: string }
       responses:
         '200':
           description: Connections
@@ -554,7 +637,69 @@ paths:
                   connections:
                     type: array
                     items: { $ref: '#/components/schemas/Connection' }
-                  count: { type: integer }
+                  count:
+                    type: integer
+                    description: Rows in THIS page, not the tenant total.
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as
+                      `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /connections:count:
+    get:
+      operationId: countConnections
+      summary: Count the tenant's connections (no rows)
+      tags: [Connections]
+      description: >-
+        The tenant's connection histogram, computed server-side in one grouped
+        query. Use this instead of paging `GET /connections` when you only need
+        totals — dashboards, quota meters, per-application domain counts. The
+        numbers are exact regardless of how many connections the tenant has.
+
+
+        `by_status` carries only statuses that actually occur: an absent key
+        means **zero**, never "unknown". Optional `?app_id=` / `?status=` narrow
+        the aggregate exactly as they narrow the list; a `status` outside the
+        enum is rejected with **400**.
+
+
+        API key only — this is a tenant-wide aggregate, so a per-application
+        widget JWT cannot read it.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ConnectionStatus' }
+      responses:
+        '200':
+          description: Connection counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, by_status, by_application]
+                properties:
+                  total: { type: integer }
+                  by_status:
+                    type: object
+                    additionalProperties: { type: integer }
+                  by_application:
+                    type: array
+                    items:
+                      type: object
+                      required: [application_id, total, by_status]
+                      properties:
+                        application_id: { type: string }
+                        total: { type: integer }
+                        by_status:
+                          type: object
+                          additionalProperties: { type: integer }
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
   /connections/{id}:
     get:
@@ -723,15 +868,56 @@ paths:
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
-          description: Re-applied (records updated)
+          description: >-
+            Re-applied (records updated). NOTE: this is a re-apply RECEIPT, not a
+            connection object — it carries `connection_id` rather than the
+            connection's own `id`, and none of the other connection fields. Fetch
+            `GET /connections/{id}` if you need the connection itself.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
+              schema: { $ref: '#/components/schemas/ReapplyResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked; re-consent required" }
         '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}:recheck:
+    post:
+      operationId: recheckConnection
+      summary: Check a connection's DNS now, and report what public DNS answered
+      tags: [Connections]
+      description: >-
+        Resolves every record the connection is verified against **in-request**,
+        against live public DNS, and returns a per-record verdict — this is the
+        verb behind a "check now" button, as opposed to `GET /connections/{id}`,
+        which only reports what the background propagation poller last saw.
+
+
+        It also advances the connection: a `pending` or `propagating` connection
+        whose records are all visible is promoted to `live` here rather than on
+        the poller's next pass, and a **`failed`** connection is re-entered into
+        verification (`failed` → `pending`) with its lifecycle timeout clock
+        re-based off the retry — without that re-basing the retry would re-fail
+        immediately, since the connection is `failed` precisely because it aged
+        past that window. A `live` connection is reported on but never
+        transitioned: `records_resolved: false` on a live connection is a drift
+        signal.
+
+
+        Idempotent and safe to call repeatedly.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The connection after the check, plus what the check found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecheckResult' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { description: "A failed connection cannot be retried because the same application already has another active connection for this domain; retry that one instead" }
   /connections/{id}/oauth:start:
     post:
       operationId: startConnectionOAuth
@@ -884,6 +1070,17 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            The target is a root (apex) domain that the selected template cannot
+            serve. Branch on `code`: `apex_template_required` means the named
+            template is `hostRequired` (or no apex-capable template is loaded) —
+            retry without `service_id`, or pass a `host` to set up a subdomain
+            instead. `InvalidNameservers` means the domain has no usable NS
+            delegation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------------- Sharing
@@ -937,7 +1134,151 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+  /openapi.json:
+    # API-13: the document serves itself, and omitting it from itself meant an
+    # integrator had no documented way to fetch the reference at runtime.
+    get:
+      operationId: getOpenAPISpec
+      summary: This OpenAPI document
+      tags: [Meta]
+      security: []
+      description: >-
+        Returns this specification as JSON. Public and unauthenticated, cached
+        for 5 minutes. It is the same document published at
+        `apps/app/openapi-v1.yaml`, converted to JSON at build time and embedded
+        in the binary, so the served copy can never drift from the source.
+      responses:
+        '200':
+          description: The OpenAPI 3.1 document.
+          content:
+            application/json:
+              schema: { type: object }
+
+  /applications/{id}/edge-secret:rotate:
+    post:
+      operationId: rotateEdgeSecret
+      summary: Rotate an application's edge auth secret
+      tags: [Applications]
+      description: >-
+        Mints a new `edge_auth_secret` for the application and invalidates the
+        previous one immediately — there is no overlap window, so the edge must
+        be reconfigured with the returned value before it can authenticate
+        again. Requires `app:write` (member and above); a widget token cannot
+        call it. The secret is returned once and is not retrievable afterwards.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          description: Application id.
+      responses:
+        '200':
+          description: The new secret. Store it now — it is never shown again.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [application_id, edge_auth_secret]
+                properties:
+                  application_id: { type: string }
+                  edge_auth_secret:
+                    type: string
+                    description: The new shared secret. Shown exactly once.
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /billing/setup:
+    post:
+      operationId: startCardSetup
+      summary: Start a Stripe Checkout session to save a payment method
+      tags: [Billing]
+      description: >-
+        Opens a Stripe Checkout session in `setup` mode — it saves a card
+        WITHOUT charging it. This is the card-on-file flow that agent purchases
+        and domain buys draw against later; it is not a plan purchase (see
+        `/billing/checkout` for that). Requires `billing:manage` (owner).
+
+        Supply EITHER `return_url` for the embedded flow, OR both `success_url`
+        and `cancel_url` for the hosted redirect flow. Supplying neither is a
+        400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                return_url:
+                  type: string
+                  description: Embedded flow — where Checkout returns the user.
+                success_url:
+                  type: string
+                  description: Hosted redirect flow; requires cancel_url too.
+                cancel_url:
+                  type: string
+                  description: Hosted redirect flow; requires success_url too.
+      responses:
+        '200':
+          description: The Checkout session. Embedded flows read `client_secret`; redirect flows read `url`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  url:
+                    type: string
+                    description: Hosted Checkout URL (redirect flow).
+                  client_secret:
+                    type: string
+                    description: Embedded Checkout client secret (return_url flow).
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /telemetry:connect:
+    post:
+      operationId: recordConnectTelemetry
+      summary: Widget funnel beacon (fire-and-forget)
+      tags: [Connect]
+      description: >-
+        A PII-free beacon recording which step of the in-modal connect flow a
+        user reached. It exists because server-side counters only observe
+        connections that actually get created, and so are blind to
+        pre-connection drop-off.
+
+        It stores nothing, reads nothing, and increments a server-side counter
+        only. `step` and `outcome` are allow-listed server-side and anything
+        unrecognised is discarded. It **always** answers `204`, including for an
+        invalid token or a malformed body, so telemetry can never block or error
+        the widget — do not branch on its response.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                step: { type: string, description: 'Funnel step label (server-side allow-list).' }
+                outcome: { type: string, description: 'Outcome label (server-side allow-list).' }
+      responses:
+        '204':
+          description: Always. Carries no body and reports no error by design.
+
   /share/{token}:
+    # API-13: this route is served at the ROOT, not under /v1. The document's
+    # global `servers` are /v1-suffixed, and without this override the published
+    # URL resolved to /v1/share/{token} — which 404s. The router
+    # (`mux.HandleFunc("GET /share/{token}", …)`), the console's proxy
+    # (`${CP_BASE}/share/${token}`) and the integration tests all agree on the
+    # root path, so the SPEC was the thing that was wrong. Moving the route
+    # instead would break every share link already minted by
+    # POST /v1/sharing/connect.
+    servers:
+      - url: https://api.customdomain.ai
+        description: Hosted control-plane (share links are not under /v1)
+      - url: http://localhost:8080
+        description: Local control-plane
     get:
       operationId: getSharedFlow
       summary: Read a share link's server-side prefill (token is the bearer credential)
@@ -1204,26 +1545,21 @@ paths:
                   type: array
                   description: >-
                     Event types to subscribe to; empty subscribes to all events,
-                    and `"*"` also matches all. `connection.records.updated` /
-                    `connection.reapply.failed` / `connection.disconnected` cover
-                    the managed (async one-click) re-apply and disconnect
-                    lifecycle.
+                    and `"*"` also matches all. Every value listed here has a
+                    producer — the enum is asserted against the emit sites in CI,
+                    so you can never subscribe to an event that cannot arrive.
+                    `connection.records.updated` / `connection.reapply.failed` /
+                    `connection.disconnected` cover the managed (async one-click)
+                    re-apply and disconnect lifecycle.
                   items:
                     type: string
                     enum:
                       - '*'
-                      - domain.added
-                      - domain.flow.completed
-                      - domain.propagation.timeout
                       - domain.record_missing
                       - domain.record_restored
                       - domain.purchased
                       - purchase.error
                       - purchase.confirmation.expired
-                      - domain.transfer.in.initiated
-                      - domain.transfer.in.completed
-                      - domain.transfer.out.initiated
-                      - domain.transfer.out.completed
                       - secure_status
                       - power_status
                       - connection.created
@@ -1232,6 +1568,7 @@ paths:
                       - connection.failed
                       - connection.records.updated
                       - connection.reapply.failed
+                      - connection.records_outdated
                       - connection.disconnected
       responses:
         '201':
@@ -1961,6 +2298,15 @@ paths:
                   api_version: { type: string, examples: [v1] }
                   products:
                     type: array
+                    description: >-
+                      The products THIS deployment actually serves, not the full
+                      catalog. "connect" and "mcp" are always present; "secure"
+                      appears only when SECURE_ENABLED is set, "power" only when
+                      POWER_ENABLED is set, "sell" only when a registrar is
+                      configured, and "monitor" only when a DNS resolver is
+                      wired. Absent products answer 503 not-configured on every
+                      route. Per-tenant plan entitlements are not reflected here
+                      — this endpoint is unauthenticated.
                     items: { type: string }
                     examples: [[connect, secure, sell, power, monitor, mcp]]
 
@@ -2104,6 +2450,79 @@ components:
             re-consent. Omitted (treated as `false`) for the default use-once
             connection.
         created_at: { type: string, format: date-time }
+        last_checked_at:
+          type: string
+          format: date-time
+          description: >-
+            When the propagation poller last examined this connection. Omitted
+            until the first check.
+        # --- Config flags echoed back from create (always present) ---
+        # These five carry no omitempty on the wire, so they are on EVERY
+        # connection response, `false` included.
+        www_redirect: { type: boolean, description: Serve an apex↔www redirect. Echoed from create. }
+        override_spf: { type: boolean, description: Replace rather than merge an existing SPF record. Echoed from create. }
+        validate_dmarc: { type: boolean, description: Check DMARC as part of verification. Echoed from create. }
+        validate_caa: { type: boolean, description: Check CAA before issuing certificates. Echoed from create. }
+        monitor:
+          type: boolean
+          default: true
+          description: >-
+            Whether the domain is enrolled in drift monitoring. Echoed from
+            create, where it defaults to true when omitted, and honoured: the
+            drift watch is registered when the connection goes live only if this
+            is true. Connections created before the flag was honoured read true
+            (they were monitored unconditionally, and were backfilled), so this
+            is false only where a caller explicitly opted out.
+        batch_id:
+          type: string
+          description: >-
+            The multi-domain session this connection was created in. Omitted for
+            a standalone connect.
+        end_user_ref:
+          type: string
+          description: >-
+            The integrator's own identifier for the end user who connected this
+            domain. Omitted for a console/direct connect.
+        # --- Secure / Power config (set via /ssl and /power, not at create) ---
+        secure_root_domain:
+          type: boolean
+          description: >-
+            The edge also issues/secures the registrable apex alongside this
+            subdomain connection. Omitted (treated as `false`) when unset.
+        redirect_to:
+          type: string
+          format: uri
+          description: >-
+            URL the edge 301s this host to (Power redirect target). Omitted when
+            the connection is not a redirect.
+        power_root_path_access:
+          type: array
+          items: { type: string }
+          description: >-
+            URL paths the edge may static-serve at the root (Power root-path
+            access). Omitted when none are configured.
+        # --- Failure diagnosis ---
+        error_code:
+          type: string
+          description: >-
+            The last failure reason recorded for this connection, from whichever
+            path failed — not only the background poller. It is persisted by:
+            the propagation poller / `:recheck` verification (e.g.
+            `propagation_timeout`, `setup_incomplete`, `domain_already_connected`);
+            the foreground apply on `POST /connections/{id}/apply` (e.g.
+            `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
+            `apex_not_supported`); the OAuth callback; and the Domain Connect
+            async callback (both e.g. `provider_unavailable`,
+            `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or
+            the provider's own `error` parameter). Rejected request validation
+            (`400`) is deliberately NOT recorded here — a malformed request is
+            not a connection failure. Omitted when healthy or never failed;
+            cleared when the connection next verifies.
+        error_message:
+          type: string
+          description: >-
+            Human-readable detail for `error_code`. Populated on the same paths
+            and cleared alongside it. Omitted when there is none.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }
@@ -2113,11 +2532,93 @@ components:
             records:
               type: array
               items: { $ref: '#/components/schemas/DnsRecord' }
+    RecheckResult:
+      allOf:
+        - { $ref: '#/components/schemas/ConnectionWithRecords' }
+        - type: object
+          description: >-
+            The body of `POST /connections/{id}:recheck`. Unlike `ReapplyResult`
+            this IS a connection — the full `ConnectionWithRecords` shape, so it
+            is a drop-in replacement for a `GET /connections/{id}` response —
+            with the check's own findings attached.
+          required: [checked, records_resolved, retried, previous_status]
+          properties:
+            checked:
+              type: array
+              description: >-
+                Per-record verdict for the set that was resolved: the persisted
+                records when the connection has any, otherwise (for a `pending`
+                manual connection nobody wrote records for) the synthesized
+                desired set.
+              items:
+                allOf:
+                  - { $ref: '#/components/schemas/DnsRecord' }
+                  - type: object
+                    required: [resolved]
+                    properties:
+                      resolved:
+                        type: boolean
+                        description: Public DNS answered with this record's expected value at check time.
+            records_resolved:
+              type: boolean
+              description: >-
+                True only when EVERY entry in `checked` resolved. An empty
+                `checked` is `false` — nothing to verify is not "everything
+                verified".
+            retried:
+              type: boolean
+              description: >-
+                True when this call re-entered a `failed` connection into
+                verification (re-basing its timeout clock), rather than
+                re-checking a connection that was already in flight.
+            previous_status:
+              type: string
+              enum: [pending, propagating, live, failed]
+              description: The status the connection held when the request arrived.
+    ReapplyResult:
+      type: object
+      description: >-
+        The receipt returned by `POST /connections/{id}:reapply`. It is
+        deliberately NOT a `Connection`: the re-apply endpoint reports the
+        outcome of the provider write and the record set that was written, and
+        carries no other connection state.
+      required: [connection_id, reapplied, records]
+      properties:
+        connection_id:
+          type: string
+          description: The connection the re-apply ran against (the `{id}` path parameter).
+        reapplied:
+          type: boolean
+          description: >-
+            Always `true` on a `200` — the provider accepted the write for every
+            template in the grant's bundle. Failures are reported as `409`
+            (not managed / grant revoked), `503` (managed rail unavailable) or
+            `500`, never as `reapplied: false`.
+        records:
+          type: array
+          description: >-
+            The authoritative desired record set as recomputed and written —
+            the materialized template records for a template bundle, otherwise
+            the connection's default desired set.
+          items: { $ref: '#/components/schemas/DnsRecord' }
     DomainCheck:
       type: object
       required: [domain, setup_type]
       properties:
         domain: { type: string }
+        subdomain:
+          type: string
+          description: >-
+            Server's authoritative Public-Suffix-List parse verdict: the
+            subdomain labels of `domain`, empty string when the domain IS the
+            registrable apex. Clients must adopt this boundary instead of
+            computing their own.
+        registrable_domain:
+          type: string
+          description: The registrable domain (eTLD+1) of `domain` per the full PSL.
+        public_suffix:
+          type: string
+          description: 'The effective TLD (public suffix) of `domain`, e.g. `com`, `co.uk`, `com.ng`.'
         provider: { type: [string, 'null'] }
         setup_type: { $ref: '#/components/schemas/SetupType' }
         supports_automatic: { type: boolean }
@@ -2132,6 +2633,21 @@ components:
             subdomains: { type: boolean }
         wildcard_support: { type: boolean }
         cname_flattening: { type: boolean }
+        apex_supported:
+          type: boolean
+          description: >-
+            The provider can serve CNAME-like data at the zone root
+            (ALIAS/ANAME/flattened CNAME). Always agrees with
+            `cname_flattening`. Reported for every check, apex target or not.
+        apex_message:
+          type: string
+          description: >-
+            Present only when the record set this check ran against needs an
+            apex record the provider cannot host — i.e. exactly when the apply
+            would refuse with `apex_not_supported`. Gate any warning UI on this
+            field, not on `apex_supported`: a subdomain connect on a provider
+            with no apex capability reports `apex_supported: false` and no
+            message, because nothing in that flow breaks.
         spf_override_support: { type: boolean }
         caa_support: { type: boolean }
         supports_social_login: { type: string, description: 'yes | no | n-a' }
@@ -2145,6 +2661,15 @@ components:
               type: { type: string }
               existing: { type: string }
               desired: { type: string }
+        conflict_tolerance:
+          type: integer
+          description: Provider's automated-write conflict threshold (0/absent = no modeled limit).
+        will_fallback_to_manual:
+          type: boolean
+          description: >-
+            True when current record conflicts exceed the provider's threshold,
+            so an automated flow would silently drop to manual — have the user
+            clear conflicts first.
     ProviderInfo:
       type: object
       required: [id]
@@ -2154,11 +2679,78 @@ components:
         oauth: { type: boolean }
     Usage:
       type: object
+      description: >-
+        Metered usage for ONE calendar month, for the tenant the credential
+        belongs to (never a query parameter). `org`, `period`, `used` and `mode`
+        are always present; the plan block below it is present whenever the org
+        resolves to a subscription — which, since orgs predating billing default
+        to Free, is every legitimate tenant.
+      required: [org, period, used, mode]
       properties:
-        period: { type: string, examples: ['2026-07'] }
-        plan: { $ref: '#/components/schemas/PlanId' }
+        org: { type: string, description: 'The tenant the usage belongs to, derived from the authenticated credential.' }
+        period: { type: string, examples: ['2026-07'], description: 'UTC calendar month, `YYYY-MM`.' }
         used: { type: integer, description: metered domain connections this period }
-        limit: { type: integer, description: the plan's included quota }
+        mode:
+          type: string
+          enum: ['test', 'live', '']
+          description: The Stripe key mode the control plane is running against; empty when billing is unconfigured.
+        plan: { $ref: '#/components/schemas/PlanId' }
+        plan_name: { type: string, description: 'The plan''s display name, e.g. `Growth`.' }
+        quota:
+          type: integer
+          description: >-
+            The plan's included domain connections for ONE billing MONTH
+            (`DomainsPerYear` ceiling-divided by 12; `0` = unlimited). Compare
+            `used` against this. `limit` carries the identical value.
+        limit:
+          type: integer
+          description: >-
+            Alias of `quota`, carrying the identical value. This schema declared
+            `limit` while the handler emitted only `quota`; rather than break
+            either reader, both are emitted. Prefer `quota` in new code.
+        metered:
+          type: boolean
+          description: >-
+            `true` on tiers priced for overage (`growth`, `enterprise`). It
+            carries NO enforcement meaning — it describes pricing only. Read
+            `hard_cap` for the plan's refusal policy and `quota_enforced` for
+            whether a `402` is possible right now. Never branch on this field.
+        hard_cap:
+          type: boolean
+          description: >-
+            Whether this PLAN refuses connections past `quota` (`402
+            quota_exceeded`) rather than allowing and recording them as
+            overage. `true` only on tiers nobody pays for — today `free` alone.
+            Every paid tier (`startup`, `premium`, `growth`, `enterprise`) is
+            `false` and is never refused, because the refusal would surface to
+            the tenant's own end users through the embedded widget. Independent
+            of the deployment's `BILLING_ENFORCE_QUOTA`; combine the two via
+            `quota_enforced`.
+        quota_state:
+          type: string
+          enum: ['ok', 'approaching', 'at_limit']
+          description: >-
+            The server's classification of `used` against `quota`.
+            `approaching` means at or past 80% of quota; `at_limit` means
+            `used >= quota`. Always `ok` on an unlimited plan (`quota <= 0`).
+        quota_enforced:
+          type: boolean
+          description: >-
+            Whether an over-quota connection would actually be refused with
+            `402 quota_exceeded` right now. True only when the plan's
+            `hard_cap` is set AND the deployment enables enforcement — a client
+            cannot infer the second half, which is why this is served rather
+            than derived. On every paid tier it is `false` at any usage level.
+            A tenant may therefore be `at_limit` with `quota_enforced: false` —
+            over the line with nothing refused — so never treat `at_limit`
+            alone as "blocked". Always `false` on an unlimited plan.
+        remaining:
+          type: integer
+          description: >-
+            `quota - used`, floored at `0`. Omitted entirely on an unlimited
+            plan, where no remainder is meaningful.
+        status: { type: string, description: 'Subscription status mirrored from Stripe, e.g. `active`, `past_due`.' }
+        has_billing_account: { type: boolean, description: '`true` when a Stripe customer exists for the org, i.e. the billing portal is available.' }
     WebhookEndpoint:
       type: object
       required: [id, url]

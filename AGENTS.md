@@ -8,20 +8,20 @@ Custom Domain (customdomain.ai) is managed infrastructure that lets a platform's
 
 ## Connect a domain in 3 steps (REST)
 
-Base URL: `https://app.customdomain.ai` (API docs: https://app.customdomain.ai/docs/api-reference)
+Base URL: `https://api.customdomain.ai` (API docs: https://app.customdomain.ai/docs/api-reference)
 
 ```bash
 # 1. Create a connection for the user's domain
-curl -X POST https://app.customdomain.ai/v1/connections \
+curl -X POST https://api.customdomain.ai/v1/connections \
   -H "Authorization: Bearer $API_KEY" \
   -d '{"domain": "app.customer.com", "application_id": "<app>"}'
 
 # 2. Start one-click provider authorization (or fall back to guided manual records)
-curl -X POST https://app.customdomain.ai/v1/connections/<ID>/oauth:start \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/oauth:start \
   -H "Authorization: Bearer $API_KEY"
 
 # 3. Poll until live (DNS written, ownership verified, TLS issued)
-curl https://app.customdomain.ai/v1/connections/<ID> \
+curl https://api.customdomain.ai/v1/connections/<ID> \
   -H "Authorization: Bearer $API_KEY"
 ```
 

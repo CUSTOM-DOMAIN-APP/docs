@@ -6,16 +6,48 @@ description: The plan catalog, metered domain usage, and Stripe checkout.
 ## Plans
 
 The public catalog is returned by `GET /v1/plans` (along with a
-`billing: { configured, mode }` block). Entitlements gate which products a tenant
-may use.
+`billing: { configured, mode }` block).
 
-| Plan | Price | Domains / year | Entitlements | Motion |
-| --- | --- | --- | --- | --- |
-| `free` | $0 | 10 | Connect | self-serve |
-| `startup` | $249/mo | 600 | Connect | self-serve |
-| `growth` | $749/mo | 600 + metered overage (1,000-unit increments) | Connect · Power · Secure/SSL | self-serve |
-| `premium` | demo-gated | 12,000 | + Monitor | contact sales |
-| `enterprise` | custom | 12,000+ | + SCIM · SSO · white-label | contact sales |
+Entitlements gate which products a tenant may use. **Enforced today:** `Power`
+(the `/v1/connections/{id}/power*` surface), `Secure` (the `/v1/ssl*` surface)
+and `WhiteLabel` (widget branding) — an unentitled tenant gets
+`402 plan_upgrade_required`. `Connect` is included on every plan and needs no
+gate. `Monitor` is not gated per tenant yet; the deployment-level
+`MONITOR_ALERTS_ENABLED` flag governs it for everyone.
+
+| Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
+| --- | --- | --- | --- | --- | --- | --- |
+| `free` | $0 | 10 | 1 | **yes** | Connect | self-serve |
+| `startup` | $249/mo | 600 | 50 | no | Connect | self-serve |
+| `growth` | $749/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve |
+| `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (preview) | contact sales |
+| `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
+
+### Two numbers, and which one gates you
+
+A tier is **sold** annually but **metered** monthly: the meter counts domain
+connections per UTC calendar month, and the quota gate compares against
+`domains_per_month` — `ceil(domains_per_year / 12)`. Startup's 600/year is
+therefore **50 in any one month**, and Free's 10/year is **1/month**.
+Ceiling division means the annualized entitlement never shrinks below what was
+sold (Free's 1/month is 12/year effective).
+
+> **Whether that monthly number *blocks* takes both a plan property and a
+> deployment switch.** The plan property is `hard_cap`, and it is `true` only on
+> `free` — see [Overage](#overage) for why no paid tier is ever refused. The
+> switch is `BILLING_ENFORCE_QUOTA`: `infra/docker-compose.prod.yml` ships it
+> defaulted to `0`, so the hosted service runs meter-only and refuses nothing;
+> `1` turns enforcement on. Both must hold, so a paid tier is never refused under
+> any deployment setting. Note the gate also fails **open** by design even when
+> enabled: a billing subscribe/subscription/usage lookup error allows the
+> connect rather than blocking a customer during a billing outage. The gate is
+> `enforceQuota` in `services/control-plane/internal/api/billing.go`; the
+> billing service applies the same `hard_cap` rule in `ConnectDomain`, so the
+> two cannot disagree.
+
+Both numbers are published on `GET /v1/plans` (`domains_per_year` and
+`domains_per_month`); `GET /v1/billing/usage`'s `quota` is the monthly one,
+because `used` is a monthly count.
 
 Self-serve plans (`free`, `startup`, `growth`) are bought through Stripe
 Checkout. `premium` and `enterprise` route to a "book a demo" CTA and have no
@@ -31,6 +63,15 @@ strips any `whiteLabel` branding from the resumed session unless it's on
 unbranded styling. See
 [Widget SDK reference](/docs/widget-sdk/reference#white-label-configuration).
 
+> **Not included, despite older copy:** **SSO** and **SCIM** are *not* built and
+> no tier grants them. SCIM's `/scim/v2/*` surface is deliberately unmounted, and
+> the console's authentication supports email/password, optional Google sign-in
+> and WebAuthn passkeys — there is no SAML/OIDC provider. **Monitor** is DNS
+> *record-drift* detection only; nothing probes a domain or origin for
+> reachability, status code or latency, so there is no uptime monitoring. Drift
+> alerts are additionally off unless the deployment sets
+> `MONITOR_ALERTS_ENABLED` — see [Webhooks](/docs/webhooks/overview).
+
 > **Status:** the plan catalog is always public, but Checkout and the billing
 > portal are live only where `STRIPE_SECRET_KEY` **and** the `STRIPE_PRICE_*` ids
 > are configured. Until then those routes return `503 service_unavailable`
@@ -45,19 +86,76 @@ derived from the authenticated credential — never a query parameter — and
 `?period=` defaults to the current UTC calendar month.
 
 ```json
-{ "period": "2026-07", "plan": "growth", "used": 412, "limit": 600 }
+{
+  "org": "ten_1a2b3c",
+  "period": "2026-07",
+  "used": 412,
+  "mode": "live",
+  "plan": "growth",
+  "plan_name": "Growth",
+  "quota": 50,
+  "limit": 50,
+  "metered": true,
+  "hard_cap": false,
+  "status": "active",
+  "quota_state": "at_limit",
+  "quota_enforced": false,
+  "remaining": 0,
+  "has_billing_account": true
+}
 ```
 
-`growth` is metered: usage beyond the included quota is billed in 1,000-unit
-overage increments rather than hard-blocked. For the other, unmetered plans
-(`free`, `startup`, `premium`, `enterprise`), the control plane can also
-hard-block a new connection once the included quota is used up, refusing it
-with a distinct `quota_exceeded` error code (`402 Payment Required`, mapped to
-the widget SDK's `PlanLimitError`) instead of a generic failure — but this
-enforcement is gated on the deployment (`BILLING_ENFORCE_QUOTA`, off by
-default) and is **not confirmed enabled on the hosted service today**; treat
-`GET /v1/billing/usage` as the reliable way to know where a tenant stands
-regardless. See [SDK reference](/docs/widget-sdk/reference#events--callbacks).
+Compare `used` against **`quota`** — the plan's included connections for one
+calendar month, i.e. `domains_per_month` from the catalog (`0` means unlimited).
+`limit` is an alias carrying the identical value: the published schema had
+always declared `limit` while the handler only ever emitted `quota`, so both are
+sent now and either may be read.
+
+`quota_state` is the server's own verdict — `ok`, `approaching` (at or past 80%
+of quota) or `at_limit` — and `remaining` is `quota - used` floored at zero,
+omitted entirely on an unlimited plan.
+
+`hard_cap` is the plan's refusal policy (`true` only on `free`), and
+`quota_enforced` reports whether a `402` is actually possible **right now** — it
+needs `hard_cap` *and* the deployment's `BILLING_ENFORCE_QUOTA`, the second of
+which a client cannot see. On every paid tier `quota_enforced` is `false` at any
+usage. The example above is a `growth` tenant at 412 used against a quota of 50:
+`at_limit`, `quota_enforced: false`, and nothing refused. Treat `at_limit` as
+"over the line", never as "blocked" — check `quota_enforced` for that.
+
+### Overage
+
+**No paid plan is ever refused a connection.** On `startup`, `growth`,
+`premium` and `enterprise`, a connection past the monthly quota is allowed,
+recorded as overage, and surfaced — never blocked. `free` is the only tier that
+returns `402 quota_exceeded` at its quota.
+
+The reason is the blast radius of the refusal, not generosity. The quota gate
+sits on the connection-create path that the **embedded widget** calls with an
+end-user credential, so a `402` does not land on the tenant's admin — it lands
+on *their* end user, mid-connect, inside the customer's own signup funnel.
+Breaking a paying customer's funnel to collect overage is a bad trade at any
+quota, and doubly so here because **no code path has ever reported usage to
+Stripe** — the Stripe client has no usage-record or meter-event call at all, so
+the debt being enforced was never billed in the first place.
+
+Overage is instead recorded and surfaced: `/v1/billing/usage` reports
+`quota_state` and `remaining`, the console warns at 80% and again past quota,
+and the usage band feeds the CRM so the account team can right-size the plan.
+An overage becomes a conversation, not an outage.
+
+`metered` on `growth`/`enterprise` describes how a tier is *priced* and carries
+no enforcement meaning at all. Read **`hard_cap`** for a plan's refusal policy —
+it is `true` only on `free`.
+
+> **Retraction.** An earlier revision of this page said every tier was
+> hard-capped, and promised that metered tiers would only stop blocking *in the
+> same change that started charging for overage*. **That promise is withdrawn.**
+> Paid tiers stop blocking now, and no charging is being introduced — the change
+> is strictly in the customer's favour, which is why it ships without the notice
+> period that promise described. If usage-based billing is ever built (Stripe
+> Billing Meters; the legacy Usage Records API is deprecated), it will be
+> announced before it takes effect.
 
 ## Checkout & portal
 
@@ -79,3 +177,24 @@ ids) to be configured; without them these routes return
 `503 service_unavailable` while the plan catalog stays public. Enforcement is on
 the control-plane write path only — never on the edge `ask` hot path, so serving
 traffic never blocks on billing.
+
+### When the plan actually changes
+
+**Starting a checkout grants nothing.** `POST /v1/billing/checkout` validates the
+tier (unknown ids and the two contact-sales tiers are rejected with `400`) and
+opens a Stripe session stamped with the tenant and tier. The plan is assigned
+only when Stripe delivers a signature-verified `checkout.session.completed`
+whose session reads `status: "complete"` **and** `payment_status: "paid"` (or
+`no_payment_required`). An abandoned, expired or unpaid session leaves the
+tenant exactly where it was, and a failed checkout has nothing to roll back.
+
+> **Operators: `STRIPE_WEBHOOK_SECRET` is required for plan changes to take
+> effect.** Without it `POST /v1/stripe/webhook` returns `503` and no checkout is
+> ever confirmed, so paying customers stay on their old tier. Configure the
+> webhook endpoint before enabling self-serve checkout.
+
+`customer.subscription.*` events mirror Stripe's subscription status onto the
+tenant record, so `status` on `GET /v1/billing/usage` reflects reality
+(`active`, `past_due`, `canceled`, …). Mirroring the status does **not** change
+the plan, the quota or any entitlement — what a lapsed subscription should do to
+product access is a separate policy that is not yet implemented.

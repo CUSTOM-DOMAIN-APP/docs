@@ -25,12 +25,14 @@ web: `apex-a`, `apex-aaaa`, `apex-cname`, `apex-www`, `subdomain`, `www`,
 applied together); `caa`; email: `email-spf`, `email-dkim`, `email-dmarc`,
 `email-mx`, `email-full`; and `redirect` (301 forward).
 
-**Webhook events** — `connection.created`, `connection.applied`,
-`connection.live`, `connection.failed`, `connection.records.updated`,
-`connection.reapply.failed`, `connection.disconnected`,
-`connection.records_outdated`, `domain.record_missing`, `domain.record_restored`,
-`domain.purchased`, `purchase.error` (the broader emitted vocabulary also
-includes `domain.flow.completed` and `domain.propagation.timeout`).
+**Webhook events** (the complete set — see
+[webhooks](/docs/webhooks/overview)) — `connection.created`,
+`connection.applied`, `connection.live`, `connection.failed`,
+`connection.records.updated`, `connection.reapply.failed`,
+`connection.records_outdated`, `connection.disconnected`,
+`domain.record_missing`, `domain.record_restored`, `domain.purchased`,
+`purchase.error`, `purchase.confirmation.expired`, `secure_status`,
+`power_status`.
 
 ## Error envelope & codes
 
@@ -44,7 +46,7 @@ keep both in sync when a code changes.
 | `invalid_request` | 400 | Malformed or missing input. |
 | `unauthorized` | 401 | Missing/invalid credential. |
 | `not_found` | 404 | Object doesn't exist or isn't in your tenant. |
-| `quota_exceeded` | 402 | The plan's included quota is used up. Gated (`BILLING_ENFORCE_QUOTA`, off by default) — not confirmed enforced on the hosted service. |
+| `quota_exceeded` | 402 | The plan's monthly quota is used up. Only `free` is hard-capped, and only where `BILLING_ENFORCE_QUOTA` is on (the hosted service currently runs meter-only, so nothing is refused today) — no paid tier is ever refused. See [Plans & quotas](/docs/billing/plans-and-quotas#overage). |
 | `InvalidNameservers` | 422 | The domain has no usable nameserver delegation. |
 | `ProviderAuthenticationError` | 422 | The end-user's DNS provider rejected the authorization/credential. |
 | `apex_not_supported` | 422 | The provider has no ALIAS/ANAME/flattened-CNAME apex capability — see [Apex domains](/docs/dns/providers#apex-root-domains). |
@@ -69,7 +71,7 @@ the page that uses them.
 
 A connection with no applied records yet points at the edge with a synthesized
 `CNAME <host> → edge.customdomain.ai` (TTL 3600), overridable with
-`JUSTEASY_EDGE_CNAME_TARGET`.
+`CUSTOMDOMAIN_EDGE_CNAME_TARGET` (the legacy `JUSTEASY_EDGE_CNAME_TARGET` still works).
 
 ## Resources
 

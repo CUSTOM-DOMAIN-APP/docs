@@ -47,8 +47,13 @@ connected but drop the grant with [disable managed](#disabling-managed-mode)
 ```bash
 curl -X POST http://localhost:8080/v1/connections/<ID>:reapply \
   -H "Authorization: Bearer <WIDGET_JWT>"
-# → 200 { connection, records }   (records updated; connection re-verified)
+# → 200 { "connection_id": "<ID>", "reapplied": true, "records": [ … ] }
+#   (records re-written at the provider; connection re-verified)
 ```
+
+The `200` body is a re-apply **receipt**, not a connection object: it carries
+`connection_id` (not `id`) plus the record set that was written. Fetch
+`GET /v1/connections/{id}` if you need the connection itself.
 
 `POST /v1/connections/{id}:reapply` is **managed mode only**. It recomputes the
 desired record set, writes any drift through the stored grant, re-verifies the

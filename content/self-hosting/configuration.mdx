@@ -26,7 +26,7 @@ no telemetry to that destination.
 | `NEXT_PUBLIC_POSTHOG_KEY` | analytics off | PostHog project key for product analytics in the console. |
 | `NEXT_PUBLIC_POSTHOG_HOST` | — | PostHog ingestion host; only used when the key is set. |
 
-These keys also appear, commented out, in [`.env.example`](https://github.com/ever-just/justeasy/blob/main/.env.example).
+These keys also appear, commented out, in the `.env.example` file at the root of your self-hosted checkout.
 
 ### Error monitoring (Sentry)
 
@@ -69,4 +69,4 @@ overlay (`infra/docker-compose.alloy.yml`, driven by `infra/config.alloy`) that
 runs one Alloy forwarder to collect OTLP traces, metrics, and logs and ship them to
 Grafana Cloud. Before you enable it, read the caveat below.
 
-> infra/config.alloy is pre-wired to Customdomain's own Grafana Cloud tenant (hardcoded basic-auth users + prod-us-east endpoints) and infra/observability.env ships a real token; a self-hoster who runs docker-compose.alloy.yml as-is forwards THEIR logs/metrics/traces into Customdomain's tenant. The Alloy path is NOT a simple env-var repoint — config.alloy must be replaced/re-pointed at the self-hoster's own Grafana stack (and observability.env supplied with their own token). The default no-overlay zero-egress claim for the base stack remains true.
+> infra/config.alloy is pre-wired to Customdomain's own Grafana Cloud tenant (hardcoded basic-auth user ids + prod-us-east ingest endpoints); a self-hoster who runs docker-compose.alloy.yml as-is points THEIR logs/metrics/traces at Customdomain's tenant. The Alloy path is NOT a simple env-var repoint — config.alloy must be replaced/re-pointed at the self-hoster's own Grafana stack, with their own GRAFANA_CLOUD_TOKEN set in the host's infra/.env (the overlay reads it from the compose project's env by substitution — this page previously named a separate infra/observability.env, which the overlay stopped using several releases ago and which has never been committed here). No credential ships in this repo. The default no-overlay zero-egress claim for the base stack remains true.

@@ -53,7 +53,7 @@ GitHub will render most of these files, but the live site renders them best: MDX
 
 - Humans: [app.customdomain.ai/docs](https://app.customdomain.ai/docs)
 - Agents and LLM tooling: the docs publish an index at [app.customdomain.ai/docs/llms.txt](https://app.customdomain.ai/docs/llms.txt), which lists every page with a short description so an agent can fetch exactly what it needs
-- MCP clients: connect directly to the hosted server described in `content/mcp/`, or see the client examples at [github.com/ever-just/customdomain-mcp](https://github.com/ever-just/customdomain-mcp)
+- MCP clients: connect directly to the hosted server described in `content/mcp/`, or see the client examples at [github.com/CUSTOM-DOMAIN-APP/customdomain-mcp](https://github.com/CUSTOM-DOMAIN-APP/customdomain-mcp)
 
 ## Scope: what belongs here vs. the product repo
 
@@ -61,10 +61,13 @@ This repo is for customer-facing content only: anything a customer or a
 third-party integrator would read on their own, independent of working on
 the product's codebase. Internal engineering docs (architecture write-ups,
 security audits, operations runbooks, ADRs, product investigations) belong in
-the `custom-domains` repo's own `docs/` folder instead, not here. See that
-repo's [`ORGANIZATION.md`](https://github.com/CUSTOM-DOMAIN-APP/custom-domains/blob/main/ORGANIZATION.md#4-this-repo-vs-the-other-three)
-for the full rule and the test to apply when you're not sure which side a
-new page belongs on.
+the `custom-domains` repo's own `docs/` folder instead, not here. (That repo is
+private, so its `ORGANIZATION.md` — which carries the full rule — isn't
+linkable from here.)
+
+The test when you're unsure: **would this page make sense to someone who will
+never see the source code?** If yes, it belongs here. If understanding it
+requires knowing how the code is laid out, it belongs in the product repo.
 
 ## Contributing
 
