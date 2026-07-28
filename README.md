@@ -53,7 +53,7 @@ GitHub will render most of these files, but the live site renders them best: MDX
 
 - Humans: [app.customdomain.ai/docs](https://app.customdomain.ai/docs)
 - Agents and LLM tooling: the docs publish an index at [app.customdomain.ai/docs/llms.txt](https://app.customdomain.ai/docs/llms.txt), which lists every page with a short description so an agent can fetch exactly what it needs
-- MCP clients: connect directly to the hosted server described in `content/mcp/`, or see the client examples at [github.com/ever-just/customdomain-mcp](https://github.com/ever-just/customdomain-mcp)
+- MCP clients: connect directly to the hosted server described in `content/mcp/`, or see the client examples at [github.com/CUSTOM-DOMAIN-APP/customdomain-mcp](https://github.com/CUSTOM-DOMAIN-APP/customdomain-mcp)
 
 ## Scope: what belongs here vs. the product repo
 
