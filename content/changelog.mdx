@@ -99,9 +99,14 @@ what changes for you.
   connect-verified, CAA, and the email set) is merged into the provider-hosted
   one-click protocol's upstream template registry, and prod embeds the shipped
   catalog.
-- **One-click sync rail active in prod** — apply URLs are RS256-signed with
-  the `_dck1` selector (pubkey published at `_dck1.customdomain.ai`), providers
-  serve every template, and a conformance CI gate keeps the catalog valid. See
+- **One-click sync rail live at registry-mirroring DNS providers** — apply URLs
+  are RS256-signed with the `_dck1` selector (pubkey published at
+  `_dck1.customdomain.ai`) and a conformance CI gate keeps the catalog valid.
+  Providers that mirror the public template registry serve the catalog today
+  (measured 2026-07-28: NameSilo and Glauca Digital serve all 18 templates,
+  Domain Chief 16 of 18); providers that hand-curate their template sets
+  (GoDaddy, IONOS, Cloudflare) require direct onboarding, so for domains hosted
+  there the widget offers the OAuth, API-key, and manual paths instead. See
   [Setup types & the ask gate](/docs/concepts/ownership-and-setup-types).
 - **Share links** — forward a connect flow to a colleague with a link that carries
   a 30-day expiry; expired share tokens return `404`.
