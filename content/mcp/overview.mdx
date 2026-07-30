@@ -29,7 +29,7 @@ agent can never inject them.
 | `generate-domain-suggestions` | `{ keywords, limit? }` | Return available-to-register suggestions for a set of keywords (default 5, min 5, max 20), each priced; the cheapest is marked the top pick. |
 | `create-domain-order` | `{ domain }` | Start a registration/purchase through the resolved registrar. Enterprise/direct registrars return an `orderId`; sharing registrars return a checkout `link` + `jobId` to poll. |
 | `connect-domain` | `{ domain }` | Start a guided DNS-configuration flow for a domain the user already owns. Returns a `link` for the user and a `jobId` to poll. Never writes DNS directly. |
-| `check-connection-status` | `{ jobId }` | Read the live status of a connection job. Statuses: `pending`, `propagating`, `completed`, `failed`, `error`, `expired`. |
+| `check-connection-status` | `{ jobId }` | Read the live status of a connection job. Statuses: `pending`, `propagating`, `live`, `failed`. |
 | `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order — by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
 | `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails if the connection isn't managed or has no grant. |
 | `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. |

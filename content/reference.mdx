@@ -45,7 +45,10 @@ keep both in sync when a code changes.
 | --- | --- | --- |
 | `invalid_request` | 400 | Malformed or missing input. |
 | `unauthorized` | 401 | Missing/invalid credential. |
+| `forbidden` | 403 | Authenticated, but not permitted to perform this action. |
 | `not_found` | 404 | Object doesn't exist or isn't in your tenant. |
+| `conflict` | 409 | The request conflicts with the resource's current state. |
+| `rate_limited` | 429 | Too many requests — back off and retry. |
 | `quota_exceeded` | 402 | The plan's monthly quota is used up. Only `free` is hard-capped, and only where `BILLING_ENFORCE_QUOTA` is on (the hosted service currently runs meter-only, so nothing is refused today) — no paid tier is ever refused. See [Plans & quotas](/docs/billing/plans-and-quotas#overage). |
 | `InvalidNameservers` | 422 | The domain has no usable nameserver delegation. |
 | `ProviderAuthenticationError` | 422 | The end-user's DNS provider rejected the authorization/credential. |
