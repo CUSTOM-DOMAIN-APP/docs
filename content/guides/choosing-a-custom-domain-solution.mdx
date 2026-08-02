@@ -1,0 +1,157 @@
+---
+title: Choosing a custom-domain solution (2026)
+description: An evaluation guide for custom-domain onboarding — build vs. buy, what "provider coverage" really means, and the questions to ask any vendor including us.
+---
+
+If you are looking at Entri, at us, at one of the smaller players, or at
+building it yourself, this page is the checklist we would want someone to apply
+to our own product. It is deliberately vendor-neutral, because the useful
+version of this page is the one that is still worth reading if you pick someone
+else.
+
+The honest summary up front: the hard part of custom-domain onboarding is not
+showing a customer which records to create. That has been a solved documentation
+problem for twenty years. The hard part is getting records into a zone you do
+not control, confirming they arrived, issuing a certificate, and noticing when
+it all comes undone six months later. Evaluate on those.
+
+## The first question: build or buy
+
+Building it yourself is completely reasonable if your situation is narrow.
+Specifically, build if:
+
+- your customers are technical and expect to edit DNS themselves,
+- you can require a subdomain, so you never touch the apex problem, and
+- your volume is low enough that certificate rate limits never bind.
+
+That last one deserves a number. Let's Encrypt's rate limits are the constraint
+most build-it-yourself implementations meet first, and the one people discover
+during a bulk onboarding rather than during design. Check the current published
+limits against your expected number of *new* hostnames per window, not your
+total.
+
+Buy if custom domains are an onboarding step for non-technical customers at
+volume — because then the cost is not the DNS write, it is the support queue
+behind it. Vendors publish case studies claiming large reductions in DNS support
+tickets; treat those as attributed customer claims rather than independent
+research, but the direction is real and matches what anyone who has run this
+flow will tell you.
+
+## What "provider coverage" actually means
+
+This is where evaluations go wrong, so it is worth being precise.
+
+**Every vendor covers 100% of providers**, because every vendor falls back to
+showing the records and asking the user to type them. That is not a
+differentiator. The number that matters is: *for what fraction of your customers
+does the user never have to type anything?*
+
+Ask specifically:
+
+- How many providers have a **one-click authorization rail** — Domain Connect
+  or a provider OAuth integration — as opposed to a manual record list?
+- Which rail is it per provider? Domain Connect is an open standard; a
+  proprietary OAuth integration is a bilateral arrangement that can lapse.
+- What happens for the rest?
+
+For calibration: the Domain Connect project lists nine live DNS provider
+implementations on its own site. In our own census of 63 providers, 38 have no
+working automated write rail and fall back to copy-paste. Those numbers are not
+a criticism of any vendor — they are the shape of the ecosystem. A vendor
+implying near-universal one-click coverage is describing something the standards
+do not currently support, and that is a reason for scepticism rather than
+enthusiasm.
+
+The right follow-up question is therefore not "how many providers do you
+support" but **"how good is your manual path?"**, since that is the majority
+case for everyone. A manual path that detects the provider, gives
+provider-specific instructions, tells the user about conflicting records before
+they hit them, and verifies the result is a completely different product from
+one that renders a table of record values.
+
+## The checklist
+
+Apply these to any vendor, and to your own build plan.
+
+### Records and DNS mechanics
+
+- **Apex handling.** Can it connect a root domain, and how? A CNAME at the apex
+  is invalid (RFC 1034 §3.6.2), so the answer is either a provider-specific
+  alias, A records, or "use a subdomain". Any of those can be fine; a vendor
+  that does not raise the issue at all has not thought about it.
+- **Conflict detection.** Does it tell the user *before* they authorize that
+  they have an existing record at that name which will be replaced? Silently
+  replacing an A record at `www` takes down a marketing site.
+- **CAA.** Does it check for a CAA record that would block certificate issuance,
+  and say so up front? This is the failure that looks like success: DNS is
+  perfect, the certificate never issues, and the error surfaces minutes later
+  somewhere else entirely.
+- **Email records.** If the product also sets up sending, does it *merge* SPF
+  rather than adding a second policy record? Two SPF records is a `permerror`,
+  which under DMARC costs delivery.
+
+### Certificates
+
+- Who issues, and what happens at renewal?
+- What happens when issuance fails — is it visible to you, or does the customer
+  discover it?
+- Are certificates cached durably, or re-issued on restart? The latter burns
+  rate limit and eventually stops working.
+
+### After go-live
+
+This is the most commonly skipped section of an evaluation and the most
+commonly regretted.
+
+- Does anything detect that a customer's records changed after connection?
+- How do you find out — a webhook, an API you poll, or a support ticket?
+- Be precise about what is monitored. Our monitor is a DNS-record drift engine:
+  it compares live public DNS against the baseline a connection stores and
+  reports records that are missing or changed. It does not probe your origin
+  for reachability, status codes, or latency, and we do not describe it as
+  uptime monitoring.
+
+### Integration surface
+
+- Is there an API you can drive from your backend, or only an embeddable
+  widget?
+- Is the embed a black box, or can you brand and control it?
+- Is there an OpenAPI document, and is it the one the running service actually
+  serves?
+- **Agent access.** Increasingly relevant and easy to check: can an AI agent
+  drive the flow? If so, how is it authorized — does the agent get scoped,
+  revocable, human-approved access, or does it need your API key? We expose an
+  [MCP server](/docs/mcp/overview) with [OAuth-based agent
+  access](/docs/agents/overview) where a human approves specific scopes and can
+  revoke them, and the agent never writes DNS or spends money on its own.
+
+### Data and credentials
+
+- Does the vendor hold DNS credentials, or does authorization live at the
+  provider and get revoked there?
+- What happens to a customer's grant when they leave you?
+- Where is the data, and what is the sub-processor list?
+
+### Operational fit
+
+- Self-hostable, or SaaS only? If a self-hosted deployment matters for a
+  compliance story, check whether it is genuinely supported or a marketing
+  bullet.
+- Pricing model: per connected domain, per seat, or flat? Model it at ten times
+  your current volume, since this is a feature whose usage grows with your
+  customer base.
+
+## Where we fit, stated plainly
+
+We are a good fit if you want the connection flow as infrastructure you can
+drive from an API, embed as a widget, self-host, or hand to an AI agent, and if
+you care about what happens after the domain goes live.
+
+We are not the right answer if you need one-click coverage across providers that
+have no automated rail — nobody can give you that, and you should be suspicious
+of anyone who says otherwise. And if your customers are all technical and you
+can mandate a subdomain, building it yourself is a genuinely defensible call.
+
+Start with the [quickstart](/docs/getting-started/quickstart), or read
+[how to set up a custom domain](/docs/guides/set-up-a-custom-domain) for the
+mechanics this page assumes.
