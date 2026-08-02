@@ -1,0 +1,220 @@
+---
+title: How to set up a custom domain
+description: Connect a custom domain to your app end to end — pick the right record, handle the apex, clear CAA and conflicting records, and know when it is actually live.
+---
+
+This is the full path for pointing a domain you own at an application, whether
+you are doing it once by hand or building it into a product your own customers
+use. It covers the parts that actually cause failures: which record to create,
+why the root domain is different, and why "I added the record" and "it works"
+are not the same moment.
+
+If you want the API rather than the concepts, start at the
+[quickstart](/docs/getting-started/quickstart). If you are connecting a domain
+through a product that embeds our widget, you do not need any of this — the
+widget does it for you.
+
+## Before you start: find out who runs the DNS
+
+The single most common reason a custom-domain setup stalls is that the person
+doing it goes to the wrong control panel.
+
+**Where a domain is registered and where its DNS is answered are separate
+things.** The registrar holds the registration and submits the delegation to the
+registry; the registry publishes NS records naming the authoritative
+nameservers. Whoever operates those nameservers answers queries for the zone. A
+domain bought at GoDaddy but delegated to Cloudflare is edited at Cloudflare,
+and the GoDaddy DNS panel will appear to accept changes that never take effect.
+
+Check the delegation before you touch anything:
+
+```bash
+dig +short NS example.com
+```
+
+The answer names the operator you need to log in to. `ns1.digitalocean.com`
+means DigitalOcean, `kim.ns.cloudflare.com` means Cloudflare, regardless of
+where you bought the name.
+
+Our API exposes the same detection at
+[`GET /v1/providers`](/docs/api-reference/meta/getConfig) and through the
+`discover-provider` [MCP tool](/docs/mcp/overview), which additionally reports
+whether an automated setup rail is available for that provider.
+
+## Step 1: choose the record
+
+For a subdomain — `app.example.com`, `docs.example.com`, `status.example.com` —
+create a **CNAME** pointing at the target hostname your vendor gives you:
+
+```
+app.example.com.   CNAME   edge.customdomain.ai.
+```
+
+A CNAME is the right choice because it follows the target if the vendor's
+addresses change. If you hardcode an A record to an IP, you own that IP forever
+and a vendor migration silently breaks you.
+
+### The apex is a special case
+
+A root domain — `example.com` with no label in front — **cannot hold a CNAME**.
+RFC 1034 §3.6.2 forbids any other data at a name that has a CNAME, and the apex
+must carry SOA and NS records. So this is illegal and your provider will reject
+it:
+
+```
+example.com.   CNAME   edge.customdomain.ai.     # invalid
+```
+
+There are three ways out, in order of preference:
+
+1. **Use a subdomain.** `www.example.com` or `app.example.com` takes a CNAME
+   normally. If you can choose, choose this.
+2. **Use your provider's apex alias.** Several providers implement a
+   non-standard pseudo-record that behaves like a CNAME at the apex and is
+   resolved server-side: Cloudflare calls it CNAME flattening, others call it
+   ALIAS or ANAME. Route 53 has alias records, but they are an `AliasTarget`
+   shape in its API rather than a record type, and they cannot point at an
+   arbitrary external hostname.
+3. **Use A records.** If the provider offers no alias, you fall back to A
+   records pointing at the vendor's published addresses — and you accept that
+   you must update them if the vendor renumbers.
+
+Our API reports which of these applies before you commit: a connection's
+response carries `apex_supported` and, when the provider cannot host an apex
+record, an `apex_message` explaining what to do instead.
+
+## Step 2: clear what is already there
+
+Two pre-existing conditions will break a setup that is otherwise perfect.
+
+**A conflicting record at the same name.** A CNAME cannot coexist with any other
+record at that name. If `www.example.com` already has an A record, some panels
+refuse the CNAME and some replace the A record — which quietly takes down
+whatever it was pointing at. Look before you write.
+
+**A CAA record that does not authorize your certificate authority.** This one is
+nastier because it fails later and somewhere else. CAA (RFC 8659) lets a domain
+owner list which CAs may issue for it, and checking it is mandatory for public
+CAs under the CA/Browser Forum Baseline Requirements. If `example.com` carries
+`CAA 0 issue "digicert.com"` from an old vendor relationship, Let's Encrypt will
+refuse to issue — even though every DNS record you added is correct and
+resolving. The symptom is a TLS error minutes after DNS looks finished.
+
+```bash
+dig +short CAA example.com
+```
+
+An empty answer is fine: no CAA RRset means no restriction. A CAA set that
+contains only `iodef` or property tags the CA does not recognise also does not
+restrict issuance (RFC 8659 §4.2). What blocks you is an `issue` or `issuewild`
+set that omits your CA. To authorize Let's Encrypt, add:
+
+```
+example.com.   CAA   0 issue "letsencrypt.org"
+```
+
+There is a subtler variant worth knowing: a nameserver that returns SERVFAIL for
+record types it does not recognise will break issuance without ever holding a
+CAA record, because the CA cannot complete its mandatory lookup. Providers only
+need to answer NOERROR for unknown types, but a few do not.
+
+**If you are sending email from the domain**, an SPF record needs merging rather
+than adding. A domain may publish only one SPF policy record (RFC 7208 §3.2); a
+second one makes the check return `permerror`, and under a DMARC policy of
+quarantine or reject that costs you delivery. The correct edit adds an
+`include:` to the existing string, staying within the ten-lookup limit of §4.6.4.
+See [email DNS](/docs/dns/email-dns).
+
+## Step 3: write the record
+
+You have three options, and which are available depends entirely on the
+provider.
+
+**One-click, via Domain Connect.** If the provider implements the Domain Connect
+standard, the user is sent to their provider, signs in, sees exactly what will
+be written, and approves it. Nothing is typed. This is the best outcome and it
+requires no credentials to be shared with the vendor.
+
+**One-click, via a provider OAuth integration.** Some providers expose an API
+with an OAuth flow, which gets the same result by a different mechanism: the
+user authorizes, the records are written for them.
+
+**By hand.** Everything else. The vendor shows the records; the user copies them
+into their panel. This is not a rare fallback — it is the majority case. In our
+own census of 63 providers, 38 have no working automated write rail. Domain
+Connect's own site lists nine live DNS provider implementations. Any vendor
+claiming universal one-click coverage is describing something other than what
+the standards support.
+
+When you type records by hand, two conventions cause most of the errors:
+
+- **Host fields are usually relative.** A panel rooted at `example.com` will
+  append the zone itself. Enter `app`, not `app.example.com` — the latter
+  becomes `app.example.com.example.com`.
+- **The apex is written `@`** in most panels, occasionally as an empty field.
+
+## Step 4: wait correctly
+
+There is no propagation event. Authoritative nameservers have the record the
+moment it is saved. Every recursive resolver learns about it independently, when
+whatever it has cached expires.
+
+This has one important consequence: **checking too early makes the wait longer**.
+If a resolver is asked for a name before the record exists, it caches the
+negative answer, and the lifetime of that negative cache comes from the SOA
+minimum field (RFC 2308 §5), which is commonly an hour. Refreshing repeatedly
+during setup is actively counterproductive.
+
+Check against the authoritative server rather than your local resolver to see
+the true state:
+
+```bash
+dig +short app.example.com CNAME @$(dig +short NS example.com | head -1)
+```
+
+Lowering the record's TTL before a planned change, and raising it afterwards, is
+the standard way to shorten a cutover. It only helps if you do it far enough in
+advance that the old, longer TTL has already expired everywhere.
+
+## Step 5: confirm it is actually live
+
+"The record resolves" is not the finish line. A custom domain is working when:
+
+1. the record resolves from a resolver that is not yours,
+2. a certificate has been issued for the hostname, and
+3. an HTTPS request to it reaches your application.
+
+Certificates are issued after DNS points at the edge, not before — the CA has
+to see the name pointing at the right place to validate it. So there is a
+window, usually short, where DNS is right and HTTPS is not yet. That window is
+normal. What is not normal is it never ending, which almost always means CAA
+(see step 2).
+
+Through the API, the connection's status moves `pending` → `propagating` →
+`live`, and a [`connection.live` webhook](/docs/webhooks/overview) fires on the
+transition. Key completion off that, not off a timer.
+
+## After it is live: records drift
+
+Custom domains do not stay set up. Someone reorganises the zone, migrates
+providers, or reinstates an old record, and the domain quietly stops working —
+usually noticed first by the customer.
+
+The [monitor](/docs/api-reference/monitor/checkRecords) re-checks a connection's
+desired records against live public DNS and reports which ones no longer match.
+This is DNS-record drift detection specifically: it compares records against the
+baseline the connection stores. It does not probe your origin for reachability
+or latency.
+
+## Doing this for your own customers
+
+Everything above describes one person setting up one domain. If you are building
+this into a product, the same steps become a system: detect the provider, offer
+the best rail it supports, fall back to a manual record list that is a
+first-class path rather than an afterthought, compute records server-side, poll
+propagation, issue certificates, and watch for drift afterwards.
+
+That is what the [connect flow](/docs/connect-flow/overview) and the
+[embeddable widget](/docs/widget-sdk/overview) implement, and what the
+[MCP server](/docs/mcp/overview) exposes to AI agents so an agent can drive the
+process while a human stays in the authorization loop.
