@@ -1,6 +1,8 @@
 # Custom Domain documentation
 
-This repository is the source of truth for the [Custom Domain documentation](https://app.customdomain.ai/docs): the guides, concepts, and API reference for connecting customer-owned domains to a SaaS platform with automatic DNS configuration, domain ownership verification, and automatic TLS issuance and renewal. Everything the docs site renders lives here as MDX, and edits merged into this repo sync to the product site automatically. If you are looking for how to add a "connect your domain" flow to your product, start with the [quickstart](content/getting-started/quickstart.mdx) or read the rendered docs at [app.customdomain.ai/docs](https://app.customdomain.ai/docs).
+This repository is the source of truth for the [Custom Domain documentation](https://docs.customdomain.ai/docs): the guides, concepts, and API reference for connecting customer-owned domains to a SaaS platform with automatic DNS configuration, domain ownership verification, and automatic TLS issuance and renewal. Everything the docs site renders lives here as MDX, and edits merged into this repo sync to the product site automatically. If you are looking for how to add a "connect your domain" flow to your product, start with the [quickstart](content/getting-started/quickstart.mdx) or read the rendered docs at [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs).
+
+The rendered site is [docs.customdomain.ai](https://docs.customdomain.ai/docs); its live availability, along with the rest of the platform, is published at [status.customdomain.ai](https://status.customdomain.ai).
 
 ## What this repo is
 
@@ -33,7 +35,7 @@ This repo is canonical. The product site does not edit docs independently; it co
 
 1. A change merges into `main` in this repo.
 2. Automation opens a sync branch against the product repository with the updated content.
-3. Once that branch merges, the docs site at [app.customdomain.ai/docs](https://app.customdomain.ai/docs) redeploys with the new content.
+3. Once that branch merges, the docs site at [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) redeploys with the new content.
 
 In practice a merged docs fix usually appears on the live site within the same day. If you spot a discrepancy between this repo and the rendered site, the repo version is newer and the sync simply has not landed yet.
 
@@ -43,7 +45,7 @@ This repo also now ships its own standalone renderer at [`site/`](site/)
 (Fumadocs + Next.js, reading `content/` directly, no sync step). It's built
 and verified, but not yet publicly reachable: it will go live at
 `docs.customdomain.ai` once its companion infra PR in `custom-domains` merges
-and one DNS record is added. Until then, [app.customdomain.ai/docs](https://app.customdomain.ai/docs)
+and one DNS record is added. Until then, [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs)
 below remains the real, current, live URL. See [`DEPLOYMENT.md`](DEPLOYMENT.md)
 for the full rollout plan and current status.
 
@@ -51,8 +53,8 @@ for the full rollout plan and current status.
 
 GitHub will render most of these files, but the live site renders them best: MDX components, navigation, search, and runnable API examples all work there.
 
-- Humans: [app.customdomain.ai/docs](https://app.customdomain.ai/docs)
-- Agents and LLM tooling: the docs publish an index at [app.customdomain.ai/docs/llms.txt](https://app.customdomain.ai/docs/llms.txt), which lists every page with a short description so an agent can fetch exactly what it needs
+- Humans: [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs)
+- Agents and LLM tooling: the docs publish an index at [docs.customdomain.ai/docs/llms.txt](https://docs.customdomain.ai/docs/llms.txt), which lists every page with a short description so an agent can fetch exactly what it needs
 - MCP clients: connect directly to the hosted server described in `content/mcp/`, or see the client examples at [github.com/CUSTOM-DOMAIN-APP/customdomain-mcp](https://github.com/CUSTOM-DOMAIN-APP/customdomain-mcp)
 
 ## Scope: what belongs here vs. the product repo
