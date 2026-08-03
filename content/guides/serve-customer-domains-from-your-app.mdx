@@ -1,0 +1,204 @@
+---
+title: Serve customer domains from your app (reverse-proxy edge)
+description: Turn on edge serving so your customers' domains reach your application — what an origin is, how one app serves thousands of domains via X-Forwarded-Host, the difference between a domain resolving and a domain working, and how to debug 421 and 502.
+---
+
+Connecting a domain and *serving* it are two different jobs.
+
+**Connecting** gets DNS pointed at us and a TLS certificate issued. After that, a
+visitor's browser reaches our edge, the padlock is green — and the edge has no
+idea what to send back. It answers `421 Misdirected Request`.
+
+**Serving** is telling us where your application lives so we can forward the
+request to it. That target is called the **origin**, and setting it is the whole
+of this guide.
+
+Edge serving is available on Growth and above.
+
+## What actually happens to a request
+
+```
+visitor → shopname.com
+        → DNS resolves to our edge
+        → edge terminates TLS (certificate for shopname.com)
+        → edge looks up the origin for shopname.com
+        → edge requests your app, with X-Forwarded-Host: shopname.com
+        → your app responds
+        → edge returns it to the visitor
+```
+
+The visitor never learns your app's real address. Their address bar says
+`shopname.com` throughout.
+
+Two consequences worth internalising:
+
+- **Your app never needs a certificate for your customers' domains.** We hold
+  those. Your origin can serve plain HTTP on your own hostname if you like.
+- **One app can serve every customer domain.** You do not deploy per customer.
+  Which brings us to the header that makes that work.
+
+## One origin, many domains: `X-Forwarded-Host`
+
+Because we proxy, your app sees *its own* hostname in the `Host` header, not the
+customer's. If you route tenants by `Host`, everything will look like the same
+tenant.
+
+We send the visitor's real hostname on **`X-Forwarded-Host`**. Route on that.
+
+```js
+// Express
+app.use((req, res, next) => {
+  req.tenantDomain = req.get("x-forwarded-host") ?? req.get("host");
+  next();
+});
+```
+
+```python
+# Django / Flask
+tenant_domain = request.headers.get("X-Forwarded-Host") or request.host
+```
+
+We also send `X-Forwarded-Proto`, `X-Forwarded-For` and `X-Forwarded-IP` (the
+visitor's address, not ours), and `X-JustEasy-Auth` — a per-application shared
+secret you can check to confirm a request genuinely came through our edge rather
+than someone hitting your origin directly with a forged header. Rotate it from
+the API when you need to.
+
+> **Security.** If your app trusts `X-Forwarded-Host` for anything
+> security-relevant, verify `X-JustEasy-Auth` first. Otherwise anyone who can
+> reach your origin directly can claim to be any of your customers.
+
+## Setting an origin
+
+### The default — one setting for every domain
+
+Most people want every customer domain to hit the same application. Set it once:
+
+**Settings → Edge serving → Default origin**, or:
+
+```bash
+curl -X PUT https://api.customdomain.ai/v1/applications/$APP_ID/power:default \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"default_origin": "https://app.yourcompany.com"}'
+```
+
+Every connected domain on that application with no origin of its own now proxies
+there. New domains inherit it automatically — there is nothing to do per
+customer.
+
+### Per-domain — when one customer is different
+
+If a customer runs on a dedicated instance, set an origin on their domain
+specifically, from the domain's page in the console or:
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections/$CONNECTION_ID/power \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"application_url": "https://enterprise-customer.yourcompany.com"}'
+```
+
+### Which one wins
+
+```
+the domain's own origin  →  the application default  →  nothing (421)
+```
+
+A domain's own origin always wins. **Setting or changing the default never moves
+traffic for a domain you have pointed somewhere specific** — that is deliberate,
+so a global setting cannot silently re-route your dedicated customers.
+
+To make a domain fall back to the default again, turn off its individual origin
+(`DELETE /v1/connections/{id}/power`).
+
+## What is a valid origin
+
+An absolute `http(s)` URL that resolves to a **public** address.
+
+Rejected, at save time and again when we connect:
+
+- `localhost`, `127.0.0.1`, `::1`
+- Private ranges — `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`
+- Link-local, including the cloud metadata endpoints (`169.254.169.254`)
+- Carrier-grade NAT, benchmarking, and reserved ranges
+
+The second check matters more than it looks. A hostname is only resolved when we
+actually connect to it, and DNS records can change after they are saved — so we
+re-check the **resolved address** on every request, not just the URL you typed.
+A hostname that passes validation and is later repointed at a private address is
+refused at connection time.
+
+> If your origin genuinely is inside a private network, edge serving cannot
+> reach it. Put a public hostname in front of it, or keep DNS pointing at your
+> own infrastructure and use us for connection and certificates only.
+
+## Turning it off
+
+```bash
+curl -X DELETE https://api.customdomain.ai/v1/connections/$CONNECTION_ID/power \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY"
+```
+
+This removes the origin **and** tears down the certificate we hold for that
+domain — once we stop serving the host, the certificate is no longer ours to
+keep. The DNS records stay as they are; the domain is still connected, it is
+just no longer proxied.
+
+## Debugging
+
+### `421 Misdirected Request`
+
+We accepted the connection and completed TLS, then found no origin for that
+hostname. Almost always one of:
+
+- No default is set and the domain has no origin of its own.
+- The origin was set on a *different* application than the one the domain is
+  connected to.
+- Power was turned off for this domain and never turned back on.
+
+Check what we think the state is:
+
+```bash
+curl https://api.customdomain.ai/v1/connections/$CONNECTION_ID/power \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY"
+```
+
+`"powered": false` with no `origin` confirms it.
+
+### `502 Bad Gateway`
+
+We found an origin and could not get a usable response from it. Either your
+origin is down or unreachable from the public internet, or it resolves to a
+blocked address (see above). Confirm the origin is reachable from somewhere that
+is not your own network:
+
+```bash
+curl -sI https://app.yourcompany.com
+```
+
+We deliberately return the same 502 for "unreachable" and "blocked", so the
+response cannot be used to map private address space from the outside.
+
+### `402 Payment Required`
+
+Edge serving is Growth and above. The API returns this rather than silently doing
+nothing.
+
+### Everything returns the same tenant
+
+Your app is routing on `Host` instead of `X-Forwarded-Host`. See above.
+
+### Redirect loops
+
+If your app redirects HTTP to HTTPS by inspecting the scheme, check
+`X-Forwarded-Proto` rather than the connection — the hop from our edge to your
+origin may be plain HTTP by design.
+
+## Related
+
+- [How to connect a custom domain](/docs/guides/connect-a-custom-domain) — the
+  DNS half, which comes first.
+- [How to set up a custom domain](/docs/guides/set-up-a-custom-domain) — record
+  types, apex handling, CAA.
+- [Quickstart](/docs/getting-started/quickstart) — connect a domain via the API.
