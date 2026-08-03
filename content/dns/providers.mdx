@@ -38,7 +38,7 @@ to its working mode.
 | Linode | `linode` | Personal access token (Bearer) |
 | Vultr | `vultr` | API key (Bearer) |
 | Name.com | `namecom` | `user:token` (Basic) |
-| GoDaddy | `godaddy` | `key:secret` (sso-key) |
+| GoDaddy | `godaddy` | `gd_pat_…` (Bearer); legacy `key:secret` (sso-key) still accepted |
 | IONOS | `ionos` | API key (`prefix.secret`) |
 | Netlify | `netlify` | API token (Bearer) |
 | Amazon Route 53 | `route53` | `accessKeyId:secretAccessKey[:sessionToken]` (SigV4); zone arg = Hosted Zone ID |
@@ -74,7 +74,7 @@ single write and then discarded, unless the user opts in to
 
 The colon-joined formats in the table above are the **API wire format** for
 `credential.token`. The console never asks anyone to type them: each
-part is a separate labeled field (GoDaddy: API key + API secret; Namecheap:
+part is a separate labeled field (GoDaddy: one Personal Access Token; Namecheap:
 username + API key; Route 53: access key ID + secret access key; Cloudflare: one
 token), linked to the provider's credential page with step-by-step instructions,
 and joined for you on submit. See [Provider setup](/docs/dns/provider-setup).
@@ -111,7 +111,7 @@ do — the parts code can't remove.**
 
 | Model | Providers | Code | External step |
 | --- | --- | --- | --- |
-| **BYO API token** (Rail B) | Cloudflare, DigitalOcean, Gandi, deSEC, Hetzner, Vercel, DNSimple, Porkbun, Linode, Vultr, Name.com, GoDaddy, IONOS, Netlify | ✅ | Customer generates a scoped token and pastes it. No approval for most — **but GoDaddy gates production API keys by account tier, and Namecheap requires enabling API access + IP-whitelisting + an account threshold.** |
+| **BYO API token** (Rail B) | Cloudflare, DigitalOcean, Gandi, deSEC, Hetzner, Vercel, DNSimple, Porkbun, Linode, Vultr, Name.com, GoDaddy, IONOS, Netlify | ✅ | Customer generates a scoped token and pastes it. No approval for most — **Namecheap still requires enabling API access + IP-whitelisting + an account threshold. GoDaddy's legacy API keys were gated by account tier; its Personal Access Tokens are not, so a PAT is the way in for an ordinary account.** |
 | **Machine credential (OAuth2 / signed)** (Rail B) | Google Cloud DNS, Azure DNS, Amazon Route 53 | ✅ | Customer creates a service account (GCP) / app registration (Azure) / IAM key (AWS) and pastes the credential. No approval of *your* service; the customer needs cloud-admin access. |
 | **3-legged consumer OAuth** (Rail C — "Log in with your provider, click Allow") | per registered provider | ⚠️ business step | **You** register an OAuth app with each provider and pass its partner/approval process (legal, branding, security review). The code path exists and is wired via `OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`; **provider-hosted one-click setup (Rail A) is the built-in alternative that avoids per-provider OAuth registration.** |
 

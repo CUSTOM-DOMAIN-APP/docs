@@ -6,8 +6,8 @@ description: Exactly what to do at each DNS provider to create the credential it
 Exactly what a customer (or you, on their behalf) must do to create the
 credential each adapter needs, plus any account-eligibility gates. In the
 console's connect flow the customer enters each part of the credential as a
-**separate labeled field** (e.g. GoDaddy asks for *API key* and *API secret*;
-Namecheap for *Username* and *API key*) with a direct link to the provider's
+**separate labeled field** (e.g. GoDaddy asks for a single *Personal Access
+Token*; Namecheap for *Username* and *API key*) with a direct link to the provider's
 credential page and numbered steps — nobody has to know the wire format. Calling
 the API directly, you pass the parts colon-joined to
 `POST /v1/connections/{id}/apply` as `credential.token` with the matching
@@ -35,7 +35,7 @@ default** — unless you explicitly opt in to remembering it (see
 | Vultr | `vultr` | Account → API → enable + key. | IP allowlist optional |
 | Name.com | `namecom` | Account → API → token → credential `user:token`. | none |
 | Netlify | `netlify` | User Settings → Applications → Personal access token. | domain must be a Netlify DNS zone |
-| **GoDaddy** | `godaddy` | [developer.godaddy.com/keys](https://developer.godaddy.com/keys) → Create New API Key → **Production** environment (test keys can't change live DNS). Two parts: API key + API secret (the secret is shown only once); API wire format `key:secret`. | **Production API access is gated by account tier (historically ≥10 domains / eligible reseller/pro).** Verify current eligibility. |
+| **GoDaddy** | `godaddy` | [developer.godaddy.com](https://developer.godaddy.com/) → API Keys → **Create Personal Access Token**, ticking the **Domains & DNS** scope (it needs `domains.domain:read` and `domains.dns:update`). ONE value, starting `gd_pat_`, shown only once — there is no separate secret. | PATs authenticate an ordinary account against the production Domains API. Legacy `key:secret` pairs still work but are gated on account holdings and answer `403 ACCESS_DENIED` below it — switching that account to a PAT is the fix. |
 
 ## Machine credential (cloud / OAuth2)
 
