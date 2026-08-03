@@ -1,0 +1,194 @@
+---
+title: How to connect a custom domain
+description: Connect a custom domain to your SaaS product — what the CNAME points at, why the root domain needs different records, how certificates get issued, and how to tell the difference between "record added" and "actually live".
+---
+
+"Connect a custom domain" means two different jobs depending on which side of
+the product you are on, and they fail for different reasons.
+
+- **You own the domain** and want it pointing at an app you use. You need one
+  or two DNS records, and the hard parts are the root domain and certificate
+  issuance. Start at [the records](#the-records-you-actually-need).
+- **You build the product** and want your customers to connect *their* domains
+  to it. You need all of the above, times every registrar your customers use,
+  plus a way to know when each one finished. Start at
+  [connecting domains you do not control](#connecting-domains-you-do-not-control).
+
+If you only want the API, go to the
+[quickstart](/docs/getting-started/quickstart). If you want the deeper
+treatment of why this is hard, the
+[setup guide](/docs/guides/set-up-a-custom-domain) covers the mechanics in
+detail and this page covers the connection itself.
+
+## What "connected" actually means
+
+A domain is connected when four separate things are true. Most guides only
+mention the first, which is why so many setups look finished and are not.
+
+1. **Resolution.** The domain's authoritative nameservers return a record that
+   points at the application.
+2. **Routing.** The application recognises the incoming hostname and serves the
+   right tenant for it, rather than a default page or a 404.
+3. **Certificate.** A TLS certificate covering that exact hostname has been
+   issued and installed, so the browser does not interrupt with a warning.
+4. **Propagation.** Resolvers that previously answered for this name have
+   expired their old answer. This is the one you cannot force and cannot see
+   from your own machine.
+
+Steps 1 and 2 are usually fast. Step 3 depends on step 1 having finished *and*
+on the domain not blocking your certificate authority. Step 4 is why "it works
+for me" and "it works for my customer" can be hours apart.
+
+## The records you actually need
+
+### On a subdomain
+
+A subdomain — `app.example.com`, `dashboard.example.com` — takes a single
+`CNAME` pointing at the target hostname the platform gives you.
+
+```
+Type    Host    Value
+CNAME   app     edge.customdomain.ai
+```
+
+Two details that cause most subdomain failures:
+
+- **The host field is relative.** Most DNS panels want just `app`, not
+  `app.example.com`. Entering the full name where a relative one is expected
+  produces `app.example.com.example.com`, which resolves to nothing and looks
+  identical to "not propagated yet".
+- **A `CNAME` cannot coexist with any other record at the same name**
+  (RFC 1034 §3.6.2). If `app` already has an `A` record from a previous setup,
+  the `CNAME` will either be rejected or silently ignored. Delete the old
+  record first.
+
+### On the root domain
+
+The root — `example.com` with nothing in front — cannot hold a `CNAME` at all.
+The same RFC rule applies, and a zone root always has `SOA` and `NS` records, so
+a `CNAME` there is illegal by construction.
+
+There are three legitimate ways around it:
+
+- **`ALIAS` / `ANAME` / flattened `CNAME`.** A provider-specific record type
+  that behaves like a `CNAME` but resolves to addresses at query time.
+  Cloudflare, Route 53, DNSimple and others support it under different names.
+  This is the best option when you have it.
+- **`A` records to published addresses.** Legal at a root, and what you use when
+  your provider has no `ALIAS` type — GoDaddy and Namecheap, among others. The
+  tradeoff is that the addresses are pinned: if the platform's addresses change
+  and yours are hard-coded, the domain breaks.
+- **Connect `www` instead and redirect the root to it.** The least elegant and
+  the most reliable, and it is a perfectly normal thing for a production site to
+  do.
+
+Which of these applies is a property of your DNS provider, not of your domain,
+and it is worth checking before you promise a customer that their root domain
+will work.
+
+## Why the certificate is a separate failure
+
+A certificate authority will only issue for a name it can validate, and two
+things routinely stop it even when DNS is perfect.
+
+**CAA records.** A `CAA` record on the domain names which authorities are
+allowed to issue for it (RFC 8659). If a domain publishes `CAA` naming only,
+say, DigiCert, then Let's Encrypt is *forbidden* from issuing — and the failure
+surfaces as a generic issuance error, not as "your CAA record blocked this".
+Check it before you debug anything else:
+
+```bash
+dig CAA example.com +short
+```
+
+An empty result is fine and means "no restriction". A non-empty result that does
+not include your platform's issuer is the problem.
+
+**Validation reaching the wrong place.** HTTP-based validation requires the
+domain to already resolve to the platform. That means on a root domain where you
+are mid-migration, the certificate cannot be issued until the `A` records have
+actually cut over — the ordering matters.
+
+## How long it takes, honestly
+
+There is no single number, and the number you are given is usually wrong.
+
+- **New record, name never queried before:** typically seconds to a few minutes.
+  Nothing has a stale answer to expire, so there is nothing to wait for.
+- **Changed record, name queried recently:** up to the previous record's TTL.
+- **Name queried while it did not exist:** this is the slow case. Resolvers
+  cache the *absence* of a record (RFC 2308 §5), for a duration set by the
+  zone's `SOA` minimum — which is 5 minutes at Cloudflare, 30 minutes at
+  DigitalOcean, and an hour at GoDaddy. Checking whether it works *before*
+  creating the record is what causes the "I waited an hour and it still says
+  not found" report.
+
+The practical rule: lower the TTL *before* you change anything, and do not query
+a name until after you have created it.
+
+## Connecting domains you do not control
+
+Everything above assumes you can open the DNS panel. When your customers connect
+their own domains, you cannot, and three new problems appear.
+
+**Every registrar is a different product.** The record you need is the same. The
+words, the field layout and the relative-versus-absolute host convention are
+not. Generic instructions produce a support ticket per customer; instructions
+that name the actual provider do not. Detecting the provider from the domain's
+nameservers, then rendering guidance for that provider specifically, is the
+single highest-leverage thing you can do here.
+
+**You cannot see whether it worked.** Your customer says they added the record.
+Your app still 404s. Neither of you can distinguish "typed it wrong" from "still
+propagating", and the default response — wait longer — is right often enough to
+be dangerous. You need to actively poll authoritative nameservers and report the
+difference.
+
+**Some of it can be automated.** Where a customer's DNS provider exposes an API
+or an OAuth flow, the records can be written for them rather than described to
+them, which removes the entire class of typo failures. That coverage varies by
+provider and is worth checking against your own customer base.
+
+This is the problem [Custom Domain](/docs/getting-started/quickstart) exists to
+solve: provider detection, per-provider instructions, automatic record writing
+where the provider allows it, certificate issuance, and a status you can poll
+instead of guess at.
+
+## Connecting a domain with the API
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "app.example.com"}'
+```
+
+The response carries the records to create and a connection id. Poll it, or
+subscribe to the webhook, until the status reaches `live` — which is asserted
+only when resolution, routing and the certificate are all true, not when the
+record was merely accepted.
+
+```bash
+curl https://api.customdomain.ai/v1/connections/$CONNECTION_ID \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY"
+```
+
+## Common failures, and what they actually mean
+
+| What you see | What it usually is |
+| --- | --- |
+| Works for you, not for the customer | Propagation, or a negative answer cached before the record existed |
+| `CNAME` rejected by the panel | Another record already exists at that name |
+| Root domain rejected | Provider has no `ALIAS`/`ANAME`; use `A` records or connect `www` |
+| Resolves, but the app 404s | DNS is right; the application has not been told to serve that hostname |
+| Resolves, but the browser warns | Certificate not issued yet — check `CAA` first |
+| `app.example.com.example.com` in the panel | Absolute name typed into a relative host field |
+
+## Related
+
+- [How to set up a custom domain](/docs/guides/set-up-a-custom-domain) — the
+  full mechanics, including provider-by-provider differences.
+- [Choosing a custom-domain solution](/docs/guides/choosing-a-custom-domain-solution)
+  — build versus buy, and what to ask a vendor.
+- [Quickstart](/docs/getting-started/quickstart) — connect your first domain
+  through the API.
