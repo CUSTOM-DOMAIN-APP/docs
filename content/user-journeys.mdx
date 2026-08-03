@@ -37,7 +37,7 @@ Every user-facing flow and the surface that implements it — the completeness m
 | D4 | Connect a domain from the console | Console → Domains (`POST /v1/connections`) |
 | D5 | Inspect a connection and drive it | Console → Domain detail (`GET /v1/connections/{id}`, `/records`, the apply rails) |
 | D6 | See which providers auto-configure | Console → Providers (`GET /v1/providers`, `/v1/providers/census`) |
-| D7 | Receive events and inspect deliveries | Console → Webhooks (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`) |
+| D7 | Receive events and inspect deliveries | Console → **Activity** — register/rotate/delete endpoints and filter deliveries by event type, all on that page (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`). There is no separate "Webhooks" page. |
 | D8 | Track usage against quota | Console → Usage (`GET /v1/billing/usage`) |
 | D9 | View and change plan | Console → Billing (`GET /v1/plans`, `POST /v1/billing/checkout`, `/portal`) |
 | D10 | Embed the widget safely | `POST /v1/tokens` server-side; the widget JWT is app- (and optionally domain-) scoped |
