@@ -1,0 +1,33 @@
+---
+title: Connect a domain by DNS provider
+description: Step by step guides to connect a custom domain from each supported DNS provider, with the exact records and how each provider's setup works.
+---
+
+Custom Domain supports 63 DNS and registrar providers. How a domain connects depends on what the provider offers: some support one click sign in, some take a scoped API token, and the rest use a guided flow where the app shows the exact records and verifies them for you.
+
+## How providers break down
+
+Every provider is routed to the best setup it supports:
+
+- **6 one-click (OAuth):** you sign in to the provider and approve; no records to copy.
+- **2 one-click (Domain Connect):** you approve the change at the provider itself.
+- **17 automatic (API token):** you paste a scoped token once and the app writes the records.
+- **38 guided manual:** the app shows the exact records to add and verifies them automatically.
+
+Whichever path applies, the app issues and renews TLS automatically and monitors for drift after the domain goes live.
+
+## Provider guides
+
+These providers have a full walkthrough:
+
+- [Cloudflare](/docs/providers/cloudflare)
+- [DigitalOcean](/docs/providers/digitalocean)
+- [DNSimple](/docs/providers/dnsimple)
+- [GoDaddy](/docs/providers/godaddy)
+- [Namecheap](/docs/providers/namecheap)
+- [Netlify](/docs/providers/netlify)
+- [Amazon Route 53](/docs/providers/route53)
+- [Vercel](/docs/providers/vercel)
+- [WordPress.com](/docs/providers/wordpresscom)
+
+More provider guides are being added. For any provider not listed, the connect flow still shows you the exact records and verifies them; see [Connect a custom domain](/docs/guides/connect-a-custom-domain).
