@@ -26,8 +26,45 @@ export default async function Page({
 
   const MDX = page.data.body;
 
+  // schema.org structured data for every docs page: TechArticle (this is
+  // technical reference/guide content) plus a BreadcrumbList mirroring the
+  // slug path. Emitted as JSON-LD so search engines and answer engines get
+  // machine-readable type, headline, and description without any change to
+  // the MDX content itself.
+  const pageUrl = `https://docs.customdomain.ai${page.url}`;
+  const crumbs = (slug ?? []).map((part, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: part.replace(/-/g, " "),
+    item: `https://docs.customdomain.ai/docs/${(slug ?? []).slice(0, i + 1).join("/")}`,
+  }));
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      headline: page.data.title,
+      description: page.data.description ?? undefined,
+      url: pageUrl,
+      mainEntityOfPage: pageUrl,
+      author: { "@type": "Organization", name: "Custom Domain", url: "https://customdomain.ai" },
+      publisher: {
+        "@type": "Organization",
+        name: "Custom Domain",
+        url: "https://customdomain.ai",
+        logo: { "@type": "ImageObject", url: "https://customdomain.ai/web/image/website/1/logo" },
+      },
+    },
+    ...(crumbs.length > 0
+      ? [{ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs }]
+      : []),
+  ];
+
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
