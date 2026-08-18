@@ -1,5 +1,8 @@
 # Custom Domain documentation
 
+[![Docs](https://img.shields.io/badge/docs-docs.customdomain.ai-1c1917)](https://docs.customdomain.ai/docs)
+[![SDK downloads](https://img.shields.io/npm/dm/customdomain-js?label=sdk%20downloads%2Fmonth&color=1c1917)](https://www.npmjs.com/package/customdomain-js)
+
 This repository is the source of truth for the [Custom Domain documentation](https://docs.customdomain.ai/docs): the guides, concepts, and API reference for connecting customer-owned domains to a SaaS platform with automatic DNS configuration, domain ownership verification, and automatic TLS issuance and renewal. Everything the docs site renders lives here as MDX, and edits merged into this repo sync to the product site automatically. If you are looking for how to add a "connect your domain" flow to your product, start with the [quickstart](content/getting-started/quickstart.mdx) or read the rendered docs at [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs).
 
 The rendered site is [docs.customdomain.ai](https://docs.customdomain.ai/docs); its live availability, along with the rest of the platform, is published at [status.customdomain.ai](https://status.customdomain.ai).
