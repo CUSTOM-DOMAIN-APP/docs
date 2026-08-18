@@ -37,6 +37,19 @@ const nextConfig: NextConfig = {
         destination: "/docs/authentication/widget-tokens",
         permanent: true,
       },
+      // The Entri evaluation guide moved to the marketing blog, where dated,
+      // promotable content belongs — docs and blog both ranking for "entri
+      // alternative" split our own traffic between two of our hosts. A 301
+      // (permanent: true) rather than a delete, because the docs page has
+      // inbound links and accumulated ranking: dropping it to a 404 throws
+      // that away, where a permanent redirect passes it to the new URL.
+      // Cross-host, so the destination is absolute.
+      {
+        source: "/docs/guides/entri-alternative",
+        destination:
+          "https://customdomain.ai/blog/custom-domain-blog-2/how-to-evaluate-an-entri-alternative-46",
+        permanent: true,
+      },
     ];
   },
 };
