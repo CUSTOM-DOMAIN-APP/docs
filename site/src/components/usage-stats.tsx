@@ -16,6 +16,14 @@ import type { StatsPayload } from "@/app/api/stats/route";
 // days") and the freshness ("npm data through <date>") instead of implying a
 // ticker. The dot pulses because the page is polling — not because a download
 // just happened.
+//
+// NEVER SUM THE PACKAGES. @customdomain/react depends on customdomain-js, so a
+// React install downloads both; adding them double counts. This card headlines
+// customdomain-js alone — the superset every install passes through. An earlier
+// revision summed them and showed 1,053 where the truth was 586. The per-package
+// row below is a breakdown, and says in words that it is not additive.
+//
+// They are DOWNLOADS, not users. Mirrors, scanners and CI pull packages too.
 
 const POLL_MS = 60_000;
 
@@ -92,7 +100,7 @@ export function UsageStats() {
 
   if (failed) return null; // degrade to nothing rather than to an error box
 
-  const skeleton = !data;
+  const skeleton = !data || !data.core;
 
   return (
     <div
@@ -121,8 +129,14 @@ export function UsageStats() {
       ) : (
         <>
           <div className="flex flex-wrap gap-x-10 gap-y-5">
-            <Stat label="downloads · last 30 days" value={data.totals.lastMonth} />
-            <Stat label="downloads · last 7 days" value={data.totals.lastWeek} />
+            <Stat
+              label="customdomain-js · last 30 days"
+              value={data.core?.lastMonth ?? 0}
+            />
+            <Stat
+              label="customdomain-js · last 7 days"
+              value={data.core?.lastWeek ?? 0}
+            />
           </div>
 
           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-fd-border pt-4">
@@ -140,8 +154,10 @@ export function UsageStats() {
             ))}
           </div>
 
-          <p className="mt-3 text-[11px] text-fd-muted-foreground/70">
-            npm publishes daily totals on a short lag
+          <p className="mt-3 text-[11px] leading-relaxed text-fd-muted-foreground/70">
+            Registry downloads, not unique users. The React package depends on{" "}
+            <code className="font-mono">customdomain-js</code>, so the two rows
+            above are not additive. npm publishes daily totals on a short lag
             {data.through ? <> · data through {data.through}</> : null}
             {data.partial ? <> · one source unavailable</> : null}
           </p>

@@ -6,15 +6,27 @@ import { NextResponse } from "next/server";
 // it directly. Proxying here also means one upstream fetch per revalidation
 // window shared by every visitor, instead of one per page view.
 //
+// DO NOT SUM THE PACKAGES. @customdomain/react declares customdomain-js as a
+// hard dependency, so every React install downloads BOTH. Adding the two counts
+// the same install twice — this file used to do exactly that and served an
+// inflated headline (1,053 when the real figure was 586). customdomain-js is
+// the SUPERSET: every react install is inside it. It is the only figure here
+// that is not double counted, so it is the only one presented as a total.
+//
 // ON "REAL TIME". npm has no live download feed and no vendor does: the registry
 // aggregates into DAILY buckets and publishes them on a lag (a given day's
 // figure typically settles 24-48h later). So the honest contract is "the newest
 // number npm has, refreshed continuously" — which is what this serves. The UI
-// labels the window rather than implying a ticker. Anything presented as a
-// live-incrementing download counter is decoration, not data.
+// labels the window rather than implying a ticker.
+//
+// AND THEY ARE DOWNLOADS, NOT USERS. Registry mirrors, security scanners and CI
+// all pull packages; publish days spike hard for that reason. Never relabel this
+// as "installs", "users", or "customers".
 export const revalidate = 300; // 5 min — well inside npm's own update cadence
 
-const PACKAGES = ["customdomain-js", "@customdomain/react"] as const;
+/** The core package. Every @customdomain/react install also downloads this. */
+const CORE = "customdomain-js";
+const PACKAGES = [CORE, "@customdomain/react"] as const;
 
 type PackageStat = {
   name: string;
@@ -25,7 +37,11 @@ type PackageStat = {
 
 export type StatsPayload = {
   packages: PackageStat[];
-  totals: { lastMonth: number; lastWeek: number };
+  /**
+   * Downloads of the core package — the superset, and the headline figure.
+   * Deliberately NOT a sum across packages; see the note at the top of this file.
+   */
+  core: { name: string; lastMonth: number; lastWeek: number } | null;
   /** Newest day npm has published a figure for (YYYY-MM-DD), if known. */
   through: string | null;
   fetchedAt: string;
@@ -62,6 +78,7 @@ export async function GET() {
 
   const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
   const partial = ok.length !== PACKAGES.length;
+  const core = ok.find((p) => p.name === CORE) ?? null;
 
   const payload: StatsPayload = {
     packages: ok.map(({ name, lastMonth, lastWeek, url }) => ({
@@ -70,10 +87,9 @@ export async function GET() {
       lastWeek,
       url,
     })),
-    totals: {
-      lastMonth: ok.reduce((n, p) => n + p.lastMonth, 0),
-      lastWeek: ok.reduce((n, p) => n + p.lastWeek, 0),
-    },
+    core: core
+      ? { name: core.name, lastMonth: core.lastMonth, lastWeek: core.lastWeek }
+      : null,
     through: ok.find((p) => p.through)?.through ?? null,
     fetchedAt: new Date().toISOString(),
     partial,
