@@ -6,7 +6,7 @@ export function baseOptions(): BaseLayoutProps {
   return {
     githubUrl: "https://github.com/CUSTOM-DOMAIN-APP/docs",
     nav: {
-      title: "Custom Domain docs",
+      title: "CustomDomain docs",
       url: "/docs",
     },
     links: [

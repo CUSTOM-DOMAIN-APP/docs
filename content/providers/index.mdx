@@ -3,7 +3,7 @@ title: Connect a domain by DNS provider
 description: Step by step guides to connect a custom domain from each supported DNS provider, with the exact records and how each provider's setup works.
 ---
 
-Custom Domain supports 63 DNS and registrar providers. How a domain connects depends on what the provider offers: some support one click sign in, some take a scoped API token, and the rest use a guided flow where the app shows the exact records and verifies them for you.
+CustomDomain supports 63 DNS and registrar providers. How a domain connects depends on what the provider offers: some support one click sign in, some take a scoped API token, and the rest use a guided flow where the app shows the exact records and verifies them for you.
 
 ## How providers break down
 
@@ -30,4 +30,6 @@ These providers have a full walkthrough:
 - [Vercel](/docs/providers/vercel)
 - [WordPress.com](/docs/providers/wordpresscom)
 
-More provider guides are being added. For any provider not listed, the connect flow still shows you the exact records and verifies them; see [Connect a custom domain](/docs/guides/connect-a-custom-domain).
+Nine of the 63 have a page. The other 54 do not need one to work: the connect flow shows you the exact records for your provider and verifies them either way, and [Connect a custom domain](/docs/guides/connect-a-custom-domain) covers the generic path end to end. A per-provider page exists where the provider's own dashboard is unusual enough that screenshots-in-prose save real time, so the queue is ordered by how often a provider actually turns up in support threads, not by market share. If yours is missing and its dashboard is the reason you are stuck, open an issue on [CUSTOM-DOMAIN-APP/docs](https://github.com/CUSTOM-DOMAIN-APP/docs/issues) naming the provider, and say where the flow lost you.
+
+The full catalog, including each provider's mode and dashboard URL, is served live at `GET https://api.customdomain.ai/v1/providers/census`. That endpoint is the source of truth for every count on this page.

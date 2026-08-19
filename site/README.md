@@ -11,10 +11,10 @@ restarting `next dev` (or shipping a new container) is the whole update loop.
 Docs used to be rendered only inside `apps/app` (the main product) in the
 `custom-domains` repo, synced in one direction from this repo's `content/` via
 `.github/workflows/sync-to-product.yml`. That workflow still exists and still
-works, but the docs site itself now also runs standalone, straight from this
-repo, built and ready to deploy independently at its own subdomain — not yet
-publicly reachable there. See `../DEPLOYMENT.md` for the production
-deployment, current rollout status, and the one remaining manual DNS step.
+runs, but nothing renders its output any more: this app is what serves
+`docs.customdomain.ai` today, straight from this repo, and `apps/app/docs*`
+permanently redirects here. See `../DEPLOYMENT.md` for the production
+deployment and the follow-ups still open.
 
 ## Layout
 
@@ -70,5 +70,6 @@ site/server.js`).
   the existing content with basic nav/search, not a redesign.
 - No CMS, no MDX authoring UI — content is still hand-edited MDX in
   `../content`, same as before.
-- No changes to `sync-to-product.yml` — that workflow is a separate, still-live
-  concern (see `../DEPLOYMENT.md`).
+- No changes to `sync-to-product.yml` — that workflow still runs, but nothing
+  renders what it produces; retiring it is a separate call (see
+  `../DEPLOYMENT.md`).

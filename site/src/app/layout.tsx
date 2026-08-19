@@ -6,8 +6,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://docs.customdomain.ai"),
   title: {
-    default: "Custom Domain docs",
-    template: "%s — Custom Domain docs",
+    default: "CustomDomain docs",
+    template: "%s — CustomDomain docs",
   },
   description:
     "Guides, concepts, and API reference for connecting customer-owned domains to a SaaS platform with automatic DNS, ownership verification, and TLS.",
