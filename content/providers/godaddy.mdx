@@ -9,23 +9,23 @@ description: "Put a custom domain from GoDaddy on your app with automatic HTTPS.
 
 **Setup type: Automatic (API token).** You paste a scoped GoDaddy API token once and the app writes the records for you; nothing to copy by hand.
 
-GoDaddy connects with a scoped access token you generate once, and Custom Domain writes the records for you. GoDaddy is also on the Domain Connect list, so a one-click approve-at-GoDaddy path is available too.
+GoDaddy connects with a scoped access token you generate once, and CustomDomain writes the records for you. GoDaddy is also on the Domain Connect list, so a one-click approve-at-GoDaddy path is available too.
 
 ## What you'll need
 
 - A domain whose DNS is managed at GoDaddy.
-- Access to your app's Custom Domain dashboard (it shows the exact target for your account).
+- Access to your app's CustomDomain dashboard (it shows the exact target for your account).
 - A scoped GoDaddy API token (see below).
 
 ## The records
 
-Custom Domain gives you the authoritative records for **your** account in the dashboard, typically a `CNAME` (or apex `A`/`ALIAS`) pointing your domain at the edge, plus a `TXT` record that proves ownership. Use the values shown there; the shape is always the same, the target is per-account.
+CustomDomain gives you the authoritative records for **your** account in the dashboard, typically a `CNAME` (or apex `A`/`ALIAS`) pointing your domain at the edge. Use the values shown there; the shape is always the same, the target is per-account. There is no separate ownership TXT to add on this path: control is proven by the rail itself, or by the records appearing in your own authoritative DNS. See [Setup types](/docs/concepts/ownership-and-setup-types#control-is-proven-by-the-rail).
 
 ## Setting it up on GoDaddy
 
 1. Create a scoped DNS token in the GoDaddy dashboard ([open it](https://dcc.godaddy.com/manage-dns)).
 2. Paste it into the connect widget.
-3. Custom Domain writes the records for you and verifies them.
+3. CustomDomain writes the records for you and verifies them.
 
 ## GoDaddy specifics
 
@@ -35,7 +35,7 @@ Custom Domain gives you the authoritative records for **your** account in the da
 
 ## How you know it worked
 
-Custom Domain polls public DNS and issues the TLS certificate automatically. When the dashboard shows the domain **live**, HTTPS is serving. Drift monitoring then watches the records so a later change at the provider doesn't silently break the domain.
+CustomDomain polls public DNS and issues the TLS certificate automatically. When the dashboard shows the domain **live**, HTTPS is serving. Drift monitoring then watches the records so a later change at the provider doesn't silently break the domain.
 
 ## FAQ
 

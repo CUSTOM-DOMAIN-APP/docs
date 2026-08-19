@@ -7,24 +7,24 @@ description: "Put a custom domain from Namecheap on your app with automatic HTTP
 
 # Connect a Namecheap domain
 
-**Setup type: Guided manual.** Namecheap has no delegated write path, so you add two records in the Namecheap DNS panel yourself, the app shows the exact values and verifies them for you.
+**Setup type: Guided manual.** Namecheap has no safe delegated write path, so you add the records in the Namecheap DNS panel yourself. The app shows the exact values and verifies them for you.
 
-Namecheap connects via the guided-manual path by default: Custom Domain shows the exact records and you add them in Namecheap's Advanced DNS panel, then it verifies. Namecheap does have an API, but its shape makes copy-paste the safer default.
+Namecheap connects via the guided-manual path by default: CustomDomain shows the exact records and you add them in Namecheap's Advanced DNS panel, then it verifies. Namecheap does have an API, but its shape makes copy-paste the safer default.
 
 ## What you'll need
 
 - A domain whose DNS is managed at Namecheap.
-- Access to your app's Custom Domain dashboard (it shows the exact target for your account).
+- Access to your app's CustomDomain dashboard (it shows the exact target for your account).
 
 ## The records
 
-Custom Domain gives you the authoritative records for **your** account in the dashboard, typically a `CNAME` (or apex `A`/`ALIAS`) pointing your domain at the edge, plus a `TXT` record that proves ownership. Use the values shown there; the shape is always the same, the target is per-account.
+CustomDomain gives you the authoritative records for **your** account in the dashboard, typically a `CNAME` (or apex `A`/`ALIAS`) pointing your domain at the edge. Use the values shown there; the shape is always the same, the target is per-account. There is no separate ownership TXT to add on this path: control is proven by the rail itself, or by the records appearing in your own authoritative DNS. See [Setup types](/docs/concepts/ownership-and-setup-types#control-is-proven-by-the-rail).
 
 ## Setting it up on Namecheap
 
 1. Open your Namecheap DNS panel ([here](https://ap.www.namecheap.com/domains/list/)).
-2. Add the exact `CNAME`/`A` and `TXT` records the dashboard shows.
-3. Come back; Custom Domain polls DNS and marks the domain live once records resolve.
+2. Add the exact records the dashboard shows, usually one `CNAME` (or `A` records if you are connecting the apex).
+3. Come back; CustomDomain polls DNS and marks the domain live once records resolve.
 
 ## Namecheap specifics
 
@@ -34,13 +34,13 @@ Custom Domain gives you the authoritative records for **your** account in the da
 
 ## How you know it worked
 
-Custom Domain polls public DNS and issues the TLS certificate automatically. When the dashboard shows the domain **live**, HTTPS is serving. Drift monitoring then watches the records so a later change at the provider doesn't silently break the domain.
+CustomDomain polls public DNS and issues the TLS certificate automatically. When the dashboard shows the domain **live**, HTTPS is serving. Drift monitoring then watches the records so a later change at the provider doesn't silently break the domain.
 
 ## FAQ
 
 ### Why isn't Namecheap one-click?
 
-Namecheap's API replaces the entire DNS zone in one call and requires IP allowlisting, so a safe automatic write isn't practical for arbitrary users. The guided path shows you the two records to add, which is quick and can't overwrite your other records.
+Namecheap's API replaces the entire DNS zone in one call and requires IP allowlisting, so a safe automatic write isn't practical for arbitrary users. The guided path shows you the exact records to add, which is quick and can't overwrite your other records.
 
 ## Related
 

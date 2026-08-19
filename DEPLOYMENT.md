@@ -7,8 +7,10 @@ matching its existing single-box Caddy + Docker Compose pattern exactly. That
 repo is private, so the pull request that introduced it is not linkable from
 here; what it added is described in full below.
 
-This doc covers what changed operationally and the one manual step a human
-still has to do.
+`docs.customdomain.ai` is live: it returns 200 and serves the Fumadocs build
+from `site/`, and `app.customdomain.ai/docs*` permanently redirects to it. This
+doc covers what changed operationally, what has already shipped, and the two
+follow-ups still open.
 
 ## What ships where
 
@@ -18,7 +20,7 @@ still has to do.
 | Standalone renderer | `docs` (this repo) | `site/` |
 | Production container definition | `custom-domains` | `infra/docker-compose.prod.yml` (`docs` service) |
 | Reverse proxy + TLS | `custom-domains` | `infra/Caddyfile` (`docs.customdomain.ai` block) |
-| `/docs` in the old product app | `custom-domains` | `apps/app` — will redirect to `docs.customdomain.ai` once the infra PR merges (see below) |
+| `/docs` in the old product app | `custom-domains` | `apps/app` — permanently redirects (308) to `docs.customdomain.ai` (see below) |
 
 ## How the container gets built
 
@@ -69,12 +71,12 @@ Until that's wired in, the `docs` container simply keeps serving whatever
 `docker compose build docs` locally on the host) — it does not silently break;
 it just doesn't auto-update yet.
 
-## The one manual step: DNS
+## The DNS record (already added)
 
-Everything else — the container, the reverse-proxy block, TLS — is ready to go
-the moment DNS resolves. The **only remaining manual step** is
-adding one DNS record in the Cloudflare dashboard for the `customdomain.ai`
-zone:
+The record below has been added and `docs.customdomain.ai` resolves and serves.
+It is recorded here so the setup is reproducible, and because it is the one
+piece that lives outside version control — in the Cloudflare dashboard for the
+`customdomain.ai` zone:
 
 > **Type:** CNAME
 > **Name:** `docs`
@@ -113,8 +115,8 @@ instead. Checked specifically:
   responsibly with as "the" target.
 
 The `customdomain.ai` zone's actual DNS records are managed by hand in the
-Cloudflare dashboard, outside version control (consistent with why this is a
-manual step at all — we do not have, and did not ask for, Cloudflare
+Cloudflare dashboard, outside version control (consistent with why that record had to
+be added by hand — we do not have, and did not ask for, Cloudflare
 credentials). **CNAME-to-`app.customdomain.ai`** sidesteps needing that IP at
 all: whatever the `app` A/AAAA record currently points to, `docs` will too,
 automatically, and stays correct if that origin IP ever changes.
@@ -143,24 +145,22 @@ cert + "Full (strict)" is an existing, separate follow-up noted in
 
 ## The old `/docs` route in `apps/app`
 
-`apps/app` will redirect `/docs` and `/docs/*` to the matching path on
-`docs.customdomain.ai`, once the companion infra PR (custom-domains#78,
-currently held back pending a deploy-script fix — see that PR) merges. Until
-then, `/docs` keeps rendering in-app exactly as it does today. The redirect
-is a **temporary (307/302, not permanent 308)** one deliberately: it's one line to flip to
-`permanent: true` in `apps/app/next.config.ts` once `docs.customdomain.ai` has
-been live and stable for a while, but starting temporary avoids browsers/CDNs
-hard-caching the redirect before that's confirmed.
+`apps/app` redirects `/docs` and `/docs/*` to the matching path on
+`docs.customdomain.ai`. This landed with custom-domains#78. The redirect started
+temporary (307/302) on purpose, so that browsers and CDNs could not hard-cache
+it before the new host was proven, and was flipped to **permanent (308)** once
+`docs.customdomain.ai` had been stable: `apps/app/next.config.ts` now sets
+`permanent: true`. Check it with `curl -sI https://app.customdomain.ai/docs`,
+which returns `308` with `location: https://docs.customdomain.ai/docs`.
 
-Two things this change deliberately does **not** do (left for a human
-decision, out of scope here):
+Two follow-ups are still open. Each is a deliberate human decision, and neither
+blocks anything:
 1. **`sync-to-product.yml`** (this repo's workflow that rsyncs `content/` into
    `apps/app/src/content/docs/` and opens a `docs-sync` PR) still runs as-is.
-   Once the redirect above is live, nothing renders that synced copy anymore
-   (the redirect fires before any page match), so the workflow becomes
-   redundant — but it's still harmless, and deciding whether/when to retire it
-   is a separate call (e.g. some teams keep a synced fallback during a
-   transition window).
+   Nothing renders that synced copy any more (the redirect fires before any
+   page match), so the workflow is redundant — but it's still harmless, and
+   deciding whether and when to retire it is a separate call (e.g. some teams
+   keep a synced fallback during a transition window).
 2. A few hardcoded internal `/docs` links inside `apps/app`
    (`src/components/app/Sidebar.tsx`, `CommandPalette.tsx`,
    `src/components/legal/Footer.tsx`, `src/app/sitemap.ts`, and others) still

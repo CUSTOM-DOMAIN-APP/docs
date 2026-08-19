@@ -18,10 +18,14 @@ gate. `Monitor` is not gated per tenant yet; the deployment-level
 | Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
 | --- | --- | --- | --- | --- | --- | --- |
 | `free` | $0 | 10 | 1 | **yes** | Connect | self-serve |
-| `startup` | $249/mo | 600 | 50 | no | Connect | self-serve |
-| `growth` | $749/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve |
+| `startup` | $149/mo | 600 | 50 | no | Connect | self-serve |
+| `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve |
 | `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (preview) | contact sales |
 | `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
+
+Prices and both domain columns above are transcribed from `GET /v1/plans`
+(`price_cents`, `domains_per_year`, `domains_per_month`). If this table and that
+endpoint ever disagree, the endpoint is right and this page is stale.
 
 ### Two numbers, and which one gates you
 
@@ -74,8 +78,11 @@ unbranded styling. See
 
 > **Status:** the plan catalog is always public, but Checkout and the billing
 > portal are live only where `STRIPE_SECRET_KEY` **and** the `STRIPE_PRICE_*` ids
-> are configured. Until then those routes return `503 service_unavailable`
-> (`billing.configured` is `false`) — the case on the hosted service today. See
+> are configured. Without them those routes return `503 service_unavailable` and
+> `billing.configured` is `false` — the case on a fresh self-hosted deployment.
+> On the hosted service today `GET /v1/plans` returns
+> `billing: { "configured": true, "mode": "live" }`, so Checkout and the portal
+> are live there. Read that block rather than assuming either state. See
 > [Checkout & portal](#checkout--portal).
 
 ## Metered usage

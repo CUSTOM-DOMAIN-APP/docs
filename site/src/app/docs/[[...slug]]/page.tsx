@@ -46,10 +46,10 @@ export default async function Page({
       description: page.data.description ?? undefined,
       url: pageUrl,
       mainEntityOfPage: pageUrl,
-      author: { "@type": "Organization", name: "Custom Domain", url: "https://customdomain.ai" },
+      author: { "@type": "Organization", name: "CustomDomain", url: "https://customdomain.ai" },
       publisher: {
         "@type": "Organization",
-        name: "Custom Domain",
+        name: "CustomDomain",
         url: "https://customdomain.ai",
         logo: { "@type": "ImageObject", url: "https://customdomain.ai/web/image/website/1/logo" },
       },
