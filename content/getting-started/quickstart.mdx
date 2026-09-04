@@ -1,10 +1,13 @@
 ---
-title: Quickstart
-description: Connect your first custom domain end to end in about five minutes.
+title: Self-hosted quickstart
+description: Run the stack locally with Docker Compose and connect a first domain end to end through the API.
 ---
 
-Connect your first custom domain end to end. This uses the API directly; to embed
-the UI instead, see [The widget SDK](/docs/widget-sdk/overview).
+This walks the **API** against a **local** stack. On the hosted service, start
+from [Which path are you on?](/docs/getting-started/overview) — the
+[API](/docs/getting-started/api), [widget](/docs/getting-started/widget),
+[console](/docs/getting-started/console) and [MCP](/docs/getting-started/mcp)
+pages cover each path with hosted URLs.
 
 ## 0. Run the stack (local)
 
@@ -54,8 +57,11 @@ curl -X POST http://localhost:8080/v1/domains:check \
   -d '{"domain":"app.customer.com"}'
 ```
 
-The response tells you the `setup_type`, whether `oauth_available` /
-`domain_connect` rails are on offer, capability flags, and any `record_conflicts`.
+The response tells you which rails can run for this domain and why not when
+they can't (`rails`), the server's pick (`recommended_rail`), whether that pick
+needs nothing typed by the end user (`end_user_automatic`), capability flags,
+any `record_conflicts`, and a `blocked_reason` when the domain can't be
+connected at all. See [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).
 
 ## 4. Create a connection
 

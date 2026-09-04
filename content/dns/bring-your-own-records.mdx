@@ -1,0 +1,106 @@
+---
+title: Bring your own records
+description: Connecting a domain for records the platform can't derive — email (SES, Workspace), verification tokens, anything that isn't the web CNAME — and what such a connection does and doesn't get.
+---
+
+By default a connection's record set is derived by the platform: a `CNAME`
+(or root equivalent) pointing web traffic at our edge, plus `www` when you ask
+for it. Some integrations need records **only you know** — Amazon SES mints
+three Easy-DKIM `CNAME`s per domain, Google Workspace has its own `MX` set, a
+partner wants a verification `TXT`. Those ride the same flow as the web
+records: the same detection, the same rails, the same polling, the same
+widget.
+
+## Supplying the records
+
+**Server to server** (an API key, never a widget token):
+
+```bash
+curl -X PUT https://api.customdomain.ai/v1/connections/<ID>/records \
+  -H "Authorization: Bearer sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "records": [
+      { "type": "CNAME", "host": "abc123._domainkey.mail.acme.com", "value": "abc123.dkim.amazonses.com" },
+      { "type": "CNAME", "host": "def456._domainkey.mail.acme.com", "value": "def456.dkim.amazonses.com" },
+      { "type": "MX",    "host": "mail.acme.com", "value": "10 feedback-smtp.us-east-1.amazonses.com" },
+      { "type": "TXT",   "host": "mail.acme.com", "value": "v=spf1 include:amazonses.com ~all" }
+    ]
+  }'
+```
+
+`PUT /v1/connections/{id}/records` **replaces** the connection's desired
+set with yours. From then on the poller verifies *your* records, the widget's
+manual screen shows *your* records, and `live` means *your* records resolve.
+See [Create a connection — supplying your own
+records](/docs/connect-flow/create-a-connection#supplying-your-own-records).
+
+**Pre-flight with the real set.** Pass the same `records` to
+`POST /v1/domains:check` so conflict detection and the automatic→manual
+fallback prediction run against what you'll actually write, not the default
+web record. The check also returns `integration_warnings` — addressed to
+*you*, the developer, never shown to the end user — when the set is
+misconfigured in a way that only bites in production. The one warning today is
+`supplied_apex_unrealizable`: you supplied a root record pointing at a
+hostname, and this provider has no root-CNAME type (see
+[Root domains](/docs/dns/root-domains)).
+
+**SPF safely.** Never write a second `v=spf1` `TXT` — a domain may have only
+one. Use the `SPFM` meta-record and the engine merges your mechanisms into
+whatever SPF already exists. See [Email DNS](/docs/dns/email-dns).
+
+## Which rails carry your records
+
+| Rail | Your records |
+| --- | --- |
+| Sign in with the provider (OAuth) | Written as supplied |
+| API key | Written as supplied |
+| One-click setup (Domain Connect) | **Refused** — a provider-hosted template can't carry a caller-authored set. The start returns an error; use another rail. |
+| Manual | Shown to the end user exactly as supplied |
+
+## What an email-only connection does *not* get
+
+A connection whose records contain **no web record pointing at our edge** —
+only `MX`, `TXT`, `DKIM` `CNAME`s — is a *record-delivery* connection. It
+goes `live` when the records resolve, it fires the same webhooks, and it is
+listed like any other. It is **not served** by the edge:
+
+- No TLS certificate is issued for it.
+- If someone points the root `A` record at our edge anyway, the edge answers
+  with a clear "this domain isn't set up to be served here" page, not your
+  app — the ask gate only approves hosts whose record set includes an edge
+  `CNAME`/`ALIAS` or our `A` records (reason `no_edge_record`).
+
+If you want *both* email and web on the domain, include the edge record in the
+set you supply (or create the web connection normally and add the email
+records to it).
+
+## Rules and limits
+
+- **Server-side only.** The call needs an `sk_` API key; a widget token is
+  refused (`403`) — a page in a browser must not choose the records we write.
+- **Replace, don't patch.** The whole set is replaced on each `PUT`.
+- **Before anything is written.** Once the connection's records have been
+  applied (or it is live), the set is frozen: a `PUT` returns `409` with
+  *disconnect and reconnect the domain to change them*. Changing a live
+  connection's target out from under DNS is what that refusal prevents.
+- **In the connection's zone.** Every record host must sit inside the
+  connection's zone (`mail.acme.com` for a connection on `mail.acme.com`; the
+  registrable domain for a root connection); at most 25 records; supported
+  types only.
+- **Root records.** A `CNAME` at the zone root is rewritten to the engine's
+  apex type and realized per provider (or refused where it can't be) — the
+  same rules as [Root domains](/docs/dns/root-domains).
+
+Records you later stop needing are not deleted at the provider by this
+endpoint — removal is a [disconnect](/docs/connect-flow/offboarding) concern.
+
+## When to use this instead of the widget's default
+
+- **SES / SendGrid / Postmark domain authentication** — the DKIM selectors
+  are per-account and unknowable to us.
+- **A verification `TXT` for a third party** — same reason.
+- **An `MX` set your platform manages** for the customer.
+
+For plain web connections, don't supply records: the derived set already
+handles root vs subdomain per provider, `www`, and the edge target.

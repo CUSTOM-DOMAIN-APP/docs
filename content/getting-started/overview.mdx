@@ -1,0 +1,59 @@
+---
+title: Which path are you on?
+description: Custom Domain is one product with four front doors — the console, the API, the embeddable widget, and the MCP server. Pick yours, then read the truths every path shares.
+---
+
+Custom Domain is one product with four front doors. The model underneath is
+the same everywhere: **a workspace has applications; an application owns
+connections (and its origin, keys and webhooks); a connection is one domain
+moving `pending → propagating → live`; live means the edge terminates TLS
+and proxies the domain to the application's origin.**
+
+| You are… | Use | Start |
+| --- | --- | --- |
+| Pointing **your own** domain at your app | the **console** | [Console](/docs/getting-started/console) — no code |
+| A product that provisions domains for customers **server-to-server** | the **API** (`/v1`, `sk_` key) | [API](/docs/getting-started/api) |
+| A product whose customers connect **their** domains inside **your** UI | the **widget** (`customdomain-js`) | [Widget](/docs/getting-started/widget) |
+| An AI agent or MCP client | the **MCP server** (`mcp.customdomain.ai`) | [MCP](/docs/getting-started/mcp) |
+| Running the stack yourself | Docker Compose | [Self-hosted quickstart](/docs/getting-started/quickstart) |
+
+## Shared truths
+
+These hold on every path. If a screen or a response seems to contradict one
+of them, that is a bug — tell us.
+
+- **Four statuses.** `pending` (records not yet seen), `propagating` (a rail
+  wrote them, we are watching DNS), `live`, `failed`.
+- **`pending` has no deadline.** Fast checks for 72 hours, then the connection
+  stays `pending` with `error_code: setup_incomplete` and is re-checked every
+  six hours, forever. It goes live the moment the records appear.
+- **`propagating` fails after 24 hours** (`error_code: propagation_timeout`)
+  — records were written but never resolved. Usually a wrong value or a
+  Cloudflare proxy (orange cloud) in the way.
+- **`failed` is not terminal.** *Resume* / `:recheck` revives it; re-creating
+  the same domain revives it (`200`); real traffic at the edge revives it.
+- **The diagnosis is on the connection**: `error_code` and `error_message` on
+  `GET /v1/connections/{id}`, on every list, and on the webhook events.
+- **HTTPS only after `live`.** The certificate issues on the first request
+  once the connection is live; a domain pointed at us before that gets a
+  clear "not active yet" page, never a raw error.
+- **Root domains work everywhere**, but the record differs by provider
+  (ALIAS/flattened CNAME vs `A` records) — see [Root domains](/docs/dns/root-domains).
+- **"Automatic" means an adapter exists**, not "the user types nothing". Read
+  `rails` / `recommended_rail` / `end_user_automatic` on the pre-flight —
+  [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).
+- **Drift monitoring** watches live connections hourly; alerts are not
+  delivered on the hosted service yet.
+
+## Which credential do I have?
+
+| You got it from | It is | Use it for |
+| --- | --- | --- |
+| The console → **Keys** | an `sk_…` API key (tenant-scoped) | server-to-server API calls, the MCP server, minting widget tokens |
+| The console → **Embed** | the application's **client secret** (shown once; rotate there) | minting widget tokens from your server (`POST /v1/tokens`) |
+| `POST /v1/tokens` | a short-lived **widget JWT** (one application, optionally one domain, optionally one end user) | the browser: `customdomain-js` `open({ token })`, or direct `/v1` calls from the page |
+| An agent grant | a delegated **agent token** | the agent's scoped API calls |
+
+A widget JWT can never mint another token, never read another application's
+data, and never choose the records we write. Anything that chooses records is
+`sk_`-only.

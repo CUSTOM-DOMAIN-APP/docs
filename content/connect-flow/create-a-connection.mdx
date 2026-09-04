@@ -41,14 +41,59 @@ The response is the connection plus its authoritative desired record set:
   `GET /v1/connections/{id}/records`. Before a rail writes records, the default
   edge `CNAME` is synthesized server-side.
 
+## Supplying your own records
+
+Some record sets cannot be derived from the domain. The motivating case is email
+verification: Amazon SES mints three Easy-DKIM `CNAME` selectors **per domain**,
+so no template can know them. Replace the connection's desired set with your own
+before the widget opens:
+
+```bash
+curl -X PUT http://localhost:8080/v1/connections/con_…/records \
+  -H "Authorization: Bearer sk_live_…" \
+  -H "Content-Type: application/json" \
+  -d '{"records":[
+        {"type":"MX","host":"@","value":"inbound-smtp.us-east-2.amazonaws.com","priority":10},
+        {"type":"TXT","host":"@","value":"v=spf1 include:amazonses.com ~all"},
+        {"type":"CNAME","host":"sel1._domainkey","value":"sel1.dkim.amazonses.com"}
+      ]}'
+```
+
+The supplied set then behaves exactly like ours everywhere: the OAuth rail writes
+it with the customer's provider credential, the widget renders it for manual
+setup, and the propagation poller verifies it before the connection goes live.
+Omit `dnsRecords` in the SDK when you use this — the connection's set is
+authoritative, so the browser never has to be trusted with the record list.
+
+Three constraints follow from that trust boundary:
+
+- **`sk_` API key only.** A widget JWT lives in a browser; it may not choose the
+  records written into a customer's zone.
+- **Hosts must resolve inside the connection's zone.** `@`, `_dmarc`, and
+  `sel1._domainkey` are anchored to the connection's domain; a foreign FQDN is
+  rejected.
+- **The Domain Connect rail refuses a supplied set** (`400`). That rail applies
+  our *published templates* at the provider, so it cannot write records it did
+  not author — use the OAuth rail or manual setup for these connections.
+
+The replacement is atomic and rejected with `409` once records have been applied.
+`GET /v1/connections/{id}/records` returns the resulting authoritative set, and
+the connection carries `records_source: "integrator"`.
+
 ## Idempotency
 
 `POST /v1/connections` is idempotent per application + domain. If the calling app
-already has a non-failed connection for the domain, that existing connection is
-returned with `200` (instead of `201`) — safe to call on every widget open. This
-is also what makes an abandoned setup resumable: the console's **Finish setup**
-(on the Domains list) reopens the guided flow against the existing connection and
-picks up at the right step. A domain-bound widget JWT may only create a
-connection for the hostname it was minted for.
+already has a `pending`, `propagating` or `live` connection for the domain, that
+connection is returned with `200` (instead of `201`) — safe to call on every
+widget open. If the only existing connection is **`failed`**, it is **revived**
+(status back to `pending`, diagnosis cleared, a fresh verification window) and
+returned with `200` rather than a duplicate being created. The explicit retry is
+`POST /v1/connections/{id}:recheck` (`409` if a different active connection
+exists for the domain). This is also what makes an abandoned setup resumable:
+the console's **Finish setup** / **Resume** reopens the guided flow against the
+existing connection at the right step. A domain-bound widget JWT may only create
+a connection for the hostname it was minted for. Hosting-platform subdomains
+(`*.vercel.app` and the rest of the platform list) are refused with `422
+platform_subdomain`.
 
 Next: [apply the records and go live](/docs/connect-flow/verify-and-go-live).

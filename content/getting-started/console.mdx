@@ -1,0 +1,70 @@
+---
+title: Console — connect your own domain
+description: The no-code path — from sign-up to a domain serving your app over HTTPS, and what every screen is actually doing.
+---
+
+Use the console when the domain is **yours** and you want it to point at
+something you run. If your *customers* should connect *their* domains inside
+your product, that is the [widget](/docs/getting-started/widget), not this page.
+
+## 1. Sign up and verify
+
+Sign up at [app.customdomain.ai](https://app.customdomain.ai/signup). The
+verification link is valid for **one hour**. If it expires, the link lands on
+a page that issues a new one; the *Check your email* screen also has **Resend
+the link**. Nothing in the console works until the address is verified.
+
+## 2. Connect a domain
+
+**Domains → Connect a domain.** Enter the hostname:
+
+- `www.acme.com` / `app.acme.com` — a subdomain: any DNS provider can hold the
+  `CNAME` we need.
+- `acme.com` — the root. Works everywhere, but the record depends on the
+  provider — [Root domains](/docs/dns/root-domains).
+
+The pre-flight refuses two things up front: a domain that doesn't resolve at
+all (unregistered, or never delegated at the registrar) and a hosting
+platform's own subdomain (`www.<name>.vercel.app`). Both used to sit on
+"waiting for DNS" for days.
+
+## 3. Choose how to add the records
+
+The **What works at …** card (named for your provider) is the truth for *your* provider, straight
+from the server. The options appear in this order; the recommended one is
+marked.
+
+1. **Sign in with the provider** — Cloudflare, DNSimple, Netlify, Vercel,
+   WordPress.com. Approve once in a popup; we add the records with a
+   one-time token we never store. Fastest.
+2. **One-click setup** — only where the provider serves our template
+   (NameSilo, Glauca Digital, Domain Chief today). GoDaddy, IONOS and
+   Cloudflare are *not* offered this, on purpose.
+3. **API key** — paste a scoped provider credential; used once, discarded
+   (opt in to remember it). GoDaddy only issues API access to 10+ domain or
+   paid accounts; Namecheap needs an IP allowlist — for most accounts, skip to
+   manual.
+4. **Add the records by hand** — the exact rows to copy, with a link to your
+   provider's DNS panel. Then **Check now**.
+
+## 4. Verify
+
+The connection sits in `pending` until the records resolve, then goes
+`live`; you can leave and come back — **Domains** shows every connection with
+its reason and a **Resume** link. After three minutes of waiting the page
+offers a fallback. A stalled connection is *paused*, not failed: it keeps
+being checked every six hours.
+
+## 5. Serve something
+
+Live means the edge terminates TLS and proxies the domain to your
+application's **origin**. If you haven't set one, the domain shows a "not
+configured" page — set it under **Settings → Where your domains point**.
+Root-domain redirects (`www_redirect`) and per-path rules live on the
+connection's detail page.
+
+## What the console is *not*
+
+It is one application in your workspace. Everything it does is an API call
+you could make yourself — the [API](/docs/getting-started/api) page maps each
+step — and its **Embed** and **Keys** pages are where the other paths begin.

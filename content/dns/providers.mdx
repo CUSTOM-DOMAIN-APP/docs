@@ -10,6 +10,11 @@ provider, records can be written automatically through one of the
 [connect rails](/docs/connect-flow/overview#the-four-rails); otherwise the flow
 falls back to guided-manual.
 
+Root domains (`acme.com` rather than `www.acme.com`) depend on what the
+provider can hold at the zone apex — see [Root domains](/docs/dns/root-domains).
+For records only you know (SES DKIM, a verification `TXT`), see
+[Bring your own records](/docs/dns/bring-your-own-records).
+
 By default no provider credential is **stored**. Rail C (OAuth) uses a one-time
 token that is always discarded, and Rail A (provider-hosted one-click setup)
 uses no server-to-server credential at all. A Rail B (API-token) credential is likewise
@@ -79,31 +84,27 @@ username + API key; Route 53: access key ID + secret access key; Cloudflare: one
 token), linked to the provider's credential page with step-by-step instructions,
 and joined for you on submit. See [Provider setup](/docs/dns/provider-setup).
 
-## Apex (root) domains
-
-A plain `CNAME` is illegal at a zone's apex (`example.com`, as opposed to
-`app.example.com`) per RFC 1034 — providers instead offer their own
-CNAME-like record for the root: a flattened `CNAME`, an `ALIAS`, or an `ANAME`.
-Customdomain hides that split behind one provider-agnostic record type
-internally and always shows it to you as **`ALIAS`**, whichever spelling the
-provider actually uses underneath:
-
-| Native spelling at the apex | Providers |
-| --- | --- |
-| Flattened `CNAME` | Cloudflare, Netlify, EasyDNS, deSEC, Bunny, Vercel |
-| `ALIAS` | DNSimple, Route 53, Namecheap, Porkbun, PowerDNS |
-| `ANAME` | Constellix, DNSMadeEasy |
-
-If a customer's provider isn't in one of those three groups, it has no
-CNAME-family capability at the root at all, and connecting a bare apex domain
-there returns a distinct `apex_not_supported` error (`422`) instead of sending
-the provider a record type it would reject. The error message names three
-concrete alternatives: add `A` records manually at the provider, connect through
-a provider that does support ALIAS/ANAME, or connect `www.<domain>` instead of
-the bare apex. Subdomains (`app.example.com`) are unaffected either way — a
-plain `CNAME` is always legal there.
-
 ## How connecting works — what you need per provider
+
+### What actually works today, per provider
+
+Measured against production, not the adapter list. "Automatic" means we can
+write the records for you; "manual" means you add the records we show.
+
+| Provider | Root domain | How it connects today | Notes |
+| --- | --- | --- | --- |
+| Cloudflare | ✅ ALIAS-style (flattened CNAME) | **Sign in with Cloudflare** (OAuth, one click) or an API token | The best-supported path. |
+| Vercel · Netlify · DNSimple · WordPress.com | ✅ | **Sign in with the provider** (OAuth) | Registered and live. |
+| GoDaddy | ✅ via **A records** at `@` | **Manual** for most accounts | GoDaddy issues API access only to 10+ domain / paid accounts; its one-click (Domain Connect) rail needs GoDaddy-side onboarding that isn't complete. |
+| Namecheap · Name.com | ✅ via **A records** at `@` | API token, or manual | No ALIAS type at the root — use the A records the console shows. |
+| Route 53 | ✅ ALIAS | Access key + secret (+ session token for temporary credentials) | IAM user with `ChangeResourceRecordSets` on the zone. |
+| OVH · Google Cloud DNS · Azure DNS · DigitalOcean | ✅ / varies | API credentials, or manual | DigitalOcean OAuth is not registered yet. |
+| NameSilo · Glauca Digital · Domain Chief | ✅ | **One-click setup** (Domain Connect) | These providers serve our templates. |
+| Wix · Squarespace · Hover · anything else | depends on the panel | Manual | Add the records we show. |
+
+The console detects your provider from the domain's nameservers and shows
+only the paths that exist for it.
+
 
 There are three real-world requirement classes. **"Code ✅" means the adapter is
 built and tested; the "External" column is what you or your customer must still

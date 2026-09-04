@@ -19,26 +19,33 @@ The status machine is deliberately small:
      └──────────── manual: records seen in public DNS ─────────┘        │
                                                                         │
                         propagating > 24h with records unseen ──▶ failed
+                                                                        │
+                    :recheck / re-create / edge traffic ──▶ pending ◀───┘
 ```
 
 | Status | Meaning |
 | --- | --- |
-| `pending` | Created; records not yet written or not yet observed. |
+| `pending` | Created; records not yet seen. Fast backoff for 72 hours, then it stays `pending` with `error_code: setup_incomplete` and is re-checked every six hours. **Never fails on its own.** |
 | `propagating` | Records were written (by a rail) and are being checked against public DNS. |
-| `live` | Every desired record resolves to its intended value. The edge serves TLS for the host. |
-| `failed` | A `propagating` connection's records never appeared within the 24-hour window (or, for a manual connection, within 72 hours of `pending`). |
+| `live` | Every desired record resolves to its intended value. The edge serves TLS for the host (only when the record set includes an edge record — an email-only set is verified but never served). |
+| `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`), or a rail rejected the write. **Not terminal** — see Retrying. |
 
 There is no separate ownership-challenge step. Control is proven **by the rail
 itself**: an OAuth authorization, a one-click setup apply, or a scoped API token
 each demonstrate the customer controls the zone. In the manual flow, the poller
-simply waits for the records to appear — giving the customer up to **72 hours**
-(long enough for a human to get to it, unlike the 24-hour automatic-rail window)
-before giving up and marking the connection `failed` too.
+simply waits for the records to appear — a `pending` connection has no
+deadline (after 72 hours it is merely re-checked less often, with an honest
+`setup_incomplete` diagnosis).
 
-A `failed` connection carries `error_code` / `error_message` naming why:
-`propagation_timeout` (a `propagating` connection's records never resolved) or
-`setup_incomplete` (a manual connection's records were never added at all).
-Both are cleared automatically if the connection later re-verifies.
+## Retrying
+
+`failed` is a diagnosis, not a tombstone. Three things revive a failed
+connection into `pending` with a fresh window and a cleared diagnosis:
+`POST /v1/connections/{id}:recheck` (the console's *Resume* / *Check now*),
+re-`POST /v1/connections` for the same domain (returns the revived row with
+`200`), and real traffic arriving at the edge for the host. The diagnosis that
+led to the failure stays readable in the meantime as `error_code` /
+`error_message`, and rides the webhook events.
 
 ## The authoritative record set
 

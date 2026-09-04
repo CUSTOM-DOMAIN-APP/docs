@@ -1,0 +1,87 @@
+---
+title: Widget — let your customers connect their domains
+description: The embedded path — mint a token on your server, open the modal in your UI, and know exactly what your customer will see for their DNS provider.
+---
+
+Use the widget when **your customers** own the domains and should connect
+them **inside your product**. You never touch their DNS; the modal detects the
+provider, offers the best rail it can actually complete, and reports back.
+
+## 1. Mint a widget token on your server
+
+Two ways, both server-side (never from the browser):
+
+```bash
+# with the application's client secret (console → Embed)
+curl -X POST https://api.customdomain.ai/v1/tokens \
+  -H "Content-Type: application/json" \
+  -d '{"application_id":"app_...","client_secret":"...","domain":"shop.acme.com","end_user_ref":"user_42"}'
+
+# or with your sk_ key (must own the application)
+curl -X POST https://api.customdomain.ai/v1/tokens \
+  -H "Authorization: Bearer sk_..." -H "Content-Type: application/json" \
+  -d '{"application_id":"app_...","domain":"shop.acme.com","end_user_ref":"user_42"}'
+```
+
+`domain` binds the token to one hostname (recommended); `end_user_ref` is
+*your* id for the customer, echoed on the connection and every event as
+`user_id`. Tokens are short-lived — mint one per open.
+
+## 2. Open the modal
+
+```html
+<script src="https://app.customdomain.ai/widget-assets/customdomain-sdk.js"></script>
+<script>
+  customdomain.open({
+    applicationId: "app_...",
+    token: "<widget JWT from step 1>",
+    domain: "shop.acme.com",
+    onSuccess: ({ domain }) => markConnected(domain),
+    onClose: ({ lastStatus, error }) => log(lastStatus, error),
+  });
+</script>
+```
+
+Every screen change fires `customdomain:step`; a failure fires
+`customdomain:error` with a branchable `code`. Full options and events:
+[Widget reference](/docs/widget-sdk/reference).
+
+## 3. What your customer will see, by provider
+
+| Their DNS provider | The modal offers | They type |
+| --- | --- | --- |
+| Cloudflare, DNSimple, Netlify, Vercel, WordPress.com | **Sign in with the provider** (OAuth, one-time token) | nothing |
+| NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider | nothing |
+| GoDaddy, Namecheap, Name.com, IONOS, OVH, Route 53, everything else | **Add these records** — with *why* the automatic rails aren't available and a link to their DNS panel | the records (about two minutes) |
+| Unknown provider | a provider picker, then the records | the records |
+
+This table is what `POST /v1/domains:check` returns as `rails`; the widget
+reads it live, so you never have to maintain it.
+
+## 4. Records you supply
+
+For records only you know (SES DKIM, a verification `TXT`), create the
+connection **server-side first** (`POST /v1/connections`, then
+`PUT /v1/connections/{id}/records` with your `sk_` key), and open the widget
+for that domain — it shows *your* records. An email-only set (no edge record) is
+verified and reported but **never served** and gets **no certificate**; that is
+by design. [Bring your own records](/docs/dns/bring-your-own-records).
+
+## 5. After the modal closes
+
+`onSuccess` fires when the domain is `live`. If the customer closes early,
+the connection keeps being checked (`pending` never fails on its own); the
+next open resumes it. A `failed` connection is recoverable in the modal
+itself: the records stay on screen with the reason, and *I've added them —
+verify* re-enters verification. Subscribe to `connection.live` /
+`connection.failed` webhooks (each with `user_id` and, when present,
+`error_code` / `error_message`), and poll `GET /v1/connections/{id}` as the
+fallback.
+
+## Don't
+
+- Don't gate your UI on `setupType === "automatic"` — read `rails`.
+- Don't send `Bearer sk_` from the page; the widget JWT is the browser
+  credential.
+- Don't call `customdomain.open()` for `*.vercel.app`-style hosts; the
+  pre-flight refuses them with `platform_subdomain`.

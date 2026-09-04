@@ -1,0 +1,80 @@
+---
+title: API — provision domains from your server
+description: The server-to-server path with an sk_ key — pre-flight honestly, create, apply, verify, react — and the mistakes integrators actually make.
+---
+
+Use the API when **your server** decides which domains get connected — a
+platform that provisions a custom domain per customer, a migration script, an
+internal tool. The browser-embedded path is the [widget](/docs/getting-started/widget).
+
+Base URL for the hosted service: `https://api.customdomain.ai`. Auth:
+`Authorization: Bearer sk_…` from the console's **Keys** page.
+
+## 1. Pre-flight — and read what it says
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/domains:check \
+  -H "Authorization: Bearer sk_..." -H "Content-Type: application/json" \
+  -d '{"domain":"shop.acme.com"}'
+```
+
+Branch on **`rails`** and **`recommended_rail`**, not on `setup_type`:
+`automatic` only means an adapter exists (for GoDaddy that is an API key most
+accounts cannot get). `end_user_automatic: true` is the only field that means
+"nobody has to type anything". A `blocked_reason` (`unregistered`,
+`platform_subdomain`) means stop and tell the user why. `dashboard_url` is
+where to send them for manual records. If you supply your own `records`, pass
+them here too so conflicts are computed against the real set.
+
+## 2. Create
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections \
+  -H "Authorization: Bearer sk_..." -H "Content-Type: application/json" \
+  -d '{"domain":"shop.acme.com","application_url":"https://tenant-42.yourapp.com"}'
+```
+
+`201` with the connection and its desired `records`. Re-posting the same
+domain returns the existing connection with `200`; if the only existing one is
+`failed`, it is revived and returned. Idempotent by design — call it on every
+"connect" click.
+
+For records only you know (SES DKIM, verification `TXT`), follow with
+`PUT /v1/connections/{id}/records` — [Bring your own records](/docs/dns/bring-your-own-records).
+
+## 3. Apply (optional)
+
+If you hold a provider credential for the zone, write the records yourself:
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/apply \
+  -H "Authorization: Bearer sk_..." -H "Content-Type: application/json" \
+  -d '{"provider":"cloudflare","credential":"<scoped token>"}'
+```
+
+A rejected credential is `422 ProviderAuthenticationError`; any other
+provider refusal is `422 dns_write_failed` with the provider's reason.
+Route 53 temporary (`ASIA…`) keys also need the session token. Otherwise, show
+the records from `GET /v1/connections/{id}/records` and let the user add them.
+
+## 4. Verify and react
+
+Subscribe to webhooks (`connection.live`, `connection.failed` — both carry
+`error_code` / `error_message` when there is one) and poll
+`GET /v1/connections/{id}` as the fallback. `pending` never fails on its own;
+`propagating` fails after 24 hours; `POST /v1/connections/{id}:recheck`
+revives a failed connection.
+
+## Mistakes we see
+
+- **Promising "automatic" from `setup_type`.** Use `rails`.
+- **Telling users "unregistered" on a resolver hiccup.** Only act on
+  `registered === false` when the field is *present*; a transient failure
+  omits it and sets `detection_error: resolver`.
+- **Sending `Bearer sk_` from a browser.** Mint a widget JWT server-side
+  (`POST /v1/tokens`) and use that in the page.
+- **Treating `connection.applied` as verified.** Applied means written; only
+  `live` means resolving and served.
+- **Inventing the edge CNAME for an email-only connection.** A connection
+  whose records have no edge record is never served and gets no certificate —
+  by design.

@@ -13,86 +13,88 @@ version** — new optional fields and endpoints can appear, but existing fields
 never change meaning or disappear without a new major version. See the
 [API reference](/docs/api-reference) for the current surface.
 
-## 2026-07-22
-
-A round of fixes and additions following a full audit of the connect flow,
-widget, and API surface. Purely internal correctness fixes are omitted; this is
-what changes for you.
-
-- **Apex (root) domains, explained and honest.** Customdomain uses a
-  provider-agnostic apex record internally and always shows it to you as
-  **`ALIAS`**. On a provider with no ALIAS/ANAME/flattened-CNAME capability at
-  the root, connecting the bare apex now returns a distinct `apex_not_supported`
-  error with concrete alternatives instead of a broken write. See
-  [Apex domains](/docs/dns/providers#apex-root-domains).
-- **Full Public-Suffix-List domain parsing.** The subdomain / registrable-domain
-  / public-suffix boundary is computed server-side against the complete PSL and
-  is now the single source of truth across the console, widget, and MCP —
-  fixing wrong behavior on long-tail TLDs that client-side heuristics used to
-  get wrong.
-- **The apex→www redirect defaults off.** `www_redirect` on a connection is
-  opt-in; it no longer redirects a bare apex to `www` unless you explicitly set
-  it.
-- **Real share links.** `loadSharedFlow` / "forward to a colleague" now mints an
-  actual link (`POST /v1/sharing/connect`, resumed at `GET /share/{token}`) that
-  expires after 30 days, instead of a broken or fake flow. See
-  [Sharing](/docs/api-reference/sharing/createSharedFlow).
-- **A working embed-token flow.** The console's embed snippet mints a widget
-  token through `api/widget-token` using your tenant API key; no `client_secret`
-  appears in the copy-paste snippet.
-- **Failed connections say why.** A `failed` connection now carries
-  `error_code` / `error_message` (`propagation_timeout` or `setup_incomplete`).
-  Manual connections get a 72-hour window before they're marked `failed` too —
-  previously they wouldn't stop polling.
-- **Managed connections quietly outlive an expired token.** Before treating a
-  `401` as the customer revoking access, the platform now refreshes the stored
-  grant's access token and retries once — fewer unnecessary re-consent prompts.
-  See [Managed connections](/docs/connect-flow/managed-connections).
-- **A new `connection.records_outdated` webhook** for non-managed connections
-  caught by a fleet-wide reconciliation pass (for example after an edge target
-  change) — it carries a heal link since the platform has no stored credential
-  to push the fix itself.
-- **New, branchable error codes:** `InvalidNameservers` and
-  `ProviderAuthenticationError` (422), alongside `apex_not_supported` above, plus
-  a `quota_exceeded` (402) code for plan-quota enforcement (gated on the
-  deployment; not confirmed active on the hosted service yet). The widget SDK
-  maps these to `InvalidNameservers`, `ProviderAuthenticationError`, and
-  `PlanLimitError` on `onError`.
-- **`domains:check` reports its parse verdict** — `subdomain`,
-  `registrable_domain`, and `public_suffix` — on the API and in the console/MCP.
-- **Corrected webhook retry documentation.** Deliveries actually retry up to 12
-  times with backoff over roughly a day before being dead-lettered, not 3; an
-  endpoint that returns `429` (or fails repeatedly) is cooled down for about 5
-  minutes rather than retried immediately.
-- **White-label branding is enforced as an Enterprise entitlement** when a
-  connect is resumed through a share link, not just hidden in the console UI.
-- **API reference backfill.** The **Power** (edge reverse-proxy), **Secure**
-  (TLS certificate lifecycle), and **Sharing** endpoints, plus bulk connection
-  create, provider zone listing, and the embedded-checkout purchase pair
-  (`/registrar/checkout` + `/registrar/fulfill`) were already live but missing
-  from this reference — they're documented now.
-- **Widget SDK:** a twelfth MCP tool (`list-connections`, portfolio inventory);
-  `add-email`'s `provider` preset (`google` / `microsoft365` / `zoho`); new
-  `endUserRef` (customer attribution, distinct from `userId`), `managed`, and
-  `enableEmail` config fields; new white-label keys `fontUrl`, `googleFont`,
-  `customCopy`, `icons`, `darkMode`, and `darkTokens`; a `customdomain:purchase`
-  event for the in-widget buy flow; and multi-domain progress fields on the
-  step/success events. See the [SDK reference](/docs/widget-sdk/reference).
-- **Disconnecting a domain now correctly leaves shared DNS alone** when another
-  of your applications still serves the same domain — only that app's
-  connection is removed.
-- **Faster console and widget.** Backend and bundle-size work cut typical
-  console page loads and the embedded widget's payload noticeably; no behavior
-  changes.
-
 ## Notable milestones
 
+- **Wix, Hover, Bluehost and friends are named.** A domain at a
+  manual-only host is identified from its nameservers and shown with that
+  provider's DNS panel link, instead of "we couldn't detect your DNS host".
+- **Domain-purchase orders are listable and stale quotes expire.** `GET
+  /v1/sell/orders` returns your application's orders; unpaid quotes older
+  than a day become `expired` (with `purchase.confirmation.expired`).
+- **"Unregistered" only when it's true.** The pre-flight reports
+  `registered: false` only on an NXDOMAIN answer; a transient resolver failure
+  omits the field and reports `detection_error: resolver` instead.
+- **Webhooks say why.** `connection.failed` (and any lifecycle event on a
+  connection with a recorded diagnosis) now carries `error_code` and
+  `error_message`. Connections also expose `retried_at`.
+- **Widget tells the host why it fell back.** A new `customdomain:fallback`
+  event carries the reason (no sign-in or one-click at this provider, too
+  many conflicting records, unsupported or unknown provider) and the message
+  the user saw.
+- **Widget recovers a failed connection in place.** The records stay on
+  screen with the reason; *I've added them — verify* re-enters verification
+  (`:recheck`). Re-sending an identical record set after a write returns 200.
+  A stalled connection keeps its real diagnosis instead of a generic one.
+- **`www` works with the root redirect.** A root connection with
+  `www_redirect` now serves `www.<root>` too (the edge redirects the root
+  there); previously `www` was refused at the edge and never got a
+  certificate.
+- **Rail truth on the pre-flight.** `POST /v1/domains:check` now returns
+  `rails` (per rail: available, and one machine reason when not), the server's
+  `recommended_rail`, `end_user_automatic`, a `blocked_reason` for domains no
+  rail can connect, a `dashboard_url` into the provider's DNS panel, and the
+  observed `nameservers`. One-click setup is advertised only where the
+  provider is measured to serve our template — never merely because it
+  answered discovery — and `domainconnect:start` refuses what the check did
+  not advertise, naming the provider. Hosting-platform subdomains
+  (`*.vercel.app` and friends) are refused on create with `platform_subdomain`
+  instead of waiting for DNS that can never appear. The console shows "What
+  works at GoDaddy" from this block and links to the DNS panel; the widget
+  explains *why* one-click isn't available and offers the panel link on the
+  manual screen; the SDK exposes the same fields in camelCase.
+- **Clearer setup, honest by provider.** The connect flow now shows what your
+  DNS provider can actually do before you choose a path, explains provider
+  errors in plain words, never pretends one-click setup worked before you
+  approved it, and offers "Check now" plus a fallback after a few minutes of
+  waiting. A domain that's live but shows nothing tells you to set where it
+  points. The overview explains the three ways to use Custom Domain (your own
+  domain · your customers' domains via the widget · API/agents).
+- **Email-only domains are never served.** Connections whose records are only
+  mail (MX/SPF/DKIM) can't be approved at the edge; a domain pointed at us
+  before it's active gets a clear page instead of a raw error.
+- **Late DNS no longer fails a connection.** A `pending` connection now waits
+  as long as it takes (re-checked every six hours after the first three days)
+  and connects the moment the records appear. If your domain already points at
+  us when a connection had failed, real traffic re-enters it into verification
+  automatically. Retrying a domain resumes the existing connection instead of
+  creating a duplicate, and **Finish setup** now works on failed connections.
+- **Honest pre-flight.** The connect flow refuses domains that don't resolve
+  (unregistered / undelegated) and hosting-platform subdomains (`*.vercel.app`
+  and friends) with an explanation, instead of parking them on "waiting for DNS".
+- **Root domains on GoDaddy / Namecheap / Name.com** show the A records to add
+  (those panels have no ALIAS type); the docs now say plainly which providers
+  connect automatically and which are manual.
+- **Sign-up recovery.** *Check your email* has a **Resend the link** button and
+  says so honestly if sending fails; an expired verification link lands on a
+  page that issues a new one.
+- **Route 53** accepts a session token for temporary (`ASIA…`) credentials.
+- **Clearer errors.** A DNS-provider write that fails is reported as a 422
+  `dns_write_failed` with the provider's reason — not a 503.
+- **Tenant-scoped connection webhooks** — connection lifecycle envelopes now
+  include the optional `user_id` echoed from the connection's `end_user_ref`,
+  allowing integrators to associate events with the originating tenant or end
+  user. Connections created without an `end_user_ref` continue to omit it.
+- **Integrator-supplied record sets** — `PUT /v1/connections/{id}/records`
+  replaces a connection's desired records with a set the integrator authored, for
+  records no template can derive (Amazon SES mints three Easy-DKIM CNAMEs per
+  domain). Server-to-server only, and the one-click template rail refuses such a
+  connection. See [Create a connection](/docs/connect-flow/create-a-connection#supplying-your-own-records).
 - **Money-safe domain buying** — embedded checkout that authorizes the card,
   registers the domain server-side (webhook-driven), and captures only after a
   successful registration; purchased domains land in the console pre-connected.
   See [Buying a domain](/docs/sell/buying-a-domain).
 - **Hosted MCP server live** — `https://mcp.customdomain.ai/mcp` (Streamable
-  HTTP) with twelve agent tools, plus a console **MCP server** page under
+  HTTP) with eleven agent tools, plus a console **MCP server** page under
   *Integrate* with credentials and client configs.
 - **One-click setup template catalog live upstream** — the full customdomain.ai
   template catalog (apex A/AAAA/CNAME/www, subdomain, www, wildcard, verify,
@@ -104,9 +106,12 @@ what changes for you.
   `_dck1.customdomain.ai`) and a conformance CI gate keeps the catalog valid.
   Providers that mirror the public template registry serve the catalog today
   (measured 2026-07-28: NameSilo and Glauca Digital serve all 18 templates,
-  Domain Chief 16 of 18); providers that hand-curate their template sets
-  (GoDaddy, IONOS, Cloudflare) require direct onboarding, so for domains hosted
-  there the widget offers the OAuth, API-key, and manual paths instead. See
+  Domain Chief 16 of 18), and the rail is offered per-provider via the
+  `DC_SYNC_PROVIDERS` allowlist. Providers that hand-curate their template sets
+  (GoDaddy, IONOS, Cloudflare) require direct onboarding, which has not
+  completed — for domains hosted there the widget offers the API-key and manual
+  paths, plus one-click OAuth where the provider runs an OAuth rail (Cloudflare
+  does; GoDaddy and IONOS do not). See
   [Setup types & the ask gate](/docs/concepts/ownership-and-setup-types).
 - **Share links** — forward a connect flow to a colleague with a link that carries
   a 30-day expiry; expired share tokens return `404`.
@@ -142,7 +147,7 @@ what changes for you.
   full parity census that routes ~63 target providers to their working mode, and
   one-click setup for tokenless applies.
 - **Embeddable widget/SDK** — `customdomain-js`, `window.customdomain`, the
-  `customdomain:*` events, 85-token white-label theming, and embedded mode.
+  `customdomain:*` events, ~90-token white-label theming, and embedded mode.
 - **Signed webhooks** — HMAC-SHA256 deliveries with a replay window, retries, and
   a delivery log at `GET /v1/webhook-deliveries`.
 - **Billing & metering** — a Stripe-backed plan catalog with metered domain
