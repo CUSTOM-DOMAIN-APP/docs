@@ -9,10 +9,13 @@ your product, that is the [widget](/docs/getting-started/widget), not this page.
 
 ## 1. Sign up and verify
 
-Sign up at [app.customdomain.ai](https://app.customdomain.ai/signup). The
-verification link is valid for **one hour**. If it expires, the link lands on
-a page that issues a new one; the *Check your email* screen also has **Resend
-the link**. Nothing in the console works until the address is verified.
+Sign up at [app.customdomain.ai](https://app.customdomain.ai/signup). You
+reach the console immediately; a verification email is sent and its link
+(valid for **one hour**) marks the address verified — nothing is gated on it
+by default. Operators who set `REQUIRE_EMAIL_VERIFICATION=true` on their
+deployment get the stricter mode: no session until the address is verified,
+with a *Check your email* screen that has **Resend the link**, and an expired
+link lands on a page that issues a new one.
 
 ## 2. Connect a domain
 
