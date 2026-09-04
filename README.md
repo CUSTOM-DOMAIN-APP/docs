@@ -1,111 +1,123 @@
-# CustomDomain documentation
+# Custom Domain documentation
 
-[![Docs](https://img.shields.io/badge/docs-docs.customdomain.ai-1c1917)](https://docs.customdomain.ai/docs)
-[![SDK downloads](https://img.shields.io/npm/dm/customdomain-js?label=sdk%20downloads%2Fmonth&color=1c1917)](https://www.npmjs.com/package/customdomain-js)
+The source of truth for docs.customdomain.ai — the guides that teach a developer to ship a
+connect-your-domain flow.
 
-This repository is the source of truth for the [CustomDomain documentation](https://docs.customdomain.ai/docs): the guides, concepts, and API reference for connecting customer-owned domains to a SaaS platform with automatic DNS configuration and automatic TLS issuance and renewal. Everything the docs site renders lives here as MDX, and the live site builds from this repo directly. If you are looking for how to add a "connect your domain" flow to your product, start with the [quickstart](content/getting-started/quickstart.mdx) or read the rendered docs at [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs).
+**Status:** Live · 119 MDX pages · rendered straight from this repo, no sync step
 
-The rendered site is [docs.customdomain.ai](https://docs.customdomain.ai/docs); its live availability, along with the rest of the platform, is published at [status.customdomain.ai](https://status.customdomain.ai).
+[![docs](https://img.shields.io/badge/docs-docs.customdomain.ai-1c1917?style=flat)](https://docs.customdomain.ai/docs)
+[![status](https://img.shields.io/badge/status-status.customdomain.ai-1c1917?style=flat)](https://status.customdomain.ai)
+[![license](https://img.shields.io/badge/license-MIT-1c1917?style=flat)](./LICENSE)
 
-## What this repo is
+|  |  |
+|---|---|
+| **What it is** | The MDX content and the Next.js renderer behind the Custom Domain docs site |
+| **Who it's for** | Developers integrating custom domains, and anyone debugging a stuck connection |
+| **Live at** | [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) · uptime at [status.customdomain.ai](https://status.customdomain.ai) |
+| **Stack** | MDX · Fumadocs 16 · Next.js 16 · React 19 · Tailwind 4 · Docker on the production host |
+| **Status** | Live · 119 MDX pages, 71 of them API reference · `site/` reads `content/` directly |
 
-[CustomDomain](https://customdomain.ai) lets a platform's users connect their own domain in one click. Under the hood that means provider detection across 63 DNS and registrar providers, one-click provider authorization (or an API token, or a guided manual flow with automatic verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy edge that terminates TLS with strict multi-tenant isolation. A domain is typically live in about 30 seconds via authorization.
+[Custom Domain](https://customdomain.ai) lets a platform's users connect a domain they already
+own in one click. This repository holds everything the documentation site renders: the concepts,
+the connect flow, the REST API reference, the widget and SDK guides, the hosted MCP server, and
+the DNS and TLS troubleshooting. If you want the rendered version, read
+[docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) — it has search, navigation and
+runnable API examples that GitHub's MDX preview does not.
 
-There is no separate ownership-challenge step and no verification TXT record to add: control is proven by the rail that writes the DNS, or by the records appearing in the domain's own authoritative DNS. [Setup types](content/concepts/ownership-and-setup-types.mdx) explains why.
+## What it covers
 
-Documenting that accurately takes some room. This repo holds 100+ MDX files covering the full surface: the hosted connect flow, the [embeddable widget and SDK](https://customdomain.ai/connect-domain-widget), the [REST API](https://customdomain.ai/custom-domain-api), and the [hosted MCP server](https://customdomain.ai/mcp-server) that AI agents use to manage domains. (Exact count drifts as content is added; run `find content -name "*.mdx" | wc -l` for the current number rather than trusting a hardcoded figure here.)
+Connecting a customer's domain means provider detection across 63 DNS and registrar providers,
+one-click provider authorisation (or a scoped API token, or a guided manual flow with automatic
+verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy
+edge that terminates TLS with strict multi-tenant isolation. A domain connected through provider
+authorisation is typically live in about thirty seconds.
 
-## Repo map
+There is no separate ownership challenge and no verification TXT record to paste: control is
+proven by the rail that writes the DNS, or by the records appearing in the domain's own
+authoritative DNS. Documenting that honestly takes room, which is why this is 119 files and not
+a single page.
 
-All documentation lives under `content/`:
+The honest limit, stated here as plainly as it is stated in the docs: **38 of the 63 providers
+have no working automated write rail**, because they ship no delegated DNS-write API or ship one
+that replaces a whole zone. Those domains go through the guided manual path — the app shows the
+exact records and verifies them automatically, but a human still pastes them. Verified against
+the live census on 2026-09-04: 63 catalogued, 17 provider-API, 6 OAuth, 2 Domain Connect, 38 manual.
 
-| Path | What it covers |
-| --- | --- |
-| `content/getting-started/` | Connect a first custom domain end to end, in about five minutes |
-| `content/connect-flow/` | The connect flow itself: provider detection, one-click provider authorization, API token setup, and the guided manual path with automatic verification |
-| `content/concepts/` | Architecture, connections, and how domains are classified into setup types |
-| `content/dns/` | DNS providers and coverage, record management, email DNS and SPF merge, propagation and verification behavior |
-| `content/providers/` | Per-provider walkthroughs (9 of the 63 today) plus the coverage breakdown |
-| `content/api-reference/` | 60+ endpoint pages: tokens, domains, connections, applications, members, tenancy, providers, templates, registrar search and purchase, monitoring, webhooks, and billing |
-| `content/authentication/` | API credential types and widget tokens |
-| `content/webhooks/` | Webhook events, delivery, retries, and signature verification |
-| `content/agents/` | Delegated AI agent access: the OAuth flow and managing access (not yet enabled in production) |
-| `content/mcp/` | The hosted MCP server for AI agents: streamable HTTP at `mcp.customdomain.ai/mcp`, OAuth client credentials, and the domain tool reference |
-| `content/widget-sdk/` | The embeddable connect widget and SDK: installation, configuration, JWT gating, theming, and events |
-| `content/billing/`, `content/sell/`, `content/self-hosting/`, `content/security/` | Plans and quotas, buying a domain, self-hosting configuration, and the security overview, one topic per directory |
-| `content/user-journeys.mdx`, `content/reference.mdx`, `content/faq.mdx`, `content/troubleshooting.mdx`, `content/changelog.mdx` | Top-level single pages: end-to-end user journeys, an API reference appendix, FAQ, troubleshooting, and the changelog |
+Where to start, depending on why you are here:
 
-## How a change reaches the live site
+- **Shipping the feature** — [getting started](content/getting-started/) walks a first domain end to end in about five minutes.
+- **Embedding it** — [widget and SDK](content/widget-sdk/) for the drop-in flow, [API reference](content/api-reference/) for the 71 endpoints behind it.
+- **Automating it from an agent** — [the hosted MCP server](content/mcp/), streamable HTTP with OAuth client credentials.
+- **Something is stuck** — [troubleshooting](content/troubleshooting.mdx) and [DNS behaviour](content/dns/) cover propagation, CAA and the pending states.
 
-This repo is canonical, and [docs.customdomain.ai](https://docs.customdomain.ai/docs) renders `content/` directly. There is no copy step in the path a reader sees.
+## Quickstart
 
-1. A change merges into `main` in this repo.
-2. The `docs` container on the production host rebuilds from this repo's `content/` using the renderer in [`site/`](site/).
-3. [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) serves the new content.
+Run the docs site locally. It renders `../content` directly, so an edit to any MDX file shows up
+on save — there is no build-and-copy step between what you edit and what you read.
 
-The container does not yet rebuild on every product deploy, so a merged fix appears once the host has pulled this repo again; [`DEPLOYMENT.md`](DEPLOYMENT.md) has the exact commands and the follow-up that would automate it.
+```sh
+git clone https://github.com/CUSTOM-DOMAIN-APP/docs.git
+cd docs/site
+npm install
+npm run dev          # http://localhost:3000/docs
+```
 
-The legacy `.github/workflows/sync-to-product.yml` workflow still runs and still opens its sync branch against the product repo, but nothing renders that synced copy any more: `app.customdomain.ai/docs` and `/docs/*` permanently redirect (308) to `docs.customdomain.ai`. Retiring the workflow is an open decision, not a pending step.
+Check any provider number the content claims, against the endpoint the content cites:
 
-## The standalone site
+```sh
+curl -s https://api.customdomain.ai/v1/providers/census | head -c 200
+```
 
-This repo ships its own renderer at [`site/`](site/) (Fumadocs + Next.js, reading `content/` directly, no sync step), and that renderer is what serves [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) today. The DNS record and the companion infra change have both landed. See [`DEPLOYMENT.md`](DEPLOYMENT.md) for how it is built and deployed, and [`site/README.md`](site/README.md) for the layout.
+## How it's organised
 
-## Where to read the docs
+```text
+.
+├── content/              # every documentation page, as MDX — this is the product
+│   ├── getting-started/  # connect a first domain end to end, in about five minutes
+│   ├── connect-flow/     # provider detection, authorisation, API tokens, the manual path
+│   ├── concepts/         # architecture, connections, how domains classify into setup types
+│   ├── dns/              # records, coverage, email DNS and SPF merge, propagation
+│   ├── providers/        # nine per-provider walkthroughs plus the coverage breakdown
+│   ├── api-reference/    # 71 endpoint pages: tokens, domains, connections, tenancy, billing
+│   ├── widget-sdk/       # installing, configuring, gating and theming the connect widget
+│   ├── mcp/              # the hosted MCP server for AI agents, and its domain tools
+│   └── webhooks/         # events, delivery, retries, signature verification
+├── site/                 # the Fumadocs + Next.js renderer; source.config.ts points at ../content
+├── AGENTS.md             # the short version of this repo, for LLM tooling
+└── DEPLOYMENT.md         # how the container is built on the production host
+```
 
-GitHub will render most of these files, but the live site renders them best: MDX components, navigation, search, and runnable API examples all work there.
+Agents and LLM tooling should start at [docs.customdomain.ai/docs/llms.txt](https://docs.customdomain.ai/docs/llms.txt),
+which lists every page with a description so a client can fetch exactly what it needs.
 
-- Humans: [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs)
-- Agents and LLM tooling: the docs publish an index at [docs.customdomain.ai/docs/llms.txt](https://docs.customdomain.ai/docs/llms.txt), which lists every page with a short description so an agent can fetch exactly what it needs. [`AGENTS.md`](AGENTS.md) in this repo is the short version.
-- MCP clients: connect directly to the hosted server described in `content/mcp/`, or see the client examples at [github.com/CUSTOM-DOMAIN-APP/customdomain-mcp](https://github.com/CUSTOM-DOMAIN-APP/customdomain-mcp)
+## Build and deploy
 
-## Scope: what belongs here vs. the product repo
+`docs.customdomain.ai` is served by the renderer in [`site/`](site/), built as a Docker container
+on the production host from a sibling checkout of this repo. A change merges to `main`, the host
+pulls, the container rebuilds, and the page is live. `app.customdomain.ai/docs*` permanently
+redirects (308) here. Full commands are in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
-This repo is for customer-facing content only: anything a customer or a
-third-party integrator would read on their own, independent of working on
-the product's codebase. Internal engineering docs (architecture write-ups,
-security audits, operations runbooks, ADRs, product investigations) belong in
-the `custom-domains` repo's own `docs/` folder instead, not here. (That repo is
-private, so its `ORGANIZATION.md` — which carries the full rule — isn't
-linkable from here.)
-
-The test when you're unsure: **would this page make sense to someone who will
-never see the source code?** If yes, it belongs here. If understanding it
-requires knowing how the code is laid out, it belongs in the product repo.
-
-Note that `content/providers/*.mdx` is **generated** (`infra/seo/gen_provider_guides.py` in the product repo, from its `enrichment.json`). A hand edit here is correct for the live site until the next generation run overwrites it, so a fix to those pages needs the same fix in the generator.
+Two things worth knowing before you file a bug about stale content. The container does not yet
+rebuild on every product deploy, so a merged fix appears once the host has pulled again. And
+`content/providers/*.mdx` is **generated** from the product repo's provider enrichment data — a
+hand edit there is correct for the live site until the next generation run overwrites it, so a
+fix to those pages needs the same fix in the generator.
 
 ## Contributing
 
-Typo and clarity fixes are welcome as direct pull requests, no issue needed. For anything larger (new pages, restructuring, changed API behavior), open an issue first so we can confirm the change against the current product behavior. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the full content rules; the short version:
+Typo and clarity fixes are welcome as direct pull requests. For new pages, restructuring, or
+changed API behaviour, open an issue first so the change can be checked against current product
+behaviour. [`CONTRIBUTING.md`](./CONTRIBUTING.md) has the full rules; the short version is that
+every DNS record, request and response in a code block must be real and current, and every number
+must trace to something a reader can open — `GET /v1/providers/census` for provider coverage,
+`GET /v1/plans` for pricing and quotas. No placeholder output pretending to be real output.
 
-- Plain language. Short sentences. Write for a developer who has never configured DNS before and an operator who has configured too much of it.
-- Second person ("you"), active voice.
-- Every DNS record, API request, and response in a code block must be real and current. No placeholder output pretending to be real output.
-- Numbers must trace to something a reader can check: `GET /v1/providers/census` for provider coverage, `GET /v1/plans` for pricing and quotas.
-- One H1 per page, sentence-case headings, tables only where they genuinely clarify.
-- Em dashes and en dashes are used throughout the existing content. Match the surrounding file rather than converting either way in an unrelated change.
+Customer-facing content only. Internal engineering docs belong in the product repo. The test when
+you are unsure: would this page make sense to someone who will never see the source code?
 
-## Questions this repo cannot answer
+For billing, security disclosure, or anything account-specific, email **connect@customdomain.ai**
+rather than opening a public issue.
 
-Open an issue for anything about the documentation itself. For billing, security disclosure, or anything account-specific, email **connect@customdomain.ai** instead: those need a person, not a public thread.
+## License
 
-## About CustomDomain
-
-[CustomDomain](https://customdomain.ai), a product of EverJust Company, is the managed custom-domain layer for platforms: your users connect their own domain in one click, and DNS configuration and TLS issuance and renewal happen automatically. Coverage spans 63 DNS and registrar providers, 25 of them auto-configured through one-click provider authorization or a scoped API token, which builds on open standards such as the Domain Connect protocol (an open standard maintained by a community of developers across multiple companies) and covers more providers than the protocol alone. Pricing starts at $0. This repository is maintained by the CustomDomain team.
-
-**The honest limit on that coverage:** 38 of the 63 have no working automated write rail, because the provider ships no delegated DNS-write API, or ships one that replaces a whole zone. Those domains go through the guided manual path, where the app shows the exact records and verifies them automatically, but a human still pastes them. If most of your customers sit at one of those 38, that is the experience most of them will get. [Provider coverage](content/providers/index.mdx) lists the split, and `GET https://api.customdomain.ai/v1/providers/census` returns it live.
-
-Useful starting points:
-
-- [How to set up a custom domain](https://customdomain.ai/guides/how-to-set-up-a-custom-domain), a plain-language walkthrough of the whole process
-- [Custom domain vs subdomain](https://customdomain.ai/glossary/custom-domain-vs-subdomain), if you are deciding what to offer your users
-- [Custom domains for SaaS](https://customdomain.ai/custom-domains-for-saas) and [one-click DNS setup](https://customdomain.ai/one-click-dns-setup), the core product pages
-- Solutions for [site builders](https://customdomain.ai/for/site-builders), [agencies and white-label platforms](https://customdomain.ai/for/agencies-white-label), and [AI agents](https://customdomain.ai/for/ai-agents)
-- [Create a free account](https://app.customdomain.ai/signup) and connect your first domain today
-
-Sibling repositories in this org, all public:
-
-- [customdomain-mcp](https://github.com/CUSTOM-DOMAIN-APP/customdomain-mcp), the MCP server, including client configs
-- [awesome-custom-domains](https://github.com/CUSTOM-DOMAIN-APP/awesome-custom-domains), a curated list of the whole solution space, competitors included
-- Field guides by vertical: [website builders](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-website-builders), [agencies](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-agencies), [AI agents](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-ai-agents), [email platforms](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-email-platforms). These are written to be read on their own; where one of them and this repo disagree about product behavior, **this repo is right**.
+[MIT](./LICENSE) © EVERJUST Company. Custom Domain is a product of EVERJUST.
