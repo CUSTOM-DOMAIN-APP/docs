@@ -1,0 +1,88 @@
+---
+title: Root domains (apex)
+description: Why acme.com is different from www.acme.com, what each DNS provider can hold at the root, and how Custom Domain handles it.
+---
+
+`www.acme.com` is a **subdomain**: any DNS provider can hold a `CNAME` there,
+and a `CNAME` pointing at `edge.customdomain.ai` is all a connection needs.
+
+`acme.com` is the **root** (the *apex* of the zone). DNS forbids a `CNAME` at
+the root, because the root already carries the zone's `SOA` and `NS` records
+and a `CNAME` may not coexist with anything. So a root domain needs one of two
+things, and which one depends entirely on the DNS provider:
+
+- **A CNAME-like record the provider offers at the root** — called `ALIAS`,
+  `ANAME`, or "CNAME flattening" depending on the panel. Cloudflare, Route 53,
+  DNSimple, DigitalOcean, and others do this. The connection's record set
+  shows it as that provider's own spelling; the engine calls it `APEXCNAME`
+  internally, a name you should never see in a panel.
+- **Plain `A` records pointing at our edge IPs** — for providers with no
+  root-CNAME type at all: GoDaddy, Namecheap, Name.com, OVH, and most
+  registrar panels. The console and API show the exact `A` records to add.
+
+## What the pre-flight tells you
+
+`POST /v1/domains:check` reports both facts before anything is created:
+
+- `apex_supported` — a **provider** fact: can this provider hold a CNAME-like
+  record at the root at all. Reported on every check, root target or not.
+- `apex_message` — a **this-domain** verdict: present only when the record set
+  this check ran against needs a root record the provider cannot hold, i.e.
+  exactly when an automated write would refuse. Gate your warning UI on the
+  message, never on the flag: a subdomain connect on a provider without root
+  support is fine, and reports `apex_supported: false` with no message.
+
+The console's "What works at …" card and the record table already
+apply this: a root domain at GoDaddy gets `A` records, at Cloudflare gets a
+flattened `CNAME`.
+
+## Automatic rails and the root
+
+- **Sign in with the provider (OAuth)** and **API key** writes realize the root
+  record in the provider's own type (`ALIAS`/`ANAME`/flattened `CNAME`) where
+  one exists. Where none does, the write uses `A` records to the edge IPs. An
+  apply that would need a root type the provider cannot express is refused
+  with `apex_not_supported` — the same verdict `apex_message` gave you at check
+  time.
+- **One-click setup (Domain Connect)** applies the `apex-a` / `apex-cname`
+  templates by host label; providers apply them against the zone root
+  correctly. The engine binds the edge IP into the template server-side.
+- **Manual** shows whichever records the provider can hold.
+
+## `www` and the root together
+
+Most products want both `acme.com` and `www.acme.com` to work. Create the
+connection for the root and set `www_redirect: true`: the record set gains a
+`CNAME www → edge.customdomain.ai` alongside the root record, and the edge
+answers the bare root with a `301` to `https://www.acme.com` (path and query
+preserved) — `www` is the canonical host, the root always reaches it. The
+connection's webhook events report the redirect's state as
+`redirection_status`.
+
+Connecting `www` alone is the fallback when the provider cannot hold a root
+record and the user won't add `A` records — it always works, at every
+provider; the bare root then does nothing until a root record exists.
+
+## Certificates at the root
+
+TLS issues the same way for a root as for a subdomain: once the records
+resolve to our edge, issuance happens on first request. A `CAA` record at the
+root that doesn't authorize Let's Encrypt blocks issuance for the whole zone;
+the check reports this as a `record_conflicts` entry of kind
+`caa-blocks-letsencrypt`, and the fix is to **add** a `CAA` record for
+`letsencrypt.org` alongside the existing ones, never to remove them.
+
+## Common mistakes
+
+- **Pasting the CNAME value as an `A` record**, or the IP as a `CNAME`. The
+  record table's **Type** column is exact; copy the value for that type.
+- **Cloudflare with the orange cloud on** for these rows. Leave them **DNS
+  only** (grey cloud) or the certificate can't issue.
+- **Expecting a root `CNAME` at GoDaddy or Namecheap.** Those panels don't
+  have one; use the `A` records shown, or connect `www`.
+- **Both a root record and a conflicting wildcard.** A `*` record already at
+  the provider can shadow the new one; the check lists it in
+  `record_conflicts`.
+
+See also [Troubleshooting](/docs/troubleshooting) and
+[DNS providers — what actually works today](/docs/dns/providers).

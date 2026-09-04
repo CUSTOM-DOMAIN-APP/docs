@@ -29,19 +29,50 @@ The engine also returns capability flags (`ns_support`, `wildcard_support`,
 `cname_flattening`, `spf_override_support`, `caa_support`) and any
 `record_conflicts` it observes in public DNS, so you can pre-warn the customer.
 
-## Entering a domain
+### Rail truth: what to actually tell the user
 
-The console mirrors exactly what you type. Enter `www.acme.com` and it
-connects `www.acme.com`, a subdomain, matching what the widget and the API
-do. It is never silently rewritten to the apex `acme.com`.
+`setup_type: automatic` means **an adapter exists** for the provider. It does
+not mean the end user won't have to type anything — for GoDaddy the adapter is
+an API key that GoDaddy only issues to accounts with 10+ domains or a paid
+plan. Read the `rails` block instead:
 
-If you type a subdomain, the connect page also offers the root domain as a
-one tap chip ("Meant the root domain? Use acme.com"), so switching to the
-apex is a visible choice, not a guess the platform makes for you.
+```json
+"rails": {
+  "oauth":          { "available": false, "reason": "provider_has_no_oauth" },
+  "domain_connect": { "available": false, "reason": "template_not_onboarded" },
+  "api_key":        { "available": true,  "caveat": "GoDaddy only issues API access to accounts with 10+ domains or a paid plan; …" },
+  "manual":         { "available": true }
+},
+"recommended_rail": "api_key",
+"end_user_automatic": false,
+"dashboard_url": "https://dcc.godaddy.com/control/acme.com/dns",
+"nameservers": ["ns37.domaincontrol.com", "ns38.domaincontrol.com"]
+```
 
-This also affects the `www` redirect: connecting the apex `acme.com` shows an
-opt in checkbox, "Also redirect www.acme.com", off by default. Turn it on if
-you want `www.acme.com` to redirect to the apex once both are live.
+- **`rails.<rail>.available`** — can this rail run for *this* domain right now.
+  When false, **`reason`** is one machine code: `provider_has_no_oauth`,
+  `oauth_client_not_registered` (an operator task on your deployment),
+  `not_discovered`, `template_not_onboarded` (the provider speaks Domain
+  Connect but hasn't onboarded our template — GoDaddy, IONOS, Cloudflare),
+  `rail_disabled`, `no_adapter`, `unknown_provider`.
+- **`caveat`** — a note on an *available* rail most users still can't use.
+  Show it; don't treat it as unavailability.
+- **`recommended_rail`** — the server's pick, `oauth` → `domain_connect` →
+  `api_key` → `manual` (least typing first). The console and the widget
+  follow it, so all three surfaces agree.
+- **`end_user_automatic`** — true only when the recommended rail is OAuth or
+  one-click. This is the fact `supports_automatic` was always misread as.
+- **`blocked_reason`** — present when *no* rail can connect the domain:
+  `unregistered` (no nameservers — fix at the registrar) or
+  `platform_subdomain` (`www.<name>.vercel.app` — the platform's DNS, not the
+  user's; `POST /v1/connections` refuses it with the same code).
+- **`dashboard_url`** — a best-effort deep link into the provider's DNS panel,
+  for the "add these records" step.
+
+The legacy `domain_connect` boolean is derived from the same predicate as
+`rails.domain_connect.available`: one-click is advertised only where the
+provider is measured to serve our template (the `DC_SYNC_PROVIDERS`
+allowlist), never merely because discovery answered.
 
 ## Control is proven by the rail
 

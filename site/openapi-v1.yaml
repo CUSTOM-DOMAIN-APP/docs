@@ -457,6 +457,58 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Domains
+  /public/domain-connect-check:
+    get:
+      operationId: publicDomainConnectCheck
+      summary: Check one-click setup support for a domain (public)
+      tags: [Domains]
+      description: >-
+        Unauthenticated helper behind the free Domain Connect support checker
+        tool. Answers whether a domain's DNS provider supports one-click setup:
+        it runs the same detection cascade as the widget (Domain Connect
+        discovery probed ahead of NS-pattern matching) and cross-references the
+        63-provider census. Results are cached for 24 hours per domain and the
+        endpoint is rate-limited per IP; do not build product flows on it — use
+        the authenticated `domains:check`, which carries records-aware conflict
+        and apex verdicts.
+      security: []
+      parameters:
+        - name: domain
+          in: query
+          required: true
+          schema: { type: string }
+          description: Hostname to check, e.g. example.com
+      responses:
+        '200':
+          description: Detection result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [domain, setup_type, one_click, domain_connect]
+                properties:
+                  domain: { type: string, description: canonicalized hostname }
+                  setup_type: { type: string, enum: [automatic, manual] }
+                  provider_id: { type: string, description: census id of the detected provider }
+                  provider_name: { type: string }
+                  rail:
+                    type: string
+                    enum: [oauth, api, dc, manual]
+                    description: census routing for the detected provider
+                  one_click:
+                    type: boolean
+                    description: true when the user only approves (oauth or Domain Connect rails)
+                  domain_connect:
+                    type: object
+                    required: [supported, sync, async]
+                    properties:
+                      supported: { type: boolean }
+                      sync: { type: boolean }
+                      async: { type: boolean }
+                      provider: { type: string, description: provider name from DC discovery }
+        '400': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+
   /domains:check:
     post:
       operationId: checkDomain
@@ -771,6 +823,61 @@ paths:
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+    put:
+      operationId: setConnectionRecords
+      summary: Supply the connection's desired DNS record set
+      tags: [Connections]
+      description: >-
+        Replaces the connection's desired record set with one the INTEGRATOR
+        authored, for records that cannot be derived from the domain — the
+        motivating case is Amazon SES email verification, whose three Easy-DKIM
+        CNAMEs are minted per domain by SES. The supplied set then behaves
+        exactly like ours: the OAuth rail writes it with the customer's provider
+        credential, the widget renders it for manual setup, and the propagation
+        poller verifies it before the connection goes live.
+
+
+        Server-to-server only (`sk_` API key): a widget JWT lives in a browser
+        and may not choose the records we write into a customer's zone. Hosts are
+        relative to the connection (`@`, `_dmarc`, `sel._domainkey`) and must
+        resolve inside its zone. The Domain Connect rail refuses a connection
+        carrying a supplied set — that rail applies OUR published templates at
+        the provider, so it cannot write records it did not author.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [records]
+              properties:
+                records:
+                  type: array
+                  minItems: 1
+                  maxItems: 25
+                  items: { $ref: '#/components/schemas/DnsRecord' }
+      responses:
+        '200':
+          description: The connection's new desired record set
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connection_id, records_source, records]
+                properties:
+                  connection_id: { type: string }
+                  records_source: { type: string, enum: [integrator] }
+                  records:
+                    type: array
+                    items: { $ref: '#/components/schemas/DnsRecord' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /connections/{id}/grant:
     delete:
       operationId: disableManagedConnection
@@ -1153,6 +1260,39 @@ paths:
           content:
             application/json:
               schema: { type: object }
+
+  /applications/{id}/client-secret:rotate:
+    post:
+      operationId: rotateClientSecret
+      summary: Rotate an application's widget client_secret (new secret returned once)
+      tags: [Applications]
+      description: >-
+        Mints a fresh client_secret, stores only its hash, and returns the
+        plaintext exactly once — it is never retrievable again. The old secret
+        stops minting widget tokens (POST /tokens) immediately; already-issued
+        widget JWTs run out their own short TTL. Admin-or-above (keys:manage):
+        a member/viewer API key is rejected with 403.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Rotated; the new client_secret is present only in this response
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [application_id, client_secret]
+                properties:
+                  application_id: { type: string }
+                  client_secret:
+                    type: string
+                    description: sk_… — mints widget JWTs; shown once, stored hashed
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
 
   /applications/{id}/edge-secret:rotate:
     post:
@@ -2010,6 +2150,70 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /applications/{id}/power:default:
+    get:
+      operationId: getApplicationDefaultOrigin
+      summary: The application-wide default origin
+      tags: [Power]
+      description: >-
+        The origin the edge proxies to for any of this application's connections
+        that have no origin of their own. Resolution order is: the connection's
+        own origin, then this default, then none (the edge answers 421).
+
+
+        This exists because a per-connection origin is the wrong grain for the
+        common case: one application serving thousands of customer domains, all
+        proxying to the same place and dispatching on `X-Forwarded-Host`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The current default
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDefaultOrigin' }
+        '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    put:
+      operationId: setApplicationDefaultOrigin
+      summary: Set or clear the application-wide default origin
+      tags: [Power]
+      description: >-
+        Send `default_origin: ""` to clear it. The value is validated by the same
+        guard a per-connection origin gets, and the edge re-validates the
+        RESOLVED address at dial time — a hostname that passes here and is later
+        repointed at a private address is refused when the edge connects.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [default_origin]
+              properties:
+                default_origin:
+                  type: string
+                  description: Absolute http(s) URL, or "" to clear.
+                  example: https://app.yourcompany.com
+      responses:
+        '200':
+          description: The stored default
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDefaultOrigin' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/power:eligibility:
     get:
       operationId: getConnectionPowerEligibility
@@ -2259,6 +2463,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /sell/orders:
+    get:
+      operationId: listSellOrders
+      summary: List the calling application's domain-purchase orders, newest first
+      description: >-
+        Every order the application recorded — quoted, purchased, transferred,
+        failed, or expired. A quote-only order that was never paid for is
+        expired by the hourly reaper after 24 hours (status `expired`, with a
+        `purchase.confirmation.expired` webhook), so "quoted" always means
+        recent intent.
+      tags: [Registrar]
+      security:
+        - widgetJWT: []
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orders, count]
+                properties:
+                  orders:
+                    type: array
+                    items: { $ref: '#/components/schemas/SellOrderView' }
+                  count: { type: integer }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
   /sell/orders/{id}:
     get:
       operationId: getSellOrder
@@ -2483,6 +2716,25 @@ components:
           description: >-
             The integrator's own identifier for the end user who connected this
             domain. Omitted for a console/direct connect.
+        retried_at:
+          type: string
+          format: date-time
+          description: >-
+            When a human (or the create-path resume, or real edge traffic) last
+            asked for this connection to be re-verified. The retry clock is
+            max(created_at, retried_at): a revived connection gets a fresh
+            window from here, not from its original creation. Absent when it
+            was never retried.
+        records_source:
+          type: string
+          enum: [integrator]
+          description: >-
+            Present as `integrator` when the connection's desired record set was
+            supplied through `PUT /v1/connections/{id}/records` rather than
+            authored by us. Omitted for the usual server-synthesized or Domain
+            Connect template-materialized set. Such a connection cannot use the
+            Domain Connect rail, which applies our published templates at the
+            provider.
         # --- Secure / Power config (set via /ssl and /power, not at create) ---
         secure_root_domain:
           type: boolean
@@ -2511,7 +2763,8 @@ components:
             `propagation_timeout`, `setup_incomplete`, `domain_already_connected`);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
             `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
-            `apex_not_supported`); the OAuth callback; and the Domain Connect
+            `apex_not_supported`, `forwarding_not_supported`); the OAuth callback
+            (which also records `forwarding_not_supported`); and the Domain Connect
             async callback (both e.g. `provider_unavailable`,
             `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or
             the provider's own `error` parameter). Rejected request validation
@@ -2601,6 +2854,30 @@ components:
             the materialized template records for a template bundle, otherwise
             the connection's default desired set.
           items: { $ref: '#/components/schemas/DnsRecord' }
+    RailInfo:
+      type: object
+      required: [available]
+      properties:
+        available: { type: boolean }
+        reason:
+          type: string
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, rail_disabled, no_adapter, unregistered, platform_subdomain]
+          description: >-
+            Set exactly when `available` is false. `provider_has_no_oauth`:
+            the provider publishes no OAuth rail. `oauth_client_not_registered`:
+            it does, but this deployment has no client registered (operator
+            task). `not_discovered`: no Domain Connect discovery answer.
+            `template_not_onboarded`: the provider speaks Domain Connect but
+            has not onboarded our template. `rail_disabled`: the sync rail is
+            off in this deployment. `no_adapter`: no write adapter for the
+            API-key rail. `unregistered` / `platform_subdomain`: the domain is
+            blocked (see `blocked_reason`).
+        caveat:
+          type: string
+          description: >-
+            A note on an AVAILABLE rail most users still cannot use (GoDaddy
+            gates API access to 10+ domain / paid accounts). Show it; do not
+            treat it as unavailability.
     DomainCheck:
       type: object
       required: [domain, setup_type]
@@ -2623,8 +2900,22 @@ components:
         setup_type: { $ref: '#/components/schemas/SetupType' }
         supports_automatic: { type: boolean }
         oauth_available: { type: boolean, description: the OAuth-into-provider rail can be offered }
-        domain_connect: { type: boolean, description: the provider answered one-click setup discovery }
-        registered: { type: boolean }
+        domain_connect: { type: boolean, description: "the one-click (Domain Connect sync) rail is offered for this domain. Same predicate as `rails.domain_connect.available`: the provider answered discovery AND, when a provider allowlist is configured (DC_SYNC_PROVIDERS — the default), the provider is on it, i.e. is measured to serve our template catalog. Providers that speak the protocol but have not onboarded our template (GoDaddy, IONOS, Cloudflare) report false even with DC_SYNC_ENABLED on. A domain reported true will not have its domainconnect:start refused for lack of the rail." }
+        registered:
+          type: boolean
+          description: >-
+            Whether the domain resolves to a delegated zone. OMITTED (not
+            false) when detection failed for a transient reason — only an
+            NXDOMAIN answer reports `false`. Do not tell a user their domain is
+            unregistered unless this field is present and false.
+        detection_error:
+          type: string
+          enum: [nxdomain, resolver]
+          description: >-
+            Present only on a degraded check (detection failed): `nxdomain`
+            — the domain is not delegated (`registered` is false, `blocked_reason`
+            is `unregistered`); `resolver` — a transient resolver failure; the
+            provider is unknown for now, retry the check.
         authoritative_dns_provider: { type: [string, 'null'] }
         ns_support:
           type: object
@@ -2651,6 +2942,80 @@ components:
         spf_override_support: { type: boolean }
         caa_support: { type: boolean }
         supports_social_login: { type: string, description: 'yes | no | n-a' }
+        rails:
+          type: object
+          description: >-
+            Rail truth: per rail, whether it can run for THIS domain right now,
+            and when it can't, one machine reason why. `setup_type: automatic`
+            / `supports_automatic` only ever meant "an adapter exists"; this
+            block is what to show a user. Present on every check (a degraded
+            check — detection failed — reports only `manual` available).
+          properties:
+            oauth: { $ref: '#/components/schemas/RailInfo' }
+            domain_connect: { $ref: '#/components/schemas/RailInfo' }
+            api_key: { $ref: '#/components/schemas/RailInfo' }
+            manual: { $ref: '#/components/schemas/RailInfo' }
+        recommended_rail:
+          type: string
+          enum: [oauth, domain_connect, api_key, manual]
+          description: >-
+            The rail the server recommends, by precedence oauth →
+            domain_connect → api_key → manual (least typing for the end user
+            first). Absent when `blocked_reason` is set. The console and the
+            widget follow this field so the surfaces never disagree.
+        end_user_automatic:
+          type: boolean
+          description: >-
+            True when the recommended rail needs nothing typed by the end
+            user (OAuth or one-click). This is the fact `supports_automatic`
+            was always misread as — an API-key rail is "automatic" only for
+            someone holding an API key.
+        blocked_reason:
+          type: string
+          enum: [unregistered, platform_subdomain]
+          description: >-
+            Present when no rail can connect this domain. `unregistered`: no
+            nameserver delegation at all (fix it at the registrar).
+            `platform_subdomain`: a hosting platform's own subdomain
+            (www.<name>.vercel.app) — its DNS is the platform's; `POST
+            /v1/connections` refuses it with `platform_subdomain`.
+        dashboard_url:
+          type: string
+          description: >-
+            Best-effort deep link into the detected provider's DNS panel for
+            this zone, to send the user to when they add records by hand.
+            Absent when unknown.
+        nameservers:
+          type: array
+          items: { type: string }
+          description: The nameserver delegation the detector observed (normalized hostnames).
+        integration_warnings:
+          type: array
+          description: >-
+            Problems with how YOU configured the integration, not with the end
+            user's domain — returned only when you supplied your own `records`.
+            The widget never renders these; they are for your logs and your
+            developers.
+
+
+            Present because this class of failure is invisible to the party who
+            can fix it: an integrator testing with `www.` sees everything work
+            and ships, and only their end users hit the wall.
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                enum: [supplied_apex_unrealizable]
+                description: >-
+                  `supplied_apex_unrealizable` — you supplied a record for the
+                  zone apex pointing at your own host, and this domain's DNS
+                  provider has no ALIAS/ANAME/CNAME-flattening type, so a
+                  hostname cannot sit at a root there. Providers WITH flattening
+                  (Cloudflare, Route 53, DNSimple) accept it unchanged.
+              message:
+                type: string
+                description: Human-readable, with the available alternatives named.
         record_conflicts:
           type: array
           items:
@@ -2810,6 +3175,16 @@ components:
         domain: { type: string }
         eligible: { type: boolean }
         reason: { type: string, description: "why not, when ineligible; empty when eligible." }
+    ApplicationDefaultOrigin:
+      type: object
+      properties:
+        application_id: { type: string }
+        default_origin:
+          type: string
+          description: Absent when no default is set.
+        configured:
+          type: boolean
+          description: Whether a default is set. Distinguishes "no default" from an empty value.
     PowerConfig:
       type: object
       required: [connection_id, domain, powered, www_redirect]
@@ -2856,7 +3231,8 @@ components:
         orderId: { type: string, examples: [ord_1a2b3c] }
         domain: { type: string }
         registrar: { type: string }
-        status: { type: string, enum: [quoted, purchased, transferred, failed] }
+        status: { type: string, enum: [quoted, purchased, transferred, failed, expired] }
+        createdAt: { type: string, format: date-time }
         regOrderId: { type: string, description: "the registrar's order reference, once purchased." }
         jobId: { type: string }
         link: { type: string, description: "sharing-rail checkout URL, if any." }

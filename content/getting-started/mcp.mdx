@@ -1,0 +1,46 @@
+---
+title: MCP — drive it from an agent
+description: The agent path — the hosted MCP server, its tools, and which of them can complete on the hosted service today.
+---
+
+Use the MCP server when an **agent** (Claude, Cursor, a custom MCP client)
+should discover providers, start connections and read status on a user's
+behalf. It is the same control plane behind a tool interface.
+
+## Connect
+
+- Endpoint: `https://mcp.customdomain.ai/mcp` (Streamable HTTP).
+- Bearer: an `sk_` API key from the console's **Keys** page. Console →
+  **MCP server** shows ready-made client configs.
+
+## The flow an agent should follow
+
+1. `discover-provider { domain }` — read-only. Says where the domain's DNS
+   lives and which rails can run (the same truth as `rails` on
+   `POST /v1/domains:check`). Do this **before** promising anything.
+2. `connect-domain { domain }` — creates the connection and returns a `link`
+   for the **human** to complete (sign in with the provider, one-click, or the
+   records to add) plus a `jobId`. The agent never writes DNS itself.
+3. `check-connection-status { jobId }` — `pending`, `propagating`,
+   `completed`, `failed`, `error`, `expired`. `pending` has no deadline;
+   `failed` can be retried by starting `connect-domain` again for the same
+   domain (it revives the connection).
+4. `list-connections` — everything the key's applications own.
+
+Buying: `search-domain-availability`, `generate-domain-suggestions`,
+`create-domain-order`, `check-order-status`. Email and forwarding:
+`add-email`, `forward-domain`.
+
+## Not available on the hosted service today
+
+`reapply-connection` and `disconnect-domain` need a **managed** connection
+(a stored async one-click grant from the DNS provider). No provider has issued
+one to customdomain.ai yet, so on the hosted service they return `409`. See
+[Managed connections](/docs/connect-flow/managed-connections).
+
+## Agent authorization
+
+The control plane's delegated agent auth (an agent registers a client, a human
+grants it scoped access) is live; self-registered agents exist, and a human
+grant is required before an agent token can act on a workspace. Full tool
+reference: [MCP](/docs/mcp).

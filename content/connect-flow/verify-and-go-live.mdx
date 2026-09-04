@@ -113,16 +113,33 @@ is required — the poller watches for them.
 
 ## Watch propagation → live
 
-You don't poll the API for propagation — the control-plane's background poller
-(running automatically on a 1-minute interval) resolves each desired record
-against public DNS and, when they all match their intended values, flips the
-connection to `live`.
-On that transition the edge issues the TLS certificate on the next handshake and
-a `connection.live` [webhook](/docs/webhooks/overview) fires (exactly once). Read
-current state any time with `GET /v1/connections/{id}`.
+The control-plane's background poller (every minute) resolves each desired
+record against public DNS and, when they all match their intended values, flips
+the connection to `live`. On that transition the edge issues the TLS certificate
+on the next handshake and a `connection.live` [webhook](/docs/webhooks/overview)
+fires (exactly once). Treat webhooks as the primary signal and **poll
+`GET /v1/connections/{id}` as the fallback** — delivery is durable but can lag
+(the outbox retries for up to six hours).
 
-A `propagating` connection whose records never appear within 24 hours becomes
-`failed` (and fires `connection.failed`) with `error_code: "propagation_timeout"`.
-Manual `pending` connections get a much longer window — **72 hours**, since a
-customer may take days to get to it — but they aren't unlimited: past that they
-also become `failed`, with `error_code: "setup_incomplete"`.
+Timing, honestly:
+
+- A **`pending`** connection (records not yet seen) never fails on its own. For
+  the first 72 hours it is checked on a fast backoff; after that it stays
+  `pending` with `error_code: setup_incomplete` and is re-checked every six
+  hours, forever. The moment the records appear it goes live.
+- A **`propagating`** connection (a rail wrote the records) that never resolves
+  within 24 hours becomes `failed` with `error_code: propagation_timeout` and
+  fires `connection.failed` (the event carries `error_code` / `error_message`).
+- **`failed` is not terminal.** `POST /v1/connections/{id}:recheck` revives it
+  (fresh window, diagnosis cleared); re-`POST /v1/connections` for the same
+  domain revives the newest failed row and returns `200`; and real traffic
+  arriving at the edge for a failed host re-enters it into verification
+  automatically. Only a manual disconnect removes a connection.
+
+Where a rail can complete today: one-click setup completes at NameSilo, Glauca
+Digital and Domain Chief (the providers measured to serve our template
+catalog); GoDaddy, IONOS and Cloudflare have not onboarded it, so they are
+never offered one-click. Sign-in (OAuth) runs at Cloudflare, DNSimple, Netlify,
+Vercel and WordPress.com, with a one-time token that is never stored. Read
+`rails` on the pre-flight rather than memorizing this list — see
+[Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

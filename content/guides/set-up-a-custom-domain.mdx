@@ -79,9 +79,11 @@ There are three ways out, in order of preference:
    records pointing at the vendor's published addresses — and you accept that
    you must update them if the vendor renumbers.
 
-Our API reports which of these applies before you commit: a connection's
-response carries `apex_supported` and, when the provider cannot host an apex
-record, an `apex_message` explaining what to do instead.
+Our API reports which of these applies before you commit: the pre-flight
+carries `apex_supported` and, when the provider cannot host an apex record, an
+`apex_message` explaining what to do instead — and the record set falls back
+to `A` records at our edge where no alias type exists. The full per-provider
+picture is on [Root domains](/docs/dns/root-domains).
 
 ## Step 2: clear what is already there
 

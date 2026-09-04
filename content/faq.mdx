@@ -48,13 +48,13 @@ them (all or a subset) in one step. See
 ### Does it support apex domains as well as subdomains?
 
 Yes — a connection's `host` is empty for the apex or the subdomain label
-otherwise. Apex support depends on the provider's capabilities (ALIAS/ANAME/CNAME
-flattening); `POST /v1/domains:check` returns `cname_flattening` and `ns_support`
-so you can steer the customer to the right setup. On a provider with none of the
-three, connecting the bare apex returns a distinct `apex_not_supported` error
-instead of a broken write — see [Apex domains](/docs/dns/providers#apex-root-domains)
-for the exact provider list and the fallback options (manual `A` records, a
-different provider, or connecting `www.<domain>` instead).
+otherwise. A root domain works at **every** provider: where the provider has a
+root-CNAME type (ALIAS/ANAME/flattened CNAME — Cloudflare, Route 53, DNSimple,
+DigitalOcean…) the record set uses it; everywhere else (GoDaddy, Namecheap,
+Name.com, OVH…) it uses `A` records pointing at our edge. `POST
+/v1/domains:check` returns `apex_supported` (the provider fact) and
+`apex_message` (set only when *this* record set can't be realized) so you can
+steer the customer. See [Root domains](/docs/dns/root-domains).
 
 ### Does it support wildcard domains?
 

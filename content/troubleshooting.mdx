@@ -3,21 +3,71 @@ title: Troubleshooting
 description: Common failure modes — stuck connections, propagation delays, rail errors, and drift.
 ---
 
-## A connection is stuck in `pending`
+## A connection is waiting in `pending`
 
-`pending` means no records have been observed in public DNS yet — nobody has
-applied them, or they haven't propagated.
+`pending` means we have not yet seen the DNS records in public DNS. **There is
+no deadline** — a pending connection is re-checked every minute at first, then
+every few minutes, and after three days every six hours, for as long as it
+takes. Add the records whenever you're ready and the domain connects on its
+own. After three days the console shows *"We haven't detected the DNS records
+yet"* so you know what's outstanding; that is a diagnosis, not a failure.
 
-- **Manual flow:** confirm the customer added the exact records from
-  `GET /v1/connections/{id}/records` (host, type, and value must match). The
-  poller keeps checking for up to 72 hours; past that a manual connection that
-  never received its records becomes `failed` with
-  `error_code: "setup_incomplete"` (re-open the domain in the console to see the
-  records again and restart).
-- **A rail was supposed to write them:** check that the
-  [rail](/docs/connect-flow/overview#the-four-rails) actually completed — an
-  OAuth popup that was closed, a one-click setup redirect that was abandoned, or
-  a rejected API token all leave the connection in `pending`.
+To check right now instead of waiting: **Re-check now** on the domain page
+(`POST /v1/connections/{id}:recheck`). It reports each record's verdict.
+
+Common reasons the records never show up:
+
+- **The record was added at the wrong place.** Records must be added at the
+  provider that serves the domain's nameservers (`dig NS your-domain.com`),
+  which is not always the registrar you bought the domain from.
+- **Root domain on GoDaddy, Namecheap or Name.com.** These panels have no
+  ALIAS/ANAME type, so the console shows **A records** to our apex addresses
+  instead of a CNAME. Add exactly those A records at `@`. (A CNAME at `@` is
+  rejected by the panel, or breaks your email.)
+- **The domain doesn't resolve at all** — unregistered, or registered but never
+  delegated to a DNS provider. The connect flow now refuses these up front with
+  an explanation; fix the delegation at your registrar first.
+- **A hosting platform's subdomain** (`something.vercel.app`, `*.netlify.app`,
+  `*.github.io`, …) can't be connected: the platform owns its DNS. Use a domain
+  you control.
+
+## My domain points at Custom Domain but shows a connection / certificate error
+
+If you added the DNS records **after** the connection had been marked failed,
+visitors' browsers reach our edge but the connection isn't serving yet. Since
+this release the edge treats that traffic as your signal: the connection is
+re-entered into verification automatically and goes live on the next check
+(usually within a minute or two). You can also press **Re-check now**. If it
+stays failed, the domain already has another active connection in the same
+application — finish or delete that one.
+
+## "Failed" — what it means now
+
+A connection only reaches `failed` when records we wrote ourselves never
+propagated (24h), or a credentialed write was rejected. Never because you were
+slow. **Finish setup** on the domain page resumes a failed connection (same
+row, history kept); adding the same domain again does the same thing rather
+than creating a duplicate.
+
+## The verification email never arrived / the link expired
+
+Verification links last one hour and work once. On the *Check your email*
+screen use **Resend the link**; an expired link lands on a page where you can
+request a new one. Still nothing? Check spam, then email
+support@customdomain.ai and we'll verify you by hand.
+
+## GoDaddy won't give me an API token
+
+GoDaddy only issues DNS API access to accounts with 10+ domains or a paid
+plan. Everyone else: add the records shown in the console by hand — that path
+works on every GoDaddy account. GoDaddy's "sign in with GoDaddy" one-click
+setup also isn't available yet (it requires GoDaddy-side onboarding).
+
+## Route 53: "The security token included in the request is invalid"
+
+You pasted **temporary** credentials (an access key starting with `ASIA…`).
+Those need the third field, *Session token*, which the Route 53 form now has.
+Permanent IAM-user keys (`AKIA…`) don't need it.
 
 ## A connection is stuck in `propagating`
 
@@ -37,17 +87,6 @@ return `503 service_unavailable` when the corresponding engine isn't wired for
 your plan or environment: no DNS provider registry, no OAuth client for the
 provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
 (`DC_SIGNING_KEY_FILE`). Contact support if you hit this on the hosted service.
-
-## Apex connect fails with `apex_not_supported`
-
-The customer's DNS provider has no CNAME-family record at the zone apex (no
-flattened `CNAME`, `ALIAS`, or `ANAME`) — see
-[Apex domains](/docs/dns/providers#apex-root-domains) for which providers do.
-This is refused up front with a `422 apex_not_supported` rather than sent to the
-provider's API, where it would otherwise reject the record with a confusing
-error. Three ways forward: add `A` records manually at the provider, move the
-domain to a provider that supports ALIAS/ANAME, or connect `www.<domain>`
-instead of the bare apex (subdomains are never affected by this).
 
 ## Rail B write failed
 

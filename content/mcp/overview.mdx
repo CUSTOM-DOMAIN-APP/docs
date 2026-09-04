@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: The Model Context Protocol server — twelve domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
+description: The Model Context Protocol server — eleven domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
 ---
 
 Customdomain ships a **Model Context Protocol (MCP) server** so an AI
@@ -19,7 +19,7 @@ The server reports itself as `customdomain-mcp` (protocol revision
 
 ## Tools
 
-The server registers **twelve tools**, in a fixed order. None of them takes DNS
+The server registers **eleven tools**, in a fixed order. None of them takes DNS
 records as input — records always come from the control-plane server-side, so an
 agent can never inject them.
 
@@ -31,12 +31,11 @@ agent can never inject them.
 | `connect-domain` | `{ domain }` | Start a guided DNS-configuration flow for a domain the user already owns. Returns a `link` for the user and a `jobId` to poll. Never writes DNS directly. |
 | `check-connection-status` | `{ jobId }` | Read the live status of a connection job. Statuses: `pending`, `propagating`, `completed`, `failed`, `error`, `expired`. |
 | `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order — by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
-| `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails if the connection isn't managed or has no grant. |
-| `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. |
+| `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails (`409`) if the connection isn't managed or has no grant — which is every connection on the hosted service today, see [Managed connections](/docs/connect-flow/managed-connections). |
+| `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. Same availability note as `reapply-connection`. |
 | `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (provider-hosted one-click setup, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. |
 | `forward-domain` | `{ target, domain? , connectionId? }` | Forward (permanent 301) a domain to a destination. Starts a managed one-click setup flow and returns a `link` to authorize plus a `connectionId` to poll. Never writes DNS directly. |
-| `add-email` | `{ domain? , connectionId? , provider? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | Configure a domain for a mail provider in one step (MX/SPF/DKIM/DMARC) via server-side templates. `provider` (`google` / `microsoft365` / `zoho`) auto-fills the standard MX and SPF — supply only the DKIM values your platform generated, or set every field manually. Returns a `link` to authorize plus a `connectionId` to poll. |
-| `list-connections` | `{ status? }` | List the domains connected across the account (domain, `connectionId`, live status, `connected` flag, setup type), optionally filtered by status. Read-only. Pair with `reapply-connection` to heal any that aren't live. |
+| `add-email` | `{ domain? , connectionId? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | Configure a domain for a mail provider in one step (MX/SPF/DKIM/DMARC) via server-side templates — supply only provider settings, never raw records. Returns a `link` to authorize plus a `connectionId` to poll. |
 
 > **`generate-domain-suggestions` is deterministic, not AI.** Candidates are
 > keyword joins plus a few common affixes (`get`, `try`, `use`, `my`, `…app`,
@@ -59,8 +58,7 @@ The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
 - **`stdio`** (default) — line-delimited JSON-RPC on stdin/stdout, one message
   per line. This is what a locally-launched host (or `mcp-remote`) uses when it
   runs the server as a subprocess. It authenticates with a single static
-  control-plane credential (`-bearer`, or `CUSTOMDOMAIN_API_TOKEN` — the legacy
-  `JUSTEASY_API_TOKEN` is still read as a fallback).
+  control-plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
 - **`http`** — a Streamable-HTTP style endpoint. Three routes:
 
   | Route | Purpose |
@@ -95,16 +93,16 @@ dance still authenticate:
 3. the `mcp-remote` shortcut `CLIENT_ID:CLIENT_SECRET`, which the server exchanges
    for a JWT on the fly.
 
-The MCP server never validates tokens cryptographically itself — it forwards the
-caller's credential to the control-plane, which is the authority and rejects bad
-credentials on every wrapped call.
+For these **integrator** credentials the MCP server does not validate tokens
+cryptographically — it forwards the caller's credential to the control-plane,
+which is the authority and rejects bad credentials on every wrapped call.
 
-> **Coming later: delegated agent tokens.** The MCP also contains a resource-server
-> path that verifies short-lived ES256 tokens locally against the control-plane's
-> JWKS (no per-request callback) and scope-enforces them per tool, for a human
-> owner delegating access to an AI agent. It is built and tested but **not yet
-> enabled** on the hosted service. See [Agent access](/docs/agents/overview) for
-> the human-first consent flow this will support once activated.
+**Delegated agent tokens are the exception.** When a human owner grants an AI
+agent access, the agent presents a short-lived **ES256** token that the MCP
+verifies **locally** against the control-plane JWKS (no per-request callback) and
+enforces the tool's required scope on — a read-only grant can never reach a
+connect or purchase tool. See [Agent access](/docs/agents/overview) for the
+human-first consent flow.
 
 ```bash
 # Call a tool
