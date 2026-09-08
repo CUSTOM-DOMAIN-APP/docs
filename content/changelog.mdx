@@ -15,6 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Re-check is honest on live domains.** A re-check on a domain connected
+  from the console or the widget verified an empty record set and reported
+  drift on a healthy domain; it now verifies the domain's actual records. The
+  connect flow also shows the right refusal for a hosting platform's
+  subdomain (`www.name.vercel.app`) instead of "register it at your
+  registrar", and GoDaddy's one-click status reads "hasn't onboarded our
+  template" rather than "not offered".
 - **Wix, Hover, Bluehost and friends are named.** A domain at a
   manual-only host is identified from its nameservers and shown with that
   provider's DNS panel link, instead of "we couldn't detect your DNS host".
