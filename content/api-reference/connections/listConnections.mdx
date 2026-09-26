@@ -11,18 +11,18 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          With an `sk_` API key: every connection across the tenant's
-          applications (optional `?app_id=` and `?status=` filters). With an
-          `app`-scoped widget JWT or a delegated agent token: the calling
-          application's connections (`app_id` is ignored; the scope is fixed to
-          that application). A `connect`-scoped widget JWT (an end user's) is
-          refused with `403`.
+          With an API key: every connection across the tenant's applications
+          (optional `?app_id=` and `?status=` filters). With an `app`-scoped
+          widget JWT or a delegated agent token: the calling application's
+          connections (`app_id` is ignored; the scope is fixed to that
+          application). A `connect`-scoped widget JWT (an end user's) is refused
+          with `403`.
 
 
           **The response is paginated and always bounded.** `limit` defaults to
           500 and is clamped to 1000; `next_cursor` is present **only** when
           more rows remain. To read every connection, follow `next_cursor` until
-          it is absent. Counting rows client-side is not required — see `GET
+          it is absent. Counting rows client-side is not required; see `GET
           /connections:count`.
 
 

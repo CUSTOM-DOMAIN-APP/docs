@@ -1,10 +1,10 @@
 ---
 title: Create a connection
-description: POST /v1/connections — the request, the idempotent replay, and the record set it returns.
+description: The POST /v1/connections request, its idempotent replay, and the record set it returns.
 ---
 
 A connection is created against an **application** and authorized by a
-[widget JWT](/docs/authentication/widget-tokens) (or an `sk_` API key for
+[widget JWT](/docs/authentication/widget-tokens) (or an API key for
 server-side use). The only required field is the domain:
 
 ```bash
@@ -35,7 +35,7 @@ The response is the connection plus its authoritative desired record set:
 
 - `id` doubles as the `jobId` used by the widget and webhooks.
 - `setup_type` (`automatic` / `manual` / `async` / `mcp`) is chosen from
-  provider detection — it steers which [rail](/docs/connect-flow/overview#the-four-rails)
+  provider detection; it steers which [rail](/docs/connect-flow/overview#the-four-rails)
   the widget offers.
 - `records` is the same set you can re-fetch any time from
   `GET /v1/connections/{id}/records`. Before a rail writes records, the default
@@ -50,7 +50,7 @@ before the widget opens:
 
 ```bash
 curl -X PUT http://localhost:8080/v1/connections/con_…/records \
-  -H "Authorization: Bearer sk_live_…" \
+  -H "Authorization: Bearer cd_live_…" \
   -H "Content-Type: application/json" \
   -d '{"records":[
         {"type":"MX","host":"@","value":"inbound-smtp.us-east-2.amazonaws.com","priority":10},
@@ -62,19 +62,19 @@ curl -X PUT http://localhost:8080/v1/connections/con_…/records \
 The supplied set then behaves exactly like ours everywhere: the OAuth rail writes
 it with the customer's provider credential, the widget renders it for manual
 setup, and the propagation poller verifies it before the connection goes live.
-Omit `dnsRecords` in the SDK when you use this — the connection's set is
+Omit `dnsRecords` in the SDK when you use this: the connection's set is
 authoritative, so the browser never has to be trusted with the record list.
 
 Three constraints follow from that trust boundary:
 
-- **`sk_` API key only.** A widget JWT lives in a browser; it may not choose the
+- **API key only.** A widget JWT lives in a browser; it may not choose the
   records written into a customer's zone.
 - **Hosts must resolve inside the connection's zone.** `@`, `_dmarc`, and
   `sel1._domainkey` are anchored to the connection's domain; a foreign FQDN is
   rejected.
 - **The Domain Connect rail refuses a supplied set** (`400`). That rail applies
   our *published templates* at the provider, so it cannot write records it did
-  not author — use the OAuth rail or manual setup for these connections.
+  not author; use the OAuth rail or manual setup for these connections.
 
 The replacement is atomic and rejected with `409` once records have been applied.
 `GET /v1/connections/{id}/records` returns the resulting authoritative set, and
@@ -84,7 +84,7 @@ the connection carries `records_source: "integrator"`.
 
 `POST /v1/connections` is idempotent per application + domain. If the calling app
 already has a `pending`, `propagating` or `live` connection for the domain, that
-connection is returned with `200` (instead of `201`) — safe to call on every
+connection is returned with `200` (instead of `201`), so it is safe to call on every
 widget open. If the only existing connection is **`failed`**, it is **revived**
 (status back to `pending`, diagnosis cleared, a fresh verification window) and
 returned with `200` rather than a duplicate being created. The explicit retry is

@@ -4,7 +4,7 @@ description: Run the stack locally with Docker Compose and connect a first domai
 ---
 
 This walks the **API** against a **local** stack. On the hosted service, start
-from [Which path are you on?](/docs/getting-started/overview) — the
+from the [Which path are you on?](/docs/getting-started/overview) page. The
 [API](/docs/getting-started/api), [widget](/docs/getting-started/widget),
 [console](/docs/getting-started/console) and [MCP](/docs/getting-started/mcp)
 pages cover each path with hosted URLs.
@@ -16,7 +16,7 @@ make up   # docker compose: Postgres + control-plane + edge
 ```
 
 The local control-plane listens on `http://localhost:8080`. In production you
-talk to the hosted control-plane at `https://api.customdomain.ai` instead —
+talk to the hosted control-plane at `https://api.customdomain.ai` instead;
 the calls below are identical apart from the base URL.
 
 ## 1. Provision a tenant, app, and key
@@ -30,10 +30,10 @@ curl -X POST http://localhost:8080/v1/tenants:provision \
   -H "X-Provision-Secret: <PROVISION_SECRET>" \
   -H "Content-Type: application/json" \
   -d '{"tenant_name":"Acme","app_name":"Acme Sites","owner_email":"you@acme.example"}'
-# → { "tenant_id": "...", "application_id": "...", "api_key": "sk_...", "client_secret": "..." }
+# → { "tenant_id": "...", "application_id": "...", "api_key": "cd_live_...", "client_secret": "..." }
 ```
 
-`api_key` and `client_secret` are shown **once** — store them. (You can also
+`api_key` and `client_secret` are shown **once**. Store them. (You can also
 create tenants and applications individually via `POST /v1/tenants` and
 `POST /v1/applications` with the management key.)
 
@@ -73,8 +73,8 @@ curl -X POST http://localhost:8080/v1/connections \
 ```
 
 The response carries the connection `id` (also the `jobId`), its `status`
-(`pending`), and the authoritative desired `records` — by default a
-`CNAME app.customer.com → edge.customdomain.ai`.
+(`pending`), and the authoritative desired `records` (by default a
+`CNAME app.customer.com → edge.customdomain.ai`).
 
 ## 5. Apply the records
 
@@ -91,7 +91,7 @@ curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
 ```
 
 The connection moves to `propagating`. (Rail C is `oauth:start`, Rail A is
-`domainconnect:start` — see [Apply records & go live](/docs/connect-flow/verify-and-go-live).)
+`domainconnect:start`; see [Apply records & go live](/docs/connect-flow/verify-and-go-live).)
 
 ## 6. Go live
 
@@ -108,7 +108,7 @@ handshake and proxies `https://app.customer.com` to your origin. Register a
 
 ## Next steps
 
-- Embed the [widget](/docs/widget-sdk/overview) so customers do steps 3–6 themselves.
+- Embed the [widget](/docs/widget-sdk/overview) so customers do steps 3 to 6 themselves.
 - Register [webhooks](/docs/webhooks/overview) to react to go-live and drift.
 - Review the [connect rails](/docs/connect-flow/overview#the-four-rails) and what
   each needs to run in production.

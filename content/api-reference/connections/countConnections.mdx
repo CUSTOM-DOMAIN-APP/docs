@@ -13,7 +13,7 @@ _openapi:
       - content: >-
           The tenant's connection histogram, computed server-side in one grouped
           query. Use this instead of paging `GET /connections` when you only
-          need totals — dashboards, quota meters, per-application domain counts.
+          need totals (dashboards, quota meters, per-application domain counts).
           The numbers are exact regardless of how many connections the tenant
           has.
 
@@ -24,7 +24,7 @@ _openapi:
           outside the enum is rejected with **400**.
 
 
-          API key only — this is a tenant-wide aggregate, so a per-application
+          API key only: this is a tenant-wide aggregate, so a per-application
           widget JWT cannot read it.
 ---
 

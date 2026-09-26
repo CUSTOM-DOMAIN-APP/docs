@@ -27,13 +27,13 @@ The status machine is deliberately small:
 | --- | --- |
 | `pending` | Created; records not yet seen. Fast backoff for 72 hours, then it stays `pending` with `error_code: setup_incomplete` and is re-checked every six hours. **Never fails on its own.** |
 | `propagating` | Records were written (by a rail) and are being checked against public DNS. |
-| `live` | Every desired record resolves to its intended value. The edge serves TLS for the host (only when the record set includes an edge record — an email-only set is verified but never served). |
-| `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`), or a rail rejected the write. **Not terminal** — see Retrying. |
+| `live` | Every desired record resolves to its intended value. The edge serves TLS for the host (only when the record set includes an edge record; an email-only set is verified but never served). |
+| `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`), or a rail rejected the write. **Not terminal.** See Retrying. |
 
 There is no separate ownership-challenge step. Control is proven **by the rail
 itself**: an OAuth authorization, a one-click setup apply, or a scoped API token
 each demonstrate the customer controls the zone. In the manual flow, the poller
-simply waits for the records to appear — a `pending` connection has no
+simply waits for the records to appear: a `pending` connection has no
 deadline (after 72 hours it is merely re-checked less often, with an honest
 `setup_incomplete` diagnosis).
 
@@ -61,15 +61,15 @@ A background poller (running automatically on a 1-minute interval) drains
 `propagating` and `pending` connections, resolving each desired record against
 public DNS with **value checking** (a CNAME must resolve to the expected target;
 an A/AAAA must contain the exact address). When all records resolve, the
-connection flips to `live` and `connection.live` fires — exactly once, guarded by
+connection flips to `live` and `connection.live` fires exactly once, guarded by
 a compare-and-swap so the API and the worker can't double-fire.
 
 ## Idempotency & tenancy
 
 `POST /v1/connections` is idempotent per application + domain: if the app already
 has a non-failed connection for the domain, that connection is replayed (`200`)
-instead of a duplicate being created. Every object is tenant-scoped — an `sk_`
-API key sees all its tenant's connections; a widget JWT sees only its
+instead of a duplicate being created. Every object is tenant-scoped: an API
+key sees all its tenant's connections; a widget JWT sees only its
 application's. Cross-tenant ids return `404`, never another tenant's data.
 
 ## Drift
@@ -77,5 +77,5 @@ application's. Cross-tenant ids return `404`, never another tenant's data.
 After go-live, the [Monitor](/docs/webhooks/overview#event-catalog) sweep
 re-checks declared records against live DNS. If a record disappears or is
 repointed, `domain.record_missing` fires; when it returns, `domain.record_restored`
-fires — so you can alert the customer. The synchronous `POST /v1/monitor:check`
+fires, so you can alert the customer. The synchronous `POST /v1/monitor:check`
 (and the SDK's `checkRecords`) runs the same comparison on demand.

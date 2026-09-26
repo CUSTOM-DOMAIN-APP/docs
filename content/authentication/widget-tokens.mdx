@@ -38,7 +38,7 @@ token you hand to an end user.
 | `app` | Your server, or an admin screen only your team can reach | Everything `connect` can, plus acting as the whole application: listing every connection, webhooks, SSL certificates, Power, billing usage, the audit log, registrar orders and direct purchases, and bulk creation. |
 
 A `connect` token that calls an application-wide endpoint gets `403`. Mint an
-`app` token, or use an `sk_` API key, for those calls:
+`app` token, or use an API key, for those calls:
 
 ```json
 { "application_id": "<APP_ID>", "client_secret": "<CLIENT_SECRET>", "scope": "app" }

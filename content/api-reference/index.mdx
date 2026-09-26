@@ -5,7 +5,7 @@ description: Base URL, auth schemes, versioning, the error envelope, and the ful
 
 Base URL (local): `http://localhost:8080/v1`. All requests and responses are
 JSON. The pages below this one are **generated** from the OpenAPI document
-`openapi-v1.yaml` (see [how this stays in sync](#keeping-this-in-sync)) — this
+`openapi-v1.yaml` (see [how this stays in sync](#keeping-this-in-sync)); this
 page is the only hand-written one in the section. The control-plane serves a
 generated copy of that same document live at `GET /v1/openapi.json`; CI fails
 if the two ever disagree.
@@ -28,7 +28,7 @@ three token types (see [Authentication](/docs/authentication/overview)):
 | Credential | Prefix / form | Used for |
 | --- | --- | --- |
 | **Management key** | opaque | operator provisioning and cross-tenant reads |
-| **API key** | `sk_live_…` / `sk_test_…` | long-lived server-to-server calls, tenant-scoped |
+| **API key** | `cd_live_…` / `cd_test_…` (keys created earlier start `sk_live_…` / `sk_test_…` and are still accepted) | long-lived server-to-server calls, tenant-scoped |
 | **Widget JWT** | JWT | the browser widget; minted server-side via `POST /v1/tokens`, scoped to one application (and optionally one domain) |
 
 The one-call signup endpoint `POST /v1/tenants:provision` uses a dedicated
@@ -49,13 +49,13 @@ so an integration can react specifically:
 
 | `code` | HTTP | Meaning |
 | --- | --- | --- |
-| `quota_exceeded` | 402 | The plan's monthly quota is used up. Only `free` is hard-capped, and only where `BILLING_ENFORCE_QUOTA` is on (the hosted service currently runs meter-only, so nothing is refused today) — no paid tier is ever refused; see [Plans & quotas](/docs/billing/plans-and-quotas#overage). |
+| `quota_exceeded` | 402 | The plan's monthly quota is used up. Only `free` is hard-capped, and only where `BILLING_ENFORCE_QUOTA` is on (the hosted service currently runs meter-only, so nothing is refused today). No paid tier is ever refused; see [Plans & quotas](/docs/billing/plans-and-quotas#overage). |
 | `InvalidNameservers` | 422 | The domain has no usable nameserver delegation, so its DNS provider can't be determined. |
 | `ProviderAuthenticationError` | 422 | The end-user's DNS provider rejected the authorization or credential. |
-| `apex_not_supported` | 422 | The domain's provider has no ALIAS/ANAME/flattened-CNAME apex capability (see [Apex domains](/docs/dns/providers#apex-root-domains)). |
+| `apex_not_supported` | 422 | The domain's provider has no ALIAS/ANAME/flattened-CNAME apex capability (see [Root domains](/docs/dns/root-domains)). |
 
 `title` is human-readable; `details` is optional. Internal errors return a
-generic `title` — the specifics are logged server-side under a request id, never
+generic `title`; the specifics are logged server-side under a request id, never
 returned.
 
 This table and the "Error envelope &amp; codes" section on the
@@ -64,18 +64,18 @@ sync when a code changes.
 
 ## Conventions
 
-- **Idempotency** — `POST /v1/connections` is idempotent per application +
+- **Idempotency**: `POST /v1/connections` is idempotent per application +
   domain (an existing, non-failed connection is replayed with `200`).
   `POST /v1/registrar/purchase` **requires** an `Idempotency-Key` header so a
   registration is never charged twice.
-- **Scoping** — list endpoints are tenant-scoped by the authenticated
+- **Scoping**: list endpoints are tenant-scoped by the authenticated
   credential, never by a query parameter. Cross-tenant ids simply match nothing.
-- **Versioning** — the surface is under `/v1`, additive-only within a version —
+- **Versioning**: the surface is under `/v1`, additive-only within a version;
   see the [changelog](/docs/changelog#api-versioning-policy).
-- **Not-configured** — optional engines (Sell, setup templates,
+- **Not-configured**: optional engines (Sell, setup templates,
   billing checkout, webhooks, Power, Secure/SSL) return `503 service_unavailable`
   when the deployment hasn't wired them (`SELL_PURCHASE_ENABLED`,
-  `POWER_ENABLED`, `SECURE_ENABLED`, and similar flags — unset by default).
+  `POWER_ENABLED`, `SECURE_ENABLED`, and similar flags, all unset by default).
 
 ## Keeping this in sync
 
@@ -83,13 +83,13 @@ sync when a code changes.
 things are generated from it, and they are kept honest in different ways.
 
 **The served document.** `GET /v1/openapi.json` does not read the YAML at
-runtime — the control-plane embeds its own copy
+runtime: the control-plane embeds its own copy
 (`services/control-plane/internal/api/openapi.json`) into the binary so the
 endpoint needs no filesystem and no build step. That copy is **generated** from
 `openapi-v1.yaml`, and CI (the `openapi-sync` job, running
 `infra/scripts/check-openapi-sync.sh`) fails any change where the two are not
 byte-identical after canonical rendering. So the served JSON and this reference
-always describe the same contract — but they are two files, and the YAML is the
+always describe the same contract, but they are two files, and the YAML is the
 one to edit. After changing it, run:
 
 ```bash
@@ -98,18 +98,18 @@ infra/scripts/check-openapi-sync.sh --write
 
 and commit the regenerated JSON alongside. Editing the JSON directly is a
 mistake the gate will catch: a hand-patch there is invisible to `npm run
-lint:openapi` and to these pages. (That is not hypothetical — before the gate
+lint:openapi` and to these pages. (That is not hypothetical: before the gate
 existed, the two files had drifted in *both* directions at once, each holding
 `DomainCheck` fields the other lacked.)
 
 **These reference pages.** They are rendered from the same YAML by
 `npm run gen:api` and the output is committed, so a spec change shows up as a
 reviewable docs diff. That regeneration is a **contributor step, not a CI
-gate** — re-run it in the same PR as any spec change (see `AGENTS.md`, "Docs
+gate**: re-run it in the same PR as any spec change (see `AGENTS.md`, "Docs
 stay in sync"). `next build` will fail on a spec the renderer cannot load, but
 it will not tell you that a committed page is one revision stale.
 
 Note that nothing validates *requests* against this document: the control-plane
 hand-writes its request decoding (with unknown fields rejected). The spec is the
-contract of record, not the enforcement mechanism — which is exactly why the
+contract of record, not the enforcement mechanism, which is exactly why the
 drift gate above matters.

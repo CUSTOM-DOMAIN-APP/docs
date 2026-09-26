@@ -46,7 +46,7 @@ Every meaningful transition fires **both** a `window` `CustomEvent` (read
 | `customdomain:purchase` | none | the buy flow created a checkout session | `{ domain, sessionId?, clientSecret?, url? }`: mount Stripe Embedded Checkout with `clientSecret` |
 | `customdomain:request-close` | none | host-delegated dismissal (`whiteLabel.delegateClose`) | provider payload; you call `close()` |
 | `customdomain:doc-click` | none | user clicked a documentation link | link payload |
-| `customdomain:shared` | none | a shared/delegated setup link was produced | share payload |
+| `customdomain:shared` | none | a setup link was handed over: the instructions were emailed, the user chose *Copy link instead*, or your `forwardLink` page took it | `{ domain, link?, jobId? }` |
 
 `onError(err)` receives a `CustomDomainError` (`{ code, message, details? }`).
 Error codes are an open, stable union (for example `SessionError`,
@@ -54,9 +54,9 @@ Error codes are an open, stable union (for example `SessionError`,
 `TimeoutError`, `RateLimitError`, `NetworkError`, `GenericError`).
 
 > A **failed** connection is not a dead end in the widget: it shows the manual
-> screen with the records and the control plane's reason, and *I've added them,
-> check now* calls `POST /v1/connections/{id}:recheck` (which revives the
-> connection) before polling again.
+> screen with the records and the control plane's reason, and *Check now*
+> calls `POST /v1/connections/{id}:recheck` (which revives the connection)
+> before polling again.
 
 > `customdomain:success` is an event, not a dismissal. The widget stays on the
 > success screen and closes itself when the user is done (or when you call
@@ -120,6 +120,66 @@ on, a leftover IPv6 record, extra A records, a conflicting record, or a CAA
 record that blocks certificates. The connection goes live the moment everything
 is in place.
 
+Each record card says exactly what to type at *that* provider: the Name for a
+root domain is `@`, an empty field, or the full domain depending on the panel;
+a hostname value keeps its final dot where the panel would otherwise append the
+zone; on Cloudflare the card adds *Proxy: DNS only*. The provider's step-by-step
+guide and known pitfalls sit behind *Show me how*. Warnings appear only for
+problems the live check actually found.
+
+### Other ways to finish
+
+Below the records, the screen offers three ways out for people who can't, or
+would rather not, edit DNS themselves.
+
+**Let an AI assistant do it.** *Copy prompt* copies one self-contained prompt,
+and a row of icons opens it in ChatGPT (covers Codex), Claude, Gemini, Grok,
+Perplexity or Microsoft Copilot. ChatGPT, Claude, Perplexity and Grok open with
+the prompt already filled in; Gemini and Copilot have no prefill, so the widget
+copies the prompt, opens the app and says *Prompt copied. Paste it in.* The
+prompt (English, so any assistant can act on it) names the domain, the DNS
+provider and its DNS panel link, and each record with its type, the Name to
+type at that provider, the value and the TTL. It turns the live check into
+exact instructions (delete the old A or AAAA record, turn Cloudflare's proxy
+off, remove a doubled name), adds the provider's pitfalls, works for assistants
+that drive a browser (the user signs in and handles two factor codes) and for
+ones that run code (the provider's DNS API with a token the user supplies),
+forbids touching MX or email TXT records, and ends with `dig` commands and the
+answers to expect. It also carries a status page link, minted with
+`POST /v1/sharing/connect` the first time the user reaches for the section;
+that link works once. The prompt shares the domain and its records, nothing
+about your application beyond `applicationName`.
+
+**Email these instructions to someone else.** An inline form takes the
+recipient's address and an optional note (up to 280 characters) and calls
+`POST /v1/sharing/connect` with `recipient_email` and `note`; the control plane
+emails the records and a link to finish. On success the widget shows *Sent to
+name@company.com* and reports `FINISHED_SUCCESSFULLY_LINK_SHARED` with
+`customdomain:shared`. A rejected address (`400`), too many sends (`429`), or an
+email that could not be sent (`email_error`) each get a plain explanation, and
+the last still hands over the link. *Copy link instead* mints a link and copies
+it. If you configured `customProperties.forwardLink.url`, the row opens your
+page with the link instead, as before.
+
+**Let CustomDomain™ host your DNS.** Offered only when `POST /v1/domains:check`
+returns `managed_dns.available: true` and the provider has no sign-in or
+one-click rail. The user reads what changes (the nameservers, once, at their
+registrar) and what doesn't (their registration; their website and email, since
+existing records are copied first), reviews the copied records (and can paste a
+zone file exported from the current provider), then gets the nameservers to set
+with the registrar's name and link and short steps, including turning DNSSEC
+off first. The widget watches `GET /v1/connections/{id}/managed-dns` until the
+delegation is `active`, then continues to the normal success path
+(`IN_PROGRESS`, then `FINISHED_SUCCESSFULLY` with `setupType: "automatic"`).
+Endpoints: `POST /v1/connections/{id}/managed-dns` (start, idempotent),
+`GET /v1/connections/{id}/managed-dns`, and
+`POST /v1/connections/{id}/managed-dns/records` with `{ zone_file }` or
+`{ records }`. These screens report `MANUAL_CONFIGURATION`.
+
+To turn one off, set `customProperties.aiHandoff.hide`,
+`customProperties.forwardLink.hide` (the email row) or
+`customProperties.managedDns.hide`.
+
 ## White-label configuration
 
 `whiteLabel` accepts quick keys, a full raw-token override, per-screen disables,
@@ -128,19 +188,29 @@ and two layout behaviors:
 | Key | Effect |
 | --- | --- |
 | `colors` | `primary`, `primaryHover`, `background`, `text`, `success`, `error`, … mapped onto tokens. |
-| `font` / `borderRadius` / `logo` | Font family, corner radius, header logo (an `https:` URL or a base64 image). |
+| `font` / `borderRadius` / `logo` | Font family, corner radius, header logo (an `https:` URL or a base64 image). A logo uploaded in the console's widget branding is hosted for you at a permanent `https:` URL, and the install code the console shows already uses it. |
 | `hideLogo` | Hide the powered-by footer. |
 | `hideConfetti` | Disable the success confetti. |
 | `tokens` | Override any of the ~90 raw design tokens (`modal-width`, `color-primary`, `radius-md`, `shadow-modal`, …). |
 | `screens.disable` | Array of optional screens to hide. |
 | `delegateClose` | The widget never tears itself down; it posts `customdomain:request-close` and you call `close()`. |
 | `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
+| `darkMode` / `darkTokens` | `"disabled"` (default), `"enabled"` or `"auto"` (follows the OS); `darkTokens` fine-tunes the dark palette. |
+| `customProperties` | Granular toggles: `hideCloseButton`, `hideProgressIndicator`, `providerLogin.changeProvider.hide`, `recordsPreview.hide`, `forwardLink` (`hide`, `url`, `label`), `gotoManualLink.hide`, `useCustomExitConfirmation`, `aiHandoff.hide`, `managedDns.hide`. |
 
 Tokens are emitted as CSS custom properties (`--je-<token>`) on the widget's
 shadow host, so they cannot affect your page. Every value must be a plain CSS
 value (a color, length, font stack or shadow); anything that could inject CSS
 or script is dropped, and custom icons are rebuilt from an allowlist of SVG
 elements and attributes.
+
+The default look follows one system: a 12, 13, 14, 15, 17 and 21 px type scale
+(`font-size-xs` through `font-size-h2`, plus `font-size-lg`), a 4 px spacing
+rhythm (`space-2xs` through `space-xl`), and one motion curve. Screens slide in
+the direction of travel (`motion-duration`, `motion-ease`,
+`motion-slide-distance`), the modal glides between heights, and controls react
+in `motion-duration-fast`. Under `prefers-reduced-motion` all of it is off and
+spinners only slow down.
 
 ## Widget statuses
 
@@ -160,8 +230,12 @@ only act on the hostname it was minted for.
 
 Focus trap, `aria-modal`, a live-region announcer, generous touch targets,
 safe-area insets, `prefers-reduced-motion`, and `prefers-color-scheme` dark mode
-are built in. The iframe is sandboxed with `allow-popups`/
-`allow-popups-to-escape-sandbox` so provider OAuth windows can open.
+are built in. Enter submits every form; each new step moves focus to its
+heading (or its one input) so screen readers announce it; Escape asks before
+leaving; live checks announce only real changes. On phones the widget takes
+the full screen. The iframe is sandboxed with `allow-popups`/
+`allow-popups-to-escape-sandbox` so provider OAuth windows and the AI
+assistants can open in a new tab.
 
 ## Analytics
 
@@ -170,4 +244,7 @@ detected, offered one-click or sign-in, shown records to copy, live, or closed
 early) with the provider, the rail, and whether the domain was a root or a
 subdomain. No domain name or end-user identifier is sent. Read it in the
 console under **Analytics**, or from your server with
-`GET /v1/analytics/connect` (an `sk_` API key).
+`GET /v1/analytics/connect` (an API key). The records screen's alternatives
+report as their own steps: `handoff-ai` (copied or opened the AI prompt),
+`share-email` (sent the instructions, or copied the link instead), and
+`managed-dns` (opened or started DNS hosting).

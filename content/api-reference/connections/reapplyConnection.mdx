@@ -16,7 +16,7 @@ _openapi:
           **Managed mode only.** Recomputes the connection's authoritative
           desired record set and writes any drift through the provider's async
           one-click API using the stored, encrypted grant (the provider API base
-          pinned at onboarding) — the end user does **not** re-consent. On
+          pinned at onboarding); the end user does **not** re-consent. On
           success the connection is re-verified and `connection.records.updated`
           is emitted. A failure emits `connection.reapply.failed`; if the
           provider reports the grant was revoked (401 kill-switch) the grant is

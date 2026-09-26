@@ -16,11 +16,11 @@ curl -X POST http://localhost:8080/v1/webhooks \
 # → { "id": "whk_…", "url": "...", "events": [...], "secret": "whsec_…", "created_at": "..." }
 ```
 
-The `secret` (`whsec_…`) is returned **once** — store it to verify signatures. An
+The `secret` (`whsec_…`) is returned **once**. Store it to verify signatures. An
 empty `events` array subscribes to all events; `"*"` also matches all.
 
 Manage endpoints: `GET /v1/webhooks` lists them (secrets omitted; tenant-wide
-with an `sk_` key, app-scoped with a widget JWT) and
+with an API key, app-scoped with a widget JWT) and
 `DELETE /v1/webhooks/{id}` removes one.
 
 ## Event catalog
@@ -37,9 +37,9 @@ with an `sk_` key, app-scoped with a widget JWT) and
 | `connection.records_outdated` | A non-managed connection's applied records were computed against a superseded edge target; the envelope carries a `connect_link` to re-run setup. |
 | `domain.record_missing` | Monitor saw a baseline record disappear or get repointed (drift). |
 | `domain.record_restored` | A previously missing baseline record is observed again. |
-| `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed — the domain is registered (and only then is the card captured). |
+| `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed: the domain is registered (and only then is the card captured). |
 | `purchase.error` | A purchase failed; the card authorization was released. |
-| `purchase.confirmation.expired` | A pending purchase's checkout session timed out unpaid — the buyer never confirmed. Release the cart. |
+| `purchase.confirmation.expired` | A pending purchase's checkout session timed out unpaid; the buyer never confirmed. Release the cart. |
 | `secure_status` | A certificate's provisioning status changed (`secure_status` on the envelope). |
 | `power_status` | A reverse-proxy host's provisioning status changed (`power_status` on the envelope). |
 
@@ -48,7 +48,7 @@ When the connection carries a recorded diagnosis at emit time, the envelope also
 That table is the **complete** vocabulary: it is exactly the set the platform can
 emit, and the `events` enum in the [OpenAPI spec](/v1/openapi.json) matches it.
 An unknown event string is still accepted at registration, but it can never be
-delivered — subscribe only to the events above.
+delivered, so subscribe only to the events above.
 
 > **Status:** the drift events (`domain.record_missing` / `domain.record_restored`)
 > are produced by the hourly Monitor sweep, which **delivers** them only where
@@ -85,13 +85,13 @@ that don't apply to an event are omitted.
 
 Additional conditional fields ride connection events:
 
-- `user_id` — the connection's `end_user_ref`, echoed so integrators can
+- `user_id`: the connection's `end_user_ref`, echoed so integrators can
   associate lifecycle events with the originating tenant or end user. Omitted
   when the connection was created without an `end_user_ref`.
-- `updated_objects` — the records a write actually created or changed. Present on
+- `updated_objects`: the records a write actually created or changed. Present on
   `connection.applied` and `connection.records.updated` only; the events that just
   observe a connection never claim to have written anything.
-- `redirection_status` — `pending`, `success` or `failed` for the apex↔www
+- `redirection_status`: `pending`, `success` or `failed` for the apex↔www
   redirect, and present only on connections created with `www_redirect: true`.
 
 ## Delivery & retries
@@ -101,7 +101,7 @@ Additional conditional fields ride connection events:
 - Inspect attempts: `GET /v1/webhook-deliveries` (`attempts`, `status_code`,
   `delivered`, `error`; filter with `?app_id=` and `?type=`).
 
-Endpoints should be **idempotent** — the same event can arrive more than once on
+Endpoints should be **idempotent**: the same event can arrive more than once on
 retry. Deduplicate on the envelope `id`, or on `domain` + `type`.
 
 Next: [verify signatures](/docs/webhooks/verifying-signatures).

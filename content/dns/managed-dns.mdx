@@ -1,0 +1,277 @@
+---
+title: Managed DNS
+description: Point a domain's nameservers at CustomDomain™ once, and every record after that is written for you. How DNS hosting works, the API, the limits, and how to run it yourself.
+---
+
+When a domain's DNS provider offers no sign-in, one-click or API rail, the
+only other way to connect it is to type records into the provider's panel by
+hand, and that is where most connections stall. **Managed DNS** replaces the
+typing with one change the domain's owner makes once: set the domain's
+nameservers to CustomDomain™'s. From then on CustomDomain™ hosts the whole
+zone, and every record, now and later, is written automatically.
+
+On the hosted service, managed DNS is rolling out gradually; self-hosted
+deployments turn it on with `MANAGED_DNS_ENABLED`. Either way,
+`POST /v1/domains:check` tells you whether it is available for a domain, and
+the widget offers it only when it is.
+
+## How it works
+
+1. **Check.** `POST /v1/domains:check` returns
+   `"managed_dns": {"available": true, "reason": ""}` when the domain can be
+   hosted.
+2. **Start.** `POST /v1/connections/{id}/managed-dns` creates a hosted zone
+   for the connection's **registrable domain** (`acme.com`, also when the
+   connection is `shop.acme.com`), copies the records the domain serves today,
+   adds the records the connection needs, and looks up the registrar.
+3. **Switch.** The domain's owner replaces the domain's nameservers, at its
+   registrar, with the `nameservers` in the response. Nothing changes for
+   anyone until they do, and because the zone already holds the domain's
+   records, nothing breaks when they do.
+4. **Active.** CustomDomain™ reads the delegation from the domain's registry
+   (the `.com` servers for `acme.com`). Once **every** listed nameserver is
+   ours, the zone turns `active`, the connection is verified right away, and it
+   goes live.
+
+Every record change for the connection after that (a `www` redirect switched
+on, a CAA opt-in, a `:reapply`, a disconnect) is written into the zone by
+CustomDomain™. Nobody is asked to edit DNS again.
+
+## Copying the existing records
+
+DNS has no way to list a zone, so before the switch CustomDomain™ asks the
+domain's current nameservers about the names domains commonly use and copies
+what they serve:
+
+- the root: `A`, `AAAA`, `MX`, `TXT`, `CAA`
+- `www`, `mail`, `webmail`, `smtp`, `imap`, `pop`, `autodiscover`, `autoconfig`
+- `_dmarc`, and the DKIM selectors of common mail services (`google`,
+  `selector1`, `selector2`, `k1`, `k2`, `s1`, `s2`, `default`, `mandrill`,
+  `mailjet`, `resend`, `zoho`, `protonmail` to `protonmail3`, `fm1` to `fm3`,
+  `dkim`, `mxvault`)
+- the SRV names of common chat and mail services (`_sip._tls`,
+  `_sipfederationtls._tcp`, `_autodiscover._tcp`, `_imaps._tcp`,
+  `_submission._tcp`)
+- every name the connection itself uses
+
+A `CNAME` is copied as the `CNAME` (never the addresses it leads to), and a
+wildcard is copied as a wildcard. The zone's own `NS` and `SOA` are never
+copied: those become CustomDomain™'s.
+
+Names outside that list are not found this way. **Before switching, check the
+record list**, and import a zone file or add anything that is missing. Most DNS
+providers can export a zone file.
+
+**DNSSEC.** The zones CustomDomain™ hosts are not signed yet. If DNSSEC is
+turned on for the domain at its registrar (the registry publishes a `DS`
+record), resolvers that validate DNSSEC would stop answering for the domain
+after the switch. The zone's `warnings` say so while a `DS` record exists: turn
+DNSSEC off at the registrar when changing the nameservers.
+
+## Where records come from
+
+Each record carries a `source`. When sources disagree about a name, the higher
+one wins:
+
+| Source | Meaning | Wins over |
+| --- | --- | --- |
+| `customdomain` | Needed by CustomDomain™ to serve a connected domain | everything |
+| `manual` | Added by hand | `imported`, `discovered` |
+| `imported` | From a zone file | `discovered` |
+| `discovered` | Copied from the old DNS | |
+
+What "wins" means:
+
+- A `CNAME` can't share its name, so a higher `CNAME` removes everything
+  below it at that name, and a lower `CNAME` gives way to anything above it.
+- A zone file is authoritative for what it defines: an imported `MX` set
+  replaces the copied `MX` set.
+- Records added by hand are **added**: adding a second `MX` keeps the first.
+- A name can hold only one `v=spf1`, one `v=DMARC1`, one `v=DKIM1` TXT record.
+- Where CustomDomain™ points a name (`shop.acme.com` to the edge), older
+  addresses for that name are removed, including `AAAA`, so no visitor is sent
+  to the old host.
+
+Every record that was replaced or skipped is explained in `warnings`.
+
+## API
+
+### Availability
+
+```json
+"managed_dns": { "available": false, "reason": "platform_subdomain" }
+```
+
+`reason` is `""` when available, otherwise `disabled` (off on this
+deployment), `platform_subdomain` (`someone.github.io`: the name belongs to a
+hosting platform), `unsupported_tld` (no registrable domain whose nameservers a
+registrar can change) or `reserved`.
+
+### Start
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/managed-dns \
+  -H "Authorization: Bearer cd_live_…"
+```
+
+`201` the first time, `200` after that with the same zone. A repeat call also
+re-reads the delegation (at most every 30 seconds), which is how a "check
+now" button works. A second connection under the same registrable domain joins
+the existing zone. A zone already hosted for another account answers `409`.
+
+The response, and every other managed DNS response, is the zone:
+
+```json
+{
+  "zone": "acme.com",
+  "status": "awaiting_delegation",
+  "nameservers": ["ns-1402.awsdns-47.org", "ns-905.awsdns-49.net", "ns-106.awsdns-13.com", "ns-1860.awsdns-40.co.uk"],
+  "observed_nameservers": ["ns1.olddns.net", "ns2.olddns.net"],
+  "registrar": { "name": "GoDaddy.com, LLC", "url": "https://www.godaddy.com" },
+  "records": [
+    { "id": "mdr_3c1f...", "type": "MX", "name": "acme.com", "value": "aspmx.l.google.com", "ttl": 3600, "priority": 1, "source": "discovered" },
+    { "id": "mdr_9a07...", "type": "CNAME", "name": "shop.acme.com", "value": "edge.customdomain.ai", "ttl": 3600, "priority": null, "source": "customdomain" }
+  ],
+  "warnings": ["Before you switch nameservers, check that every record acme.com uses is listed. ..."],
+  "checked_at": "2026-09-26T12:00:00Z",
+  "activated_at": null
+}
+```
+
+`registrar` is `null` when the registry doesn't say. `status` is
+`awaiting_delegation`, `active` or `failed`.
+
+### Read
+
+`GET /v1/connections/{id}/managed-dns` returns the zone, or `404` when managed
+DNS was never started for the connection. Poll it while `status` is
+`awaiting_delegation`.
+
+### Import a zone file or add records
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/managed-dns/records \
+  -H "Authorization: Bearer cd_live_…" \
+  -H "Content-Type: application/json" \
+  -d '{ "zone_file": "$ORIGIN acme.com.\n@ 3600 IN MX 10 mail.acme.com.\n" }'
+```
+
+or
+
+```bash
+  -d '{ "records": [
+        { "type": "TXT", "name": "@", "value": "google-site-verification=abc" },
+        { "type": "MX", "name": "@", "value": "mx2.mailhost.net", "priority": 20 }
+      ] }'
+```
+
+Send exactly one of `zone_file` or `records`. Names may be relative (`@`,
+`www`, `_dmarc`) or fully qualified inside the zone. Supported types: `A`,
+`AAAA`, `CNAME`, `MX`, `TXT`, `SRV` (value `"<weight> <port> <target>"`,
+priority separate), `CAA` and `NS` (for subdomains only).
+
+The zone file parser reads BIND format: `$ORIGIN`, `$TTL` (also `1h`, `2d`),
+`@`, relative and absolute names, a blank name (the line above's), comments,
+parentheses, quoted and multi-string `TXT`. Anything it can't host (the `SOA`,
+the zone's own `NS` records, other types, names outside the zone, `$INCLUDE`,
+`$GENERATE`) is skipped with a warning naming the line.
+
+A record added by hand that would override a `customdomain` record is refused
+with `409`; an imported one is skipped with a warning.
+
+### Remove a record
+
+`DELETE /v1/connections/{id}/managed-dns/records/{record_id}` removes one
+record and returns the zone. `customdomain` records can't be removed (`409`):
+disconnect the domain instead. Record ids are derived from the record's
+content, so they stay the same across reads.
+
+### Who can call what
+
+The routes are authorized like the other connection routes: an API key for any
+connection in the tenant, or a widget token of the connection's own
+application and domain. Changes need a role that can write connections.
+
+Once a zone is `active` it answers for the whole domain, email included, so an
+end user's **connect-scoped** widget token may only read it. Records can still
+be changed with an API key or an app-scoped token.
+
+### Limits
+
+| Limit | Value |
+| --- | --- |
+| Records per zone | 500 |
+| Zone file size | 256 KB |
+| Records per request | 500 |
+| Zones per account | 100 by default (`MANAGED_DNS_MAX_ZONES_PER_TENANT`) |
+
+## Delegation states
+
+| Status | Meaning |
+| --- | --- |
+| `awaiting_delegation` | The zone holds the records; the domain still uses other nameservers. Checked every few minutes for the first day, hourly after. |
+| `active` | Every nameserver the registry lists is ours. Re-checked every 6 hours. |
+| `failed` | The switch didn't happen within 14 days, or the nameservers later moved away. The first warning says which. A failed zone is still checked twice a day and turns `active` as soon as the delegation appears. |
+
+If the registry lists some of our nameservers and some others, the zone stays
+`awaiting_delegation` with a warning naming the extra ones: resolvers that pick
+one of them would still get the old answers.
+
+## Root domains
+
+A hosted zone can't alias a hostname outside it, so a root domain
+(`acme.com`) is pointed at the edge with `A` records to the platform's
+published apex addresses (`APEX_A_TARGETS`). A deployment without them can't
+host a root connection's records, and the zone says so in `warnings`; connect
+`www` instead. See [Root domains](/docs/dns/root-domains).
+
+## Running it yourself
+
+Managed DNS hosts zones in **Amazon Route 53**, one public hosted zone per
+domain.
+
+| Variable | |
+| --- | --- |
+| `MANAGED_DNS_ENABLED` | `1` to turn it on. Off by default. |
+| `MANAGED_DNS_AWS_ACCESS_KEY_ID` / `MANAGED_DNS_AWS_SECRET_ACCESS_KEY` | A dedicated IAM principal. Without it, production refuses and stays off; development hosts zones in memory (nothing is served). |
+| `MANAGED_DNS_DELEGATION_SET_ID` | Optional reusable delegation set: every zone gets the same four nameservers (the basis for branded nameservers). |
+| `MANAGED_DNS_MAX_ZONES_PER_TENANT` | Optional per-account zone cap (default 100). |
+
+Use a **dedicated AWS account**: IAM cannot scope `route53:*` to "zones this
+service created", so in a shared account the key could also change the
+platform's own zones. The minimal policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateAndFindZones",
+      "Effect": "Allow",
+      "Action": ["route53:CreateHostedZone", "route53:ListHostedZonesByName"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageTheZones",
+      "Effect": "Allow",
+      "Action": [
+        "route53:GetHostedZone",
+        "route53:ListResourceRecordSets",
+        "route53:ChangeResourceRecordSets",
+        "route53:DeleteHostedZone"
+      ],
+      "Resource": "arn:aws:route53:::hostedzone/*"
+    }
+  ]
+}
+```
+
+With a reusable delegation set, also allow `route53:GetReusableDelegationSet`
+on `arn:aws:route53:::delegationset/*`.
+
+Apply migration `0044_managed_dns.sql` before turning the flag on. Route 53
+bills each hosted zone monthly (the first 25 zones cost more per zone than the
+rest) plus queries; an AWS account holds 500 hosted zones by default, which
+the per-account cap keeps you under. Zones are never deleted automatically:
+deleting a zone a domain still points at would take that domain offline, mail
+included.

@@ -9,11 +9,39 @@ continuously updated, and the API is versioned separately (below).
 ## API versioning policy
 
 The public API is versioned by URI major (`/v1`) and is **additive-only within a
-version** — new optional fields and endpoints can appear, but existing fields
+version**: new optional fields and endpoints can appear, but existing fields
 never change meaning or disappear without a new major version. See the
 [API reference](/docs/api-reference) for the current surface.
 
 ## Notable milestones
+
+- **CustomDomain™, one word.** The product now reads CustomDomain™ everywhere:
+  the console, the widget, emails and these docs. Nothing in the API changed
+  name.
+- **New API key prefix.** New keys start with `cd_live_` or `cd_test_`. Keys
+  that start with `sk_live_` or `sk_test_` keep working; there is nothing to
+  rotate. See [API keys](/docs/authentication/overview).
+- **Hand the DNS step to an AI assistant.** On the manual step, the widget
+  offers one ready prompt with the exact records for the customer's provider,
+  and opens it in ChatGPT, Claude, Perplexity or Grok (Gemini and Copilot get
+  it on the clipboard). The prompt holds no link or credential.
+- **Send the records to whoever manages DNS.** The widget emails the
+  instructions, with an optional note, to the person who can make the change,
+  and the console's domain page does the same for your teammates, inviting
+  them to your workspace if you are an admin.
+- **Nameserver hosting, rolling out.** Where a provider offers no automatic
+  setup, the widget can offer to host the domain's DNS: the owner changes the
+  nameservers once and every record after that is written for them. See
+  [Managed DNS](/docs/dns/managed-dns).
+- **Upload a logo.** Widget branding takes an uploaded logo as well as a URL;
+  any common image format is turned into a clean PNG sized for the widget.
+- **See where each domain came from.** Connections carry `created_via`
+  (`widget`, `console`, `api`, `agent` or `mcp`), and the console's Domains
+  page filters by it.
+- **A calmer, clearer widget.** The manual step now leads with a link to the
+  provider's DNS panel and shows each record's live status; the widget moves
+  smoothly between steps, fills the screen on phones and respects reduced
+  motion.
 
 - **The widget tells people exactly what is wrong.** While a customer adds
   records by hand, the widget reads public DNS for each one and shows found,
@@ -67,7 +95,7 @@ never change meaning or disappear without a new major version. See the
   many conflicting records, unsupported or unknown provider) and the message
   the user saw.
 - **Widget recovers a failed connection in place.** The records stay on
-  screen with the reason; *I've added them — verify* re-enters verification
+  screen with the reason; *I've added them, verify* re-enters verification
   (`:recheck`). Re-sending an identical record set after a write returns 200.
   A stalled connection keeps its real diagnosis instead of a generic one.
 - **`www` works with the root redirect.** A root connection with
@@ -79,8 +107,8 @@ never change meaning or disappear without a new major version. See the
   `recommended_rail`, `end_user_automatic`, a `blocked_reason` for domains no
   rail can connect, a `dashboard_url` into the provider's DNS panel, and the
   observed `nameservers`. One-click setup is advertised only where the
-  provider is measured to serve our template — never merely because it
-  answered discovery — and `domainconnect:start` refuses what the check did
+  provider is measured to serve our template (never merely because it
+  answered discovery), and `domainconnect:start` refuses what the check did
   not advertise, naming the provider. Hosting-platform subdomains
   (`*.vercel.app` and friends) are refused on create with `platform_subdomain`
   instead of waiting for DNS that can never appear. The console shows "What
@@ -114,29 +142,29 @@ never change meaning or disappear without a new major version. See the
   page that issues a new one.
 - **Route 53** accepts a session token for temporary (`ASIA…`) credentials.
 - **Clearer errors.** A DNS-provider write that fails is reported as a 422
-  `dns_write_failed` with the provider's reason — not a 503.
-- **Tenant-scoped connection webhooks** — connection lifecycle envelopes now
+  `dns_write_failed` with the provider's reason, not a 503.
+- **Tenant-scoped connection webhooks.** Connection lifecycle envelopes now
   include the optional `user_id` echoed from the connection's `end_user_ref`,
   allowing integrators to associate events with the originating tenant or end
   user. Connections created without an `end_user_ref` continue to omit it.
-- **Integrator-supplied record sets** — `PUT /v1/connections/{id}/records`
+- **Integrator-supplied record sets.** `PUT /v1/connections/{id}/records`
   replaces a connection's desired records with a set the integrator authored, for
   records no template can derive (Amazon SES mints three Easy-DKIM CNAMEs per
   domain). Server-to-server only, and the one-click template rail refuses such a
   connection. See [Create a connection](/docs/connect-flow/create-a-connection#supplying-your-own-records).
-- **Money-safe domain buying** — embedded checkout that authorizes the card,
+- **Money-safe domain buying.** Embedded checkout that authorizes the card,
   registers the domain server-side (webhook-driven), and captures only after a
   successful registration; purchased domains land in the console pre-connected.
   See [Buying a domain](/docs/sell/buying-a-domain).
-- **Hosted MCP server live** — `https://mcp.customdomain.ai/mcp` (Streamable
+- **Hosted MCP server live.** `https://mcp.customdomain.ai/mcp` (Streamable
   HTTP) with eleven agent tools, plus a console **MCP server** page under
   *Integrate* with credentials and client configs.
-- **One-click setup template catalog live upstream** — the full customdomain.ai
+- **One-click setup template catalog live upstream.** The full customdomain.ai
   template catalog (apex A/AAAA/CNAME/www, subdomain, www, wildcard, verify,
   connect-verified, CAA, and the email set) is merged into the provider-hosted
   one-click protocol's upstream template registry, and prod embeds the shipped
   catalog.
-- **One-click sync rail live at registry-mirroring DNS providers** — apply URLs
+- **One-click sync rail live at registry-mirroring DNS providers.** Apply URLs
   are RS256-signed with the `_dck1` selector (pubkey published at
   `_dck1.customdomain.ai`) and a conformance CI gate keeps the catalog valid.
   Providers that mirror the public template registry serve the catalog today
@@ -144,49 +172,49 @@ never change meaning or disappear without a new major version. See the
   Domain Chief 16 of 18), and the rail is offered per-provider via the
   `DC_SYNC_PROVIDERS` allowlist. Providers that hand-curate their template sets
   (GoDaddy, IONOS, Cloudflare) require direct onboarding, which has not
-  completed — for domains hosted there the widget offers the API-key and manual
+  completed. For domains hosted there the widget offers the API-key and manual
   paths, plus one-click OAuth where the provider runs an OAuth rail (Cloudflare
   does; GoDaddy and IONOS do not). See
   [Setup types & the ask gate](/docs/concepts/ownership-and-setup-types).
-- **Share links** — forward a connect flow to a colleague with a link that carries
+- **Share links.** Forward a connect flow to a colleague with a link that carries
   a 30-day expiry; expired share tokens return `404`.
-- **Frontend overhaul** — the console gained a shared component library, dark mode,
+- **Frontend overhaul.** The console gained a shared component library, dark mode,
   a `⌘K` command palette, and a mobile-friendly layout.
-- **Shop-style domain search** — buying-domain search now groups results into the
+- **Shop-style domain search.** Buying-domain search now groups results into the
   exact name, other TLDs (`.com .net .org .io .co .ai .app .dev .xyz .me`), and
   close name variants. See [Buying a domain](/docs/sell/buying-a-domain#shop-style-search).
-- **Opt-in credential reuse** — you can optionally save a provider API key
+- **Opt-in credential reuse.** You can optionally save a provider API key
   (encrypted at rest, per tenant + provider) to reuse it for other domains in one
   click, and revoke it any time under **Settings → Connected provider accounts**.
   Off by default; the plaintext never leaves the server. See
   [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
-- **Bulk connect** — after providing a provider key, connect the other domains on
+- **Bulk connect.** After providing a provider key, connect the other domains on
   that account (all or a subset) in one step, with per-domain status. Supported
   for Cloudflare, GoDaddy, Route 53, and Namecheap. See
   [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
-- **Server-enforced roles** — the role → permission matrix is now enforced at the
+- **Server-enforced roles.** The role → permission matrix is now enforced at the
   control-plane, not just the console: API-key minting and member/role changes
   require admin or owner, billing requires owner. See
   [Roles & permissions](/docs/security/overview#roles--permissions).
-- **Per-provider credential fields** — the console's connect flow collects API
+- **Per-provider credential fields.** The console's connect flow collects API
   credentials as separate labeled fields (with links to each provider's
   credential portal and numbered steps) instead of a colon-joined paste; used
   once and discarded by default, unless you opt in to remembering a key.
-- **Resumable setup** — the Domains list's **Finish setup** reopens an abandoned
+- **Resumable setup.** The Domains list's **Finish setup** reopens an abandoned
   guided connect flow at the right step.
-- **Four connect rails** — OAuth into the DNS provider (flagship), provider-hosted
+- **Four connect rails.** OAuth into the DNS provider (flagship), provider-hosted
   one-click setup (sync + async), BYO API-token apply, and guided-manual, all
   converging on the same `pending → propagating → live` lifecycle.
-- **Broad DNS auto-write fleet** — 38 built-in provider adapters (Cloudflare,
+- **Broad DNS auto-write fleet.** 38 built-in provider adapters (Cloudflare,
   Route 53, Google Cloud DNS, Azure DNS, GoDaddy, Namecheap, and many more) plus a
   full parity census that routes ~63 target providers to their working mode, and
   one-click setup for tokenless applies.
-- **Embeddable widget/SDK** — `customdomain-js`, `window.customdomain`, the
+- **Embeddable widget/SDK.** `customdomain-js`, `window.customdomain`, the
   `customdomain:*` events, ~90-token white-label theming, and embedded mode.
-- **Signed webhooks** — HMAC-SHA256 deliveries with a replay window, retries, and
+- **Signed webhooks.** HMAC-SHA256 deliveries with a replay window, retries, and
   a delivery log at `GET /v1/webhook-deliveries`.
-- **Billing & metering** — a Stripe-backed plan catalog with metered domain
+- **Billing & metering.** A Stripe-backed plan catalog with metered domain
   usage and overage on the Growth tier.
-- **This documentation site** — a proper information architecture with a
+- **This documentation site.** A proper information architecture with a
   generated, always-in-sync API reference (see
   [how it stays in sync](/docs/api-reference#keeping-this-in-sync)).
