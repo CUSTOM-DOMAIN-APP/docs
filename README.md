@@ -135,7 +135,7 @@ you are unsure: would this page make sense to someone who will never see the sou
 - [connect-domain-for-email-platforms](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-email-platforms): SPF, DKIM, DMARC and MX setup for email platforms
 - [connect-domain-for-agencies](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-agencies): white-label client domains for agencies, with working examples
 - [connect-domain-for-website-builders](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-website-builders): domain connection for site builders and no-code platforms
-- [customdomain-brand-kit](https://github.com/CUSTOM-DOMAIN-APP/customdomain-brand-kit): logos, wordmarks and color tokens
+- [customdomain-brand-kit](https://github.com/CUSTOM-DOMAIN-APP/customdomain-brand-kit): the brand reference: name rule, mark, color and type
 
 ## Support
 
