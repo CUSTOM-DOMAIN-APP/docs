@@ -13,7 +13,7 @@ _openapi:
       - content: >-
           Resolves every record the connection is verified against
           **in-request**, against live public DNS, and returns a per-record
-          verdict — this is the verb behind a "check now" button, as opposed to
+          verdict. This is the verb behind a "check now" button, as opposed to
           `GET /connections/{id}`, which only reports what the background
           propagation poller last saw.
 
@@ -22,11 +22,11 @@ _openapi:
           connection whose records are all visible is promoted to `live` here
           rather than on the poller's next pass, and a **`failed`** connection
           is re-entered into verification (`failed` → `pending`) with its
-          lifecycle timeout clock re-based off the retry — without that
-          re-basing the retry would re-fail immediately, since the connection is
-          `failed` precisely because it aged past that window. A `live`
-          connection is reported on but never transitioned: `records_resolved:
-          false` on a live connection is a drift signal.
+          lifecycle timeout clock re-based off the retry. Without that re-basing
+          the retry would re-fail immediately, since the connection is `failed`
+          precisely because it aged past that window. A `live` connection is
+          reported on but never transitioned: `records_resolved: false` on a
+          live connection is a drift signal.
 
 
           Idempotent and safe to call repeatedly.
