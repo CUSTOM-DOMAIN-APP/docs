@@ -1,0 +1,73 @@
+---
+title: Where domains point
+description: Send customer domains through the CustomDomain™ edge with automatic SSL, or point them straight at your own infrastructure.
+---
+
+Every connection's records point somewhere, and an application chooses where
+once. The default record set, the pre-flight check, verification and the live
+DNS diagnosis all follow that choice, so the records your customers see are
+always the ones that will work.
+
+| | Through the edge (default) | Your own infrastructure |
+| --- | --- | --- |
+| Subdomain record | `CNAME` to `edge.customdomain.ai` | `CNAME` to your hostname |
+| Root record | `ALIAS`/`ANAME`/flattened `CNAME` to the edge, or `A` records to the edge's addresses | `ALIAS`-style record to your hostname, or `A` records to the addresses you list |
+| TLS certificates | Issued and renewed by the edge on first request | Yours to issue (your load balancer, TLS proxy or CDN) |
+| Root to `www` redirect | Served by the edge | Yours to serve |
+| Plans | Power (Growth and up) | Every plan, including Free |
+
+In the console both live under **Domain routing**.
+
+## Through the edge
+
+The edge terminates TLS and proxies each request to your origin, passing the
+customer's hostname in `X-Forwarded-Host` so one origin can serve every
+customer. Set that origin once for the whole application:
+
+```bash
+curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/power:default \
+  -H "Authorization: Bearer sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "default_origin": "https://app.example.com" }'
+```
+
+A connection can override it with its own origin
+(`POST /v1/connections/{id}/power`). The edge uses the connection's origin
+first, then the application default; with neither it answers `421`, so set the
+default before your first customer connects.
+
+## Your own infrastructure
+
+Name your own destination with a connection target. Customer subdomains get a
+`CNAME` to `cname_target`; roots get an `ALIAS`-style record to it where the
+DNS provider has one, and otherwise `A` records to each address in `apex_ipv4`
+(up to four public IPv4 addresses):
+
+```bash
+curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/connect-target \
+  -H "Authorization: Bearer sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "cname_target": "customers.example.com", "apex_ipv4": ["203.0.113.10"] }'
+```
+
+- `cname_target` must be a hostname, not an IP address and not the edge itself.
+  Send `""` to point the application back at the edge.
+- Without `apex_ipv4`, a root domain at a provider with no `ALIAS`-style record
+  cannot be pointed at you. The pre-flight says so up front
+  (`apex_strategy: "unsupported"`) and the widget steers that customer to `www`
+  or a subdomain.
+- Traffic never passes through the edge in this mode, so certificates and the
+  root to `www` redirect are yours to serve. `www_redirect: true` still adds the
+  `www` record.
+- Pick the target before customers connect. Changing it changes the records
+  new connections get and are checked against; records already written to a
+  provider stay as written until you reapply the connection
+  (`POST /v1/connections/{id}:reapply`), and customers who added records by
+  hand need to update them.
+
+`GET /v1/applications/{id}/connect-target` returns the current mode
+(`edge` or `custom`), the target, and what the edge mode would point at, so a
+settings screen can show both.
+
+See also [Root domains](/docs/dns/root-domains) and
+[Verify and go live](/docs/connect-flow/verify-and-go-live).

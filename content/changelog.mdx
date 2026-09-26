@@ -15,6 +15,34 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **The widget tells people exactly what is wrong.** While a customer adds
+  records by hand, the widget reads public DNS for each one and shows found,
+  not found yet, or what answers instead ("Still points to Squarespace"), and
+  catches the common mistakes: the full hostname typed into the Name field,
+  Cloudflare's proxy turned on, a leftover IPv6 record. The same check is on
+  every domain's page in the console and at
+  `GET /v1/connections/{id}/diagnose`.
+- **Root domains are a choice, not a trap.** Typing `acme.com` now asks
+  whether to connect the root and `www` (recommended), the root alone, or a
+  subdomain, and says how that provider points a root. `domains:check`
+  reports it up front as `apex_strategy`.
+- **Sessions no longer expire mid-setup.** Pass `getToken` and the widget
+  refreshes its token on its own; without it, the widget says the user can
+  close the window and the domain still connects.
+- **Widget analytics.** The console's Analytics page (and
+  `GET /v1/analytics/connect`) shows where customers drop off in the connect
+  flow, by DNS provider and by root versus subdomain.
+- **Point domains at your own infrastructure.** A connection target
+  (`PUT /v1/applications/{id}/connect-target`) sends customer domains to your
+  own hostname and addresses on every plan. See
+  [Where domains point](/docs/connect-flow/routing).
+- **Least-privilege widget tokens.** Tokens now carry a scope; the default
+  `connect` scope runs the connect flow and nothing else. See
+  [Widget tokens](/docs/authentication/widget-tokens#scopes).
+- **A simpler console.** New accounts get a short welcome, a tour and a setup
+  checklist. The navigation now centers on domains, analytics, the widget,
+  the API and routing; everything else is a feature you switch on in
+  Settings.
 - **Re-check is honest on live domains.** A re-check on a domain connected
   from the console or the widget verified an empty record set and reported
   drift on a healthy domain; it now verifies the domain's actual records. The

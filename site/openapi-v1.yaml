@@ -1,4 +1,4 @@
-# Customdomain public API contract (/v1).
+# CustomDomain™ public API contract (/v1).
 #
 # This vendored spec is the SINGLE SOURCE OF TRUTH for the Fumadocs API
 # reference: every page under src/content/docs/api-reference/** is generated
@@ -9,7 +9,7 @@
 # Versioning: URI major (/v1), additive-only within a version.
 openapi: 3.1.0
 info:
-  title: Customdomain Control-Plane API
+  title: CustomDomain™ Control-Plane API
   version: "1.0"
   description: >-
     APIs for connecting your customers' domains to your product:
@@ -67,6 +67,8 @@ tags:
     description: RBAC reference matrix and the audit log.
   - name: Meta
     description: Public service discovery and capability advertisement.
+  - name: Analytics
+    description: The tenant's connect funnel and connection outcomes.
 
 paths:
   # ------------------------------------------------------------------ Tenancy
@@ -110,6 +112,37 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Tenant' }
         '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: updateTenant
+      summary: Rename your workspace
+      tags: [Tenancy]
+      description: The caller's own tenant only (admin and above); any other id is a `404`.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 80 }
+      responses:
+        '200':
+          description: Renamed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /tenants:provision:
     post:
@@ -237,6 +270,32 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Application' }
         '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: updateApplication
+      summary: Rename an application
+      tags: [Applications]
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 80 }
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /applications/{id}/keys:
     post:
@@ -441,6 +500,19 @@ paths:
                 domain:
                   type: string
                   description: Optional. Binds the token to a single hostname.
+                scope:
+                  type: string
+                  enum: [connect, app]
+                  default: connect
+                  description: >-
+                    `connect` (the default) is an END USER's token for the
+                    widget: it runs the connect flow for a domain (check,
+                    create, read its own connection, verify, one-click and
+                    OAuth starts, sharing, telemetry, diagnose) and nothing
+                    else, because it lives in that end user's browser. `app` lets
+                    your server act as the whole application (list every
+                    connection, manage webhooks, configure SSL and Power, bulk
+                    create, purchases). Never hand an `app` token to a browser.
       responses:
         '201':
           description: Token issued
@@ -452,7 +524,8 @@ paths:
                 properties:
                   token: { type: string, description: the widget JWT (Bearer) }
                   token_type: { type: string, examples: [Bearer] }
-                  expires_in: { type: integer, description: lifetime in seconds (default 3600) }
+                  expires_in: { type: integer, description: lifetime in seconds (default 900) }
+                  scope: { type: string, enum: [connect, app], description: the scope the token was minted with }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
 
@@ -468,7 +541,7 @@ paths:
         it runs the same detection cascade as the widget (Domain Connect
         discovery probed ahead of NS-pattern matching) and cross-references the
         63-provider census. Results are cached for 24 hours per domain and the
-        endpoint is rate-limited per IP; do not build product flows on it — use
+        endpoint is rate-limited per IP; do not build product flows on it. Use
         the authenticated `domains:check`, which carries records-aware conflict
         and apex verdicts.
       security: []
@@ -560,8 +633,15 @@ paths:
         connection plus its authoritative desired record set. Idempotent: if the
         app already has a non-failed connection for the domain, that existing
         connection is replayed with `200`.
+
+
+        Callable from the widget (a widget JWT) or straight from your server
+        with an `sk_` API key, in which case the connection is created on the
+        key's application, or on `application_id` when that names another
+        application of the same tenant.
       security:
         - widgetJWT: []
+        - apiKey: []
       requestBody:
         required: true
         content:
@@ -601,7 +681,7 @@ paths:
                     Enrol the domain in drift monitoring: once the connection
                     goes live the control plane registers a drift watch and the
                     hourly sweeper re-checks the connection's DNS records,
-                    emitting `domain.record.missing` / `domain.record.restored`
+                    emitting `domain.record_missing` / `domain.record_restored`
                     when they change. Unlike the four flags above this one
                     DEFAULTS TO TRUE — omitting it enrols the domain. That is
                     deliberate back-compat: the watch used to be registered
@@ -623,6 +703,12 @@ paths:
                     is attributed to, so the console can render "Connected by …"
                     and search by customer. Empty ⇒ a console/direct connect.
                     Set once at create and never mutated.
+                application_id:
+                  type: string
+                  description: >-
+                    `sk_` API key callers only: create the connection on this
+                    application of the key's tenant. A widget or agent token may
+                    only name its own application (anything else is a `403`).
       responses:
         '201':
           description: Connection created
@@ -642,9 +728,10 @@ paths:
       tags: [Connections]
       description: >-
         With an `sk_` API key: every connection across the tenant's applications
-        (optional `?app_id=` and `?status=` filters). With a widget JWT or a
-        delegated agent token: the calling application's connections (`app_id` is
-        ignored — the scope is fixed to that application).
+        (optional `?app_id=` and `?status=` filters). With an `app`-scoped widget
+        JWT or a delegated agent token: the calling application's connections
+        (`app_id` is ignored; the scope is fixed to that application). A
+        `connect`-scoped widget JWT (an end user's) is refused with `403`.
 
 
         **The response is paginated and always bounded.** `limit` defaults to 500
@@ -793,6 +880,36 @@ paths:
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '204': { description: "Disconnected (grant reverted, if any, and connection deleted)" }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/diagnose:
+    get:
+      operationId: diagnoseConnection
+      summary: What public DNS shows for each record, and what is left to do
+      tags: [Connections]
+      description: >-
+        Read-only, record-by-record check of a connection against live public
+        DNS. For each record in the desired set it reports `found`, `missing`,
+        `mismatch` (something else answers for the name; `observed` shows what,
+        `observed_label` names a well-known service behind it) or
+        `unverifiable`, plus the `name` to type in a DNS panel (`@` for the
+        root) and `at_provider` when the domain's own nameservers already serve
+        the value and only public caches lag. `issues` lists problems that block
+        the connection even when a record looks right: `doubled_host` (the full
+        hostname typed into the Name field), `cloudflare_proxied`,
+        `aaaa_conflict`, `extra_a_records`, `conflicting_record` and
+        `caa_blocks`. It never changes the connection; when `all_found` is true,
+        call `:recheck` to verify and go live. Cached for about 5 seconds.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Diagnosis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionDiagnosis' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/records:
@@ -1268,7 +1385,7 @@ paths:
       tags: [Applications]
       description: >-
         Mints a fresh client_secret, stores only its hash, and returns the
-        plaintext exactly once — it is never retrievable again. The old secret
+        plaintext exactly once; it is never retrievable again. The old secret
         stops minting widget tokens (POST /tokens) immediately; already-issued
         widget JWTs run out their own short TTL. Admin-or-above (keys:manage):
         a member/viewer API key is rejected with 403.
@@ -1301,7 +1418,7 @@ paths:
       tags: [Applications]
       description: >-
         Mints a new `edge_auth_secret` for the application and invalidates the
-        previous one immediately — there is no overlap window, so the edge must
+        previous one immediately. There is no overlap window, so the edge must
         be reconfigured with the returned value before it can authenticate
         again. Requires `app:write` (member and above); a widget token cannot
         call it. The secret is returned once and is not retrievable afterwards.
@@ -1333,7 +1450,7 @@ paths:
       summary: Start a Stripe Checkout session to save a payment method
       tags: [Billing]
       description: >-
-        Opens a Stripe Checkout session in `setup` mode — it saves a card
+        Opens a Stripe Checkout session in `setup` mode: it saves a card
         WITHOUT charging it. This is the card-on-file flow that agent purchases
         and domain buys draw against later; it is not a plan purchase (see
         `/billing/checkout` for that). Requires `billing:manage` (owner).
@@ -1387,11 +1504,13 @@ paths:
         connections that actually get created, and so are blind to
         pre-connection drop-off.
 
-        It stores nothing, reads nothing, and increments a server-side counter
-        only. `step` and `outcome` are allow-listed server-side and anything
-        unrecognised is discarded. It **always** answers `204`, including for an
-        invalid token or a malformed body, so telemetry can never block or error
-        the widget — do not branch on its response.
+        `step` and `outcome` are allow-listed server-side and anything
+        unrecognised is folded into a fixed label. A beacon that carries a
+        `session_id` is also stored against the calling application, which is
+        what `GET /analytics/connect` reads; one without it is only counted. No
+        domain, IP or user agent is stored. It **always** answers `204`,
+        including for an invalid token or a malformed body, so telemetry can
+        never block or error the widget; do not branch on its response.
       requestBody:
         required: false
         content:
@@ -1401,9 +1520,42 @@ paths:
               properties:
                 step: { type: string, description: 'Funnel step label (server-side allow-list).' }
                 outcome: { type: string, description: 'Outcome label (server-side allow-list).' }
+                session_id: { type: string, description: 'Random id per widget open, 8 to 64 of [A-Za-z0-9_-].' }
+                provider: { type: string, description: Detected DNS provider id. }
+                rail: { type: string, enum: [oauth, domain_connect, manual, api_key] }
+                domain_kind: { type: string, enum: [apex, subdomain] }
+                error_code: { type: string, description: 'Widget error code, [A-Za-z0-9_] up to 48.' }
+                connection_id: { type: string }
+                elapsed_ms: { type: integer, description: Milliseconds since the widget opened (capped at a day). }
       responses:
         '204':
           description: Always. Carries no body and reports no error by design.
+
+  /analytics/connect:
+    get:
+      operationId: getConnectAnalytics
+      summary: Connect funnel and connection outcomes
+      tags: [Analytics]
+      description: >-
+        The widget funnel (sessions, how many entered a domain, were offered a
+        one-click or sign-in rail, were shown records to copy, succeeded, where
+        the rest stopped, per provider and root versus subdomain) and connection
+        outcomes (live rate, time to live, per provider and method, why the rest
+        are stuck), plus a daily series. `sk_` API key; any member role.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: days, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 180, default: 30 } }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: Analytics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectAnalytics' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
 
   /share/{token}:
     # API-13: this route is served at the ROOT, not under /v1. The document's
@@ -2185,7 +2337,7 @@ paths:
       description: >-
         Send `default_origin: ""` to clear it. The value is validated by the same
         guard a per-connection origin gets, and the edge re-validates the
-        RESOLVED address at dial time — a hostname that passes here and is later
+        RESOLVED address at dial time: a hostname that passes here and is later
         repointed at a private address is refused when the edge connects.
       security:
         - widgetJWT: []
@@ -2214,6 +2366,68 @@ paths:
         '402': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /applications/{id}/connect-target:
+    get:
+      operationId: getConnectTarget
+      summary: Where this application's customer domains point
+      tags: [Applications]
+      description: >-
+        `mode: edge` (the default) points customer domains at the platform edge,
+        which proxies their traffic (Power). `mode: custom` points them at your
+        own infrastructure: subdomains get a CNAME to `cname_target`; a root
+        domain gets an ALIAS, ANAME or flattened CNAME to it on providers that
+        have one, and A records to `apex_ipv4` elsewhere. `edge` echoes what edge
+        mode points at, so a console can show both options.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Connection target
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectTargetView' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      operationId: setConnectTarget
+      summary: Point this application's customer domains at your own infrastructure
+      tags: [Applications]
+      description: >-
+        Available on every plan (it is how a Connect-only plan gets domains that
+        serve). `cname_target` must be a public hostname that is not the
+        platform edge; send `""` to go back to the edge. `apex_ipv4` (up to 4
+        public IPv4 addresses) is what root domains get on DNS providers with no
+        ALIAS-style record; without it such roots cannot be pointed at a
+        hostname and `POST /domains:check` reports `apex_strategy: unsupported`.
+        Existing connections pick up the new target for any record set that
+        has not been written yet.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cname_target]
+              properties:
+                cname_target: { type: string, description: 'Hostname, or "" for the edge.' }
+                apex_ipv4:
+                  type: array
+                  maxItems: 4
+                  items: { type: string }
+      responses:
+        '200':
+          description: Connection target
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectTargetView' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/power:eligibility:
     get:
       operationId: getConnectionPowerEligibility
@@ -2468,8 +2682,8 @@ paths:
       operationId: listSellOrders
       summary: List the calling application's domain-purchase orders, newest first
       description: >-
-        Every order the application recorded — quoted, purchased, transferred,
-        failed, or expired. A quote-only order that was never paid for is
+        Every order the application recorded (quoted, purchased, transferred,
+        failed, or expired). A quote-only order that was never paid for is
         expired by the hourly reaper after 24 hours (status `expired`, with a
         `purchase.confirmation.expired` webhook), so "quoted" always means
         recent intent.
@@ -2614,7 +2828,166 @@ components:
         tenant_id: { type: string }
         name: { type: string }
         environment: { $ref: '#/components/schemas/Environment' }
+        default_origin: { type: string }
+        connect_target: { $ref: '#/components/schemas/ConnectTarget' }
         created_at: { type: string, format: date-time }
+    ConnectTarget:
+      type: object
+      required: [cname_target]
+      properties:
+        cname_target: { type: string }
+        apex_ipv4:
+          type: array
+          items: { type: string }
+    ConnectTargetView:
+      type: object
+      required: [application_id, mode, edge]
+      properties:
+        application_id: { type: string }
+        mode: { type: string, enum: [edge, custom] }
+        connect_target:
+          oneOf:
+            - { $ref: '#/components/schemas/ConnectTarget' }
+            - { type: 'null' }
+        edge:
+          type: object
+          properties:
+            cname_target: { type: string }
+            apex_ipv4:
+              type: array
+              items: { type: string }
+    ConnectionDiagnosis:
+      type: object
+      required: [connection_id, domain, zone, status, all_found, records, issues]
+      properties:
+        connection_id: { type: string }
+        domain: { type: string }
+        zone: { type: string, description: The DNS zone a panel manages (the registrable domain). }
+        provider: { type: string }
+        status: { $ref: '#/components/schemas/ConnectionStatus' }
+        checked_at: { type: string, format: date-time }
+        all_found: { type: boolean }
+        found_count: { type: integer }
+        total: { type: integer }
+        next_check_seconds: { type: integer }
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              host: { type: string }
+              name: { type: string, description: 'What to type in the Name/Host field ("@" for the root).' }
+              value: { type: string }
+              ttl: { type: integer }
+              priority: { type: integer }
+              status: { type: string, enum: [found, missing, mismatch, unverifiable] }
+              observed:
+                type: array
+                items: { type: string }
+              observed_label: { type: string }
+              at_provider: { type: boolean }
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string, enum: [doubled_host, cloudflare_proxied, aaaa_conflict, extra_a_records, conflicting_record, caa_blocks] }
+              severity: { type: string, enum: [blocking, warning] }
+              name: { type: string }
+              host: { type: string }
+              observed:
+                type: array
+                items: { type: string }
+              message: { type: string }
+    ConnectAnalytics:
+      type: object
+      required: [window, widget, connections, daily, truncated]
+      properties:
+        window:
+          type: object
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+            days: { type: integer }
+            application_id: { type: string }
+        widget:
+          type: object
+          properties:
+            sessions: { type: integer }
+            entered_domain: { type: integer }
+            analyzed: { type: integer }
+            offered_automatic: { type: integer }
+            shown_manual: { type: integer }
+            succeeded: { type: integer }
+            succeeded_automatic: { type: integer }
+            errored: { type: integer }
+            conversion_rate: { type: number }
+            median_seconds_to_success: { type: integer }
+            drop_off: { type: array, items: { $ref: '#/components/schemas/AnalyticsCount' } }
+            errors: { type: array, items: { $ref: '#/components/schemas/AnalyticsCount' } }
+            providers:
+              type: array
+              items:
+                type: object
+                properties:
+                  provider: { type: string }
+                  sessions: { type: integer }
+                  succeeded: { type: integer }
+                  automatic: { type: integer }
+            domain_kinds:
+              type: array
+              items:
+                type: object
+                properties:
+                  kind: { type: string }
+                  sessions: { type: integer }
+                  succeeded: { type: integer }
+        connections:
+          type: object
+          properties:
+            total: { type: integer }
+            live: { type: integer }
+            pending: { type: integer }
+            propagating: { type: integer }
+            failed: { type: integer }
+            live_rate: { type: number }
+            median_seconds_to_live: { type: integer }
+            by_provider:
+              type: array
+              items:
+                type: object
+                properties:
+                  provider: { type: string }
+                  total: { type: integer }
+                  live: { type: integer }
+                  pending: { type: integer }
+                  failed: { type: integer }
+            by_method: { type: array, items: { $ref: '#/components/schemas/AnalyticsGroup' } }
+            by_kind: { type: array, items: { $ref: '#/components/schemas/AnalyticsGroup' } }
+            stuck: { type: array, items: { $ref: '#/components/schemas/AnalyticsCount' } }
+        daily:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string }
+              sessions: { type: integer }
+              succeeded: { type: integer }
+              created: { type: integer }
+              went_live: { type: integer }
+        truncated: { type: boolean }
+    AnalyticsCount:
+      type: object
+      properties:
+        key: { type: string }
+        count: { type: integer }
+    AnalyticsGroup:
+      type: object
+      properties:
+        key: { type: string }
+        total: { type: integer }
+        live: { type: integer }
     ApiKey:
       type: object
       required: [id, last4]
@@ -2939,6 +3312,28 @@ components:
             field, not on `apex_supported`: a subdomain connect on a provider
             with no apex capability reports `apex_supported: false` and no
             message, because nothing in that flow breaks.
+        target_mode:
+          type: string
+          enum: [edge, custom]
+          description: >-
+            Where this application's domains point: `edge` (proxied by the
+            platform) or `custom` (the application's own connection target, see
+            `PUT /applications/{id}/connect-target`).
+        apex_strategy:
+          type: string
+          enum: [alias, a_records, unsupported]
+          description: >-
+            How a ROOT domain is pointed for this application on the detected
+            provider: `alias` (an ALIAS, ANAME or flattened CNAME record to a
+            hostname), `a_records` (address records to `apex_targets`), or
+            `unsupported` (neither is possible; `apex_message` explains).
+        apex_record_type:
+          type: string
+          description: The record type to choose in the provider's panel for the root (ALIAS, ANAME, CNAME or A).
+        apex_targets:
+          type: array
+          items: { type: string }
+          description: The addresses a root domain's A records point at when `apex_strategy` is `a_records`.
         spf_override_support: { type: boolean }
         caa_support: { type: boolean }
         supports_social_login: { type: string, description: 'yes | no | n-a' }

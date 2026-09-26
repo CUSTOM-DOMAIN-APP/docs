@@ -1,12 +1,12 @@
 ---
 title: Troubleshooting
-description: Common failure modes — stuck connections, propagation delays, rail errors, and drift.
+description: Common failure modes, including stuck connections, propagation delays, rail errors, and drift.
 ---
 
 ## A connection is waiting in `pending`
 
 `pending` means we have not yet seen the DNS records in public DNS. **There is
-no deadline** — a pending connection is re-checked every minute at first, then
+no deadline**: a pending connection is re-checked every minute at first, then
 every few minutes, and after three days every six hours, for as long as it
 takes. Add the records whenever you're ready and the domain connects on its
 own. After three days the console shows *"We haven't detected the DNS records
@@ -15,16 +15,35 @@ yet"* so you know what's outstanding; that is a diagnosis, not a failure.
 To check right now instead of waiting: **Re-check now** on the domain page
 (`POST /v1/connections/{id}:recheck`). It reports each record's verdict.
 
+To see exactly what is wrong, open the domain's page: **What public DNS shows
+right now** (`GET /v1/connections/{id}/diagnose`) lists every record with the
+Name to type at the provider, whether public DNS has it, and what answers
+instead, naming the service when it recognizes it ("Still points to
+Squarespace"). It also flags the mistakes that block a connection even when a
+record looks right:
+
+- **The full hostname typed into the Name field.** Most panels append the
+  domain, so `www.acme.com` typed as the Name becomes
+  `www.acme.com.acme.com`. Type only `www` (or `@` for the root).
+- **Cloudflare's proxy is on** (orange cloud). Public DNS then shows
+  Cloudflare's addresses instead of the record; switch the row to DNS only.
+- **An old record is still there.** A leftover `A` or `AAAA` (IPv6) record at
+  the same name keeps sending some visitors to the previous host.
+- **A conflicting record** at the same name (a `CNAME` cannot sit beside other
+  records) or a `CAA` record that doesn't allow Let's Encrypt.
+
+The widget runs the same check for your customers while they add records.
+
 Common reasons the records never show up:
 
 - **The record was added at the wrong place.** Records must be added at the
   provider that serves the domain's nameservers (`dig NS your-domain.com`),
   which is not always the registrar you bought the domain from.
-- **Root domain on GoDaddy, Namecheap or Name.com.** These panels have no
+- **Root domain on GoDaddy, IONOS or OVH.** These panels have no
   ALIAS/ANAME type, so the console shows **A records** to our apex addresses
   instead of a CNAME. Add exactly those A records at `@`. (A CNAME at `@` is
   rejected by the panel, or breaks your email.)
-- **The domain doesn't resolve at all** — unregistered, or registered but never
+- **The domain doesn't resolve at all**: unregistered, or registered but never
   delegated to a DNS provider. The connect flow now refuses these up front with
   an explanation; fix the delegation at your registrar first.
 - **A hosting platform's subdomain** (`something.vercel.app`, `*.netlify.app`,
@@ -39,9 +58,9 @@ this release the edge treats that traffic as your signal: the connection is
 re-entered into verification automatically and goes live on the next check
 (usually within a minute or two). You can also press **Re-check now**. If it
 stays failed, the domain already has another active connection in the same
-application — finish or delete that one.
+application; finish or delete that one.
 
-## "Failed" — what it means now
+## What "failed" means now
 
 A connection only reaches `failed` when records we wrote ourselves never
 propagated (24h), or a credentialed write was rejected. Never because you were
@@ -59,7 +78,7 @@ support@customdomain.ai and we'll verify you by hand.
 ## GoDaddy won't give me an API token
 
 GoDaddy only issues DNS API access to accounts with 10+ domains or a paid
-plan. Everyone else: add the records shown in the console by hand — that path
+plan. Everyone else: add the records shown in the console by hand; that path
 works on every GoDaddy account. GoDaddy's "sign in with GoDaddy" one-click
 setup also isn't available yet (it requires GoDaddy-side onboarding).
 
@@ -75,7 +94,7 @@ Records were written but aren't all resolving to their intended values yet.
 
 - DNS propagation can take minutes to hours depending on the previous record's
   TTL and the customer's resolver/registrar.
-- Verify the records at the provider's dashboard — a rail write can succeed at the
+- Verify the records at the provider's dashboard: a rail write can succeed at the
   API but land on the wrong host, or a customer may have edited them afterward.
 - `propagating` connections that never resolve within **24 hours** transition to
   `failed` and fire `connection.failed`.
@@ -93,15 +112,15 @@ provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
 `apply` returns an error carrying the provider's message when the scoped token is
 wrong-scoped, expired, or the zone doesn't match. Confirm the token has DNS
 **edit** rights on the exact `zone` you passed, and mind provider gates (GoDaddy
-account tier, Namecheap IP allowlist) — see
+account tier, Namecheap IP allowlist); see
 [Provider setup](/docs/dns/provider-setup).
 
 ## OAuth (Rail C) never returns
 
-- **PopupBlockedError** — the browser blocked the authorize window; trigger
+- **PopupBlockedError**: the browser blocked the authorize window; trigger
   `oauth:start` from a direct user gesture.
 - The callback only postMessages to a `return_origin` on the server's allowlist
-  (`OAUTH_ALLOWED_RETURN_ORIGINS`) — a mismatched origin silently drops the result.
+  (`OAUTH_ALLOWED_RETURN_ORIGINS`); a mismatched origin silently drops the result.
 - An expired or replayed `state` returns `400` from the callback; re-run
   `oauth:start` to get a fresh one.
 
@@ -116,12 +135,15 @@ demand.
 ## Certificate not issuing
 
 Certificates are issued **on demand at the TLS handshake**, gated by
-`POST /internal/ask` returning `{ approved: true }` — which happens only once the
+`POST /internal/ask` returning `{ approved: true }`, which happens only once the
 connection is `propagating` or `live`. If the edge can't reach the gate, check
 `EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
 
-## Widget shows "session expired"
+## The widget says the session ended
 
-Widget tokens expire (15 minutes by default; see
-[Widget tokens](/docs/authentication/widget-tokens)). Mint a fresh token
-server-side and reopen the widget.
+Widget tokens last 15 minutes by default (see
+[Widget tokens](/docs/authentication/widget-tokens)), and adding records by
+hand often takes longer. Pass `getToken` to `open()` and the widget fetches a
+fresh token and carries on. Without it, the widget tells the user they can
+close the window: the connection keeps being checked on the server and goes
+live on its own once the records appear.

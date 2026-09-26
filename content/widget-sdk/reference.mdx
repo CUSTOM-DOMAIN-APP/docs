@@ -1,6 +1,6 @@
 ---
 title: Reference
-description: The seven methods, the six window events and callbacks, full config, statuses, and theming tokens.
+description: The seven methods, the window events and callbacks, full config, statuses, and theming tokens.
 ---
 
 ## Methods
@@ -24,8 +24,11 @@ description: The seven methods, the six window events and callbacks, full config
 plus the rail truth: `rails` (`{ oauth, domainConnect, apiKey, manual }`, each
 `{ available, reason?, caveat? }`), `recommendedRail`, `endUserAutomatic`,
 `blockedReason`, `dashboardUrl`, `nameservers`. Branch on `rails` and
-`recommendedRail` — not on `supportsAutomatic`, which only means an adapter
+`recommendedRail`, not on `supportsAutomatic`, which only means an adapter
 exists. See [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).
+For a root domain the raw check response also says how the root can be pointed
+(`apex_strategy`, `apex_record_type`, `apex_targets`); see
+[Root domains](/docs/dns/root-domains).
 `checkRecords` rides `POST /v1/monitor:check` and returns `{ inSync, records[] }`.
 
 ## Events & callbacks
@@ -35,25 +38,27 @@ Every meaningful transition fires **both** a `window` `CustomEvent` (read
 
 | Window event | Callback | Fires | `detail` / arg |
 | --- | --- | --- | --- |
-| `customdomain:step` | `onStepChange(step)` | on every screen change | `{ step, error? }` — `error` is the last error shown (`{ code, title, details }`), present only after an error screen |
+| `customdomain:step` | `onStepChange(step)` | on every screen change | `{ step, error? }`. `error` is the last error shown (`{ code, title, details }`), present only after an error screen |
 | `customdomain:success` | `onSuccess(result)` | when the domain reaches `live` | `{ jobId, domain, setupType }` |
 | `customdomain:close` | `onClose(detail)` | when the modal closes | `{ lastStatus, error? }` |
-| `customdomain:fallback` | — | once per analysis, when the user is routed to a non-automatic screen | `{ reason, provider?, screen, message? }` — `reason` ∈ `no_end_user_rail` (no sign-in / one-click at this provider) · `conflicts_exceed_tolerance` · `provider_unsupported` · `unknown_provider`; `message` is the human explanation shown |
-| `customdomain:request-close` | — | host-delegated dismissal (`whiteLabel.delegateClose`) | provider payload; you call `close()` |
-| `customdomain:doc-click` | — | user clicked a documentation link | link payload |
-| `customdomain:shared` | — | a shared/delegated setup link was produced | share payload |
+| `customdomain:error` | `onError(err)` | when the widget shows an error | `{ code, message, title?, details? }` |
+| `customdomain:fallback` | `onFallback(detail)` | once per analysis, when the user is routed to a non-automatic screen | `{ reason, provider?, screen, message? }`. `reason` is one of `no_end_user_rail` (no sign-in or one-click at this provider), `conflicts_exceed_tolerance`, `provider_unsupported`, `unknown_provider`; `message` is the human explanation shown |
+| `customdomain:purchase` | none | the buy flow created a checkout session | `{ domain, sessionId?, clientSecret?, url? }`: mount Stripe Embedded Checkout with `clientSecret` |
+| `customdomain:request-close` | none | host-delegated dismissal (`whiteLabel.delegateClose`) | provider payload; you call `close()` |
+| `customdomain:doc-click` | none | user clicked a documentation link | link payload |
+| `customdomain:shared` | none | a shared/delegated setup link was produced | share payload |
 
-`onError(err)` receives a `CustomDomainError` (`{ code, message, details? }`) —
-error codes are an open, stable union (e.g. `SessionError`,
+`onError(err)` receives a `CustomDomainError` (`{ code, message, details? }`).
+Error codes are an open, stable union (for example `SessionError`,
 `AccessDeniedError`, `PopupBlockedError`, `DomainConnectError`, `ProviderError`,
 `TimeoutError`, `RateLimitError`, `NetworkError`, `GenericError`).
 
 > A **failed** connection is not a dead end in the widget: it shows the manual
-> screen with the records and the control plane's reason, and *I've added them
-> — verify* calls `POST /v1/connections/{id}:recheck` (which revives the
+> screen with the records and the control plane's reason, and *I've added them,
+> check now* calls `POST /v1/connections/{id}:recheck` (which revives the
 > connection) before polling again.
 
-> `customdomain:success` is an event, not a dismissal — the widget stays on the
+> `customdomain:success` is an event, not a dismissal. The widget stays on the
 > success screen and closes itself when the user is done (or when you call
 > `close()`).
 
@@ -62,25 +67,58 @@ error codes are an open, stable union (e.g. `SessionError`,
 | Field | Type | Notes |
 | --- | --- | --- |
 | `applicationId` *(required)* | `string` | Public application id. |
-| `token` *(required)* | `string` | Widget JWT from `POST /v1/tokens`. |
+| `token` *(required)* | `string` | Widget JWT from `POST /v1/tokens` (scope `connect`). |
+| `getToken` | `() => string \| Promise<string>` | Returns a fresh widget token. Called when the current one expires mid-setup, so long manual setups never stop. See [Keeping a session alive](/docs/authentication/widget-tokens#keeping-a-session-alive). |
 | `domain` | `string` | Pre-filled domain. |
 | `prefilledDomain` | `string \| string[]` | Alias accepted for the pre-fill. |
+| `wwwRedirect` | `boolean` | Root domains only. `true` connects the root and `www` and redirects the root to `www`; `false` connects the root alone; unset lets the user choose (root and www is the recommended default). |
 | `dnsRecords` | `DNSRecord[] \| Record<string, DNSRecord[]>` | Records to apply. Array, or per-domain object mode `{ "acme.com": [...] }`. Omit to use the control-plane's authoritative per-connection set. |
 | `applicationName` / `applicationUrl` | `string` | Branding shown in the flow. |
 | `locale` | `string` | UI locale. |
 | `whiteLabel` | `WhiteLabel` | Theming + behavior (below). |
 | `forceManualSetup` | `boolean` | Skip automatic rails; always show records. |
+| `forceSubdomain` | `boolean` | Only accept a subdomain; the root option is hidden. |
 | `supportForSubdomains` / `defaultSubdomain` / `hostRequired` | | Subdomain-entry behavior. |
 | `manualSetupDocumentation` | `string` | Deep-link to your own manual-setup guide. |
 | `enableDkim` | `boolean` | Offer the DKIM screen. |
-| `userId` | `string` | End-user id, echoed to your webhooks. |
+| `endUserRef` | `string` | Your id for this customer. Stored on the connection as `end_user_ref`, shown in the console, and sent with every webhook as `user_id`. |
+| `userId` | `string` | An id echoed back on the widget's step events. |
 | `container` | `string` | CSS selector for embedded mode (implies `whiteLabel.embedded`). |
-| `apiBase` / `widgetBase` | `string` | Override the default control-plane / widget hosts (e.g. for a staging environment). |
-| `onSuccess` / `onClose` / `onStepChange` / `onError` | fn | Callbacks (mirror the events above). |
+| `apiBase` / `widgetBase` | `string` | Override the default control-plane / widget hosts (for example a staging environment). |
+| `onSuccess` / `onClose` / `onStepChange` / `onError` / `onFallback` | fn | Callbacks (mirror the events above). |
 
 A `DNSRecord` is `{ type, host, value, ttl?, priority?, purpose? }`. Supported
 types include `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `TXT`, plus the meta-types
 `SPFM` (SPF-merge) and `REDIR301`.
+
+## What the end user can type
+
+The domain field accepts what people actually paste: a full URL
+(`https://www.acme.com/pricing`), an email address (`me@acme.com`), a host with
+a port, uppercase, internationalized names and full-width dots. The widget
+reduces each to the hostname, offers a correction for a mistyped ending
+("Did you mean acme.com?"), and otherwise says exactly what is wrong.
+
+When the result is a root domain (`acme.com`), the widget asks before creating
+anything: root and `www` (recommended), the root alone, or a subdomain instead.
+Where the user's DNS provider cannot point a root at a hostname, the widget
+uses the provider's IP address records if your deployment publishes them, and
+otherwise steers the user to `www` or a subdomain. See
+[Root domains](/docs/dns/root-domains).
+
+## Manual setup and live DNS checks
+
+On the manual screen the widget shows each record with the Name to type into
+the provider's panel (`@`, `www`, `shop`) and the provider's own label for the
+record type, then reads public DNS for every record through
+`GET /v1/connections/{id}/diagnose`. Each record shows one of: found, not found
+yet, saved at the provider and waiting for caches, or still pointing somewhere
+else (named when it is a known service, such as "Still points to Squarespace").
+It also flags the mistakes that block a connection even when a record looks
+right: the full hostname typed into the Name field, Cloudflare's proxy turned
+on, a leftover IPv6 record, extra A records, a conflicting record, or a CAA
+record that blocks certificates. The connection goes live the moment everything
+is in place.
 
 ## White-label configuration
 
@@ -90,7 +128,7 @@ and two layout behaviors:
 | Key | Effect |
 | --- | --- |
 | `colors` | `primary`, `primaryHover`, `background`, `text`, `success`, `error`, … mapped onto tokens. |
-| `font` / `borderRadius` / `logo` | Font family, corner radius, header logo. |
+| `font` / `borderRadius` / `logo` | Font family, corner radius, header logo (an `https:` URL or a base64 image). |
 | `hideLogo` | Hide the powered-by footer. |
 | `hideConfetti` | Disable the success confetti. |
 | `tokens` | Override any of the ~90 raw design tokens (`modal-width`, `color-primary`, `radius-md`, `shadow-modal`, …). |
@@ -99,7 +137,10 @@ and two layout behaviors:
 | `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
 
 Tokens are emitted as CSS custom properties (`--je-<token>`) on the widget's
-shadow host, so they cannot affect your page.
+shadow host, so they cannot affect your page. Every value must be a plain CSS
+value (a color, length, font stack or shadow); anything that could inject CSS
+or script is dropped, and custom icons are rebuilt from an allowlist of SVG
+elements and attributes.
 
 ## Widget statuses
 
@@ -112,11 +153,21 @@ fixed 15-value set of stable names: `INITIAL`, `ENTER_DOMAIN`,
 
 ## Token lifecycle & accessibility
 
-Widget tokens expire (15 minutes by default). On expiry the widget surfaces a
-session-expired state; mint a fresh token server-side and reopen. A
-domain-bound token may only act on the hostname it was minted for.
+Widget tokens expire (15 minutes by default). With `getToken` the widget
+refreshes itself and carries on; without it, the user is told they can close
+the window while the connection finishes on its own. A domain-bound token may
+only act on the hostname it was minted for.
 
 Focus trap, `aria-modal`, a live-region announcer, generous touch targets,
 safe-area insets, `prefers-reduced-motion`, and `prefers-color-scheme` dark mode
 are built in. The iframe is sandboxed with `allow-popups`/
 `allow-popups-to-escape-sandbox` so provider OAuth windows can open.
+
+## Analytics
+
+Every widget session reports its funnel (opened, domain entered, provider
+detected, offered one-click or sign-in, shown records to copy, live, or closed
+early) with the provider, the rail, and whether the domain was a root or a
+subdomain. No domain name or end-user identifier is sent. Read it in the
+console under **Analytics**, or from your server with
+`GET /v1/analytics/connect` (an `sk_` API key).
