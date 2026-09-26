@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: The Model Context Protocol server — eleven domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
+description: The Model Context Protocol server, the twelve domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
 ---
 
 CustomDomain™ ships a **Model Context Protocol (MCP) server** so an AI
@@ -19,7 +19,7 @@ The server reports itself as `customdomain-mcp` (protocol revision
 
 ## Tools
 
-The server registers **eleven tools**, in a fixed order. None of them takes DNS
+The server registers **twelve tools**, in a fixed order. None of them takes DNS
 records as input — records always come from the control-plane server-side, so an
 agent can never inject them.
 
@@ -28,14 +28,15 @@ agent can never inject them.
 | `search-domain-availability` | `{ domain }` | Check whether a domain is available to register, with real-time price + renewal price. |
 | `generate-domain-suggestions` | `{ keywords, limit? }` | Return available-to-register suggestions for a set of keywords (default 5, min 5, max 20), each priced; the cheapest is marked the top pick. |
 | `create-domain-order` | `{ domain }` | Start a registration/purchase through the resolved registrar. Enterprise/direct registrars return an `orderId`; sharing registrars return a checkout `link` + `jobId` to poll. |
-| `connect-domain` | `{ domain }` | Start a guided DNS-configuration flow for a domain the user already owns. Returns a `link` for the user and a `jobId` to poll. Never writes DNS directly. |
-| `check-connection-status` | `{ jobId }` | Read the live status of a connection job. Statuses: `pending`, `propagating`, `completed`, `failed`, `error`, `expired`. |
+| `connect-domain` | `{ domain }` | Attach a domain the user already owns to their app and set it up to serve over HTTPS. Returns the DNS records to add (`records`), a `link` for the user and a `jobId` to poll. The `link` is a one-click authorization only where the domain's DNS provider supports one-click (Domain Connect) setup; otherwise it opens the same records in the console, and `message` says which you got. Never writes DNS directly. |
+| `check-connection-status` | `{ jobId }` | Read the live status of a connection job, with its records. `status` is `pending`, `propagating`, `live` or `failed`; poll until `connected` is `true`, which is the completion signal. `managed` says whether `reapply-connection` can heal it. |
 | `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order — by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
 | `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails (`409`) if the connection isn't managed or has no grant — which is every connection on the hosted service today, see [Managed connections](/docs/connect-flow/managed-connections). |
 | `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. Same availability note as `reapply-connection`. |
-| `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (provider-hosted one-click setup, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. |
-| `forward-domain` | `{ target, domain? , connectionId? }` | Forward (permanent 301) a domain to a destination. Starts a managed one-click setup flow and returns a `link` to authorize plus a `connectionId` to poll. Never writes DNS directly. |
-| `add-email` | `{ domain? , connectionId? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | Configure a domain for a mail provider in one step (MX/SPF/DKIM/DMARC) via server-side templates — supply only provider settings, never raw records. Returns a `link` to authorize plus a `connectionId` to poll. |
+| `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (one-click Domain Connect, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. It also returns the pre-flight advisories to report before asking the user to authorize anything: `recordConflicts`, `willFallbackToManual` and `apexMessage`. |
+| `forward-domain` | `{ target, domain?, connectionId? }` | Forward (permanent 301) a domain to a destination. Where the domain's DNS provider supports one-click (Domain Connect) setup, returns a `link` to authorize at the provider; otherwise returns the records to add (`records`) plus a console `link` with the same setup. Either way returns a `connectionId` to poll with `check-connection-status`. Never writes DNS directly. |
+| `add-email` | `{ domain?, connectionId?, provider?, mxHost?, spfInclude?, dkimSelector?, dkimTarget?, dmarcRua? }` | Configure a domain for email in one step (MX, SPF, DKIM, DMARC) from server-side templates; supply settings, never raw records. `provider` (`google`, `microsoft365` or `zoho`) fills the standard MX and SPF (`microsoft365` still needs your tenant's `mxHost`); DKIM values always come from you. Returns the records to add (`records`), a `link` (one-click where the provider supports it, a console link otherwise) and a `connectionId` to poll. |
+| `list-connections` | `{ status? }` | List the connections on the account, so an agent can inventory and reconcile a whole portfolio. Returns `connections` (each with `connectionId`, `domain`, `status`, `connected`, `setupType` and `managed`) and a `count`. `status` filters to `pending`, `propagating`, `live` or `failed`. With a console API key it covers all of the tenant's applications. It reads one page at the control plane's default limit, so filter by status rather than paging. Read-only. Only rows with `managed: true` can be healed with `reapply-connection`. |
 
 > **`generate-domain-suggestions` is deterministic, not AI.** Candidates are
 > keyword joins plus a few common affixes (`get`, `try`, `use`, `my`, `…app`,
