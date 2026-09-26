@@ -3,7 +3,7 @@ title: Configuration
 description: Optional observability environment variables for self-hosted deployments — all opt-in, no-op when unset, and repointable to your own backends.
 ---
 
-Customdomain's default `docker-compose.yml` / `docker-compose.prod.yml` stack runs
+CustomDomain™'s default `docker-compose.yml` / `docker-compose.prod.yml` stack runs
 with **zero third-party egress**. The cloud observability integrations documented
 here are strictly opt-in: each is a no-op until you set its environment variable,
 and every one can be re-pointed at a backend you host yourself.
@@ -40,7 +40,7 @@ below). The DSN can point at Sentry's SaaS or at a self-hosted Sentry instance.
 ### Traces and metrics (OpenTelemetry / Prometheus)
 
 `OTEL_EXPORTER_OTLP_ENDPOINT` is the OTLP/HTTP endpoint the Go services export to.
-In Customdomain's hosted stack this points at the Grafana Alloy forwarder
+In CustomDomain™'s hosted stack this points at the Grafana Alloy forwarder
 (`http://alloy:4318`), which fans telemetry out to Grafana Cloud. A self-hoster can
 point it at **any** OTLP-compatible collector they run — Grafana Alloy, the
 OpenTelemetry Collector, Tempo, or Jaeger — or leave it unset for no export.
@@ -64,9 +64,9 @@ own self-hosted PostHog instance. When the key is unset, no analytics are sent.
 
 ## Running the Grafana Alloy overlay
 
-The base stack does not run Grafana Alloy. Customdomain ships an out-of-band
+The base stack does not run Grafana Alloy. CustomDomain™ ships an out-of-band
 overlay (`infra/docker-compose.alloy.yml`, driven by `infra/config.alloy`) that
 runs one Alloy forwarder to collect OTLP traces, metrics, and logs and ship them to
 Grafana Cloud. Before you enable it, read the caveat below.
 
-> infra/config.alloy is pre-wired to Customdomain's own Grafana Cloud tenant (hardcoded basic-auth user ids + prod-us-east ingest endpoints); a self-hoster who runs docker-compose.alloy.yml as-is points THEIR logs/metrics/traces at Customdomain's tenant. The Alloy path is NOT a simple env-var repoint — config.alloy must be replaced/re-pointed at the self-hoster's own Grafana stack, with their own GRAFANA_CLOUD_TOKEN set in the host's infra/.env (the overlay reads it from the compose project's env by substitution — this page previously named a separate infra/observability.env, which the overlay stopped using several releases ago and which has never been committed here). No credential ships in this repo. The default no-overlay zero-egress claim for the base stack remains true.
+> infra/config.alloy is pre-wired to CustomDomain™'s own Grafana Cloud tenant (hardcoded basic-auth user ids + prod-us-east ingest endpoints); a self-hoster who runs docker-compose.alloy.yml as-is points THEIR logs/metrics/traces at CustomDomain™'s tenant. The Alloy path is NOT a simple env-var repoint: config.alloy must be replaced/re-pointed at the self-hoster's own Grafana stack, with their own GRAFANA_CLOUD_TOKEN set in the host's infra/.env (the overlay reads it from the compose project's env by substitution; this page previously named a separate infra/observability.env, which the overlay stopped using several releases ago and which has never been committed here). No credential ships in this repo. The default no-overlay zero-egress claim for the base stack remains true.

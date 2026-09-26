@@ -4,7 +4,7 @@ Instructions for AI coding agents working with this repository or implementing c
 
 ## What this is
 
-CustomDomain (customdomain.ai) is managed infrastructure that lets a platform's users connect their own domain in one click: automatic DNS configuration and automatic SSL/TLS issuance and renewal. 63 DNS and registrar providers are catalogued: exactly 25 are auto-configured (6 provider OAuth, 2 Domain Connect, 17 scoped API token) and the remaining 38 use a guided flow with automatic verification. The live split is served at `https://api.customdomain.ai/v1/providers/census` — read it rather than repeating a number from here.
+CustomDomain™ (customdomain.ai) is managed infrastructure that lets a platform's users connect their own domain in one click: automatic DNS configuration and automatic SSL/TLS issuance and renewal. 63 DNS and registrar providers are catalogued: exactly 25 are auto-configured (6 provider OAuth, 2 Domain Connect, 17 scoped API token) and the remaining 38 use a guided flow with automatic verification. The live split is served at `https://api.customdomain.ai/v1/providers/census`; read it rather than repeating a number from here.
 
 There is **no separate ownership-challenge step and no verification TXT record to add** on the guided path. Control is proven by the rail itself: an OAuth authorization, a one-click provider apply, a scoped API token, or the records appearing in the domain's own authoritative DNS. See https://docs.customdomain.ai/docs/concepts/ownership-and-setup-types.
 
@@ -33,7 +33,7 @@ Endpoint shapes are illustrative; always follow https://docs.customdomain.ai/doc
 
 ## MCP server (for agents)
 
-Hosted MCP endpoint: `https://mcp.customdomain.ai/mcp` (streamable HTTP, OAuth client credentials via `https://mcp.customdomain.ai/token`). Twelve tools: search for and register domains, create and re-apply connections, disconnect, discover a domain's provider, forward a domain, add email records, and read connection and order status. **No tool accepts DNS records as input** — record values are computed server-side from vetted templates, which closes off prompt-injection paths that end in arbitrary DNS writes.
+Hosted MCP endpoint: `https://mcp.customdomain.ai/mcp` (streamable HTTP, OAuth client credentials via `https://mcp.customdomain.ai/token`). Twelve tools: search for and register domains, create and re-apply connections, disconnect, discover a domain's provider, forward a domain, add email records, and read connection and order status. **No tool accepts DNS records as input.** Record values are computed server-side from vetted templates, which closes off prompt-injection paths that end in arbitrary DNS writes.
 
 ```bash
 claude mcp add --transport http customdomain https://mcp.customdomain.ai/mcp
@@ -51,4 +51,8 @@ Docs: https://docs.customdomain.ai/docs/mcp/overview
 
 ## Conventions for edits in this repo
 
-Markdown only. Plain, technically accurate language. American English. Keep files under 300 KB. Match the surrounding file's punctuation rather than converting dashes either way. Write the product name as **CustomDomain**, one word; "custom domain" lowercase is the generic thing a customer connects. Never rename a machine-readable identifier (Domain Connect `providerId`/`serviceId`, package names, URLs) to match the brand form.
+Markdown only. Plain, technically accurate language. American English. Keep files under 300 KB.
+
+- **No em dashes or en dashes in new or edited text.** Restructure with a period, comma, colon, semicolon or parentheses, and write numeric ranges with "to" ("30 to 60 seconds"). A spaced hyphen is not a substitute. Older pages still contain dashes: rewrite them in any line you change, and leave untouched lines alone.
+- **Brand:** write the product name as **CustomDomain™**: one word, capital C and capital D, with the ™, every time the product is meant. "custom domain" in lowercase is the generic thing a customer connects.
+- **Identifiers never change to match the brand:** Domain Connect `providerId`/`serviceId`, npm package names (`customdomain-js`, `@customdomain/react`), `window.customdomain`, `customdomain:*` events, `CustomDomainError`, env var names, hostnames and URLs stay exactly as they are.
