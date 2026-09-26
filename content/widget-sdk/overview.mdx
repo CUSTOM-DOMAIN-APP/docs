@@ -16,8 +16,8 @@ is `window.customdomain`.
 2. The browser loads `customdomain-js` and calls `window.customdomain.open({ applicationId, token })`.
 3. The widget drives the [connect flow](/docs/connect-flow/overview): it detects
    the customer's DNS provider and applies records through whichever
-   [rail](/docs/connect-flow/overview#the-four-rails) fits — OAuth into the
-   provider, provider-hosted one-click setup, an API token, or guided-manual —
+   [rail](/docs/connect-flow/overview#the-four-rails) fits (OAuth into the
+   provider, provider-hosted one-click setup, an API token, or guided-manual),
    then watches propagation to `live`.
 
 The SDK bridges the widget's `postMessage` protocol onto **both** callback props

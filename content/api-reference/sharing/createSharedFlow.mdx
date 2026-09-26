@@ -16,7 +16,7 @@ _openapi:
           resume); the control plane stores that server-side under an opaque
           token and returns the absolute `link` (ends `/share/{token}`) and a
           `job_id`. Every domain the link targets must be one the calling token
-          may act on — a share link never widens a domain-bound token's reach.
+          may act on: a share link never widens a domain-bound token's reach.
           The link's server-side prefill is read back by `GET /share/{token}`,
           which the teammate's widget bootstraps from instead of a URL that
           carries the config in the clear. The share token EXPIRES 30 days after

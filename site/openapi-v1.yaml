@@ -36,11 +36,11 @@ security:
   - apiKey: []
 tags:
   - name: Tenancy
-    description: Operator provisioning — tenants and one-call signup.
+    description: 'Operator provisioning: tenants and one-call signup.'
   - name: Applications
     description: Applications and their long-lived API keys.
   - name: Members
-    description: Multi-user tenancy — invites, roles, and membership.
+    description: 'Multi-user tenancy: invites, roles, and membership.'
   - name: Tokens
     description: Minting short-lived widget JWTs for the browser.
   - name: Domains
@@ -50,9 +50,9 @@ tags:
   - name: Managed DNS
     description: CustomDomain™ hosts a domain's whole zone after the user points its nameservers at us once, and writes every record from then on.
   - name: Secure
-    description: Edge-managed TLS certificates (SSL) for connected domains — issue, renew, import, deprovision.
+    description: 'Edge-managed TLS certificates (SSL) for connected domains: issue, renew, import, deprovision.'
   - name: Power
-    description: The edge reverse-proxy for a connection — origin, apex↔www redirect, and root-path serving.
+    description: 'The edge reverse-proxy for a connection: origin, apex↔www redirect, and root-path serving.'
   - name: Sharing
     description: Forward-to-a-colleague share links that resume a connect flow from a server-side prefill.
   - name: Providers
@@ -342,7 +342,7 @@ paths:
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
-          description: Keys (metadata only — the secret is never returned again)
+          description: Keys (metadata only; the secret is never returned again)
           content:
             application/json:
               schema:
@@ -603,7 +603,7 @@ paths:
 
         Apex pre-flight: `apex_supported` reports whether the provider can host
         a CNAME-like record at the zone root, and `apex_message` is returned
-        when this particular target needs one the provider cannot host — so an
+        when this particular target needs one the provider cannot host, so an
         apex connection that would be refused at apply time is refused here
         instead, before any connection is created.
       security:
@@ -655,7 +655,7 @@ paths:
               required: [domain]
               description: >-
                 The body is decoded with unknown fields REJECTED, so the
-                properties below are exactly the accepted set — any other key is
+                properties below are exactly the accepted set: any other key is
                 a `400`. Everything besides `domain` is optional.
               properties:
                 domain: { type: string }
@@ -664,7 +664,7 @@ paths:
                   format: uri
                   description: >-
                     Origin the edge reverse-proxies this connection's traffic to
-                    (Power). Validated on the way in — it must be an absolute
+                    (Power). Validated on the way in: it must be an absolute
                     `http(s)` URL with a public host; private, loopback and
                     cloud-metadata targets are rejected with a `400`. Omit to
                     leave the edge on its own router.
@@ -687,7 +687,7 @@ paths:
                     hourly sweeper re-checks the connection's DNS records,
                     emitting `domain.record_missing` / `domain.record_restored`
                     when they change. Unlike the four flags above this one
-                    DEFAULTS TO TRUE — omitting it enrols the domain. That is
+                    DEFAULTS TO TRUE: omitting it enrols the domain. That is
                     deliberate back-compat: the watch used to be registered
                     unconditionally, so every connection created before this
                     flag was honoured is monitored, and every existing
@@ -741,7 +741,7 @@ paths:
         **The response is paginated and always bounded.** `limit` defaults to 500
         and is clamped to 1000; `next_cursor` is present **only** when more rows
         remain. To read every connection, follow `next_cursor` until it is
-        absent. Counting rows client-side is not required — see
+        absent. Counting rows client-side is not required; see
         `GET /connections:count`.
 
 
@@ -798,7 +798,7 @@ paths:
       description: >-
         The tenant's connection histogram, computed server-side in one grouped
         query. Use this instead of paging `GET /connections` when you only need
-        totals — dashboards, quota meters, per-application domain counts. The
+        totals (dashboards, quota meters, per-application domain counts). The
         numbers are exact regardless of how many connections the tenant has.
 
 
@@ -808,7 +808,7 @@ paths:
         enum is rejected with **400**.
 
 
-        API key only — this is a tenant-wide aggregate, so a per-application
+        API key only: this is a tenant-wide aggregate, so a per-application
         widget JWT cannot read it.
       security:
         - apiKey: []
@@ -950,7 +950,7 @@ paths:
       tags: [Connections]
       description: >-
         Replaces the connection's desired record set with one the INTEGRATOR
-        authored, for records that cannot be derived from the domain — the
+        authored, for records that cannot be derived from the domain; the
         motivating case is Amazon SES email verification, whose three Easy-DKIM
         CNAMEs are minted per domain by SES. The supplied set then behaves
         exactly like ours: the OAuth rail writes it with the customer's provider
@@ -1265,7 +1265,7 @@ paths:
         **Managed mode only.** Recomputes the connection's authoritative desired
         record set and writes any drift through the provider's async one-click
         API using the stored, encrypted grant (the provider API base pinned at
-        onboarding) — the end user does **not** re-consent. On success the
+        onboarding); the end user does **not** re-consent. On success the
         connection is re-verified and `connection.records.updated` is emitted. A
         failure emits `connection.reapply.failed`; if the provider reports the grant
         was revoked (401 kill-switch) the grant is cleared and the connection is
@@ -1278,7 +1278,7 @@ paths:
         '200':
           description: >-
             Re-applied (records updated). NOTE: this is a re-apply RECEIPT, not a
-            connection object — it carries `connection_id` rather than the
+            connection object; it carries `connection_id` rather than the
             connection's own `id`, and none of the other connection fields. Fetch
             `GET /connections/{id}` if you need the connection itself.
           content:
@@ -1296,7 +1296,7 @@ paths:
       tags: [Connections]
       description: >-
         Resolves every record the connection is verified against **in-request**,
-        against live public DNS, and returns a per-record verdict — this is the
+        against live public DNS, and returns a per-record verdict. This is the
         verb behind a "check now" button, as opposed to `GET /connections/{id}`,
         which only reports what the background propagation poller last saw.
 
@@ -1305,7 +1305,7 @@ paths:
         whose records are all visible is promoted to `live` here rather than on
         the poller's next pass, and a **`failed`** connection is re-entered into
         verification (`failed` → `pending`) with its lifecycle timeout clock
-        re-based off the retry — without that re-basing the retry would re-fail
+        re-based off the retry. Without that re-basing the retry would re-fail
         immediately, since the connection is `failed` precisely because it aged
         past that window. A `live` connection is reported on but never
         transitioned: `records_resolved: false` on a live connection is a drift
@@ -1371,7 +1371,7 @@ paths:
       summary: OAuth redirect target (public; authenticated by the signed state)
       tags: [Connections]
       description: >-
-        The provider's browser redirect target — **not** a bearer-authenticated
+        The provider's browser redirect target, **not** a bearer-authenticated
         endpoint. It consumes the signed single-use `state`, exchanges the code,
         writes the connection's records with the one-time token (discarded
         after), and returns an HTML page that postMessages
@@ -1391,7 +1391,7 @@ paths:
       summary: Async one-click setup redirect target (public; authenticated by the signed state)
       tags: [Connections]
       description: >-
-        **Rail A (async one-click setup) redirect target** — distinct from
+        **Rail A (async one-click setup) redirect target**, distinct from
         `/connect/oauth/callback` (Mode C), which discards its one-time token. It
         consumes the signed single-use `state` (rail-bound to async), exchanges the
         code for a **durable async grant** at the provider API base pinned into the
@@ -1418,7 +1418,7 @@ paths:
         omitted when a default/sole template is loaded; the response carries the
         provider-hosted `apply_url`, the resolved `service_id`, and the discovered
         `dc_provider` name. Set `managed: true` (or `rail: "async"`) to request the
-        managed async rail instead — when the provider supports it the response
+        managed async rail instead. When the provider supports it the response
         carries a `consent_url` and `rail: "async"` (and the grant lets the control
         plane re-apply / revert server-side without re-consent). `service_ids`
         (plural) bundles several templates under one managed consent (async only;
@@ -1482,7 +1482,7 @@ paths:
           description: >-
             The target is a root (apex) domain that the selected template cannot
             serve. Branch on `code`: `apex_template_required` means the named
-            template is `hostRequired` (or no apex-capable template is loaded) —
+            template is `hostRequired` (or no apex-capable template is loaded):
             retry without `service_id`, or pass a `host` to set up a subdomain
             instead. `InvalidNameservers` means the domain has no usable NS
             delegation.
@@ -1502,7 +1502,7 @@ paths:
         should connect plus an arbitrary `prefill` (the widget config to resume);
         the control plane stores that server-side under an opaque token and returns
         the absolute `link` (ends `/share/{token}`) and a `job_id`. Every domain the
-        link targets must be one the calling token may act on — a share link never
+        link targets must be one the calling token may act on: a share link never
         widens a domain-bound token's reach. The link's server-side prefill is read
         back by `GET /share/{token}`, which the teammate's widget bootstraps from
         instead of a URL that carries the config in the clear. The share token
@@ -1632,7 +1632,7 @@ paths:
                   application_id: { type: string }
                   client_secret:
                     type: string
-                    description: sk_… — mints widget JWTs; shown once, stored hashed
+                    description: sk_… (mints widget JWTs; shown once, stored hashed)
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -1656,7 +1656,7 @@ paths:
           description: Application id.
       responses:
         '200':
-          description: The new secret. Store it now — it is never shown again.
+          description: The new secret. Store it now; it is never shown again.
           content:
             application/json:
               schema:
@@ -1693,7 +1693,7 @@ paths:
               properties:
                 return_url:
                   type: string
-                  description: Embedded flow — where Checkout returns the user.
+                  description: Where Checkout returns the user (embedded flow).
                 success_url:
                   type: string
                   description: Hosted redirect flow; requires cancel_url too.
@@ -1802,7 +1802,7 @@ paths:
       summary: Read a share link's server-side prefill (token is the bearer credential)
       tags: [Sharing]
       description: >-
-        Public by design — the opaque, unguessable `token` in the path IS the
+        Public by design: the opaque, unguessable `token` in the path IS the
         credential (mirroring the OAuth callback's state-as-credential pattern), so
         no bearer is required. Returns the stored `prefill` so a teammate's widget
         can resume the flow. A share token EXPIRES 30 days after it is minted;
@@ -1850,7 +1850,7 @@ paths:
   /providers/census:
     get:
       operationId: providerCensus
-      summary: Full parity census — every target provider routed to its working mode
+      summary: Full parity census (every target provider routed to its working mode)
       tags: [Providers]
       security: []
       responses:
@@ -2046,7 +2046,7 @@ paths:
       tags: [Webhooks]
       description: >-
         Registers an HTTPS receiver under the calling application. The `secret`
-        (`whsec_…`) is returned ONCE — store it to verify signatures. An empty
+        (`whsec_…`) is returned ONCE. Store it to verify signatures. An empty
         `events` array subscribes to all events; `"*"` also matches all.
       security:
         - widgetJWT: []
@@ -2064,7 +2064,7 @@ paths:
                   description: >-
                     Event types to subscribe to; empty subscribes to all events,
                     and `"*"` also matches all. Every value listed here has a
-                    producer — the enum is asserted against the emit sites in CI,
+                    producer: the enum is asserted against the emit sites in CI,
                     so you can never subscribe to an event that cannot arrive.
                     `connection.records.updated` / `connection.reapply.failed` /
                     `connection.disconnected` cover the managed (async one-click)
@@ -2487,7 +2487,7 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
     post:
       operationId: enableConnectionPower
-      summary: Enable Power — register the origin + redirect/root-path config
+      summary: Enable Power (register the origin + redirect/root-path config)
       tags: [Power]
       description: >-
         Registers the origin the edge reverse-proxies to (SSRF-validated) plus
@@ -2517,7 +2517,7 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: disableConnectionPower
-      summary: Remove Power — drop the origin, clear config, tear down the cert
+      summary: Remove Power (drop the origin, clear config, tear down the cert)
       tags: [Power]
       security:
         - widgetJWT: []
@@ -2735,7 +2735,7 @@ paths:
       tags: [Connections]
       description: >-
         Fans out the same idempotent upsert as single-domain create. Each domain
-        is independent — a bad domain is reported `failed` and the batch
+        is independent: a bad domain is reported `failed` and the batch
         continues; a domain already connected under this app returns `already`.
         Max 200 domains per call.
       security:
@@ -2774,7 +2774,7 @@ paths:
       description: >-
         For the bulk-connect picker. The credential is used once to list zones
         and is never persisted here. `422` (`list_not_supported`) when the
-        adapter can't enumerate zones — the console degrades to single-domain
+        adapter can't enumerate zones; the console degrades to single-domain
         connect.
       security:
         - widgetJWT: []
@@ -2954,7 +2954,7 @@ paths:
   /config:
     get:
       operationId: getConfig
-      summary: Public service discovery — advertised products and version
+      summary: Public service discovery (advertised products and version)
       tags: [Meta]
       security: []
       responses:
@@ -2978,8 +2978,8 @@ paths:
                       POWER_ENABLED is set, "sell" only when a registrar is
                       configured, and "monitor" only when a DNS resolver is
                       wired. Absent products answer 503 not-configured on every
-                      route. Per-tenant plan entitlements are not reflected here
-                      — this endpoint is unauthenticated.
+                      route. Per-tenant plan entitlements are not reflected here;
+                      this endpoint is unauthenticated.
                     items: { type: string }
                     examples: [[connect, secure, sell, power, monitor, mcp]]
 
@@ -3275,7 +3275,7 @@ components:
         managed:
           type: boolean
           description: >-
-            `true` when the connection opted into **managed mode** —
+            `true` when the connection opted into **managed mode**:
             the control plane holds a durable, encrypted async grant and can
             re-apply (`POST /v1/connections/{id}:reapply`) or revert
             (`DELETE /v1/connections/{id}`) the template server-side without
@@ -3370,7 +3370,7 @@ components:
           type: string
           description: >-
             The last failure reason recorded for this connection, from whichever
-            path failed — not only the background poller. It is persisted by:
+            path failed, not only the background poller. It is persisted by:
             the propagation poller / `:recheck` verification (e.g.
             `propagation_timeout`, `setup_incomplete`, `domain_already_connected`);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
@@ -3380,7 +3380,7 @@ components:
             async callback (both e.g. `provider_unavailable`,
             `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or
             the provider's own `error` parameter). Rejected request validation
-            (`400`) is deliberately NOT recorded here — a malformed request is
+            (`400`) is deliberately NOT recorded here: a malformed request is
             not a connection failure. Omitted when healthy or never failed;
             cleared when the connection next verifies.
         error_message:
@@ -3403,8 +3403,8 @@ components:
         - type: object
           description: >-
             The body of `POST /connections/{id}:recheck`. Unlike `ReapplyResult`
-            this IS a connection — the full `ConnectionWithRecords` shape, so it
-            is a drop-in replacement for a `GET /connections/{id}` response —
+            this IS a connection (the full `ConnectionWithRecords` shape, so it
+            is a drop-in replacement for a `GET /connections/{id}` response)
             with the check's own findings attached.
           required: [checked, records_resolved, retried, previous_status]
           properties:
@@ -3428,7 +3428,7 @@ components:
               type: boolean
               description: >-
                 True only when EVERY entry in `checked` resolved. An empty
-                `checked` is `false` — nothing to verify is not "everything
+                `checked` is `false`: nothing to verify is not "everything
                 verified".
             retried:
               type: boolean
@@ -3455,14 +3455,14 @@ components:
         reapplied:
           type: boolean
           description: >-
-            Always `true` on a `200` — the provider accepted the write for every
+            Always `true` on a `200`: the provider accepted the write for every
             template in the grant's bundle. Failures are reported as `409`
             (not managed / grant revoked), `503` (managed rail unavailable) or
             `500`, never as `reapplied: false`.
         records:
           type: array
           description: >-
-            The authoritative desired record set as recomputed and written —
+            The authoritative desired record set as recomputed and written:
             the materialized template records for a template bundle, otherwise
             the connection's default desired set.
           items: { $ref: '#/components/schemas/DnsRecord' }
@@ -3512,12 +3512,12 @@ components:
         setup_type: { $ref: '#/components/schemas/SetupType' }
         supports_automatic: { type: boolean }
         oauth_available: { type: boolean, description: the OAuth-into-provider rail can be offered }
-        domain_connect: { type: boolean, description: "the one-click (Domain Connect sync) rail is offered for this domain. Same predicate as `rails.domain_connect.available`: the provider answered discovery AND, when a provider allowlist is configured (DC_SYNC_PROVIDERS — the default), the provider is on it, i.e. is measured to serve our template catalog. Providers that speak the protocol but have not onboarded our template (GoDaddy, IONOS, Cloudflare) report false even with DC_SYNC_ENABLED on. A domain reported true will not have its domainconnect:start refused for lack of the rail." }
+        domain_connect: { type: boolean, description: "the one-click (Domain Connect sync) rail is offered for this domain. Same predicate as `rails.domain_connect.available`: the provider answered discovery AND, when a provider allowlist is configured (DC_SYNC_PROVIDERS, the default), the provider is on it, i.e. is measured to serve our template catalog. Providers that speak the protocol but have not onboarded our template (GoDaddy, IONOS, Cloudflare) report false even with DC_SYNC_ENABLED on. A domain reported true will not have its domainconnect:start refused for lack of the rail." }
         registered:
           type: boolean
           description: >-
             Whether the domain resolves to a delegated zone. OMITTED (not
-            false) when detection failed for a transient reason — only an
+            false) when detection failed for a transient reason; only an
             NXDOMAIN answer reports `false`. Do not tell a user their domain is
             unregistered unless this field is present and false.
         detection_error:
@@ -3525,8 +3525,8 @@ components:
           enum: [nxdomain, resolver]
           description: >-
             Present only on a degraded check (detection failed): `nxdomain`
-            — the domain is not delegated (`registered` is false, `blocked_reason`
-            is `unregistered`); `resolver` — a transient resolver failure; the
+            means the domain is not delegated (`registered` is false, `blocked_reason`
+            is `unregistered`); `resolver` means a transient resolver failure; the
             provider is unknown for now, retry the check.
         authoritative_dns_provider: { type: [string, 'null'] }
         ns_support:
@@ -3546,7 +3546,7 @@ components:
           type: string
           description: >-
             Present only when the record set this check ran against needs an
-            apex record the provider cannot host — i.e. exactly when the apply
+            apex record the provider cannot host, i.e. exactly when the apply
             would refuse with `apex_not_supported`. Gate any warning UI on this
             field, not on `apex_supported`: a subdomain connect on a provider
             with no apex capability reports `apex_supported: false` and no
@@ -3582,8 +3582,8 @@ components:
             Rail truth: per rail, whether it can run for THIS domain right now,
             and when it can't, one machine reason why. `setup_type: automatic`
             / `supports_automatic` only ever meant "an adapter exists"; this
-            block is what to show a user. Present on every check (a degraded
-            check — detection failed — reports only `manual` available).
+            block is what to show a user. Present on every check; a degraded
+            check (detection failed) reports only `manual` available.
           properties:
             oauth: { $ref: '#/components/schemas/RailInfo' }
             domain_connect: { $ref: '#/components/schemas/RailInfo' }
@@ -3602,7 +3602,7 @@ components:
           description: >-
             True when the recommended rail needs nothing typed by the end
             user (OAuth or one-click). This is the fact `supports_automatic`
-            was always misread as — an API-key rail is "automatic" only for
+            was always misread as. An API-key rail is "automatic" only for
             someone holding an API key.
         blocked_reason:
           type: string
@@ -3611,7 +3611,7 @@ components:
             Present when no rail can connect this domain. `unregistered`: no
             nameserver delegation at all (fix it at the registrar).
             `platform_subdomain`: a hosting platform's own subdomain
-            (www.<name>.vercel.app) — its DNS is the platform's; `POST
+            (www.<name>.vercel.app). Its DNS is the platform's; `POST
             /v1/connections` refuses it with `platform_subdomain`.
         dashboard_url:
           type: string
@@ -3629,7 +3629,7 @@ components:
           type: array
           description: >-
             Problems with how YOU configured the integration, not with the end
-            user's domain — returned only when you supplied your own `records`.
+            user's domain. They are returned only when you supplied your own `records`.
             The widget never renders these; they are for your logs and your
             developers.
 
@@ -3644,7 +3644,7 @@ components:
                 type: string
                 enum: [supplied_apex_unrealizable]
                 description: >-
-                  `supplied_apex_unrealizable` — you supplied a record for the
+                  `supplied_apex_unrealizable`: you supplied a record for the
                   zone apex pointing at your own host, and this domain's DNS
                   provider has no ALIAS/ANAME/CNAME-flattening type, so a
                   hostname cannot sit at a root there. Providers WITH flattening
@@ -3669,7 +3669,7 @@ components:
           type: boolean
           description: >-
             True when current record conflicts exceed the provider's threshold,
-            so an automated flow would silently drop to manual — have the user
+            so an automated flow would silently drop to manual. Have the user
             clear conflicts first.
     ProviderInfo:
       type: object
@@ -3684,7 +3684,7 @@ components:
         Metered usage for ONE calendar month, for the tenant the credential
         belongs to (never a query parameter). `org`, `period`, `used` and `mode`
         are always present; the plan block below it is present whenever the org
-        resolves to a subscription — which, since orgs predating billing default
+        resolves to a subscription, which, since orgs predating billing default
         to Free, is every legitimate tenant.
       required: [org, period, used, mode]
       properties:
@@ -3713,7 +3713,7 @@ components:
           type: boolean
           description: >-
             `true` on tiers priced for overage (`growth`, `enterprise`). It
-            carries NO enforcement meaning — it describes pricing only. Read
+            carries NO enforcement meaning; it describes pricing only. Read
             `hard_cap` for the plan's refusal policy and `quota_enforced` for
             whether a `402` is possible right now. Never branch on this field.
         hard_cap:
@@ -3721,7 +3721,7 @@ components:
           description: >-
             Whether this PLAN refuses connections past `quota` (`402
             quota_exceeded`) rather than allowing and recording them as
-            overage. `true` only on tiers nobody pays for — today `free` alone.
+            overage. `true` only on tiers nobody pays for (today, `free` alone).
             Every paid tier (`startup`, `premium`, `growth`, `enterprise`) is
             `false` and is never refused, because the refusal would surface to
             the tenant's own end users through the embedded widget. Independent
@@ -3739,11 +3739,11 @@ components:
           description: >-
             Whether an over-quota connection would actually be refused with
             `402 quota_exceeded` right now. True only when the plan's
-            `hard_cap` is set AND the deployment enables enforcement — a client
+            `hard_cap` is set AND the deployment enables enforcement. A client
             cannot infer the second half, which is why this is served rather
             than derived. On every paid tier it is `false` at any usage level.
-            A tenant may therefore be `at_limit` with `quota_enforced: false` —
-            over the line with nothing refused — so never treat `at_limit`
+            A tenant may therefore be `at_limit` with `quota_enforced: false`
+            (over the line with nothing refused), so never treat `at_limit`
             alone as "blocked". Always `false` on an unlimited plan.
         remaining:
           type: integer

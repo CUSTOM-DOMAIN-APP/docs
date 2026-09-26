@@ -7,7 +7,7 @@ description: Tenancy, credential model, value-checked DNS, one-time provider tok
 
 Every object belongs to a tenant. Tenant-scoped endpoints filter by the caller's
 credential, and all `/applications/{id}/*` mutations verify the application
-belongs to the caller before acting. Cross-tenant access returns `404` — never
+belongs to the caller before acting. Cross-tenant access returns `404`: never
 another tenant's data, and never a `403` that would confirm an object exists.
 
 ## Credential model
@@ -29,15 +29,15 @@ Three credential types with escalating authority (see
   production the control-plane refuses to start with provisioning left open.
 
 Human authorization is by member **role** (`owner`/`admin`/`member`/`viewer`),
-not per-key scopes, and is **enforced at the control-plane** — see
+not per-key scopes, and is **enforced at the control-plane**; see
 [Roles & permissions](#roles--permissions). A member's role is resolved from the
 credential itself, server-side, on every request; nothing trusts a
 console-supplied role.
 
 ## Roles & permissions
 
-Each member holds one of four roles on a strict ladder —
-`viewer` &lt; `member` &lt; `admin` &lt; `owner` — which maps to a fixed set of
+Each member holds one of four roles on a strict ladder
+(`viewer` &lt; `member` &lt; `admin` &lt; `owner`), which maps to a fixed set of
 permissions. The authoritative matrix is the same one served (unauthenticated,
 as static reference) at `GET /v1/rbac`:
 
@@ -50,7 +50,7 @@ as static reference) at `GET /v1/rbac`:
 | `app:write` | | ✅ | ✅ | ✅ | Mutate app settings, rotate secrets, **and every mutating connection route** (see below) |
 | `member:manage` | | | ✅ | ✅ | Invite / remove members, change roles |
 | `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
-| `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built** — see [Plans & quotas](/docs/billing/plans-and-quotas).) |
+| `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built**; see [Plans & quotas](/docs/billing/plans-and-quotas).) |
 | `agent:manage` | | | ✅ | ✅ | Approve, list and revoke delegated-agent grants (a grant can carry `domains:purchase` with a spend cap against the tenant's saved card, so it is gated at the same tier as billing) |
 | `billing:manage` | | | | ✅ | Billing, plan, payout |
 | `org:delete` | | | | ✅ | Delete / transfer the org |
@@ -80,7 +80,7 @@ end users complete a connect flow.
 
 **Enforcement is at the control-plane, not just the console.** Every sensitive
 mutation re-checks the acting member's role server-side before acting, so a
-`member` or `viewer` who calls the API directly is refused with `403` — the
+`member` or `viewer` who calls the API directly is refused with `403`; the
 console's role gates are defense-in-depth, not the security boundary. In
 particular:
 
@@ -97,7 +97,7 @@ particular:
   create, promote-to, or demote an owner**. The org's **last owner** cannot be
   demoted or removed.
 
-Unknown or vanished roles are **fail-closed** — denied everything, never
+Unknown or vanished roles are **fail-closed**: denied everything, never
 escalated. See [Authentication](/docs/authentication/overview#member-roles).
 
 ## DNS verification is value-checked
@@ -113,7 +113,7 @@ By default the automatic rails use a customer's DNS-provider credential exactly
 **once** and discard it:
 
 - **OAuth (Rail C)** exchanges a code for a one-time access token, writes the
-  records, and drops the token — it is never stored. The flow uses **PKCE (S256)**
+  records, and drops the token; it is never stored. The flow uses **PKCE (S256)**
   and an **HMAC-signed, single-use `state`**; the callback only postMessages its
   outcome to a **return origin on the server's allowlist**
   (`OAUTH_ALLOWED_RETURN_ORIGINS`).
@@ -133,14 +133,14 @@ opt-in per key. When saved:
 - it is **sealed at rest** with **AES-256-GCM** under the console's
   `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key), scoped to one **tenant + provider**
   pair;
-- its **plaintext never leaves the server** — it is opened server-side only to
+- its **plaintext never leaves the server**: it is opened server-side only to
   drive an apply; the browser sees only masked metadata (provider, label,
   last-used time);
 - it is **revocable at any time** under **Settings → Connected provider
   accounts**, which deletes the row.
 
 OAuth one-time tokens and one-click setup (which uses no server token) are
-unaffected — nothing there is ever stored. See
+unaffected; nothing there is ever stored. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
 ## Secrets handling
@@ -153,23 +153,23 @@ unaffected — nothing there is ever stored. See
   application record can't be used to forge one.
 - The console never exposes the tenant's control-plane API key to the browser: it
   is sealed at rest (AES-256-GCM under `WEB_SECRET_KEY`) and opened server-side
-  per request behind a proxy — see [Architecture](/docs/concepts/architecture).
+  per request behind a proxy; see [Architecture](/docs/concepts/architecture).
 - Internal errors return a generic `title`; the specifics (including any driver
   errors) are logged server-side under a request id, never returned.
 
 ## Unauthenticated surfaces
 
-- `GET /healthz` — liveness + DB readiness; no secrets, no tenant data.
-- `POST /internal/ask` — the edge host-authorization gate, authenticated by a
+- `GET /healthz`: liveness + DB readiness; no secrets, no tenant data.
+- `POST /internal/ask`: the edge host-authorization gate, authenticated by a
   shared secret (`EDGE_ASK_SECRET`) and meant to be **network-isolated** to the
   edge. It answers only `{ approved }` and never reveals the tenant.
-- `GET /v1/connect/oauth/callback` — authenticated by its signed single-use
+- `GET /v1/connect/oauth/callback`: authenticated by its signed single-use
   `state`, not a bearer token.
 
 ## CORS
 
 The API is bearer-authenticated with no ambient cookies, so it reflects a
-wildcard origin (`Access-Control-Allow-Origin: *`) — safe because there are no
+wildcard origin (`Access-Control-Allow-Origin: *`), which is safe because there are no
 cookies to abuse. Per-application embed control lives at the widget layer.
 
 ## Exactly-once side effects

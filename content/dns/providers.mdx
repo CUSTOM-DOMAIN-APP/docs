@@ -11,7 +11,7 @@ provider, records can be written automatically through one of the
 falls back to guided-manual.
 
 Root domains (`acme.com` rather than `www.acme.com`) depend on what the
-provider can hold at the zone apex — see [Root domains](/docs/dns/root-domains).
+provider can hold at the zone apex; see [Root domains](/docs/dns/root-domains).
 For records only you know (SES DKIM, a verification `TXT`), see
 [Bring your own records](/docs/dns/bring-your-own-records).
 
@@ -49,7 +49,7 @@ to its working mode.
 | Amazon Route 53 | `route53` | `accessKeyId:secretAccessKey[:sessionToken]` (SigV4); zone arg = Hosted Zone ID |
 | Google Cloud DNS | `gcpdns` | Service-account JSON (+ `managed_zone`); OAuth2 JWT → bearer |
 | Azure DNS | `azuredns` | JSON `{tenant_id,client_id,client_secret,subscription_id,resource_group}` |
-| Namecheap | `namecheap` | `apiUser:apiKey[:userName[:clientIp]]` (the calling IP must be whitelisted — `34.234.249.128` on the hosted service) |
+| Namecheap | `namecheap` | `apiUser:apiKey[:userName[:clientIp]]` (the calling IP must be whitelisted: `34.234.249.128` on the hosted service) |
 | One-click setup (provider-hosted) | `domain-connect` | Redirect-based (no server token) |
 
 The registry also includes AliDNS, Bunny, ClouDNS, Constellix, DNSMadeEasy,
@@ -84,7 +84,7 @@ username + API key; Route 53: access key ID + secret access key; Cloudflare: one
 token), linked to the provider's credential page with step-by-step instructions,
 and joined for you on submit. See [Provider setup](/docs/dns/provider-setup).
 
-## How connecting works — what you need per provider
+## How connecting works: what you need per provider
 
 ### What actually works today, per provider
 
@@ -96,7 +96,7 @@ write the records for you; "manual" means you add the records we show.
 | Cloudflare | ✅ ALIAS-style (flattened CNAME) | **Sign in with Cloudflare** (OAuth, one click) or an API token | The best-supported path. |
 | Vercel · Netlify · DNSimple · WordPress.com | ✅ | **Sign in with the provider** (OAuth) | Registered and live. |
 | GoDaddy | ✅ via **A records** at `@` | **Manual** for most accounts | GoDaddy issues API access only to 10+ domain / paid accounts; its one-click (Domain Connect) rail needs GoDaddy-side onboarding that isn't complete. |
-| Namecheap · Name.com | ✅ via **A records** at `@` | API token, or manual | No ALIAS type at the root — use the A records the console shows. |
+| Namecheap · Name.com | ✅ via **A records** at `@` | API token, or manual | No ALIAS type at the root; use the A records the console shows. |
 | Route 53 | ✅ ALIAS | Access key + secret (+ session token for temporary credentials) | IAM user with `ChangeResourceRecordSets` on the zone. |
 | OVH · Google Cloud DNS · Azure DNS · DigitalOcean | ✅ / varies | API credentials, or manual | DigitalOcean OAuth is not registered yet. |
 | NameSilo · Glauca Digital · Domain Chief | ✅ | **One-click setup** (Domain Connect) | These providers serve our templates. |
@@ -108,13 +108,13 @@ only the paths that exist for it.
 
 There are three real-world requirement classes. **"Code ✅" means the adapter is
 built and tested; the "External" column is what you or your customer must still
-do — the parts code can't remove.**
+do: the parts code can't remove.**
 
 | Model | Providers | Code | External step |
 | --- | --- | --- | --- |
-| **BYO API token** (Rail B) | Cloudflare, DigitalOcean, Gandi, deSEC, Hetzner, Vercel, DNSimple, Porkbun, Linode, Vultr, Name.com, GoDaddy, IONOS, Netlify | ✅ | Customer generates a scoped token and pastes it. No approval for most — **Namecheap still requires enabling API access + IP-whitelisting + an account threshold. GoDaddy's legacy API keys were gated by account tier; its Personal Access Tokens are not, so a PAT is the way in for an ordinary account.** |
+| **BYO API token** (Rail B) | Cloudflare, DigitalOcean, Gandi, deSEC, Hetzner, Vercel, DNSimple, Porkbun, Linode, Vultr, Name.com, GoDaddy, IONOS, Netlify | ✅ | Customer generates a scoped token and pastes it. No approval for most. **Namecheap still requires enabling API access + IP-whitelisting + an account threshold. GoDaddy's legacy API keys were gated by account tier; its Personal Access Tokens are not, so a PAT is the way in for an ordinary account.** |
 | **Machine credential (OAuth2 / signed)** (Rail B) | Google Cloud DNS, Azure DNS, Amazon Route 53 | ✅ | Customer creates a service account (GCP) / app registration (Azure) / IAM key (AWS) and pastes the credential. No approval of *your* service; the customer needs cloud-admin access. |
-| **3-legged consumer OAuth** (Rail C — "Log in with your provider, click Allow") | per registered provider | ⚠️ business step | **You** register an OAuth app with each provider and pass its partner/approval process (legal, branding, security review). The code path exists and is wired via `OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`; **provider-hosted one-click setup (Rail A) is the built-in alternative that avoids per-provider OAuth registration.** |
+| **3-legged consumer OAuth** (Rail C: "Log in with your provider, click Allow") | per registered provider | ⚠️ business step | **You** register an OAuth app with each provider and pass its partner/approval process (legal, branding, security review). The code path exists and is wired via `OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`; **provider-hosted one-click setup (Rail A) is the built-in alternative that avoids per-provider OAuth registration.** |
 
 So: the built adapters are code-complete. Going live *as a service* means (a)
 some providers gate who can get API access, and (b) the frictionless "connect
@@ -133,7 +133,7 @@ Both the synchronous redirect and the asynchronous variant are supported
 
 ## Roadmap
 
-- **Squarespace** — no general third-party DNS-record write API; connect via
+- **Squarespace**: no general third-party DNS-record write API; connect via
   one-click setup / guided-manual instead of a token adapter.
 - Additional libdns providers can be added by implementing a `Writer` +
   conformance test. Per-provider credential steps live in
