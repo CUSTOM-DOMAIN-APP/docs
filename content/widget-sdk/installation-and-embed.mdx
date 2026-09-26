@@ -136,6 +136,6 @@ full `whiteLabel` surface and the token list.
 ## Security note
 
 The widget JWT is the only credential in the browser. It is short-lived
-(default 60 minutes), scoped to one application, and — when you pass `domain` at
-mint time — may only act on that hostname. Mint it per session on your server;
+(15 minutes by default), scoped to one application, and, when you pass `domain` at
+mint time, may only act on that hostname. Mint it per session on your server;
 never embed a long-lived API key or `client_secret` in client code.

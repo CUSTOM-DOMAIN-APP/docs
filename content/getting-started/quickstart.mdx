@@ -45,7 +45,7 @@ Trade the app's `client_secret` for a short-lived widget JWT (server-side only):
 curl -X POST http://localhost:8080/v1/tokens \
   -H "Content-Type: application/json" \
   -d '{"application_id":"<APP_ID>","client_secret":"<CLIENT_SECRET>","domain":"app.customer.com"}'
-# → { "token": "eyJ...", "token_type": "Bearer", "expires_in": 3600 }
+# → { "token": "eyJ...", "token_type": "Bearer", "expires_in": 900 }
 ```
 
 ## 3. Detect the domain

@@ -15,14 +15,14 @@ curl -X POST http://localhost:8080/v1/tokens \
     "client_secret": "<CLIENT_SECRET>",
     "domain": "app.customer.com"
   }'
-# → { "token": "eyJ…", "token_type": "Bearer", "expires_in": 3600 }
+# → { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900 }
 ```
 
 - `POST /v1/tokens` is **not** bearer-authenticated — it authenticates by the
   `client_secret` in the body, which is why it must run server-side only.
 - The token is bound to the application and, if you pass `domain`, to a single
   hostname — a domain-bound token may only act on that host.
-- Default TTL is 60 minutes (`expires_in` is seconds). On expiry the widget
+- Default TTL is 15 minutes (`expires_in` is seconds). On expiry the widget
   surfaces a session-expired state; mint a fresh token and reopen.
 
 ## What the token can do
