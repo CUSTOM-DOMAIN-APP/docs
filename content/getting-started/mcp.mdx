@@ -1,6 +1,6 @@
 ---
-title: MCP — drive it from an agent
-description: The agent path — the hosted MCP server, its tools, and which of them can complete on the hosted service today.
+title: MCP, drive it from an agent
+description: "The agent path: the hosted MCP server, its tools, and which of them can complete on the hosted service today."
 ---
 
 Use the MCP server when an **agent** (Claude, Cursor, a custom MCP client)
@@ -10,22 +10,23 @@ behalf. It is the same control plane behind a tool interface.
 ## Connect
 
 - Endpoint: `https://mcp.customdomain.ai/mcp` (Streamable HTTP).
-- Bearer: an `sk_` API key from the console's **Keys** page. Console →
+- Bearer: a `cd_live_…` API key from the console's **Keys** page (an older
+  `sk_` key keeps working). Console →
   **MCP server** shows ready-made client configs.
 
 ## The flow an agent should follow
 
-1. `discover-provider { domain }` — read-only. Says where the domain's DNS
+1. `discover-provider { domain }`: read-only. Says where the domain's DNS
    lives and which rails can run (the same truth as `rails` on
    `POST /v1/domains:check`). Do this **before** promising anything.
-2. `connect-domain { domain }` — creates the connection and returns a `link`
+2. `connect-domain { domain }`: creates the connection and returns a `link`
    for the **human** to complete (sign in with the provider, one-click, or the
    records to add) plus a `jobId`. The agent never writes DNS itself.
-3. `check-connection-status { jobId }` — `pending`, `propagating`,
+3. `check-connection-status { jobId }`: `pending`, `propagating`,
    `completed`, `failed`, `error`, `expired`. `pending` has no deadline;
    `failed` can be retried by starting `connect-domain` again for the same
    domain (it revives the connection).
-4. `list-connections` — everything the key's applications own.
+4. `list-connections`: everything the key's applications own.
 
 Buying: `search-domain-availability`, `generate-domain-suggestions`,
 `create-domain-order`, `check-order-status`. Email and forwarding:

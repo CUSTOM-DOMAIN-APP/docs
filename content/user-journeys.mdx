@@ -3,15 +3,15 @@ title: User journeys
 description: Every user-facing flow and the surface that implements it.
 ---
 
-Every user-facing flow and the surface that implements it — the completeness map.
+The completeness map: every user-facing flow and the surface that implements it.
 
 ## Personas
 
-- **Developer / operator** — integrates the product, works in the **console** and
+- **Developer / operator**: integrates the product, works in the **console** and
   via the **API**.
-- **End customer** — the SaaS's customer connecting their own domain, works in the
+- **End customer**: the SaaS's customer connecting their own domain, works in the
   **widget**.
-- **Platform operator** — runs and monitors the stack.
+- **Platform operator**: runs and monitors the stack.
 
 ## End-customer journeys (widget)
 
@@ -37,7 +37,7 @@ Every user-facing flow and the surface that implements it — the completeness m
 | D4 | Connect a domain from the console | Console → Domains (`POST /v1/connections`) |
 | D5 | Inspect a connection and drive it | Console → Domain detail (`GET /v1/connections/{id}`, `/records`, the apply rails) |
 | D6 | See which providers auto-configure | Console → Providers (`GET /v1/providers`, `/v1/providers/census`) |
-| D7 | Receive events and inspect deliveries | Console → **Activity** — register/rotate/delete endpoints and filter deliveries by event type, all on that page (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`). There is no separate "Webhooks" page. |
+| D7 | Receive events and inspect deliveries | Console → **Activity**: register/rotate/delete endpoints and filter deliveries by event type, all on that page (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`). There is no separate "Webhooks" page. |
 | D8 | Track usage against quota | Console → Usage (`GET /v1/billing/usage`) |
 | D9 | View and change plan | Console → Billing (`GET /v1/plans`, `POST /v1/billing/checkout`, `/portal`) |
 | D10 | Embed the widget safely | `POST /v1/tokens` server-side; the widget JWT is app- (and optionally domain-) scoped |
@@ -47,8 +47,8 @@ Every user-facing flow and the surface that implements it — the completeness m
 
 ## AI-agent journeys (MCP)
 
-An agent drives domains through the [MCP server](/docs/mcp/overview) — hosted at
-`https://mcp.customdomain.ai/mcp` — which wraps the same `/v1` API with twelve tools.
+An agent drives domains through the [MCP server](/docs/mcp/overview) (hosted at
+`https://mcp.customdomain.ai/mcp`), which wraps the same `/v1` API with twelve tools.
 
 | # | As an agent, I want to… | Tool |
 | --- | --- | --- |
@@ -79,5 +79,5 @@ setup, and API-token rails) are the paths the **widget** drives today; `async` a
 powers [managed connections](/docs/connect-flow/managed-connections), and `mcp`
 covers agent-driven setup through the [MCP server](/docs/mcp/overview). A connection
 can be disconnected with `DELETE /v1/connections/{id}` (reverting a managed template
-first) — see
+first); see
 [Offboarding](/docs/connect-flow/offboarding).

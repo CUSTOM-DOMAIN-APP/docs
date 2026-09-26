@@ -1,6 +1,6 @@
 ---
 title: Widget tokens
-description: Minting short-lived JWTs via POST /v1/tokens for the browser widget.
+description: Minting short-lived JWTs via POST /v1/tokens for the browser widget, their two scopes, and keeping a long session alive.
 ---
 
 The widget must never see an API key or `client_secret`. Instead your backend
@@ -15,24 +15,73 @@ curl -X POST http://localhost:8080/v1/tokens \
     "client_secret": "<CLIENT_SECRET>",
     "domain": "app.customer.com"
   }'
-# → { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900 }
+# → { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
-- `POST /v1/tokens` is **not** bearer-authenticated — it authenticates by the
+- `POST /v1/tokens` is **not** bearer-authenticated. It authenticates by the
   `client_secret` in the body, which is why it must run server-side only.
 - The token is bound to the application and, if you pass `domain`, to a single
-  hostname — a domain-bound token may only act on that host.
-- Default TTL is 15 minutes (`expires_in` is seconds). On expiry the widget
-  surfaces a session-expired state; mint a fresh token and reopen.
+  hostname: a domain-bound token may only act on that host.
+- The default lifetime is 15 minutes (`expires_in` is in seconds; self-hosted
+  deployments change it with `JUSTEASY_TOKEN_TTL`). Adding DNS records by hand
+  often takes longer than that, so give the widget a way to get a fresh token.
+  See [Keeping a session alive](#keeping-a-session-alive).
 
-## What the token can do
+## Scopes
+
+The optional `scope` field decides what the token may do. Leave it out for the
+token you hand to an end user.
+
+| Scope | Who holds it | What it can do |
+| --- | --- | --- |
+| `connect` (default) | Your end user's browser | Run the connect flow for a domain: check it, create the connection, read its records and status, diagnose its DNS, apply records, and start sign-in or one-click setup. |
+| `app` | Your server, or an admin screen only your team can reach | Everything `connect` can, plus acting as the whole application: listing every connection, webhooks, SSL certificates, Power, billing usage, the audit log, registrar orders and direct purchases, and bulk creation. |
+
+A `connect` token that calls an application-wide endpoint gets `403`. Mint an
+`app` token, or use an API key, for those calls:
+
+```json
+{ "application_id": "<APP_ID>", "client_secret": "<CLIENT_SECRET>", "scope": "app" }
+```
+
+Never hand an `app` token to an end user. It can read every other customer's
+domains in the application.
+
+## What a widget token can do
 
 A widget JWT is accepted only on the browser-facing Connect endpoints:
 `POST /v1/domains:check`, `POST /v1/connections`, `GET /v1/connections/{id}`,
-`GET /v1/connections/{id}/records`, the three apply rails
-(`/apply`, `/oauth:start`, `/domainconnect:start`), `POST /v1/monitor:check`,
-and the registrar (Sell) endpoints. It cannot create applications, manage keys,
-or manage members — those require an API key or the management key.
+`GET /v1/connections/{id}/records`, `GET /v1/connections/{id}/diagnose`,
+`POST /v1/connections/{id}:recheck`, the three apply rails (`/apply`,
+`/oauth:start`, `/domainconnect:start`), `POST /v1/monitor:check`, and the
+registrar search, quote and checkout endpoints. With scope `app` it also reaches
+the application-wide endpoints listed above. No widget token can create
+applications, manage keys, or manage members: those need an API key or the
+management key.
+
+## Keeping a session alive
+
+Pass `getToken` to `open()`. When the widget's token expires mid-setup it calls
+`getToken`, swaps in the new token and carries on, so the person adding records
+never sees an error:
+
+```js
+async function mintToken() {
+  // Your own endpoint, which calls POST /v1/tokens server-side.
+  const res = await fetch("/api/customdomain-token", { method: "POST" });
+  return (await res.json()).token;
+}
+
+customdomain.open({
+  applicationId: "app_123",
+  token: await mintToken(),
+  getToken: mintToken,
+});
+```
+
+Without `getToken`, an expired session tells the user they can close the
+window. Nothing is lost: the server keeps checking DNS and the connection goes
+live on its own once the records appear.
 
 See [The widget SDK](/docs/widget-sdk/overview) for how the browser uses the
 token, and [Create a connection](/docs/connect-flow/create-a-connection) for the

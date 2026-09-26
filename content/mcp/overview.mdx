@@ -5,7 +5,7 @@ description: The Model Context Protocol server, the twelve domain tools an AI ag
 
 CustomDomain™ ships a **Model Context Protocol (MCP) server** so an AI
 agent can search for, register, and connect domains through the same
-control-plane `/v1` API — without ever handling DNS records itself. It runs as a
+control-plane `/v1` API, without ever handling DNS records itself. It runs as a
 separate process (`services/mcp`) and wraps the control-plane; it adds no
 business logic of its own.
 
@@ -20,7 +20,7 @@ The server reports itself as `customdomain-mcp` (protocol revision
 ## Tools
 
 The server registers **twelve tools**, in a fixed order. None of them takes DNS
-records as input — records always come from the control-plane server-side, so an
+records as input: records always come from the control-plane server-side, so an
 agent can never inject them.
 
 | Tool | Arguments | What it does |
@@ -30,8 +30,8 @@ agent can never inject them.
 | `create-domain-order` | `{ domain }` | Start a registration/purchase through the resolved registrar. Enterprise/direct registrars return an `orderId`; sharing registrars return a checkout `link` + `jobId` to poll. |
 | `connect-domain` | `{ domain }` | Attach a domain the user already owns to their app and set it up to serve over HTTPS. Returns the DNS records to add (`records`), a `link` for the user and a `jobId` to poll. The `link` is a one-click authorization only where the domain's DNS provider supports one-click (Domain Connect) setup; otherwise it opens the same records in the console, and `message` says which you got. Never writes DNS directly. |
 | `check-connection-status` | `{ jobId }` | Read the live status of a connection job, with its records. `status` is `pending`, `propagating`, `live` or `failed`; poll until `connected` is `true`, which is the completion signal. `managed` says whether `reapply-connection` can heal it. |
-| `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order — by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
-| `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails (`409`) if the connection isn't managed or has no grant — which is every connection on the hosted service today, see [Managed connections](/docs/connect-flow/managed-connections). |
+| `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order, by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
+| `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails (`409`) if the connection isn't managed or has no grant, which is every connection on the hosted service today; see [Managed connections](/docs/connect-flow/managed-connections). |
 | `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. Same availability note as `reapply-connection`. |
 | `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (one-click Domain Connect, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. It also returns the pre-flight advisories to report before asking the user to authorize anything: `recordConflicts`, `willFallbackToManual` and `apexMessage`. |
 | `forward-domain` | `{ target, domain?, connectionId? }` | Forward (permanent 301) a domain to a destination. Where the domain's DNS provider supports one-click (Domain Connect) setup, returns a `link` to authorize at the provider; otherwise returns the records to add (`records`) plus a console `link` with the same setup. Either way returns a `connectionId` to poll with `check-connection-status`. Never writes DNS directly. |
@@ -41,31 +41,31 @@ agent can never inject them.
 > **`generate-domain-suggestions` is deterministic, not AI.** Candidates are
 > keyword joins plus a few common affixes (`get`, `try`, `use`, `my`, `…app`,
 > `…hq`), expanded across TLDs by the registrar search and filtered to what's
-> actually available. No LLM is involved — the same keywords always produce the
+> actually available. No LLM is involved: the same keywords always produce the
 > same candidates, which keeps the tool predictable and testable.
 
 > **`create-domain-order` is fail-closed.** The server places a paid order only
 > after a successful call to the integrator's purchase-authorization callback
 > (`MCP_PURCHASE_AUTHZ_URL`, HTTP Basic). If that callback is unset, every
-> purchase is denied — the safe default. Registrar purchasing is also gated on
+> purchase is denied (the safe default). Registrar purchasing is also gated on
 > the control-plane by `SELL_PURCHASE_ENABLED` (fail-closed unless it's set). On
-> the hosted service, purchasing is live through the money-safe checkout — see
+> the hosted service, purchasing is live through the money-safe checkout; see
 > [Buying a domain](/docs/sell/buying-a-domain).
 
 ## Transports
 
 The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
 
-- **`stdio`** (default) — line-delimited JSON-RPC on stdin/stdout, one message
+- **`stdio`** (default): line-delimited JSON-RPC on stdin/stdout, one message
   per line. This is what a locally-launched host (or `mcp-remote`) uses when it
   runs the server as a subprocess. It authenticates with a single static
   control-plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
-- **`http`** — a Streamable-HTTP style endpoint. Three routes:
+- **`http`**: a Streamable-HTTP style endpoint. Three routes:
 
   | Route | Purpose |
   | --- | --- |
   | `POST /mcp` | The MCP JSON-RPC endpoint. **Requires `Authorization: Bearer`** (unless started with `-insecure` for local dev). |
-  | `POST /token` | OAuth 2.0 **client-credentials** grant — exchange `client_id` + `client_secret` for a short-lived Bearer. |
+  | `POST /token` | OAuth 2.0 **client-credentials** grant: exchange `client_id` + `client_secret` for a short-lived Bearer. |
   | `GET /healthz` | Liveness. |
 
 The hosted server is at `https://mcp.customdomain.ai` (the MCP endpoint is
@@ -90,18 +90,19 @@ curl -X POST https://mcp.customdomain.ai/token \
 dance still authenticate:
 
 1. a JWT minted by `/token`,
-2. a console API key (`sk_live_…` / `sk_test_…`),
+2. a console API key (`cd_live_…` / `cd_test_…`, or an older `sk_live_…` /
+   `sk_test_…` key, which keeps working),
 3. the `mcp-remote` shortcut `CLIENT_ID:CLIENT_SECRET`, which the server exchanges
    for a JWT on the fly.
 
 For these **integrator** credentials the MCP server does not validate tokens
-cryptographically — it forwards the caller's credential to the control-plane,
+cryptographically; it forwards the caller's credential to the control-plane,
 which is the authority and rejects bad credentials on every wrapped call.
 
 **Delegated agent tokens are the exception.** When a human owner grants an AI
 agent access, the agent presents a short-lived **ES256** token that the MCP
 verifies **locally** against the control-plane JWKS (no per-request callback) and
-enforces the tool's required scope on — a read-only grant can never reach a
+enforces the tool's required scope on, so a read-only grant can never reach a
 connect or purchase tool. See [Agent access](/docs/agents/overview) for the
 human-first consent flow.
 
@@ -125,4 +126,4 @@ The `http` transport reads these (flags shown; each has an env alias):
 | `-link-base` / `MCP_LINK_BASE` | Console URL prefix for guided-DNS fallback links. |
 | `-preferred-registrar` / `MCP_PREFERRED_REGISTRAR` | Registrar tried first during order resolution. |
 | `-purchase-authz-url/-user/-pass` / `MCP_PURCHASE_AUTHZ_*` | The fail-closed purchase-authorization callback. Unset ⇒ purchases denied. |
-| `-insecure` / `MCP_INSECURE=1` | Serve `/mcp` without Bearer auth — **local development only**. |
+| `-insecure` / `MCP_INSECURE=1` | Serve `/mcp` without Bearer auth (**local development only**). |

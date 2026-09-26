@@ -1,11 +1,22 @@
 ---
-title: Console — connect your own domain
-description: The no-code path — from sign-up to a domain serving your app over HTTPS, and what every screen is actually doing.
+title: Console, connect your own domain
+description: The no-code path, from sign-up to a domain serving your app over HTTPS, and what every screen is actually doing.
 ---
 
 Use the console when the domain is **yours** and you want it to point at
 something you run. If your *customers* should connect *their* domains inside
 your product, that is the [widget](/docs/getting-started/widget), not this page.
+
+Two different people connect domains, and the console shows which did:
+
+| Who | Where | What they see |
+| --- | --- | --- |
+| Your customer | Inside your product, in the widget | The widget, in your branding. The domain appears under **Domains** as *From your product (widget)*. |
+| You or a teammate | Here, in the console | The console connect flow this page describes. The domain appears as *Added in the console*. |
+
+Your server, AI agents and MCP clients can create domains through the
+[API](/docs/getting-started/api) too; those are listed as *Via the API or
+agents*.
 
 ## 1. Sign up and verify
 
@@ -22,57 +33,176 @@ The signup form also carries bot protection: a bot-check widget, signup rate
 limits, and disposable-email-address blocking. If the bot check fails, wait a
 moment and try again.
 
-## 2. Connect a domain
+## 2. Tell us what you're building
 
-**Domains → Connect a domain.** Enter the hostname:
+The first time you sign in, a one-minute welcome asks four things: your
+company (it names your workspace), what you're using CustomDomain™ for, where
+your customers' domains should send traffic, and your frontend and backend.
+The routing answer is applied for you (your app's address as the default
+origin, or your own hostname as the connection target; see
+[Where domains point](/docs/connect-flow/routing)), and the stack answer picks
+the code samples you see first. Every question can be skipped.
 
-- `www.acme.com` / `app.acme.com` — a subdomain: any DNS provider can hold the
+A short tour of the console follows. Replay it any time from the setup
+checklist on **Overview**, which also tracks the next steps: choosing where
+domains point, trying the widget, connecting a first domain, matching the
+widget to your brand, and inviting your team.
+
+## The console at a glance
+
+| Section | What it's for |
+| --- | --- |
+| **Overview** | The setup checklist and how your customers' domains are doing. |
+| **Domains** | Every connected domain with its live status and exactly what is left to fix. |
+| **Analytics** | The widget funnel: where customers drop off, by DNS provider and by root versus subdomain. |
+| **Widget** | Embed code for your framework, a live preview, and branding. |
+| **API & SDK** | Server-side API keys, SDK quickstarts and webhooks. |
+| **Domain routing** | Where customer domains send traffic. |
+| **Settings** | Workspace name, team, billing, and optional features. |
+
+Optional surfaces (the activity log, DNS monitoring, domain sales, the MCP
+server and agent access) are off until you need them: switch them on under
+**Settings → Features**. A workspace that already used one keeps it on.
+
+### Applications
+
+The **Application** switcher at the top of the sidebar is always there, even
+with a single application. It lists your applications and offers **New
+application** and **Manage applications**. Use more than one to keep surfaces
+apart: Production and Staging, or one per product. Each application has its
+own widget credentials, API keys and domains, and the console shows the
+active one; switching is remembered in your browser.
+
+**New application** asks for a name (with one-tap suggestions such as
+*Staging*) and an environment (Production, Staging or Development). Once it
+exists you can switch to it or go straight to its widget.
+
+## 3. Connect a domain
+
+**Connect a domain** (the sidebar button, **Overview** or **Domains**) first
+asks who is connecting it:
+
+- **Connect a domain yourself**: your own site, or one you're setting up for
+  a customer. You add the DNS records. This is the console path, and the
+  rest of this page.
+- **Let your customers connect theirs**: takes you to the **Widget** page to
+  embed it in your product.
+
+Links that already say which (a domain's **Resume** link, or **Connect a
+domain yourself** on Overview) skip the question. The connect page then says
+plainly that you are on the console path. Enter the hostname:
+
+- `www.acme.com` / `app.acme.com`: a subdomain. Any DNS provider can hold the
   `CNAME` we need.
-- `acme.com` — the root. Works everywhere, but the record depends on the
-  provider — [Root domains](/docs/dns/root-domains).
+- `acme.com`: the root. It works everywhere, but the record depends on the
+  provider; see [Root domains](/docs/dns/root-domains).
 
 The pre-flight refuses two things up front: a domain that doesn't resolve at
 all (unregistered, or never delegated at the registrar) and a hosting
 platform's own subdomain (`www.<name>.vercel.app`). Both used to sit on
 "waiting for DNS" for days.
 
-## 3. Choose how to add the records
+## 4. Choose how to add the records
 
-The **What works at …** card (named for your provider) is the truth for *your* provider, straight
-from the server. The options appear in this order; the recommended one is
-marked.
+The **What works at …** card (named for your provider) is the truth for *your*
+provider, straight from the server. The options appear in this order; the
+recommended one is marked.
 
-1. **Sign in with the provider** — Cloudflare, DNSimple, Netlify, Vercel,
+1. **Sign in with the provider**: Cloudflare, DNSimple, Netlify, Vercel,
    WordPress.com. Approve once in a popup; we add the records with a
    one-time token we never store. Fastest.
-2. **One-click setup** — only where the provider serves our template
+2. **One-click setup**: only where the provider serves our template
    (NameSilo, Glauca Digital, Domain Chief today). GoDaddy, IONOS and
    Cloudflare are *not* offered this, on purpose.
-3. **API key** — paste a scoped provider credential; used once, discarded
+3. **API key**: paste a scoped provider credential; used once, discarded
    (opt in to remember it). GoDaddy only issues API access to 10+ domain or
-   paid accounts; Namecheap needs an IP allowlist — for most accounts, skip to
-   manual.
-4. **Add the records by hand** — the exact rows to copy, with a link to your
+   paid accounts, and Namecheap needs an IP allowlist, so for most accounts
+   skip to manual.
+4. **Add the records by hand**: the exact rows to copy, with a link to your
    provider's DNS panel. Then **Check now**.
 
-## 4. Verify
+Not the one with DNS access? Under the records, **Send these records to a
+teammate** emails them to whoever is. Replies go to you.
+
+- An **owner or admin** sending to someone who isn't in the workspace also
+  invites them as a member; the email carries the records and the invite.
+- Someone **already in the workspace** gets the records and a link back to
+  this domain's setup in the console.
+- A **member** can send the records but not invite: the email links a
+  single-use guided setup that needs no account.
+- **Viewers** can't send email from the console.
+
+## 5. Verify
 
 The connection sits in `pending` until the records resolve, then goes
-`live`; you can leave and come back — **Domains** shows every connection with
+`live`. You can leave and come back: **Domains** shows every connection with
 its reason and a **Resume** link. After three minutes of waiting the page
 offers a fallback. A stalled connection is *paused*, not failed: it keeps
 being checked every six hours.
 
-## 5. Serve something
+While a domain is waiting, its detail page opens **What public DNS shows
+right now**: each record's Name to type, whether public DNS has it, what
+answers instead ("still points to Squarespace"), and the mistakes that block
+a connection even when a record looks right, such as the full hostname typed
+into the Name field or Cloudflare's proxy turned on. It is the same check the
+widget runs for your customers (`GET /v1/connections/{id}/diagnose`), and the
+page to send a customer whose domain is stuck.
+
+## 6. Serve something
 
 Live means the edge terminates TLS and proxies the domain to your
 application's **origin**. If you haven't set one, the domain shows a "not
-configured" page — set it under **Settings → Where your domains point**.
-Root-domain redirects (`www_redirect`) and per-path rules live on the
-connection's detail page.
+configured" page: set it under **Domain routing**. Root-domain redirects
+(`www_redirect`) and per-path rules live on the connection's detail page.
+
+## Where each domain came from
+
+Every row on **Domains** carries a small badge for where it was created, and
+the tabs above the list filter by it (counts are for the selected
+application):
+
+| Tab | Badges | Created by |
+| --- | --- | --- |
+| **From your product (widget)** | Widget | A customer, in the widget inside your product. |
+| **Added in the console** | Console | You or a teammate, here. |
+| **Via the API or agents** | API, Agent, MCP | Your server with an API key, an AI agent you authorized, or the MCP server. |
+
+The first visit explains the two paths with the same small diagram the
+**Connect a domain** question uses. Domains added before sources were
+recorded (September 2026) have no badge and are listed under **All** only.
+The API returns the same fact as `created_via` on every connection
+(`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). The
+**Overview** shows the split too, under the counts.
+
+## Brand the widget
+
+**Widget → Branding** sets what your customers see: color, logo, corner
+radius, dark mode, and whether the footer and confetti show. Saving needs an
+owner or admin.
+
+For the logo, **Upload a logo** (or drop a file on it). PNG, JPEG, WebP, GIF
+(its first frame), AVIF and SVG are accepted. Your browser prepares every
+upload the same way, so logos look consistent: fully transparent edges are
+trimmed, the image is fit inside 512 by 160 pixels (256 by 80 on screen at
+2x), and it is saved as a PNG under 200 KB. An SVG is converted to a PNG; the
+SVG itself is never stored.
+
+Before you save, the logo is shown on the widget's light and dark
+backgrounds. You'll see a warning when it would be hard to see on either, or
+when it has a solid background that would show as a box. **Use this logo**
+saves it right away: the install code and the preview pick it up at once.
+
+Uploaded logos are served from `https://app.customdomain.ai/brand/logo/…`
+at a URL named for the file's content, so it never changes and is cached
+for a year. **Replace** uploads a new one; **Remove** clears it from your
+branding. Earlier uploads stay available at their URLs (your 20 most recent),
+because a widget you already shipped keeps the logo URL it was pasted with
+until you update its code. You can still paste the URL of a logo you host
+yourself (HTTPS) instead.
 
 ## What the console is *not*
 
 It is one application in your workspace. Everything it does is an API call
-you could make yourself — the [API](/docs/getting-started/api) page maps each
-step — and its **Embed** and **Keys** pages are where the other paths begin.
+you could make yourself (the [API](/docs/getting-started/api) page maps each
+step), and its **Widget** and **API & SDK** pages are where the other paths
+begin.

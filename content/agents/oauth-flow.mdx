@@ -1,6 +1,6 @@
 ---
 title: The OAuth flow
-description: The agent authorization endpoints — DCR, authorize + PKCE, consent, token, refresh, revoke — plus JWKS and RFC 8414 discovery.
+description: The agent authorization endpoints (DCR, authorize + PKCE, consent, token, refresh, revoke) plus JWKS and RFC 8414 discovery.
 ---
 
 > **Live on customdomain.ai.** Every endpoint below is serving in production.
@@ -10,7 +10,7 @@ description: The agent authorization endpoints — DCR, authorize + PKCE, consen
 
 Agent access uses OAuth 2.0 authorization-code with **mandatory PKCE (S256)**,
 against the control plane at `https://api.customdomain.ai`. All of it is
-discoverable — a compliant client can bootstrap from the metadata document alone.
+discoverable: a compliant client can bootstrap from the metadata document alone.
 
 ## Discovery
 
@@ -60,14 +60,14 @@ GET https://api.customdomain.ai/oauth/agent/authorize
 ```
 
 The redirect URI must **exactly** match one registered in step 1, and
-`code_challenge_method` must be `S256` — plain PKCE is rejected.
+`code_challenge_method` must be `S256`; plain PKCE is rejected.
 
 ## 3. Consent
 
 The console authenticates the owner and shows what the agent is requesting. On
 approval it hands the browser back to the agent's `redirect_uri` with an
 authorization `code` and the original `state`. (The consent record itself is
-written server-side with your workspace credential — see
+written server-side with your workspace credential; see
 [Managing access](/docs/agents/managing-access).)
 
 ## 4. Token
@@ -99,7 +99,7 @@ curl -X POST https://api.customdomain.ai/oauth/agent/token \
   -d "client_id=agc_…"
 ```
 
-Refresh keeps working until the grant is revoked or expires — so revocation takes
+Refresh keeps working until the grant is revoked or expires, so revocation takes
 effect within one access-token lifetime.
 
 ## 5. Use the token
@@ -129,8 +129,8 @@ refresh tokens; the owner can also revoke from the console.
 ## Security notes
 
 - **PKCE S256 is mandatory** and verified with a constant-time comparison.
-- **Exact redirect-URI match** — an unregistered URI is refused without
+- **Exact redirect-URI match**: an unregistered URI is refused without
   redirecting (no open redirect).
 - **Authorization codes are single-use** and short-lived; replay is rejected.
-- Tokens are **ES256** with an alg-confusion guard — an `alg:none` or HS256
+- Tokens are **ES256** with an alg-confusion guard: an `alg:none` or HS256
   forgery is never accepted.

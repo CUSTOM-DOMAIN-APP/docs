@@ -1,6 +1,6 @@
 ---
 title: How to connect a custom domain
-description: Connect a custom domain to your SaaS product — what the CNAME points at, why the root domain needs different records, how certificates get issued, and how to tell the difference between "record added" and "actually live".
+description: 'Connect a custom domain to your SaaS product: what the CNAME points at, why the root domain needs different records, how certificates get issued, and how to tell the difference between "record added" and "actually live".'
 ---
 
 "Connect a custom domain" means two different jobs depending on which side of
@@ -43,7 +43,7 @@ for me" and "it works for my customer" can be hours apart.
 
 ### On a subdomain
 
-A subdomain — `app.example.com`, `dashboard.example.com` — takes a single
+A subdomain (`app.example.com`, `dashboard.example.com`) takes a single
 `CNAME` pointing at the target hostname the platform gives you.
 
 ```
@@ -64,7 +64,7 @@ Two details that cause most subdomain failures:
 
 ### On the root domain
 
-The root — `example.com` with nothing in front — cannot hold a `CNAME` at all.
+The root (`example.com` with nothing in front) cannot hold a `CNAME` at all.
 The same RFC rule applies, and a zone root always has `SOA` and `NS` records, so
 a `CNAME` there is illegal by construction.
 
@@ -75,7 +75,7 @@ There are three legitimate ways around it:
   Cloudflare, Route 53, DNSimple and others support it under different names.
   This is the best option when you have it.
 - **`A` records to published addresses.** Legal at a root, and what you use when
-  your provider has no `ALIAS` type — GoDaddy and Namecheap, among others. The
+  your provider has no `ALIAS` type (GoDaddy and Namecheap, among others). The
   tradeoff is that the addresses are pinned: if the platform's addresses change
   and yours are hard-coded, the domain breaks.
 - **Connect `www` instead and redirect the root to it.** The least elegant and
@@ -93,7 +93,7 @@ things routinely stop it even when DNS is perfect.
 
 **CAA records.** A `CAA` record on the domain names which authorities are
 allowed to issue for it (RFC 8659). If a domain publishes `CAA` naming only,
-say, DigiCert, then Let's Encrypt is *forbidden* from issuing — and the failure
+say, DigiCert, then Let's Encrypt is *forbidden* from issuing, and the failure
 surfaces as a generic issuance error, not as "your CAA record blocked this".
 Check it before you debug anything else:
 
@@ -107,7 +107,7 @@ not include your platform's issuer is the problem.
 **Validation reaching the wrong place.** HTTP-based validation requires the
 domain to already resolve to the platform. That means on a root domain where you
 are mid-migration, the certificate cannot be issued until the `A` records have
-actually cut over — the ordering matters.
+actually cut over; the ordering matters.
 
 ## How long it takes, honestly
 
@@ -118,7 +118,7 @@ There is no single number, and the number you are given is usually wrong.
 - **Changed record, name queried recently:** up to the previous record's TTL.
 - **Name queried while it did not exist:** this is the slow case. Resolvers
   cache the *absence* of a record (RFC 2308 §5), for a duration set by the
-  zone's `SOA` minimum — which is 5 minutes at Cloudflare, 30 minutes at
+  zone's `SOA` minimum, which is 5 minutes at Cloudflare, 30 minutes at
   DigitalOcean, and an hour at GoDaddy. Checking whether it works *before*
   creating the record is what causes the "I waited an hour and it still says
   not found" report.
@@ -140,7 +140,7 @@ single highest-leverage thing you can do here.
 
 **You cannot see whether it worked.** Your customer says they added the record.
 Your app still 404s. Neither of you can distinguish "typed it wrong" from "still
-propagating", and the default response — wait longer — is right often enough to
+propagating", and the default response (wait longer) is right often enough to
 be dangerous. You need to actively poll authoritative nameservers and report the
 difference.
 
@@ -164,7 +164,7 @@ curl -X POST https://api.customdomain.ai/v1/connections \
 ```
 
 The response carries the records to create and a connection id. Poll it, or
-subscribe to the webhook, until the status reaches `live` — which is asserted
+subscribe to the webhook, until the status reaches `live`, which is asserted
 only when resolution, routing and the certificate are all true, not when the
 record was merely accepted.
 
@@ -181,14 +181,14 @@ curl https://api.customdomain.ai/v1/connections/$CONNECTION_ID \
 | `CNAME` rejected by the panel | Another record already exists at that name |
 | Root domain rejected | Provider has no `ALIAS`/`ANAME`; use `A` records or connect `www` |
 | Resolves, but the app 404s | DNS is right; the application has not been told to serve that hostname |
-| Resolves, but the browser warns | Certificate not issued yet — check `CAA` first |
+| Resolves, but the browser warns | Certificate not issued yet; check `CAA` first |
 | `app.example.com.example.com` in the panel | Absolute name typed into a relative host field |
 
 ## Related
 
-- [How to set up a custom domain](/docs/guides/set-up-a-custom-domain) — the
+- [How to set up a custom domain](/docs/guides/set-up-a-custom-domain): the
   full mechanics, including provider-by-provider differences.
-- [Choosing a custom-domain solution](/docs/guides/choosing-a-custom-domain-solution)
-  — build versus buy, and what to ask a vendor.
-- [Quickstart](/docs/getting-started/quickstart) — connect your first domain
+- [Choosing a custom-domain solution](/docs/guides/choosing-a-custom-domain-solution):
+  build versus buy, and what to ask a vendor.
+- [Quickstart](/docs/getting-started/quickstart): connect your first domain
   through the API.
