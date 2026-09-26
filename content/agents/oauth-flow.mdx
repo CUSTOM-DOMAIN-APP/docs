@@ -3,11 +3,10 @@ title: The OAuth flow
 description: The agent authorization endpoints — DCR, authorize + PKCE, consent, token, refresh, revoke — plus JWKS and RFC 8414 discovery.
 ---
 
-> **Not yet enabled.** This entire surface is dark on the hosted service today.
-> Every endpoint below returns `503 temporarily_unavailable` ("agent
-> authentication is not enabled") until an operator turns it on. It is documented
-> here so integrators can build against the real, tested contract ahead of
-> activation — not because it is callable right now.
+> **Live on customdomain.ai.** Every endpoint below is serving in production.
+> Verified 2026-08-02: the metadata document returns 200, `/.well-known/jwks.json`
+> publishes the ES256 signing key, and dynamic client registration issues a real
+> `client_id`.
 
 Agent access uses OAuth 2.0 authorization-code with **mandatory PKCE (S256)**,
 against the control plane at `https://api.customdomain.ai`. All of it is
@@ -28,9 +27,6 @@ curl https://api.customdomain.ai/.well-known/oauth-authorization-server
 # RFC 7517 JWKS — the ES256 public keys resource servers verify tokens against
 curl https://api.customdomain.ai/.well-known/jwks.json
 ```
-
-Before activation, `/.well-known/jwks.json` has no key published and the
-authorization-server metadata document is unavailable.
 
 ## 1. Register (Dynamic Client Registration)
 

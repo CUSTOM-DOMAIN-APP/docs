@@ -18,14 +18,21 @@ Three credential types with escalating authority (see
 - **Widget JWTs** are short-lived, scoped to one application (and optionally one
   domain), and accepted only on the browser-facing Connect endpoints. This is the
   only credential that reaches the browser.
-- **API keys** carry full tenant authority; they are stored as hashes and shown
-  once at creation, and revocation takes effect on the next request.
+- **API keys** are stored as hashes and shown once at creation, and revocation
+  takes effect on the next request. Their **authority depends on how the key was
+  minted**: a plain tenant key (the one issued at provisioning, or minted by an
+  operator) acts with **owner** authority, while a key minted for an invited
+  **member** is bound to that member and resolves to **their current role** on
+  every request, so a `viewer`'s key cannot mutate anything, and a demotion or
+  removal takes effect immediately. See [Member roles](#roles--permissions).
 - The **management key** and **provision secret** gate operator/signup routes; in
   production the control-plane refuses to start with provisioning left open.
 
 Human authorization is by member **role** (`owner`/`admin`/`member`/`viewer`),
 not per-key scopes, and is **enforced at the control-plane** — see
-[Roles & permissions](#roles--permissions).
+[Roles & permissions](#roles--permissions). A member's role is resolved from the
+credential itself, server-side, on every request; nothing trusts a
+console-supplied role.
 
 ## Roles & permissions
 
@@ -40,12 +47,36 @@ as static reference) at `GET /v1/rbac`:
 | `audit:read` | ✅ | ✅ | ✅ | ✅ | Read the audit log |
 | `app:read` | ✅ | ✅ | ✅ | ✅ | View app config |
 | `member:read` | ✅ | ✅ | ✅ | ✅ | List members |
-| `app:write` | | ✅ | ✅ | ✅ | Mutate app settings, rotate secrets |
+| `app:write` | | ✅ | ✅ | ✅ | Mutate app settings, rotate secrets, **and every mutating connection route** (see below) |
 | `member:manage` | | | ✅ | ✅ | Invite / remove members, change roles |
 | `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
 | `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built** — see [Plans & quotas](/docs/billing/plans-and-quotas).) |
+| `agent:manage` | | | ✅ | ✅ | Approve, list and revoke delegated-agent grants (a grant can carry `domains:purchase` with a spend cap against the tenant's saved card, so it is gated at the same tier as billing) |
 | `billing:manage` | | | | ✅ | Billing, plan, payout |
 | `org:delete` | | | | ✅ | Delete / transfer the org |
+
+`app:write` is the permission behind the **whole mutating connection family**,
+not just application settings. It gates 18 routes:
+
+- **Connections:** `POST /v1/connections`, `POST /v1/connections:bulk`,
+  `POST /v1/connections/{id}/apply`, `POST /v1/connections/{id}:reapply`,
+  `POST /v1/connections/{id}:recheck`, `DELETE /v1/connections/{id}`,
+  `DELETE /v1/connections/{id}/grant`.
+- **Provider rails:** `POST /v1/connections/{id}/oauth:start`,
+  `POST /v1/connections/{id}/domainconnect:start`.
+- **SSL:** `ssl:provision`, `ssl:renew`, `ssl:import`, and
+  `DELETE /v1/connections/{id}/ssl`.
+- **Power:** `POST /v1/connections/{id}/power`, `power:repower`, and
+  `DELETE /v1/connections/{id}/power`.
+- **Webhooks:** `POST /v1/webhooks`, `DELETE /v1/webhooks/{id}`.
+
+So a `viewer`'s member-scoped key is refused with `403` on all of them: it
+cannot delete a live connection, deprovision a certificate, or register a
+webhook endpoint to obtain its signing secret. Reads on the same resources are
+unaffected. The browser-facing widget token is unchanged too: it carries no
+member at all, so it is not role-gated here; it stays constrained by its
+application and (optional) domain binding, which is what lets a customer's own
+end users complete a connect flow.
 
 **Enforcement is at the control-plane, not just the console.** Every sensitive
 mutation re-checks the acting member's role server-side before acting, so a
@@ -55,7 +86,13 @@ particular:
 
 - **Minting or revoking an API key** and **inviting / removing a member or
   changing a role** require `admin` or `owner`.
-- **Billing** (checkout, portal) requires `owner`.
+- **Approving, listing or revoking a delegated-agent grant** requires `admin` or
+  `owner` (`agent:manage`).
+- **Billing** (checkout, portal) requires `owner`. A widget token is refused
+  outright on tenant-level mutations like these: it ships in every embed, so it
+  is never treated as tenant authority.
+- **Mutating a connection, its SSL, its Power config, or a webhook** requires
+  `app:write`, that is, `member` or above. A `viewer` is refused.
 - A caller can never grant a role above their own, and **only an owner can
   create, promote-to, or demote an owner**. The org's **last owner** cannot be
   demoted or removed.

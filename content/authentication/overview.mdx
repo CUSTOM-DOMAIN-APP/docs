@@ -10,9 +10,23 @@ types share the surface, each with a different blast radius.
 
 - Prefix `sk_live_` / `sk_test_`, sent as `Authorization: Bearer sk_…`.
 - Stored only as a hash — the full key is shown **once**, at creation.
-- **Tenant-scoped**: an API key carries the full authority of its tenant across
-  that tenant's applications, connections, webhooks, and billing.
-- Revocable; a revoked key stops authenticating on its next request.
+- **Tenant-scoped**: an API key only ever reaches its own tenant's applications,
+  connections, webhooks, and billing. Anything outside that tenant is a `404`.
+- **How much authority it carries inside the tenant depends on the key.** There
+  are two kinds:
+  - A **plain tenant key** (the one minted at provisioning, or minted by an
+    operator) has no member attached and acts with **owner** authority. This is
+    the key the console seals and proxies with, and the one most API
+    integrations use.
+  - A **member-scoped key**, minted for an invited member when they accept, is
+    tied to that member and is gated by **their current role**, resolved
+    server-side on every request. A `viewer`'s key can read but **cannot
+    mutate**: it is refused with `403` on connection, SSL, Power, webhook,
+    member, key and billing mutations. Demote or remove the member and the next
+    request already reflects it; a key whose member no longer exists is denied
+    everything.
+- Revocable; a revoked key stops authenticating on its next request. Removing a
+  member revokes their member-scoped key.
 
 Manage keys under an application:
 
@@ -50,11 +64,19 @@ has a role — `owner`, `admin`, `member`, or `viewer` — invited and managed v
 role/permission matrix is served as static reference at `GET /v1/rbac`.
 
 Roles are **enforced at the control-plane**, not just the console: each sensitive
-mutation re-checks the acting member's role server-side. Managing members and
-minting/revoking API keys require `admin` or `owner`; billing requires `owner`;
-and only an owner can create or demote an owner. See
+mutation resolves the acting member from the presented credential and re-checks
+their role server-side; no client-supplied role is trusted. Managing members,
+minting/revoking API keys and approving/revoking delegated-agent grants
+(`agent:manage`) require `admin` or `owner`; billing requires `owner`; and only
+an owner can create or demote an owner.
+
+Mutating a **connection** (creating, applying, re-applying, re-checking or
+deleting one, disabling its managed grant, provisioning/renewing/importing or
+deprovisioning **SSL**, changing **Power**, or registering/deleting a
+**webhook**) requires `app:write`, which `member` and above hold and `viewer`
+does not. See
 [Roles & permissions](/docs/security/overview#roles--permissions) for the full
-matrix.
+matrix and the exact route list.
 
 ## Unauthenticated surfaces
 

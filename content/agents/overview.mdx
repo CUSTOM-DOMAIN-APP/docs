@@ -3,12 +3,9 @@ title: Agent access
 description: Human-first delegated access — how an AI agent gets a scoped, revocable grant to act on your domains through the MCP.
 ---
 
-> **Not yet enabled.** Agent access is built, tested, and merged, but it is not
-> turned on for the hosted service yet. Every endpoint described in this section
-> responds `503 temporarily_unavailable` ("agent authentication is not enabled")
-> until an operator activates it — there's no announced activation date. The
-> flow below is accurate for when it does go live; nothing here works today. If
-> you need agent access now, contact us for status.
+> **Live on customdomain.ai.** Agent access is enabled in production: an agent
+> can register, ask for scopes, and be approved by a human owner today. Verified
+> 2026-08-02 against `https://api.customdomain.ai`.
 
 An AI agent can act on your domains — search, connect, and (optionally) buy them —
 through the [MCP server](/docs/mcp/overview). Before it can, a **real human owner
@@ -19,7 +16,7 @@ This is **human-first**: the agent registers itself and asks for access, but a
 person signs in to your console and approves exactly which scopes it gets, for how
 long, and (for purchases) with what spend cap. You can revoke it at any time.
 
-## How it will work
+## How it works
 
 The agent runs a standard OAuth 2.0 authorization-code flow with PKCE against the
 control plane, then uses the resulting token at the MCP:
@@ -66,7 +63,7 @@ owner approves a subset of what the agent requested — never more.
 - **Owner emails** — you're emailed when an agent connects, when it acts, and
   immediately when it spends money.
 
-## Hosted endpoints (once enabled)
+## Hosted endpoints
 
 | Surface | URL |
 | --- | --- |

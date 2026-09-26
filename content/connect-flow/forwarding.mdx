@@ -36,21 +36,31 @@ domain is proxied to its origin as usual.
 
 ## The redirect template (provider-written)
 
-When the domain runs on a provider you automate (a one-click setup / OAuth / API
-rail) rather than being proxied through the edge, forwarding can instead be
-written as a record **at the provider**. The `redirect` service template
-(`serviceName: "Forward this domain"`) declares a single `REDIR301` record on the
-apex (`@`) whose target is the `redirectTarget` variable:
+When the domain runs on a provider that implements the one-click (Domain
+Connect) protocol, forwarding can instead be written **at the provider**. The
+`redirect` service template (`serviceName: "Forward this domain"`) declares a
+single `REDIR301` record on the apex (`@`) whose target is the `redirectTarget`
+variable:
 
 ```json
 { "type": "REDIR301", "host": "@", "target": "%redirectTarget%", "ttl": 3600 }
 ```
 
-`REDIR301` is a record type native to the provider-hosted one-click protocol
-(like `SPFM`): the provider's
-forwarding feature — not our edge — issues the 301 to `redirectTarget`, preserving
-path and query. A companion `apex-www` template covers the apex→www case the same
-way.
+`REDIR301` is a pseudo-record native to the Domain Connect protocol (like
+`SPFM`): the provider's forwarding feature (not our edge) issues the 301 to
+`redirectTarget`, preserving path and query. A companion `apex-www` template
+covers the apex→www case the same way.
+
+**Only the one-click (Domain Connect) rail can apply the `redirect` template.**
+The OAuth and API-token rails **refuse** any template carrying a `REDIR301`/
+`REDIR302` record with `forwarding_not_supported`: a redirect is HTTP behavior,
+not a DNS record, and a provider's DNS API has no way to write one. Before the
+guard, the literal `REDIR301` was handed to the provider's DNS API and the
+poller then marked the connection live off a write that configured nothing. On
+those rails, serve the redirect from the edge instead (the section above), or
+set forwarding manually in the provider's own control panel. (The `apex-www`
+template is unaffected: it writes an apex `A` record plus a `www` CNAME, both of
+which those rails apply; the edge issues the apex→www redirect.)
 
 ## Widget forwarding path
 
