@@ -14,23 +14,23 @@ description: Opt a connection into managed mode so the control plane can silentl
 Most connections are **use-once**: a [rail](/docs/connect-flow/overview#the-four-rails)
 writes the desired records a single time and the platform keeps no credential.
 **Managed mode** is the opt-in exception. When a connection is managed, the
-control plane holds a durable, **encrypted** *async grant* — issued through the
-provider-hosted one-click protocol — for the customer's provider, so it can
-re-apply or revert the template **server-side — without asking the customer to
+control plane holds a durable, **encrypted** *async grant* (issued through the
+provider-hosted one-click protocol) for the customer's provider, so it can
+re-apply or revert the template **server-side, without asking the customer to
 re-consent**.
 
 ## What "managed" means
 
 - **Opt-in only.** A connection is never managed by default. It becomes managed
-  when the customer completes the **async one-click** consent flow — start it
+  when the customer completes the **async one-click** consent flow. Start it
   with `POST /v1/connections/{id}/domainconnect:start` with `{"managed": true}`
   (equivalently `{"rail":"async"}`). When the provider supports the async
   variant, the response is an async consent URL; otherwise the call falls
   through to the ordinary sync `apply_url` and the connection stays use-once.
 - **Encrypted grant, pinned base.** The async callback
   (`GET /v1/connect/dc/callback`) exchanges the code for a durable grant against
-  the provider API base that was pinned into the signed `state` at start — never
-  re-derived from fresh discovery — and stores it encrypted at rest. The customer's
+  the provider API base that was pinned into the signed `state` at start (never
+  re-derived from fresh discovery) and stores it encrypted at rest. The customer's
   browser token from the sync/OAuth rails is *not* this; those are discarded
   immediately.
 - **Silent re-apply.** With the grant in hand the platform can recompute the
@@ -69,7 +69,7 @@ connection, and emits `connection.records.updated`. If the connection is not
 managed or has no stored grant, it responds **`409`**.
 
 If the push fails it emits `connection.reapply.failed`. When the provider reports
-the grant was **revoked** (a `401` kill-switch — the customer withdrew consent at
+the grant was **revoked** (a `401` kill-switch: the customer withdrew consent at
 their provider), the platform clears the stored grant and flags the connection for
 re-consent; the next `:reapply` returns `409` until the customer re-authorizes.
 
@@ -80,9 +80,9 @@ managed lifecycle:
 
 | Event | Fires when |
 | --- | --- |
-| `connection.records.updated` | A `:reapply` succeeded — the desired records were (re-)written and the connection re-verified. |
+| `connection.records.updated` | A `:reapply` succeeded: the desired records were (re-)written and the connection re-verified. |
 | `connection.reapply.failed` | A `:reapply` push failed; if the grant was revoked, the connection is flagged for re-consent. |
-| `connection.disconnected` | The connection was [disconnected](/docs/connect-flow/offboarding) — for a managed connection the template was reverted through the grant first. |
+| `connection.disconnected` | The connection was [disconnected](/docs/connect-flow/offboarding); for a managed connection the template was reverted through the grant first. |
 
 ## Disabling managed mode
 
@@ -101,7 +101,7 @@ platform simply stops holding a credential to re-apply or revert them, so the
 connection reverts to the default use-once posture. A later async consent can
 re-enable managed mode.
 
-This is deliberately **not** `DELETE /v1/connections/{id}` — that path reverts the
+This is deliberately **not** `DELETE /v1/connections/{id}`: that path reverts the
 template at the provider and removes the whole connection (see below). Here nothing
 is reverted and the connection survives. The call is **idempotent**: a connection
 that is already unmanaged returns **`200`** with `managed: false`. It does not emit

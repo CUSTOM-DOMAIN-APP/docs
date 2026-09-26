@@ -1,13 +1,13 @@
 ---
 title: Buying a domain
-description: The money-safe purchase flow — authorize, register, then capture — and how a purchased domain becomes a managed, connected domain.
+description: The money-safe purchase flow (authorize, register, then capture) and how a purchased domain becomes a managed, connected domain.
 ---
 
-You can buy a brand-new domain without leaving the console — **Sell → Buy a
+You can buy a brand-new domain without leaving the console, under **Sell → Buy a
 domain** (`/app/sell`). Search a name to see availability with live retail
 pricing (the renewal price is shown up front), then register it in a couple of
 clicks. The platform resolves which upstream registrar fulfills each TLD; that
-choice isn't shown in the buying flow and doesn't change anything for you — the
+choice isn't shown in the buying flow and doesn't change anything for you; the
 domain is managed here either way.
 
 ## Shop-style search
@@ -15,15 +15,15 @@ domain is managed here either way.
 Searching a name surfaces more than the exact match. Results come back in three
 grouped sections:
 
-- **Exact match** — the name you typed.
-- **Other endings** — the same name on other TLDs:
-  `.com .net .org .io .co .ai .app .dev .xyz .me`.
-- **Similar names** — close variants of the name (common prefixes and suffixes,
+- **Exact match**: the name you typed.
+- **Other endings**: the same name on other TLDs
+  (`.com .net .org .io .co .ai .app .dev .xyz .me`).
+- **Similar names**: close variants of the name (common prefixes and suffixes,
   e.g. `get-`, `try-`, `-app`, `-hq`) on the primary TLD.
 
 Each result shows availability and a live price. To get grouped suggestions from
 the API, pass `?suggest=1` on the search request; every result then carries a
-`Kind` field — `exact`, `tld`, or `variant` — that the console uses to group
+`Kind` field (`exact`, `tld`, or `variant`) that the console uses to group
 them. Without `suggest=1` the endpoint returns the exact name only. See the
 [Registrar API reference](/docs/api-reference/registrar/searchDomains).
 
@@ -31,17 +31,17 @@ them. Without `suggest=1` the endpoint returns the exact name only. See the
 
 The purchase is ordered so you can never pay for a domain you don't get:
 
-1. **Search & price** — availability and a live retail quote per domain
-   (`GET /v1/registrar/search`, `POST /v1/registrar/quote` — see the
+1. **Search & price**: availability and a live retail quote per domain
+   (`GET /v1/registrar/search`, `POST /v1/registrar/quote`; see the
    [Registrar API reference](/docs/api-reference/registrar/searchDomains)).
-2. **Authorize** — an embedded Stripe checkout (in-app, no off-site redirect)
+2. **Authorize**: an embedded Stripe checkout (in-app, no off-site redirect)
    collects the card and **authorizes** the amount. Nothing is charged yet.
-3. **Register** — the platform registers the domain server-side, driven by the
+3. **Register**: the platform registers the domain server-side, driven by the
    Stripe webhook; the browser returning to the console is only a fallback
    trigger, so closing the tab doesn't strand the order. Fulfillment is
-   idempotent per checkout session — a retry or reload can't register or charge
+   idempotent per checkout session: a retry or reload can't register or charge
    twice.
-4. **Capture** — only after the registration succeeds is the card actually
+4. **Capture**: only after the registration succeeds is the card actually
    charged. If registration fails, the authorization is **released** and you pay
    nothing.
 
@@ -54,10 +54,10 @@ A completed purchase fires the `domain.purchased`
 A purchased domain behaves exactly like a domain you brought yourself:
 
 - it **appears in the Domains console** automatically;
-- it is **auto-connected** — the fresh zone is created with a `CNAME` pointing
+- it is **auto-connected**: the fresh zone is created with a `CNAME` pointing
   at the edge, so the connection starts moving
   `pending → propagating → live` immediately, with no setup step;
-- it is **manageable via the same connections API** — records, status,
+- it is **manageable via the same connections API**: records, status,
   webhooks, and [offboarding](/docs/connect-flow/offboarding) are identical.
 
 ## Buying through the embedded widget
@@ -67,7 +67,7 @@ The same money-safe flow is available to integrators embedding
 `window.customdomain.purchaseDomain(config)` to open the in-widget buy screen;
 once your end user picks a domain, the widget starts a real checkout
 (`POST /v1/registrar/checkout`) and fires a `customdomain:purchase` event
-carrying a Stripe session — mount Stripe Embedded Checkout (or redirect) with
+carrying a Stripe session. Mount Stripe Embedded Checkout (or redirect) with
 its `clientSecret` / `url`, then finalize with `POST /v1/registrar/fulfill`,
 which registers the domain, captures the charge, and auto-connects it, exactly
 like the console flow above. See the

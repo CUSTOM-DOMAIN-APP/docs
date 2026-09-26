@@ -15,9 +15,9 @@ eligibility gates.
 
 ### Can I buy a new domain here too?
 
-Yes — **Sell → Buy a domain** in the console. Checkout only *authorizes* your
+Yes, under **Sell → Buy a domain** in the console. Checkout only *authorizes* your
 card; the domain is registered server-side, and the card is captured only after
-registration succeeds (a failure releases the hold — you pay nothing). The
+registration succeeds (a failure releases the hold, so you pay nothing). The
 purchased domain shows up in Domains already connected. See
 [Buying a domain](/docs/sell/buying-a-domain).
 
@@ -31,7 +31,7 @@ available for a given domain.
 
 ### Is my provider API key stored?
 
-Not by default — it's used once to write records and then discarded. You can
+Not by default. It's used once to write records and then discarded. You can
 **optionally** tick **"Remember this key"** to save it (encrypted at rest, scoped
 to your tenant + that provider) so you can reuse it for other domains in one
 click; the plaintext never leaves the server, and you can revoke it any time
@@ -47,9 +47,9 @@ them (all or a subset) in one step. See
 
 ### Does it support apex domains as well as subdomains?
 
-Yes — a connection's `host` is empty for the apex or the subdomain label
+Yes. A connection's `host` is empty for the apex or the subdomain label
 otherwise. A root domain works at **every** provider: where the provider has a
-root-CNAME type (ALIAS/ANAME/flattened CNAME — Cloudflare, Route 53, DNSimple,
+root-CNAME type (ALIAS/ANAME/flattened CNAME: Cloudflare, Route 53, DNSimple,
 DigitalOcean…) the record set uses it; everywhere else (GoDaddy, Namecheap,
 Name.com, OVH…) it uses `A` records pointing at our edge. `POST
 /v1/domains:check` returns `apex_supported` (the provider fact) and
@@ -65,13 +65,13 @@ your onboarding flow.
 ### How long does DNS propagation usually take?
 
 It depends on the TTL of any records being replaced and the customer's
-resolver/registrar — from minutes (a fresh record via a rail) to longer if a
+resolver/registrar: from minutes (a fresh record via a rail) to longer if a
 previous record had a long TTL. The connection sits in `propagating` until every
 desired record resolves; `GET /v1/connections/{id}` shows current status.
 
 ### What happens if I revoke or delete an API key?
 
-Revocation is immediate — a revoked key stops authenticating on its next request.
+Revocation is immediate: a revoked key stops authenticating on its next request.
 Keys are never returned by list endpoints after creation; only metadata (`last4`,
 `created_at`, `revoked_at`) is visible.
 
@@ -84,7 +84,7 @@ react. See [Offboarding](/docs/connect-flow/offboarding).
 
 ### Is there a sandbox / test mode?
 
-Yes — API keys and applications carry an environment (`production` / `staging` /
+Yes. API keys and applications carry an environment (`production` / `staging` /
 `development`), and keys are prefixed `cd_test_` / `cd_live_` (keys created
 before that prefix change use `sk_test_` / `sk_live_` and keep working). `make up` runs the
 full stack locally (see the [Quickstart](/docs/getting-started/quickstart)).

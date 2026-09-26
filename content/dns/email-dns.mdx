@@ -6,7 +6,7 @@ description: Adding MX/SPF/DKIM/DMARC alongside a connection, and how SPFM merge
 Connecting a domain points **web** traffic at your product. Many customers also
 want **email** on that domain (Google Workspace, Microsoft 365, Zoho). Email
 records (`MX`, `TXT` for SPF/DKIM/DMARC) can ride the same
-[apply rail](/docs/connect-flow/overview#the-four-rails) as the web records — you
+[apply rail](/docs/connect-flow/overview#the-four-rails) as the web records: you
 include them in the `records` array of `POST /v1/connections/{id}/apply`, or the
 customer adds them by hand in the manual flow.
 
@@ -18,7 +18,7 @@ breaks mail. That's what the `SPFM` meta-record is for.
 
 Instead of a raw `TXT`, apply an `SPFM` record with the mechanisms you need. At
 write time the engine reads any SPF TXT already published at that host and
-**merges** your mechanisms into it — deduped, with a single terminal `all`, and
+**merges** your mechanisms into it, deduped, with a single terminal `all`, and
 the existing record's qualifier preserved (a merge never loosens the policy):
 
 ```
@@ -42,13 +42,13 @@ Rail B (API-token apply) and the automatic rails.
 ## MX records
 
 `MX` records route inbound mail to the provider's servers and carry a numeric
-**priority** (lower = preferred). Set it with the record's `priority` field — it
+**priority** (lower = preferred). Set it with the record's `priority` field; it
 is honored for `MX` and `SRV` and ignored for other types. Most providers publish
 a single MX (e.g. Google's `smtp.google.com` at priority `1`); a few publish a
 ranked set (Zoho's `mx.zoho.com` / `mx2` / `mx3` at `10` / `20` / `50`).
 
 Mark the MX records `essential: true` so the engine treats a missing MX as a hard
-failure rather than ordinary drift — mail is down without them:
+failure rather than ordinary drift, since mail is down without them:
 
 ```json
 { "type": "MX", "host": "@", "value": "smtp.google.com", "priority": 1, "essential": true }
@@ -57,7 +57,7 @@ failure rather than ordinary drift — mail is down without them:
 ## DKIM & DMARC
 
 - **DKIM** keys are generated in the provider's admin console (unique per
-  domain), so they can't be derived — add the provider's `selector._domainkey`
+  domain), so they can't be derived; add the provider's `selector._domainkey`
   record as given. The widget's DKIM step groups records flagged `purpose: "dkim"`
   onto a dedicated screen (`enableDkim`).
 - **DMARC** should start at `p=none` (monitor only). After confirming legitimate
@@ -85,8 +85,8 @@ as-is:
 The same set can also be applied by the automatic rails (OAuth / one-click
 setup), which carry an `email-full` template that emits these records grouped
 for the widget's email screen. The one-click catalog also ships the records
-split across single-purpose templates — `email-mx`, `email-spf`, `email-dkim`,
-and `email-dmarc` — so a provider can apply just one piece. Either way the `SPFM`
+split across single-purpose templates (`email-mx`, `email-spf`, `email-dkim`,
+and `email-dmarc`) so a provider can apply just one piece. Either way the `SPFM`
 merge and MX `priority` behave identically.
 
 > Pre-flight: `POST /v1/domains:check` reports `spf_override_support` and returns

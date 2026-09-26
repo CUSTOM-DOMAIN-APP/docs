@@ -8,7 +8,7 @@ into the customer's DNS via one of the four
 [rails](/docs/connect-flow/overview#the-four-rails). All of them move the
 connection `pending → propagating → live`.
 
-## Rail C — OAuth into the provider (flagship)
+## Rail C: OAuth into the provider (flagship)
 
 ```bash
 curl -X POST http://localhost:8080/v1/connections/<ID>/oauth:start \
@@ -25,7 +25,7 @@ token (discarded immediately, never stored), and returns an HTML page that
 postMessages `{ type: "customdomain:oauth", payload }` to the vetted
 `return_origin`. The connection is now `propagating`.
 
-## Rail A — provider-hosted one-click setup
+## Rail A: provider-hosted one-click setup
 
 ```bash
 curl -X POST http://localhost:8080/v1/connections/<ID>/domainconnect:start \
@@ -39,14 +39,14 @@ Redirect the customer to `apply_url`; their provider applies the signed template
 Both the synchronous redirect and the asynchronous variant are supported.
 `service_id` may be omitted when a single/default template is loaded.
 
-## Rail B — API token (BYO)
+## Rail B: API token (BYO)
 
 The customer supplies a **scoped** provider credential; it writes the records
 once and is discarded afterwards **by default** (persisted only if the user opts
 in to [remembering it](/docs/dns/provider-setup#remembering-a-key-optional)). In
 the console, multi-part credentials are collected as separate labeled fields
 (GoDaddy: API key + secret; Namecheap: username + API key; Route 53: access key
-ID + secret access key) and joined into `credential.token` for you — see
+ID + secret access key) and joined into `credential.token` for you; see
 [Provider setup](/docs/dns/provider-setup) for each provider's exact steps.
 Calling the API directly:
 
@@ -100,7 +100,7 @@ curl -X POST http://localhost:8080/v1/connections:bulk \
 ```
 
 Each result carries a **per-domain `status`**: `connected` (a new connection),
-`already` (one already existed — the call is idempotent, so re-running is safe),
+`already` (one already existed; the call is idempotent, so re-running is safe),
 or `failed` (that domain errored; the batch continues and reports its `message`).
 Each new connection then applies records and goes live on its own rail exactly
 like a single connect.
@@ -109,7 +109,7 @@ like a single connect.
 
 If no automatic rail is available, show the records from
 `GET /v1/connections/{id}/records` for the customer to add by hand. Nothing else
-is required — the poller watches for them.
+is required: the poller watches for them.
 
 ## Watch propagation → live
 
@@ -118,7 +118,7 @@ record against public DNS and, when they all match their intended values, flips
 the connection to `live`. On that transition the edge issues the TLS certificate
 on the next handshake and a `connection.live` [webhook](/docs/webhooks/overview)
 fires (exactly once). Treat webhooks as the primary signal and **poll
-`GET /v1/connections/{id}` as the fallback** — delivery is durable but can lag
+`GET /v1/connections/{id}` as the fallback**: delivery is durable but can lag
 (the outbox retries for up to six hours).
 
 Timing, honestly:
@@ -141,5 +141,5 @@ Digital and Domain Chief (the providers measured to serve our template
 catalog); GoDaddy, IONOS and Cloudflare have not onboarded it, so they are
 never offered one-click. Sign-in (OAuth) runs at Cloudflare, DNSimple, Netlify,
 Vercel and WordPress.com, with a one-time token that is never stored. Read
-`rails` on the pre-flight rather than memorizing this list — see
+`rails` on the pre-flight rather than memorizing this list; see
 [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

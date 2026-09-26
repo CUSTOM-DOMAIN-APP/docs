@@ -15,7 +15,7 @@ types share the surface, each with a different blast radius.
   `sk_test_`, and they keep working everywhere** with the same tenant scope
   and role as before. There is no need to replace them; every new key is issued
   as `cd_live_` or `cd_test_`.
-- Stored only as a hash — the full key is shown **once**, at creation.
+- Stored only as a hash; the full key is shown **once**, at creation.
 - **Tenant-scoped**: an API key only ever reaches its own tenant's applications,
   connections, webhooks, and billing. Anything outside that tenant is a `404`.
 - **How much authority it carries inside the tenant depends on the key.** There
@@ -44,13 +44,13 @@ DELETE /v1/applications/{id}/keys/{keyId}   # revoke
 
 Each application also has a `client_secret` (returned once at application
 creation, or from `tenants:provision`). The `client_secret` is **not** an API
-key — its only job is to mint [widget JWTs](/docs/authentication/widget-tokens).
+key: its only job is to mint [widget JWTs](/docs/authentication/widget-tokens).
 
 ## Widget JWTs (browser)
 
 Short-lived JWTs minted server-side via `POST /v1/tokens`. Scoped to one
 application and, optionally, one domain. They authorize only the browser-facing
-Connect endpoints. This is the only credential that ever reaches the browser —
+Connect endpoints. This is the only credential that ever reaches the browser;
 see [Widget tokens](/docs/authentication/widget-tokens).
 
 ## Management & provision secrets (operator)
@@ -65,7 +65,7 @@ see [Widget tokens](/docs/authentication/widget-tokens).
 ## Member roles
 
 Human access is governed by tenant **membership**, not per-key scopes. A member
-has a role — `owner`, `admin`, `member`, or `viewer` — invited and managed via
+has a role (`owner`, `admin`, `member`, or `viewer`), invited and managed via
 `POST /v1/members`, `PATCH /v1/members/{id}`, and `POST /v1/members:accept`. The
 role/permission matrix is served as static reference at `GET /v1/rbac`.
 
@@ -86,11 +86,11 @@ matrix and the exact route list.
 
 ## Unauthenticated surfaces
 
-- `GET /healthz` — liveness + database readiness. No secrets, no tenant data.
-- `POST /internal/ask` — the edge host-authorization gate. Not bearer-auth: it
+- `GET /healthz`: liveness + database readiness. No secrets, no tenant data.
+- `POST /internal/ask`: the edge host-authorization gate. Not bearer-auth: it
   uses a shared secret (`X-Edge-Auth` / `EDGE_ASK_SECRET`) and must be
   network-isolated to the edge in production. It answers only `{ approved }`.
-- `GET /v1/connect/oauth/callback` — the OAuth redirect target, authenticated by
+- `GET /v1/connect/oauth/callback`: the OAuth redirect target, authenticated by
   its signed single-use `state` rather than a bearer token.
 
 Public catalog reads (`GET /v1/providers`, `/v1/plans`, `/v1/rbac`,
