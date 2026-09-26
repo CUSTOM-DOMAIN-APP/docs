@@ -17,7 +17,7 @@ widget.
 
 ```bash
 curl -X PUT https://api.customdomain.ai/v1/connections/<ID>/records \
-  -H "Authorization: Bearer sk_..." \
+  -H "Authorization: Bearer cd_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "records": [
@@ -77,7 +77,7 @@ records to it).
 
 ## Rules and limits
 
-- **Server-side only.** The call needs an `sk_` API key; a widget token is
+- **Server-side only.** The call needs an API key; a widget token is
   refused (`403`) — a page in a browser must not choose the records we write.
 - **Replace, don't patch.** The whole set is replaced on each `PUT`.
 - **Before anything is written.** Once the connection's records have been

@@ -57,16 +57,16 @@ access is persistent or expiring, and who approved it. **Revoke** ends it
 immediately — the agent's tokens stop working within one token lifetime, and its
 refresh token is killed.
 
-The same operations are available over the API with your workspace `sk_` key:
+The same operations are available over the API with your workspace API key:
 
 ```bash
 # List grants
 curl https://api.customdomain.ai/v1/agent/grants \
-  -H "Authorization: Bearer sk_live_…"
+  -H "Authorization: Bearer cd_live_…"
 
 # Revoke a grant
 curl -X DELETE https://api.customdomain.ai/v1/agent/grants/grt_… \
-  -H "Authorization: Bearer sk_live_…"
+  -H "Authorization: Bearer cd_live_…"
 ```
 
 These endpoints require the workspace API key (not a widget/browser token), the

@@ -4,7 +4,7 @@ description: POST /v1/connections — the request, the idempotent replay, and th
 ---
 
 A connection is created against an **application** and authorized by a
-[widget JWT](/docs/authentication/widget-tokens) (or an `sk_` API key for
+[widget JWT](/docs/authentication/widget-tokens) (or an API key for
 server-side use). The only required field is the domain:
 
 ```bash
@@ -50,7 +50,7 @@ before the widget opens:
 
 ```bash
 curl -X PUT http://localhost:8080/v1/connections/con_…/records \
-  -H "Authorization: Bearer sk_live_…" \
+  -H "Authorization: Bearer cd_live_…" \
   -H "Content-Type: application/json" \
   -d '{"records":[
         {"type":"MX","host":"@","value":"inbound-smtp.us-east-2.amazonaws.com","priority":10},
@@ -67,7 +67,7 @@ authoritative, so the browser never has to be trusted with the record list.
 
 Three constraints follow from that trust boundary:
 
-- **`sk_` API key only.** A widget JWT lives in a browser; it may not choose the
+- **API key only.** A widget JWT lives in a browser; it may not choose the
   records written into a customer's zone.
 - **Hosts must resolve inside the connection's zone.** `@`, `_dmarc`, and
   `sel1._domainkey` are anchored to the connection's domain; a foreign FQDN is

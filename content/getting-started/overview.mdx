@@ -12,7 +12,7 @@ and proxies the domain to the application's origin.**
 | You are… | Use | Start |
 | --- | --- | --- |
 | Pointing **your own** domain at your app | the **console** | [Console](/docs/getting-started/console) — no code |
-| A product that provisions domains for customers **server-to-server** | the **API** (`/v1`, `sk_` key) | [API](/docs/getting-started/api) |
+| A product that provisions domains for customers **server-to-server** | the **API** (`/v1`, `cd_` API key) | [API](/docs/getting-started/api) |
 | A product whose customers connect **their** domains inside **your** UI | the **widget** (`customdomain-js`) | [Widget](/docs/getting-started/widget) |
 | An AI agent or MCP client | the **MCP server** (`mcp.customdomain.ai`) | [MCP](/docs/getting-started/mcp) |
 | Running the stack yourself | Docker Compose | [Self-hosted quickstart](/docs/getting-started/quickstart) |
@@ -49,11 +49,11 @@ of them, that is a bug — tell us.
 
 | You got it from | It is | Use it for |
 | --- | --- | --- |
-| The console → **Keys** | an `sk_…` API key (tenant-scoped) | server-to-server API calls, the MCP server, minting widget tokens |
+| The console → **Keys** | a `cd_live_…` / `cd_test_…` API key (tenant-scoped; keys created earlier start `sk_` and still work) | server-to-server API calls, the MCP server, minting widget tokens |
 | The console → **Embed** | the application's **client secret** (shown once; rotate there) | minting widget tokens from your server (`POST /v1/tokens`) |
 | `POST /v1/tokens` | a short-lived **widget JWT** (one application, optionally one domain, optionally one end user) | the browser: `customdomain-js` `open({ token })`, or direct `/v1` calls from the page |
 | An agent grant | a delegated **agent token** | the agent's scoped API calls |
 
 A widget JWT can never mint another token, never read another application's
-data, and never choose the records we write. Anything that chooses records is
-`sk_`-only.
+data, and never choose the records we write. Anything that chooses records
+requires an API key.

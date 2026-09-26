@@ -18,10 +18,12 @@ info:
 
 
     Three credential types authenticate the surface. A **management key** gates
-    operator/provisioning routes. A tenant **API key** (`sk_live_…` / `sk_test_…`)
-    is the long-lived server-to-server credential. A short-lived **widget JWT**,
-    minted server-side via `POST /v1/tokens`, authorizes the browser widget and
-    is scoped to one application (and optionally one domain).
+    operator/provisioning routes. A tenant **API key** (`cd_live_…` / `cd_test_…`)
+    is the long-lived server-to-server credential; keys created before the switch
+    to `cd_` start with `sk_live_…` / `sk_test_…` and are still accepted. A
+    short-lived **widget JWT**, minted server-side via `POST /v1/tokens`,
+    authorizes the browser widget and is scoped to one application (and
+    optionally one domain).
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -45,6 +47,8 @@ tags:
     description: Read-only domain / DNS-provider feature detection.
   - name: Connections
     description: The connect pipeline for one customer domain, across all four rails.
+  - name: Managed DNS
+    description: CustomDomain™ hosts a domain's whole zone after the user points its nameservers at us once, and writes every record from then on.
   - name: Secure
     description: Edge-managed TLS certificates (SSL) for connected domains — issue, renew, import, deprovision.
   - name: Power
@@ -180,7 +184,7 @@ paths:
                 properties:
                   tenant_id: { type: string }
                   application_id: { type: string }
-                  api_key: { type: string, description: 'sk_live_… / sk_test_… — shown once' }
+                  api_key: { type: string, description: 'cd_live_… or cd_test_…; shown once' }
                   client_secret: { type: string, description: mints widget JWTs; shown once }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
@@ -194,7 +198,7 @@ paths:
       tags: [Applications]
       description: >-
         Accepts the management key (the body `tenant_id` selects the tenant) or a
-        tenant-scoped `sk_` API key (the app is always created in the key's own
+        tenant-scoped API key (the app is always created in the key's own
         tenant; any body `tenant_id` is ignored).
       security:
         - managementKey: []
@@ -228,7 +232,7 @@ paths:
       summary: List applications
       tags: [Applications]
       description: >-
-        With an `sk_` API key: the caller's own tenant's apps. With the
+        With an API key: the caller's own tenant's apps. With the
         management key: `?tenant_id=` selects the tenant.
       security:
         - apiKey: []
@@ -325,7 +329,7 @@ paths:
                   - { $ref: '#/components/schemas/ApiKey' }
                   - type: object
                     properties:
-                      key: { type: string, description: 'sk_live_… / sk_test_… — shown once, stored hashed' }
+                      key: { type: string, description: 'cd_live_… or cd_test_…; shown once, stored hashed' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     get:
@@ -636,7 +640,7 @@ paths:
 
 
         Callable from the widget (a widget JWT) or straight from your server
-        with an `sk_` API key, in which case the connection is created on the
+        with an API key, in which case the connection is created on the
         key's application, or on `application_id` when that names another
         application of the same tenant.
       security:
@@ -706,7 +710,7 @@ paths:
                 application_id:
                   type: string
                   description: >-
-                    `sk_` API key callers only: create the connection on this
+                    API key callers only: create the connection on this
                     application of the key's tenant. A widget or agent token may
                     only name its own application (anything else is a `403`).
       responses:
@@ -727,7 +731,7 @@ paths:
       summary: List connections
       tags: [Connections]
       description: >-
-        With an `sk_` API key: every connection across the tenant's applications
+        With an API key: every connection across the tenant's applications
         (optional `?app_id=` and `?status=` filters). With an `app`-scoped widget
         JWT or a delegated agent token: the calling application's connections
         (`app_id` is ignored; the scope is fixed to that application). A
@@ -954,12 +958,12 @@ paths:
         poller verifies it before the connection goes live.
 
 
-        Server-to-server only (`sk_` API key): a widget JWT lives in a browser
+        Server-to-server only (API key): a widget JWT lives in a browser
         and may not choose the records we write into a customer's zone. Hosts are
         relative to the connection (`@`, `_dmarc`, `sel._domainkey`) and must
         resolve inside its zone. The Domain Connect rail refuses a connection
-        carrying a supplied set — that rail applies OUR published templates at
-        the provider, so it cannot write records it did not author.
+        carrying a supplied set, because that rail applies OUR published
+        templates at the provider, so it cannot write records it did not author.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -995,6 +999,186 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+  /connections/{id}/managed-dns:
+    post:
+      operationId: startManagedDNS
+      summary: Start managed DNS for a connection's domain
+      tags: [Managed DNS]
+      description: >-
+        Offers the connection's end user a one-time change instead of typing
+        records: point the domain's nameservers at CustomDomain™, and we host
+        the zone and write every record from then on.
+
+
+        The first call creates a hosted zone for the connection's REGISTRABLE
+        domain (acme.com, also for shop.acme.com), copies the records the
+        domain already serves at common names (apex A/AAAA/MX/TXT/CAA, www,
+        mail hosts, DMARC, common DKIM selectors, common SRV names, and every
+        name the connection needs) so nothing breaks at the switch, adds the
+        records CustomDomain™ needs for the connection, looks up the registrar,
+        and answers 201 with the zone. Later calls answer 200 with the same
+        zone; nothing is created twice. A second connection under the same
+        registrable domain joins the existing zone. The zone becomes `active`
+        once every nameserver the registry lists for the domain is ours; the
+        connection then verifies and goes live on its own.
+
+
+        Available only when `managed_dns.available` is true on
+        `POST /v1/domains:check` (the deployment flag is on, and the domain's
+        nameservers can be changed at a registrar). Authorized like the other
+        connection routes: an API key within the tenant, or a widget token of
+        the connection's own application (and domain, when the token is bound
+        to one).
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        description: No parameters. Send no body, or `{}`.
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        '200':
+          description: Managed DNS was already started; the zone as it stands.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedDNSView' }
+        '201':
+          description: The zone was created and filled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedDNSView' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The domain's zone is already hosted for another account, or another change to it is in progress.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `managed_dns_unavailable` (this domain can't be hosted; `details`
+            says why) or `managed_dns_limit` (the account's zone limit).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: >-
+            `managed_dns_backend_error`: the DNS hosting service didn't respond.
+            Nothing is lost; call again to finish.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: getManagedDNS
+      summary: The connection's managed DNS zone
+      tags: [Managed DNS]
+      description: >-
+        The hosted zone's status, the nameservers to set at the registrar,
+        what the registry currently lists, the registrar, every record, and
+        notes to show the user. Poll it while `status` is
+        `awaiting_delegation`. 404 when managed DNS was never started for this
+        connection.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The zone
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedDNSView' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/managed-dns/records:
+    post:
+      operationId: addManagedDNSRecords
+      summary: Import a zone file or add records to the managed zone
+      tags: [Managed DNS]
+      description: >-
+        Send exactly one of `zone_file` (a BIND zone file, at most 256 KB) or
+        `records` (at most 500). Records from a zone file are `imported`: for
+        every name and type the file defines, they replace what discovery
+        found. Listed records are `manual` and are added alongside what is
+        there. Records CustomDomain™ needs for the connection always win: an
+        imported record that collides with one is skipped with a note, and a
+        listed one is refused with 409. Zone file lines that can't be hosted
+        (SOA, the zone's own NS set, unsupported types, names outside the
+        zone) are skipped, each with a warning naming its line. A zone holds
+        at most 500 records.
+
+
+        Once the zone is `active`, only an API key or an app-scoped widget
+        token may change it; an end user's connect-scoped token may change the
+        zone only during setup.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManagedDNSRecordsRequest' }
+      responses:
+        '200':
+          description: The zone after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedDNSView' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            `invalid_zone_file` (nothing in the file can be hosted) or
+            `too_many_records` (the zone would pass 500 records).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/managed-dns/records/{record_id}:
+    delete:
+      operationId: deleteManagedDNSRecord
+      summary: Remove one record from the managed zone
+      tags: [Managed DNS]
+      description: >-
+        Removes a `discovered`, `imported` or `manual` record. A
+        `customdomain` record is how CustomDomain™ serves the domain and is
+        refused with 409; disconnecting the domain removes it. Once the zone is
+        `active`, only an API key or an app-scoped widget token may remove
+        records.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: record_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The zone after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedDNSView' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/grant:
     delete:
       operationId: disableManagedConnection
@@ -1323,6 +1507,19 @@ paths:
         back by `GET /share/{token}`, which the teammate's widget bootstraps from
         instead of a URL that carries the config in the clear. The share token
         EXPIRES 30 days after it is minted.
+
+
+        **Share by email.** With `recipient_email`, CustomDomain™ also emails the
+        link to that address together with the DNS records the domain needs (the
+        records of this application's connection for it when one exists,
+        otherwise the default set) and your optional `note`. The email names the
+        application as the product that asked. A malformed address is a `400`
+        `invalid_request`; so is `recipient_email` without a `domain` or
+        `domains`. Sending is capped at 3 emails per domain per application and
+        50 per application every 24 hours, and 10 per client IP address per hour;
+        over any cap the call is a `429` `rate_limited` and no link is minted. When
+        the email cannot be sent the link is still returned, with
+        `email_error: "not_sent"`, so the widget can offer to copy it instead.
       security:
         - widgetJWT: []
       requestBody:
@@ -1344,9 +1541,25 @@ paths:
                     Arbitrary widget config to resume. Served back verbatim by
                     `GET /share/{token}`, stamped with the normalized domain
                     target(s).
+                recipient_email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                  description: >-
+                    Optional. One plain address (no display name, no list) to email
+                    the link and the DNS records to, for example the person who runs
+                    the domain's DNS. The instructions cover `domain`, or the first
+                    of `domains`.
+                note:
+                  type: string
+                  maxLength: 280
+                  description: >-
+                    Optional plain-text note quoted in the email (at most 280
+                    characters; markup is shown as text, never interpreted). Ignored
+                    without `recipient_email`.
       responses:
         '201':
-          description: Share link minted
+          description: Share link minted (and, with recipient_email, the email attempted)
           content:
             application/json:
               schema:
@@ -1355,9 +1568,22 @@ paths:
                 properties:
                   link: { type: string, format: uri, description: "Absolute forwardable URL ending /share/<token>." }
                   job_id: { type: string }
+                  emailed_to:
+                    type: string
+                    format: email
+                    description: Present when the email was accepted for delivery; the normalized recipient address.
+                  email_error:
+                    type: string
+                    enum: [not_sent]
+                    description: Present when recipient_email was given but the email could not be sent. The link is still valid.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '429':
+          description: Share-by-email cap reached (`rate_limited`); no link was minted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /openapi.json:
     # API-13: the document serves itself, and omitting it from itself meant an
     # integrator had no documented way to fetch the reference at runtime.
@@ -1522,7 +1748,7 @@ paths:
                 outcome: { type: string, description: 'Outcome label (server-side allow-list).' }
                 session_id: { type: string, description: 'Random id per widget open, 8 to 64 of [A-Za-z0-9_-].' }
                 provider: { type: string, description: Detected DNS provider id. }
-                rail: { type: string, enum: [oauth, domain_connect, manual, api_key] }
+                rail: { type: string, enum: [oauth, domain_connect, manual, api_key, managed_dns] }
                 domain_kind: { type: string, enum: [apex, subdomain] }
                 error_code: { type: string, description: 'Widget error code, [A-Za-z0-9_] up to 48.' }
                 connection_id: { type: string }
@@ -1541,7 +1767,7 @@ paths:
         one-click or sign-in rail, were shown records to copy, succeeded, where
         the rest stopped, per provider and root versus subdomain) and connection
         outcomes (live rate, time to live, per provider and method, why the rest
-        are stuck), plus a daily series. `sk_` API key; any member role.
+        are stuck), plus a daily series. API key; any member role.
       security:
         - apiKey: []
       parameters:
@@ -1876,7 +2102,7 @@ paths:
       summary: List webhook endpoints
       tags: [Webhooks]
       description: >-
-        With an `sk_` API key: endpoints across all the tenant's apps. With a
+        With an API key: endpoints across all the tenant's apps. With a
         widget JWT: the calling app's endpoints. Secrets are omitted.
       security:
         - apiKey: []
@@ -1913,7 +2139,7 @@ paths:
       summary: Recent webhook delivery attempts for the caller's tenant
       tags: [Webhooks]
       description: >-
-        `sk_` API key: all the tenant's apps. Widget JWT: the calling app.
+        API key: all the tenant's apps. Widget JWT: the calling app.
         `?app_id=` narrows to one application; `?type=` filters by event type.
       security:
         - apiKey: []
@@ -2771,7 +2997,7 @@ components:
     apiKey:
       type: http
       scheme: bearer
-      description: 'Long-lived tenant API key (sk_live_… / sk_test_…), stored hashed. Scoped to the owning application''s tenant.'
+      description: 'Long-lived tenant API key, cd_live_… (production) or cd_test_… (staging, development), stored hashed. Keys created before the switch to cd_ start with sk_live_… / sk_test_… and are still accepted. Scoped to the owning application''s tenant.'
     widgetJWT:
       type: http
       scheme: bearer
@@ -3108,6 +3334,19 @@ components:
             Connect template-materialized set. Such a connection cannot use the
             Domain Connect rail, which applies our published templates at the
             provider.
+        created_via:
+          type: string
+          enum: ['', widget, console, api, agent, mcp]
+          description: >-
+            Where the connection was created, recorded once at create and never
+            changed. `widget`: an end user's connect-scoped widget token (the
+            embedded widget in your product). `console`: the CustomDomain™
+            console. `api`: an API key, or an app-scoped token, from your
+            server. `agent`: a delegated agent access token. `mcp`: the MCP
+            server. Empty for connections created before this was recorded.
+            A trusted server-side caller may name its surface with the
+            `X-CustomDomain-Client` request header (`console` or `mcp`); the
+            header is a label only and grants nothing.
         # --- Secure / Power config (set via /ssl and /power, not at create) ---
         secure_root_domain:
           type: boolean
@@ -3384,6 +3623,8 @@ components:
           type: array
           items: { type: string }
           description: The nameserver delegation the detector observed (normalized hostnames).
+        managed_dns:
+          $ref: '#/components/schemas/ManagedDNSAvailability'
         integration_warnings:
           type: array
           description: >-
@@ -3643,3 +3884,104 @@ components:
         Domain: { type: string }
         Registrar: { type: string }
         RegOrderID: { type: string }
+    ManagedDNSAvailability:
+      type: object
+      description: >-
+        Whether CustomDomain™ can host this domain's zone (managed DNS). Always
+        present on the domains:check response.
+      required: [available, reason]
+      properties:
+        available: { type: boolean }
+        reason:
+          type: string
+          enum: ['', disabled, platform_subdomain, unsupported_tld, reserved]
+          description: >-
+            Empty when available. `disabled`: managed DNS is off on this
+            deployment. `platform_subdomain`: the name belongs to a hosting
+            platform (someone.github.io), so its nameservers can't be changed.
+            `unsupported_tld`: there is no registrable domain whose
+            nameservers a registrar can change. `reserved`: CustomDomain™'s
+            own domain.
+    ManagedDNSRecord:
+      type: object
+      required: [id, type, name, value, ttl, priority, source]
+      properties:
+        id: { type: string, description: 'Stable id derived from the record content.', examples: [mdr_1f3a9c0b7d2e5a4c6b8d] }
+        type: { type: string, enum: [A, AAAA, CNAME, MX, TXT, SRV, CAA, NS] }
+        name: { type: string, description: 'Fully qualified owner name, lower case ("acme.com" is the apex, "*.acme.com" a wildcard).' }
+        value:
+          type: string
+          description: >-
+            A/AAAA: the address. CNAME/NS/MX: the target host ("." for a null
+            MX). TXT: the text. SRV: "<weight> <port> <target>". CAA:
+            `<flags> <tag> "<value>"`.
+        ttl: { type: integer, description: Seconds. }
+        priority: { type: [integer, 'null'], description: MX preference or SRV priority; null for other types. }
+        source:
+          type: string
+          enum: [discovered, imported, customdomain, manual]
+          description: >-
+            Where the record came from. `customdomain` records are the ones
+            CustomDomain™ needs for connected domains; they win every conflict
+            and can't be removed here.
+    ManagedDNSRecordInput:
+      type: object
+      required: [type, name, value]
+      additionalProperties: false
+      properties:
+        type: { type: string, enum: [A, AAAA, CNAME, MX, TXT, SRV, CAA, NS] }
+        name: { type: string, description: 'Relative to the zone ("@", "www", "_dmarc") or fully qualified inside it.' }
+        value: { type: string, description: Same forms as ManagedDNSRecord.value. }
+        ttl: { type: integer, description: 'Seconds; default 3600, clamped to 60 to 604800.' }
+        priority: { type: [integer, 'null'], description: 'MX preference (default 10) or SRV priority (default 0).' }
+    ManagedDNSRecordsRequest:
+      type: object
+      additionalProperties: false
+      description: Exactly one of zone_file or records.
+      properties:
+        zone_file: { type: string, maxLength: 262144, description: A BIND zone file (RFC 1035 master format). }
+        records:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/ManagedDNSRecordInput' }
+    ManagedDNSView:
+      type: object
+      required: [zone, status, nameservers, observed_nameservers, registrar, records, warnings, checked_at, activated_at]
+      properties:
+        zone: { type: string, description: 'The hosted zone: the registrable domain.', examples: [acme.com] }
+        status:
+          type: string
+          enum: [awaiting_delegation, active, failed]
+          description: >-
+            `awaiting_delegation`: the zone holds the records; set the
+            nameservers below at the registrar. `active`: every nameserver the
+            registry lists is ours. `failed`: the switch never happened within
+            14 days, or the nameservers moved away again (the first warning
+            says which); a failed zone keeps being checked and turns active
+            once the delegation appears.
+        nameservers:
+          type: array
+          items: { type: string }
+          description: The nameservers to set at the registrar.
+        observed_nameservers:
+          type: array
+          items: { type: string }
+          description: The nameservers the registry listed at the last check.
+        registrar:
+          description: The domain's registrar from RDAP, or null when unknown.
+          oneOf:
+            - type: object
+              required: [name, url]
+              properties:
+                name: { type: string }
+                url: { type: string, description: "The registrar's website, or an empty string." }
+            - { type: 'null' }
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/ManagedDNSRecord' }
+        warnings:
+          type: array
+          items: { type: string }
+          description: Plain-language notes for the user (a partial delegation, records a zone file import skipped, records replaced).
+        checked_at: { type: string, format: date-time, description: When the delegation was last checked. }
+        activated_at: { type: [string, 'null'], format: date-time }

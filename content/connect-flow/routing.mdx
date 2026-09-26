@@ -26,7 +26,7 @@ customer. Set that origin once for the whole application:
 
 ```bash
 curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/power:default \
-  -H "Authorization: Bearer sk_..." \
+  -H "Authorization: Bearer cd_live_..." \
   -H "Content-Type: application/json" \
   -d '{ "default_origin": "https://app.example.com" }'
 ```
@@ -45,7 +45,7 @@ DNS provider has one, and otherwise `A` records to each address in `apex_ipv4`
 
 ```bash
 curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/connect-target \
-  -H "Authorization: Bearer sk_..." \
+  -H "Authorization: Bearer cd_live_..." \
   -H "Content-Type: application/json" \
   -d '{ "cname_target": "customers.example.com", "apex_ipv4": ["203.0.113.10"] }'
 ```

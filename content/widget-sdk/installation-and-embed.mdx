@@ -133,6 +133,25 @@ window.customdomain.open({
 See the [reference](/docs/widget-sdk/reference#white-label-configuration) for the
 full `whiteLabel` surface and the token list.
 
+The records screen also offers other ways to finish: an AI assistant prompt,
+emailing the instructions, and (where your deployment offers it) letting
+CustomDomain™ host the DNS. Each can be switched off:
+
+```js
+window.customdomain.open({
+  applicationId, token,
+  whiteLabel: {
+    customProperties: {
+      aiHandoff: { hide: true },   // no "Let an AI assistant do it"
+      forwardLink: { hide: true }, // no "Email these instructions"
+      managedDns: { hide: true },  // no "Let CustomDomain™ host your DNS"
+    },
+  },
+});
+```
+
+See [Other ways to finish](/docs/widget-sdk/reference#other-ways-to-finish).
+
 ## Security note
 
 The widget JWT is the only credential in the browser. It is short-lived

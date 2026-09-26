@@ -28,7 +28,7 @@ three token types (see [Authentication](/docs/authentication/overview)):
 | Credential | Prefix / form | Used for |
 | --- | --- | --- |
 | **Management key** | opaque | operator provisioning and cross-tenant reads |
-| **API key** | `sk_live_…` / `sk_test_…` | long-lived server-to-server calls, tenant-scoped |
+| **API key** | `cd_live_…` / `cd_test_…` (keys created earlier start `sk_live_…` / `sk_test_…` and are still accepted) | long-lived server-to-server calls, tenant-scoped |
 | **Widget JWT** | JWT | the browser widget; minted server-side via `POST /v1/tokens`, scoped to one application (and optionally one domain) |
 
 The one-call signup endpoint `POST /v1/tenants:provision` uses a dedicated

@@ -8,7 +8,13 @@ types share the surface, each with a different blast radius.
 
 ## API keys (tenant)
 
-- Prefix `sk_live_` / `sk_test_`, sent as `Authorization: Bearer sk_…`.
+- Prefix `cd_live_` (production) or `cd_test_` (staging and development),
+  followed by 32 lowercase hex characters, sent as
+  `Authorization: Bearer cd_live_…`.
+- **Keys created before the switch to `cd_` start with `sk_live_` /
+  `sk_test_`, and they keep working everywhere** with the same tenant scope
+  and role as before. There is no need to replace them; every new key is issued
+  as `cd_live_` or `cd_test_`.
 - Stored only as a hash — the full key is shown **once**, at creation.
 - **Tenant-scoped**: an API key only ever reaches its own tenant's applications,
   connections, webhooks, and billing. Anything outside that tenant is a `404`.

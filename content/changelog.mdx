@@ -15,6 +15,34 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **CustomDomain™, one word.** The product now reads CustomDomain™ everywhere:
+  the console, the widget, emails and these docs. Nothing in the API changed
+  name.
+- **New API key prefix.** New keys start with `cd_live_` or `cd_test_`. Keys
+  that start with `sk_live_` or `sk_test_` keep working; there is nothing to
+  rotate. See [API keys](/docs/authentication/overview).
+- **Hand the DNS step to an AI assistant.** On the manual step, the widget
+  offers one ready prompt with the exact records for the customer's provider,
+  and opens it in ChatGPT, Claude, Perplexity or Grok (Gemini and Copilot get
+  it on the clipboard). The prompt holds no link or credential.
+- **Send the records to whoever manages DNS.** The widget emails the
+  instructions, with an optional note, to the person who can make the change,
+  and the console's domain page does the same for your teammates, inviting
+  them to your workspace if you are an admin.
+- **Nameserver hosting, rolling out.** Where a provider offers no automatic
+  setup, the widget can offer to host the domain's DNS: the owner changes the
+  nameservers once and every record after that is written for them. See
+  [Managed DNS](/docs/dns/managed-dns).
+- **Upload a logo.** Widget branding takes an uploaded logo as well as a URL;
+  any common image format is turned into a clean PNG sized for the widget.
+- **See where each domain came from.** Connections carry `created_via`
+  (`widget`, `console`, `api`, `agent` or `mcp`), and the console's Domains
+  page filters by it.
+- **A calmer, clearer widget.** The manual step now leads with a link to the
+  provider's DNS panel and shows each record's live status; the widget moves
+  smoothly between steps, fills the screen on phones and respects reduced
+  motion.
+
 - **The widget tells people exactly what is wrong.** While a customer adds
   records by hand, the widget reads public DNS for each one and shows found,
   not found yet, or what answers instead ("Still points to Squarespace"), and

@@ -21,11 +21,11 @@ _openapi:
           goes live.
 
 
-          Server-to-server only (`sk_` API key): a widget JWT lives in a browser
-          and may not choose the records we write into a customer's zone. Hosts
-          are relative to the connection (`@`, `_dmarc`, `sel._domainkey`) and
-          must resolve inside its zone. The Domain Connect rail refuses a
-          connection carrying a supplied set: that rail applies OUR published
+          Server-to-server only (API key): a widget JWT lives in a browser and
+          may not choose the records we write into a customer's zone. Hosts are
+          relative to the connection (`@`, `_dmarc`, `sel._domainkey`) and must
+          resolve inside its zone. The Domain Connect rail refuses a connection
+          carrying a supplied set, because that rail applies OUR published
           templates at the provider, so it cannot write records it did not
           author.
 ---

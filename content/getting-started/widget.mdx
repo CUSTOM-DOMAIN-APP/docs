@@ -59,7 +59,7 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 | --- | --- | --- |
 | Cloudflare, DNSimple, Netlify, Vercel, WordPress.com | **Sign in with the provider** (OAuth, one-time token) | nothing |
 | NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider | nothing |
-| GoDaddy, Namecheap, Name.com, IONOS, OVH, Route 53, everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider, and a live check of each record | the records (about two minutes) |
+| GoDaddy, Namecheap, Name.com, IONOS, OVH, Route 53, everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider, and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where offered) let CustomDomain™ host the DNS | the records (about two minutes), or nothing |
 | Unknown provider | a provider picker, then the records | the records |
 
 This table is what `POST /v1/domains:check` returns as `rails`; the widget
@@ -69,7 +69,7 @@ reads it live, so you never have to maintain it.
 
 For records only you know (SES DKIM, a verification `TXT`), create the
 connection **server-side first** (`POST /v1/connections`, then
-`PUT /v1/connections/{id}/records` with your `sk_` key), and open the widget
+`PUT /v1/connections/{id}/records` with your API key), and open the widget
 for that domain: it shows *your* records. An email-only set (no edge record) is
 verified and reported but **never served** and gets **no certificate**; that is
 by design. [Bring your own records](/docs/dns/bring-your-own-records).
@@ -79,8 +79,10 @@ by design. [Bring your own records](/docs/dns/bring-your-own-records).
 `onSuccess` fires when the domain is `live`. If the customer closes early,
 the connection keeps being checked (`pending` never fails on its own); the
 next open resumes it. A `failed` connection is recoverable in the modal
-itself: the records stay on screen with the reason, and *I've added them,
-check now* re-enters verification. Subscribe to `connection.live` /
+itself: the records stay on screen with the reason, and *Check now*
+re-enters verification. If the customer emailed the instructions to someone
+else, that person finishes from the link in the email (the modal reports
+`FINISHED_SUCCESSFULLY_LINK_SHARED`). Subscribe to `connection.live` /
 `connection.failed` webhooks (each with `user_id` and, when present,
 `error_code` / `error_message`), and poll `GET /v1/connections/{id}` as the
 fallback.
@@ -88,7 +90,7 @@ fallback.
 ## Don't
 
 - Don't gate your UI on `setupType === "automatic"`; read `rails`.
-- Don't send `Bearer sk_` from the page; the widget JWT is the browser
+- Don't send your API key from the page; the widget JWT is the browser
   credential.
 - Don't call `customdomain.open()` for `*.vercel.app`-style hosts; the
   pre-flight refuses them with `platform_subdomain`.
