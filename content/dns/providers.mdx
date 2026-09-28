@@ -1,65 +1,114 @@
 ---
 title: DNS providers
-description: The built-in auto-write fleet, the connect rails, and the parity census.
+description: Which DNS providers connect in one click, which take an API key, and which take a few records by hand.
 ---
 
-The Connect engine ships **38 built-in DNS provider adapters** plus a full parity
-census of ~63 target providers, each routed to its best working mode
-(`dc` / `oauth` / `api` / `manual`). When a customer's domain is at a supported
-provider, records can be written automatically through one of the
-[connect rails](/docs/connect-flow/overview#the-four-rails); otherwise the flow
-falls back to guided-manual.
+When a customer enters a domain, we look up its nameservers to see who hosts its
+DNS, then offer the easiest way in that works at that provider, in this order:
 
-Root domains (`acme.com` rather than `www.acme.com`) depend on what the
-provider can hold at the zone apex; see [Root domains](/docs/dns/root-domains).
-For records only you know (SES DKIM, a verification `TXT`), see
+1. **Sign in with the provider** (OAuth) or **approve access at the provider**:
+   one click, nothing to paste, and the one-time token is never stored.
+2. **One-click setup** (Domain Connect): the provider applies our signed
+   template after the customer approves it on the provider's site.
+3. **An access role** (Amazon Route 53): the customer lets our AWS account
+   change the zone, with no secret to paste.
+4. **An API key**: the customer creates a scoped credential at the provider and
+   pastes it; we write the records for them.
+5. **Add the records by hand**: the exact rows to copy, with provider-specific
+   steps and a link to the provider's DNS page. This works at every provider.
+
+The console and the widget read the same verdict from
+`POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
+never disagree about what to show. `GET /v1/providers` lists every adapter and
+`GET /v1/providers/census` routes every known provider to its mode.
+
+Root domains (`acme.com` rather than `www.acme.com`) depend on what the provider
+can hold at the zone apex; see [Root domains](/docs/dns/root-domains). For
+records only you know (SES DKIM, a verification `TXT`), see
 [Bring your own records](/docs/dns/bring-your-own-records).
 
-By default no provider credential is **stored**. Rail C (OAuth) uses a one-time
-token that is always discarded, and Rail A (provider-hosted one-click setup)
-uses no server-to-server credential at all. A Rail B (API-token) credential is likewise
-used once and discarded **unless the user opts in** to
-[remembering it](/docs/dns/provider-setup#remembering-a-key-optional), in which
-case it is stored encrypted at rest and revocable any time.
+## One click, nothing to paste
 
-## Auto-write fleet (a sample)
-
-These providers have a libdns-shaped writer registered in the adapter registry.
-Each is idempotent and reconciles full record sets (multi-value rrsets are
-preserved, stale records removed). The live, complete set is returned by
-`GET /v1/providers`, and `GET /v1/providers/census` routes every target provider
-to its working mode.
-
-| Provider | Key | Credential (used once; stored only if you opt in) |
+| Provider | How it connects | Notes |
 | --- | --- | --- |
-| Cloudflare | `cloudflare` | Scoped API token (Bearer) |
-| DigitalOcean | `digitalocean` | API token (Bearer) |
-| Gandi | `gandi` | LiveDNS API key |
-| deSEC | `desec` | API token |
-| Hetzner | `hetzner` | DNS API token |
-| Vercel | `vercel` | API token (Bearer) |
-| DNSimple | `dnsimple` | API token (Bearer) |
-| Porkbun | `porkbun` | `apikey:secretapikey` pair |
-| Linode | `linode` | Personal access token (Bearer) |
-| Vultr | `vultr` | API key (Bearer) |
-| Name.com | `namecom` | `user:token` (Basic) |
-| GoDaddy | `godaddy` | `gd_pat_…` (Bearer); legacy `key:secret` (sso-key) still accepted |
-| IONOS | `ionos` | API key (`prefix.secret`) |
-| Netlify | `netlify` | API token (Bearer) |
-| Amazon Route 53 | `route53` | `accessKeyId:secretAccessKey[:sessionToken]` (SigV4); zone arg = Hosted Zone ID |
-| Google Cloud DNS | `gcpdns` | Service-account JSON (+ `managed_zone`); OAuth2 JWT → bearer |
-| Azure DNS | `azuredns` | JSON `{tenant_id,client_id,client_secret,subscription_id,resource_group}` |
-| Namecheap | `namecheap` | `apiUser:apiKey[:userName[:clientIp]]` (the calling IP must be whitelisted: `34.234.249.128` on the hosted service) |
-| One-click setup (provider-hosted) | `domain-connect` | Redirect-based (no server token) |
+| Cloudflare | **Sign in with Cloudflare** | A root CNAME is fine: Cloudflare flattens it. |
+| DNSimple, Netlify, Vercel, WordPress.com | **Sign in with the provider** | Netlify writes need the domain on Netlify DNS. |
+| DigitalOcean, Linode (Akamai Cloud) | **Sign in with the provider** | Available when this deployment has registered an OAuth app for the provider; otherwise use a personal access token. |
+| Porkbun | **Approve access at Porkbun** | Shown when enabled for this deployment. Porkbun only lets the API change domains that have API Access turned on. |
+| OVHcloud | **Grant access at OVHcloud** | Shown when enabled for this deployment; otherwise use an OVHcloud application key. |
+| NameSilo, Glauca Digital, Domain Chief | **One-click setup** (Domain Connect) | These providers serve our templates. |
+| Amazon Route 53 | **Access role** (recommended) | Create a role in your AWS account that lets us change this zone; nothing secret to paste. An IAM access key works too. |
 
-The registry also includes AliDNS, Bunny, ClouDNS, Constellix, DNSMadeEasy,
-DreamHost, Dynadot, EasyDNS, GleSYS, Hostinger, LuaDNS, NameSilo, Njalla, OVH,
-Openprovider, PowerDNS, Simply, Spaceship, TransIP, and WordPress.com.
+Sign-in and approval tokens are used once to write the records and are never
+stored, which also means we cannot repair those records later without asking
+again.
 
-## Using a provider token (Rail B)
+### Speaks one-click setup, but has not onboarded our templates
 
-The BYO-token rail writes a connection's records through the customer's provider
-with a scoped token, used once and (by default) not persisted:
+GoDaddy, IONOS, Aruba and Squarespace answer Domain Connect discovery but have
+not onboarded our templates, so the console does not offer a one-click button
+that would end on the provider's error page. Cloudflare answers too; its sign-in
+is the one-click path. Until each provider onboards the templates, GoDaddy and
+IONOS connect with an API key, and Aruba and Squarespace take the records by
+hand.
+
+## With an API key
+
+The console asks for each part as its own labeled field, links the page where
+the credential is created, and lists the steps; see
+[Provider setup](/docs/dns/provider-setup) for every provider's steps.
+
+| Provider | What you create | Before you start |
+| --- | --- | --- |
+| GoDaddy | Personal Access Token with `domains.domain:read` and `domains.dns:update` | Any account that holds a domain can create one. One-click setup is waiting on GoDaddy's onboarding. |
+| Namecheap | API key (and your username) | Only accounts with 20 or more domains, a $50 balance, or $50 spent in the last 2 years; whitelist `34.192.32.132`. Not for domains on Namecheap hosting DNS. |
+| Amazon Route 53 | IAM access key (plus the session token for temporary `ASIA` keys) | The access role above is the recommended alternative. |
+| Alibaba Cloud DNS | RAM AccessKey ID and secret (plus an STS security token for temporary credentials) | The domain must already be a zone in Alibaba Cloud DNS. |
+| ALL-INKL.COM | KAS login and password (plus the one-time code with two-factor login) | Used once and never stored. |
+| Arsys | Hosting domain and DNS API password | Activate the DNS API in the Panel de Control. Used once and never stored. |
+| Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. |
+| Bunny DNS | Account API key | |
+| ClouDNS | API user (or API sub-user) and password | API access comes with ClouDNS's paid plans. |
+| Constellix | API key and secret key | |
+| cPanel hosts | cPanel username, API token and server hostname | For hosts that run cPanel; we connect on port 2083. |
+| deSEC | API token | |
+| DigitalOcean | Personal access token with the domain scopes | Or sign in with DigitalOcean when available. |
+| DNSimple | Account API access token | Or sign in with DNSimple. |
+| DNS Made Easy | API key and secret key | |
+| DreamHost | API key with the `dns-*` functions | |
+| Dynadot | Production API key | Whitelist `34.192.32.132` in Dynadot's API settings. |
+| easyDNS | REST API token and key | |
+| Epik | API signature | Allow `34.192.32.132` in Epik's API settings. |
+| Gandi | Personal access token with "Manage domain name technical configurations" | |
+| GleSYS | API key with Domain access, and the project ID | |
+| Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. |
+| Hetzner | Hetzner Console project API token (Read & Write) | Tokens from the old DNS Console no longer work. |
+| Hostinger | hPanel API token | |
+| IONOS | API key (public prefix and secret) | |
+| Linode | Personal access token with Domains read/write | Or sign in with Linode when available. |
+| LuaDNS | API key and account email | Turn on API access first. |
+| Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
+| NameBright | API application (account, application name, secret) | NameBright grants API access on request; whitelist `34.192.32.132` on the application. |
+| NameSilo | API key | Or use one-click setup. |
+| Netlify | Personal access token | Or sign in with Netlify. |
+| Njalla | API token | |
+| Openprovider | API token from `/v1beta/auth/login` | API access must be enabled for the user; tokens last 48 hours, so they are used once. |
+| OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Or grant access at OVHcloud when available. |
+| Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun when available. |
+| Simply.com | API key and account number | |
+| Spaceship | API key and secret with the DNS record scopes | |
+| TransIP | Access token | Switch off the token's whitelisted IP option, or whitelist `34.192.32.132`. |
+| united-domains | DNS API key | Needs the DNS API add-on. |
+| Vercel | Access token | Or sign in with Vercel. |
+| Vultr | API key | Add `34.192.32.132/32` under Access Control. |
+
+`34.192.32.132` is the address the hosted service's DNS writes come from
+(the control plane's `CONNECT_CLIENT_IP`); a self-hosted deployment uses its own.
+
+### Using a provider token through the API
+
+The BYO-token rail writes a connection's records with the customer's own
+credential:
 
 ```bash
 curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
@@ -67,74 +116,69 @@ curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
   -H "Content-Type: application/json" \
   -d '{
     "provider": "cloudflare",
-    "zone": "customer.com",
-    "credential": { "token": "<scoped-provider-token>" },
-    "records": [ { "type": "CNAME", "host": "app", "value": "edge.customdomain.ai" } ]
+    "credential": { "token": "<scoped-provider-token>" }
   }'
 ```
 
-Scope the token to the customer's zone(s) with edit rights; it is used for the
-single write and then discarded, unless the user opts in to
-[remembering it](/docs/dns/provider-setup#remembering-a-key-optional) for reuse.
+`credential.token` carries every part of the credential in one string. The
+console builds it from the separate fields; through the API you send it
+yourself:
 
-The colon-joined formats in the table above are the **API wire format** for
-`credential.token`. The console never asks anyone to type them: each
-part is a separate labeled field (GoDaddy: one Personal Access Token; Namecheap:
-username + API key; Route 53: access key ID + secret access key; Cloudflare: one
-token), linked to the provider's credential page with step-by-step instructions,
-and joined for you on submit. See [Provider setup](/docs/dns/provider-setup).
+| `provider` | `credential.token` |
+| --- | --- |
+| `godaddy` | the Personal Access Token (a classic `key:secret` pair still works) |
+| `namecheap` | `apiUser:apiKey`, optionally `:userName` and `:clientIp` |
+| `route53` | `accessKeyId:secretAccessKey`, plus `:sessionToken` for temporary keys |
+| `alidns` | `accessKeyId:accessKeySecret`, plus `:securityToken` for STS credentials |
+| `allinkl` | `login:password`, plus `:otp` with two-factor login |
+| `arsys` | `hostingDomain:apiPassword` |
+| `azuredns` | `subscriptionId:resourceGroup:accessToken` |
+| `cloudns` | `authId:password`, `sub:subAuthId:password` or `subuser:subAuthUser:password` |
+| `constellix`, `dnsmadeeasy`, `spaceship` | `apiKey:secret` |
+| `cpanel` | `user:token:host` |
+| `easydns` | `token:key` |
+| `gcpdns` | `projectId:accessToken` |
+| `glesys` | `projectId:apiKey` |
+| `ionos`, `uniteddomains` | `publicPrefix.secret` (one key, prefix and secret joined by a dot) |
+| `luadns` | `email:apiKey` |
+| `namebright` | `account:appName:secret` |
+| `namecom` | `username:token` |
+| `ovh` | `appKey:appSecret:consumerKey`, prefixed with `ca:` or `us:` outside Europe |
+| `porkbun` | `apiKey:secretApiKey` |
+| `simply` | `accountNumber:apiKey` |
+| every other provider | the single token or key |
 
-## How connecting works: what you need per provider
+## By hand, with provider-specific steps
 
-### What actually works today, per provider
+Every provider can be connected by adding the records the console shows. For
+these the console also names the provider and shows its own steps (where the
+DNS page is, what the name field wants for the root, and the pitfalls): 123 Reg,
+ALL-INKL.COM, Arsys, Aruba, BigRock, Bluehost (and HostMonster and Just Host),
+Crazy Domains, Domain.com, Enom, Epik, Fasthosts, FatCow, Freename, GreenGeeks,
+home.pl, HostGator, Hosting.com, Hostpoint, Hover, InMotion Hosting, iPage,
+iwantmyname, Locaweb, Mijndomein, NameBright, Namecheap, Network Solutions,
+o2switch, one.com, OpenSRS, Papaki, Register.com, Register.it, Registro.br,
+ResellerClub, Shopify, SiteGround, Squarespace, STRATO, united-domains, Web.com,
+Wix, World4You and xneelo, plus generic cPanel steps for hosts that run cPanel.
+Any other provider gets the same records with general steps.
 
-Measured against production, not the adapter list. "Automatic" means we can
-write the records for you; "manual" means you add the records we show.
+## Where keys are kept
 
-| Provider | Root domain | How it connects today | Notes |
-| --- | --- | --- | --- |
-| Cloudflare | ✅ ALIAS-style (flattened CNAME) | **Sign in with Cloudflare** (OAuth, one click) or an API token | The best-supported path. |
-| Vercel · Netlify · DNSimple · WordPress.com | ✅ | **Sign in with the provider** (OAuth) | Registered and live. |
-| GoDaddy | ✅ via **A records** at `@` | **Manual** for most accounts | GoDaddy issues API access only to 10+ domain / paid accounts; its one-click (Domain Connect) rail needs GoDaddy-side onboarding that isn't complete. |
-| Namecheap · Name.com | ✅ via **A records** at `@` | API token, or manual | No ALIAS type at the root; use the A records the console shows. |
-| Route 53 | ✅ ALIAS | Access key + secret (+ session token for temporary credentials) | IAM user with `ChangeResourceRecordSets` on the zone. |
-| OVH · Google Cloud DNS · Azure DNS · DigitalOcean | ✅ / varies | API credentials, or manual | DigitalOcean OAuth is not registered yet. |
-| NameSilo · Glauca Digital · Domain Chief | ✅ | **One-click setup** (Domain Connect) | These providers serve our templates. |
-| Wix · Squarespace · Hover · anything else | depends on the panel | Manual | Add the records we show. |
-
-The console detects your provider from the domain's nameservers and shows
-only the paths that exist for it.
-
-
-There are three real-world requirement classes. **"Code ✅" means the adapter is
-built and tested; the "External" column is what you or your customer must still
-do: the parts code can't remove.**
-
-| Model | Providers | Code | External step |
-| --- | --- | --- | --- |
-| **BYO API token** (Rail B) | Cloudflare, DigitalOcean, Gandi, deSEC, Hetzner, Vercel, DNSimple, Porkbun, Linode, Vultr, Name.com, GoDaddy, IONOS, Netlify | ✅ | Customer generates a scoped token and pastes it. No approval for most. **Namecheap still requires enabling API access + IP-whitelisting + an account threshold. GoDaddy's legacy API keys were gated by account tier; its Personal Access Tokens are not, so a PAT is the way in for an ordinary account.** |
-| **Machine credential (OAuth2 / signed)** (Rail B) | Google Cloud DNS, Azure DNS, Amazon Route 53 | ✅ | Customer creates a service account (GCP) / app registration (Azure) / IAM key (AWS) and pastes the credential. No approval of *your* service; the customer needs cloud-admin access. |
-| **3-legged consumer OAuth** (Rail C: "Log in with your provider, click Allow") | per registered provider | ⚠️ business step | **You** register an OAuth app with each provider and pass its partner/approval process (legal, branding, security review). The code path exists and is wired via `OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`; **provider-hosted one-click setup (Rail A) is the built-in alternative that avoids per-provider OAuth registration.** |
-
-So: the built adapters are code-complete. Going live *as a service* means (a)
-some providers gate who can get API access, and (b) the frictionless "connect
-account" UX (Rail C) requires per-provider OAuth-app approval that only your
-company can obtain.
+Sign-in tokens and one-click setup store nothing. An API key is used for the
+write and kept only when the customer leaves **Remember this key** ticked in the
+console (through the API, only when the request sets `remember`). A kept key is
+encrypted with AES-256-GCM, scoped to one workspace and provider, used only
+server-side, and revocable any time under **Settings, Connected provider
+accounts**. Account passwords and short-lived tokens (ALL-INKL.COM, Arsys,
+Google Cloud DNS, Azure DNS, Openprovider) are never kept. See
+[Remembering a key](/docs/dns/provider-setup#remembering-a-key-optional).
 
 ## One-click setup (Rail A)
 
-Rail A uses the provider-hosted one-click protocol and is redirect-based: the
-customer is sent to their provider, which applies a signed template and returns.
-There is no server-to-server token. Discovery is via
-`TXT _domainconnect.<domain>` → the provider's settings endpoint. It offers a
-smooth connect flow **without** registering a bespoke OAuth app per provider.
-Both the synchronous redirect and the asynchronous variant are supported
-(`POST /v1/connections/{id}/domainconnect:start`).
-
-## Roadmap
-
-- **Squarespace**: no general third-party DNS-record write API; connect via
-  one-click setup / guided-manual instead of a token adapter.
-- Additional libdns providers can be added by implementing a `Writer` +
-  conformance test. Per-provider credential steps live in
-  [Provider setup](/docs/dns/provider-setup).
+One-click setup uses the provider-hosted Domain Connect protocol and is
+redirect-based: the customer is sent to their provider, which applies a signed
+template and returns. There is no server-to-server token. Discovery is via
+`TXT _domainconnect.<domain>` and the provider's settings endpoint. Both the
+synchronous redirect and the asynchronous variant are supported
+(`POST /v1/connections/{id}/domainconnect:start`). The button is only offered
+for providers that serve our templates.

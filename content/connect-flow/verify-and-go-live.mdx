@@ -41,12 +41,13 @@ Both the synchronous redirect and the asynchronous variant are supported.
 
 ## Rail B: API token (BYO)
 
-The customer supplies a **scoped** provider credential; it writes the records
-once and is discarded afterwards **by default** (persisted only if the user opts
-in to [remembering it](/docs/dns/provider-setup#remembering-a-key-optional)). In
-the console, multi-part credentials are collected as separate labeled fields
-(GoDaddy: API key + secret; Namecheap: username + API key; Route 53: access key
-ID + secret access key) and joined into `credential.token` for you; see
+The customer supplies a **scoped** provider credential; it writes the records,
+and through the API it is discarded afterwards unless the request asks to
+[remember it](/docs/dns/provider-setup#remembering-a-key-optional) (in the
+console the remember box starts ticked). In the console, multi-part credentials
+are collected as separate labeled fields (GoDaddy: one Personal Access Token;
+Namecheap: username and API key; Route 53: access key ID and secret access key,
+or an access role instead) and joined into `credential.token` for you; see
 [Provider setup](/docs/dns/provider-setup) for each provider's exact steps.
 Calling the API directly:
 

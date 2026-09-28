@@ -31,11 +31,13 @@ available for a given domain.
 
 ### Is my provider API key stored?
 
-Not by default. It's used once to write records and then discarded. You can
-**optionally** tick **"Remember this key"** to save it (encrypted at rest, scoped
-to your tenant + that provider) so you can reuse it for other domains in one
-click; the plaintext never leaves the server, and you can revoke it any time
-under **Settings → Connected provider accounts**. See
+Only if you keep **Remember this key** ticked when you connect in the console
+(through the API, only when the request sets `remember`). A kept key is
+encrypted at rest, scoped to your workspace and that provider, and reused for
+your other domains in one click; the plaintext never leaves the server, and you
+can revoke it any time under **Settings, Connected provider accounts**. Untick
+the box and the key is used once to write the records, then forgotten. Account
+passwords and tokens that expire within hours are never kept. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
 ### Can I connect several domains on the same provider account at once?

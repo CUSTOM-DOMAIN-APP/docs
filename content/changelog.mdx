@@ -3,7 +3,7 @@ title: Changelog
 description: How the product and API change over time.
 ---
 
-CustomDomain™ doesn't yet cut numbered releases; the hosted service is
+CustomDomain™ doesn't yet cut numbered releases. The hosted service is
 continuously updated, and the API is versioned separately (below).
 
 ## API versioning policy
@@ -15,6 +15,33 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **More ways to connect without pasting a key.** Vercel connects through the
+  CustomDomain™ integration install, Porkbun through "Approve access at
+  Porkbun", OVHcloud through a consent page per region (Europe, Canada, US), and
+  Akamai Cloud (Linode) and DigitalOcean through sign-in. Deployments can keep
+  a sign-in as an encrypted grant (`OAUTH_MANAGED_PROVIDERS`) so the connection
+  stays managed and can be re-applied.
+- **Route 53 without access keys.** A customer can create a limited IAM role in
+  their own AWS account from our template instead of pasting an access key.
+- **Seven new API key rails.** United Domains, Epik, NameBright, ALL-INKL.COM,
+  cPanel hosts (including O2switch) and Arsys.
+- **One-click only where it works.** Domain Connect is offered only after the
+  provider's own API confirms it serves the exact template, and the button
+  appears by itself once a provider onboards it.
+- **Provider fixes.** Hetzner moved to the Hetzner Console API, Hostinger to its
+  new API host, Name.com to its Core API and Openprovider to `/v1`; Namecheap,
+  Dynadot, Porkbun, deSEC, Constellix and a dozen others follow each provider's
+  current documentation.
+- **Safer agent approvals.** The screen where you approve an AI agent now
+  shows where its access would go and whether that address is a known
+  assistant, a program on your computer, or unverified, and blocks agents that
+  pretend to be Claude, ChatGPT or another brand. Agents can identify
+  themselves with a published client metadata document instead of registering,
+  and their refresh tokens now rotate on every use. See
+  [The OAuth flow](/docs/agents/oauth-flow).
+- **Provider logos.** The widget, the console and the DNS instruction emails
+  show the logo of your customer's DNS provider wherever they name it, and the
+  logo of the service a record still points to ("still points to Squarespace").
 - **CustomDomain™, one word.** The product now reads CustomDomain™ everywhere:
   the console, the widget, emails and these docs. Nothing in the API changed
   name.
@@ -143,28 +170,28 @@ never change meaning or disappear without a new major version. See the
 - **Route 53** accepts a session token for temporary (`ASIA…`) credentials.
 - **Clearer errors.** A DNS-provider write that fails is reported as a 422
   `dns_write_failed` with the provider's reason, not a 503.
-- **Tenant-scoped connection webhooks.** Connection lifecycle envelopes now
+- **Tenant-scoped connection webhooks**: connection lifecycle envelopes now
   include the optional `user_id` echoed from the connection's `end_user_ref`,
   allowing integrators to associate events with the originating tenant or end
   user. Connections created without an `end_user_ref` continue to omit it.
-- **Integrator-supplied record sets.** `PUT /v1/connections/{id}/records`
+- **Integrator-supplied record sets**: `PUT /v1/connections/{id}/records`
   replaces a connection's desired records with a set the integrator authored, for
   records no template can derive (Amazon SES mints three Easy-DKIM CNAMEs per
   domain). Server-to-server only, and the one-click template rail refuses such a
   connection. See [Create a connection](/docs/connect-flow/create-a-connection#supplying-your-own-records).
-- **Money-safe domain buying.** Embedded checkout that authorizes the card,
+- **Money-safe domain buying**: embedded checkout that authorizes the card,
   registers the domain server-side (webhook-driven), and captures only after a
   successful registration; purchased domains land in the console pre-connected.
   See [Buying a domain](/docs/sell/buying-a-domain).
-- **Hosted MCP server live.** `https://mcp.customdomain.ai/mcp` (Streamable
+- **Hosted MCP server live**: `https://mcp.customdomain.ai/mcp` (Streamable
   HTTP) with eleven agent tools, plus a console **MCP server** page under
   *Integrate* with credentials and client configs.
-- **One-click setup template catalog live upstream.** The full customdomain.ai
+- **One-click setup template catalog live upstream**: the full customdomain.ai
   template catalog (apex A/AAAA/CNAME/www, subdomain, www, wildcard, verify,
   connect-verified, CAA, and the email set) is merged into the provider-hosted
   one-click protocol's upstream template registry, and prod embeds the shipped
   catalog.
-- **One-click sync rail live at registry-mirroring DNS providers.** Apply URLs
+- **One-click sync rail live at registry-mirroring DNS providers**: apply URLs
   are RS256-signed with the `_dck1` selector (pubkey published at
   `_dck1.customdomain.ai`) and a conformance CI gate keeps the catalog valid.
   Providers that mirror the public template registry serve the catalog today
@@ -176,45 +203,45 @@ never change meaning or disappear without a new major version. See the
   paths, plus one-click OAuth where the provider runs an OAuth rail (Cloudflare
   does; GoDaddy and IONOS do not). See
   [Setup types & the ask gate](/docs/concepts/ownership-and-setup-types).
-- **Share links.** Forward a connect flow to a colleague with a link that carries
+- **Share links**: forward a connect flow to a colleague with a link that carries
   a 30-day expiry; expired share tokens return `404`.
-- **Frontend overhaul.** The console gained a shared component library, dark mode,
+- **Frontend overhaul**: the console gained a shared component library, dark mode,
   a `⌘K` command palette, and a mobile-friendly layout.
-- **Shop-style domain search.** Buying-domain search now groups results into the
+- **Shop-style domain search**: buying-domain search now groups results into the
   exact name, other TLDs (`.com .net .org .io .co .ai .app .dev .xyz .me`), and
   close name variants. See [Buying a domain](/docs/sell/buying-a-domain#shop-style-search).
-- **Opt-in credential reuse.** You can optionally save a provider API key
+- **Opt-in credential reuse**: you can optionally save a provider API key
   (encrypted at rest, per tenant + provider) to reuse it for other domains in one
   click, and revoke it any time under **Settings → Connected provider accounts**.
   Off by default; the plaintext never leaves the server. See
   [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
-- **Bulk connect.** After providing a provider key, connect the other domains on
+- **Bulk connect**: after providing a provider key, connect the other domains on
   that account (all or a subset) in one step, with per-domain status. Supported
   for Cloudflare, GoDaddy, Route 53, and Namecheap. See
   [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
-- **Server-enforced roles.** The role → permission matrix is now enforced at the
+- **Server-enforced roles**: the role → permission matrix is now enforced at the
   control-plane, not just the console: API-key minting and member/role changes
   require admin or owner, billing requires owner. See
   [Roles & permissions](/docs/security/overview#roles--permissions).
-- **Per-provider credential fields.** The console's connect flow collects API
+- **Per-provider credential fields**: the console's connect flow collects API
   credentials as separate labeled fields (with links to each provider's
   credential portal and numbered steps) instead of a colon-joined paste; used
   once and discarded by default, unless you opt in to remembering a key.
-- **Resumable setup.** The Domains list's **Finish setup** reopens an abandoned
+- **Resumable setup**: the Domains list's **Finish setup** reopens an abandoned
   guided connect flow at the right step.
-- **Four connect rails.** OAuth into the DNS provider (flagship), provider-hosted
+- **Four connect rails**: OAuth into the DNS provider (flagship), provider-hosted
   one-click setup (sync + async), BYO API-token apply, and guided-manual, all
   converging on the same `pending → propagating → live` lifecycle.
-- **Broad DNS auto-write fleet.** 38 built-in provider adapters (Cloudflare,
+- **Broad DNS auto-write fleet**: 38 built-in provider adapters (Cloudflare,
   Route 53, Google Cloud DNS, Azure DNS, GoDaddy, Namecheap, and many more) plus a
   full parity census that routes ~63 target providers to their working mode, and
   one-click setup for tokenless applies.
-- **Embeddable widget/SDK.** `customdomain-js`, `window.customdomain`, the
+- **Embeddable widget/SDK**: `customdomain-js`, `window.customdomain`, the
   `customdomain:*` events, ~90-token white-label theming, and embedded mode.
-- **Signed webhooks.** HMAC-SHA256 deliveries with a replay window, retries, and
+- **Signed webhooks**: HMAC-SHA256 deliveries with a replay window, retries, and
   a delivery log at `GET /v1/webhook-deliveries`.
-- **Billing & metering.** A Stripe-backed plan catalog with metered domain
+- **Billing & metering**: a Stripe-backed plan catalog with metered domain
   usage and overage on the Growth tier.
-- **This documentation site.** A proper information architecture with a
+- **This documentation site**: a proper information architecture with a
   generated, always-in-sync API reference (see
   [how it stays in sync](/docs/api-reference#keeping-this-in-sync)).

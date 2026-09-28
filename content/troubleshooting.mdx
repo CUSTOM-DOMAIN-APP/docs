@@ -77,10 +77,16 @@ support@customdomain.ai and we'll verify you by hand.
 
 ## GoDaddy won't give me an API token
 
-GoDaddy only issues DNS API access to accounts with 10+ domains or a paid
-plan. Everyone else: add the records shown in the console by hand; that path
-works on every GoDaddy account. GoDaddy's "sign in with GoDaddy" one-click
-setup also isn't available yet (it requires GoDaddy-side onboarding).
+Any GoDaddy account that holds at least one domain can create a Personal Access
+Token. Open GoDaddy's
+[Personal Access Token page](https://developer.godaddy.com/en/personal-access-token),
+click **+ Generate Token**, tick only `domains.domain:read` and
+`domains.dns:update`, set a short expiration and copy the token (GoDaddy shows it
+once). An older key and secret pair still works, but GoDaddy has deprecated it
+for the Domains API. If you would rather not create a token, add the records
+shown in the console by hand; that works on every GoDaddy account. GoDaddy's
+one-click setup (Domain Connect) isn't available yet: it is waiting on GoDaddy to
+onboard our templates.
 
 ## Route 53: "The security token included in the request is invalid"
 

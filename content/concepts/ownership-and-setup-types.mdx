@@ -9,7 +9,7 @@ description: How a domain is classified, the four connect rails, and the status-
 widget to the smoothest available [rail](/docs/connect-flow/overview#the-four-rails):
 
 - **automatic**: the provider can be configured without the customer copying
-  records (an OAuth-into-provider authorization or a one-click setup apply).
+  records: an OAuth-into-provider authorization or a one-click setup apply.
   `domains:check` reports `oauth_available` and `domain_connect` so the widget
   knows which is on offer.
 - **manual**: no automatic path; the customer copies the exact records into
@@ -32,15 +32,15 @@ The engine also returns capability flags (`ns_support`, `wildcard_support`,
 ### Rail truth: what to actually tell the user
 
 `setup_type: automatic` means **an adapter exists** for the provider. It does
-not mean the end user won't have to type anything: for GoDaddy the adapter is
-an API key that GoDaddy only issues to accounts with 10+ domains or a paid
-plan. Read the `rails` block instead:
+not mean the end user won't have to type anything: for GoDaddy the adapter needs
+a Personal Access Token the user creates at GoDaddy. Read the `rails` block
+instead:
 
 ```json
 "rails": {
   "oauth":          { "available": false, "reason": "provider_has_no_oauth" },
   "domain_connect": { "available": false, "reason": "template_not_onboarded" },
-  "api_key":        { "available": true,  "caveat": "GoDaddy only issues API access to accounts with 10+ domains or a paid plan; …" },
+  "api_key":        { "available": true,  "caveat": "Needs a GoDaddy Personal Access Token: any account that holds a domain can create one …" },
   "manual":         { "available": true }
 },
 "recommended_rail": "api_key",
@@ -53,8 +53,10 @@ plan. Read the `rails` block instead:
   When false, **`reason`** is one machine code: `provider_has_no_oauth`,
   `oauth_client_not_registered` (an operator task on your deployment),
   `not_discovered`, `template_not_onboarded` (the provider speaks Domain
-  Connect but hasn't onboarded our template: GoDaddy, IONOS, Cloudflare),
-  `rail_disabled`, `no_adapter`, `unknown_provider`.
+  Connect but hasn't onboarded our template: GoDaddy, IONOS, Cloudflare,
+  Vercel), `redirect_unavailable` (the provider needs our return link for
+  one-click setup, and the template can't carry it yet), `rail_disabled`,
+  `no_adapter`, `unknown_provider`.
 - **`caveat`**: a note on an *available* rail most users still can't use.
   Show it; don't treat it as unavailability.
 - **`recommended_rail`**: the server's pick, `oauth` → `domain_connect` →
@@ -62,17 +64,20 @@ plan. Read the `rails` block instead:
   follow it, so all three surfaces agree.
 - **`end_user_automatic`**: true only when the recommended rail is OAuth or
   one-click. This is the fact `supports_automatic` was always misread as.
-- **`blocked_reason`**: present when *no* rail can connect the domain, set to
-  `unregistered` (no nameservers; fix at the registrar) or
-  `platform_subdomain` (`www.<name>.vercel.app`, where the DNS is the platform's,
-  not the user's; `POST /v1/connections` refuses it with the same code).
+- **`blocked_reason`**: present when *no* rail can connect the domain:
+  `unregistered` (no nameservers: fix at the registrar) or
+  `platform_subdomain` (`www.<name>.vercel.app`, which is the platform's DNS, not the
+  user's; `POST /v1/connections` refuses it with the same code).
 - **`dashboard_url`**: a best-effort deep link into the provider's DNS panel,
   for the "add these records" step.
 
 The legacy `domain_connect` boolean is derived from the same predicate as
 `rails.domain_connect.available`: one-click is advertised only where the
-provider is measured to serve our template (the `DC_SYNC_PROVIDERS`
-allowlist), never merely because discovery answered.
+provider serves our template, never merely because discovery answered: before
+offering one-click, the server asks the provider's own API about the exact
+template the start would send (the answer is cached for five minutes), so the
+button appears by itself once a provider onboards our template. A deployment
+can also allowlist providers with `DC_SYNC_PROVIDERS`.
 
 ## Control is proven by the rail
 
@@ -98,9 +103,10 @@ the ownership proof.
 
 ## Optional credential reuse
 
-By default an API-token credential is used once for the apply and then discarded.
-Optionally, when connecting in the console you can tick **"Remember this key"** to
-save that provider key for reuse. It is **off by default** and opt-in per key.
+Through the API, an API-token credential is used for the apply and then
+discarded unless the request sets `remember`. In the console, **Remember this
+key** starts ticked, so the key is saved for reuse unless the user unticks it.
+Account passwords and tokens that expire within hours are never saved.
 
 A remembered key is encrypted at rest (AES-256-GCM, scoped to one tenant +
 provider) and its plaintext never leaves the server. On the next connect at that
@@ -115,7 +121,7 @@ Revoke a saved key any time under **Settings → Connected provider accounts**. 
 
 Before the edge serves TLS for a hostname, it calls `POST /internal/ask`. The
 control-plane approves the host **iff a connection for it is `live` or
-`propagating`**: a status-based gate, answered from a single indexed lookup so
+`propagating`**. It is a status-based gate, answered from a single indexed lookup so
 the TLS handshake never blocks on business logic. A domain the platform has never
 connected is refused, so the edge will never obtain a certificate for an
 unauthorized host.
