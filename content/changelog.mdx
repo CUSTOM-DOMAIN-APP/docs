@@ -15,12 +15,61 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **The 100 largest registrars, and the platforms that sell domains.** More
+  than 150 DNS hosts, registrars and domain platforms are now known by name,
+  among them all of the 100 largest registrars, and the widget has step by
+  step instructions for 125 of them. Twenty site builders, shops and email
+  suites that sell domains are recognized too (Microsoft 365, BigCommerce,
+  Canva, Tumblr, Kajabi and more). When a platform keeps its domains on
+  another provider's nameservers, detection names the platform: a Shopify
+  store on Google Cloud DNS, a Tumblr domain on WordPress.com and a Canva
+  domain on OpenSRS's shared DNS now get that platform's steps instead of a
+  sign-in that could never reach the zone. See
+  [DNS providers](/docs/dns/providers#domains-bought-through-a-site-builder-or-shop).
+- **Records written for you verify in seconds.** A write through a sign-in,
+  one-click setup or an API key is checked at once, a new connection is
+  checked every five seconds, and when public DNS still has an old or missing
+  answer we ask the zone's own nameservers (every one that answers must serve
+  the record). If the wait passes a minute, the widget now says it is unusual
+  and that closing the window is safe, because the domain connects on its
+  own. See
+  [Apply records & go live](/docs/connect-flow/verify-and-go-live#watch-propagation--live).
+- **One-click setup brings people back.** Version 2 of our Domain Connect
+  templates was merged into the public template repository on 2026-09-29, and
+  every template now names our return domains. A one-click apply carries a
+  signed return link, so after approving at the provider the customer lands
+  back in the widget or the console, which learns the result at once, instead
+  of being left on the provider's page. NameSilo, Glauca Digital and Domain
+  Chief serve our templates. See
+  [One-click setup](/docs/dns/providers#one-click-setup-rail-a).
+- **Three more API key rails.** Tencent Cloud DNSPod (China and International
+  sites), Infomaniak and Internet.bs: paste a key and the records are written
+  for you. A DNSPod key is best created for a CAM sub-user limited to DNS
+  records, and Internet.bs needs `34.192.32.132` on the account's API
+  allowlist. See [Provider setup](/docs/dns/provider-setup).
+- **Sign in with Google Cloud, built and not switched on yet.** Google Cloud
+  DNS will connect through a Google sign-in: we find the Google Cloud project
+  that holds the domain's public zone, so there is no project ID or access
+  token to paste, and a failure says which Google account was used and what
+  to change. It is switched on once its Google client is configured, and
+  until Google verifies the app only its listed test users can sign in. Until
+  then, Google Cloud DNS connects with a project ID and an access token.
+- **Sign in through a registrar's MCP server, built and not switched on
+  yet.** Hostinger, Namecheap, Spaceship, Unstoppable Domains and XServer
+  Domain run MCP servers with their own sign-in and DNS tools, and the
+  control plane can now sign in through them (`flow: mcp_oauth` on
+  `oauth:start`). None is switched on: each waits for the provider to approve
+  CustomDomain™ and for a live test. Until then Hostinger, Namecheap and
+  Spaceship connect with an API key, and Unstoppable Domains and XServer
+  Domain by adding the records by hand.
 - **More ways to connect without pasting a key.** Vercel connects through the
   CustomDomain™ integration install, Porkbun through "Approve access at
-  Porkbun", OVHcloud through a consent page per region (Europe, Canada, US), and
-  Akamai Cloud (Linode) and DigitalOcean through sign-in. Deployments can keep
-  a sign-in as an encrypted grant (`OAUTH_MANAGED_PROVIDERS`) so the connection
-  stays managed and can be re-applied.
+  Porkbun", and Akamai Cloud (Linode) and DigitalOcean through sign-in.
+  OVHcloud's consent page per region (Europe, Canada, US) is there for
+  deployments that register OVHcloud applications; the hosted service has
+  not. Deployments can keep a sign-in as an encrypted grant
+  (`OAUTH_MANAGED_PROVIDERS`) so the connection stays managed and can be
+  re-applied.
 - **Route 53 without access keys.** A customer can create a limited IAM role in
   their own AWS account from our template instead of pasting an access key.
 - **Seven new API key rails.** United Domains, Epik, NameBright, ALL-INKL.COM,
