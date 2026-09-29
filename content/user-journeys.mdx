@@ -31,11 +31,11 @@ The completeness map: every user-facing flow and the surface that implements it.
 
 | # | As a developer, I want to… | Surface / path |
 | --- | --- | --- |
-| D1 | Create and manage applications | Console → Applications (`POST`/`GET /v1/applications`, `GET /v1/applications/{id}`) |
+| D1 | Create and manage applications | Console → Applications and each application's page (`POST`/`GET /v1/applications`, `GET`/`PATCH`/`DELETE /v1/applications/{id}`, its keys and connect target) |
 | D2 | Create, list, and revoke API keys | Console → API keys (`POST`/`GET`/`DELETE /v1/applications/{id}/keys`) |
 | D3 | Invite teammates and set roles | Console → Members (`POST /v1/members`, `PATCH /v1/members/{id}`, `:accept`) |
 | D4 | Connect a domain from the console | Console → Domains (`POST /v1/connections`) |
-| D5 | Inspect a connection and drive it | Console → Domain detail (`GET /v1/connections/{id}`, `/records`, the apply rails) |
+| D5 | Inspect a connection and drive it | Console → Domain detail, for a domain of any application (`GET /v1/connections/{id}`, `/records`, the apply rails, all with the tenant API key) |
 | D6 | See which providers auto-configure | Console → Providers (`GET /v1/providers`, `/v1/providers/census`) |
 | D7 | Receive events and inspect deliveries | Console → **Activity**: register/rotate/delete endpoints and filter deliveries by event type, all on that page (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`). There is no separate "Webhooks" page. |
 | D8 | Track usage against quota | Console → Usage (`GET /v1/billing/usage`) |

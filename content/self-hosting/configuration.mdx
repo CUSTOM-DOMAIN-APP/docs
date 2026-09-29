@@ -51,6 +51,14 @@ loopback only, never the public API port. `EDGE_METRICS=1` exposes `/metrics` on
 the edge's internal health port. Scrape either with your own Prometheus-compatible
 collector.
 
+### Per-domain traffic
+
+The edge counts, per connected domain, requests by status class, bytes sent,
+origin response time and approximate visitors, and posts the counts to your own
+control plane once a minute (`/internal/traffic`, authenticated with
+`EDGE_ASK_SECRET`). Nothing leaves your deployment and no client IP address is
+stored. It is on by default; set `EDGE_TRAFFIC=off` on the edge to switch it off.
+
 ### Product analytics (PostHog)
 
 `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` configure product

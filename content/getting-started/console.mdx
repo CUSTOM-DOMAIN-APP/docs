@@ -54,7 +54,7 @@ widget to your brand, and inviting your team.
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. |
-| **Analytics** | The widget funnel: where customers drop off, by DNS provider and by root versus subdomain. |
+| **Analytics** | The widget funnel: where customers drop off, by DNS provider and by root versus subdomain. Also the traffic your domains receive at the edge, with the busiest domains. |
 | **Widget** | Embed code for your framework, a live preview, and branding. |
 | **API & SDK** | Server-side API keys, SDK quickstarts and webhooks. |
 | **Domain routing** | Where customer domains send traffic. |
@@ -76,6 +76,17 @@ active one; switching is remembered in your browser.
 **New application** asks for a name (with one-tap suggestions such as
 *Staging*) and an environment (Production, Staging or Development). Once it
 exists you can switch to it or go straight to its widget.
+
+Each application has its own page: open it from **Applications** or from the
+switcher. It shows the application's domains with their status (the ones that
+need attention first, each opening its details), its API keys, its widget,
+and where its domains point, with **Rename**, **Switch to it** and **Delete
+application**. Deleting asks you to type the name, revokes the application's
+API keys, and is refused for your workspace's default application and for one
+that still has domains (disconnect them first). An application created through
+the API rather than in the console works the same, except that its widget
+can't be previewed here: its widget secret was issued to whoever created it
+and was never stored in the console.
 
 ## 3. Connect a domain
 
@@ -151,7 +162,16 @@ own nameservers instead. You can leave and come back:
 After three minutes of waiting the page offers a fallback. A stalled
 connection is *paused*, not failed: it keeps being checked every six hours.
 
-While a domain is waiting, its detail page opens **What public DNS shows
+Every domain in your workspace opens on its detail page, whichever
+application it belongs to; the page names the application. A domain that
+isn't live leads with **What happened**: what the last attempt did (it timed
+out, the provider refused a key, it is still waiting for the records, or it is
+connected somewhere else), the next steps in order, and the action that fits:
+**Finish setup**, **Retry** (which restarts a failed attempt), or removing an
+attempt nobody will finish. Below it, a short history says when the domain
+was added and through what, and when its DNS was last checked.
+
+While a domain is waiting, its detail page also opens **What public DNS shows
 right now**: each record's Name to type, whether public DNS has it, what
 answers instead ("still points to Squarespace"), and the mistakes that block
 a connection even when a record looks right, such as the full hostname typed
@@ -165,6 +185,26 @@ Live means the edge terminates TLS and proxies the domain to your
 application's **origin**. If you haven't set one, the domain shows a "not
 configured" page: set it under **Domain routing**. Root-domain redirects
 (`www_redirect`) and per-path rules live on the connection's detail page.
+
+## 7. See its traffic
+
+Once the CustomDomain™ edge serves a domain, its detail page has a
+**Traffic** section: requests by the kind of answer visitors got (success,
+redirects, client errors, server errors), bandwidth sent to visitors, how
+fast your origin answered (p95 and median time to first byte), approximate
+visitors, and when the last request arrived, over 24 hours, 7, 30 or 90 days.
+**Analytics** adds **Edge traffic** for the whole workspace (or one
+application), with the busiest domains.
+
+Only traffic that passes through the edge is counted. A domain connected for
+DNS only points at your own servers, so its visitors never reach us; its page
+says so instead of showing zeros, and your hosting has those numbers.
+
+Counts arrive about a minute after each visit. No visitor's IP address is
+stored: visitors are estimated from a sketch of keyed hashes, and someone who
+visits on two days counts once on each. Hourly detail is kept 14 days and
+daily totals 400 days. The API has the same figures:
+`GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
 
 ## Where each domain came from
 

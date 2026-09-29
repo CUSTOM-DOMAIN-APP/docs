@@ -1,25 +1,25 @@
 ---
 title: Plans & quotas
-description: The plan catalog, metered domain usage, and Stripe checkout.
+description: The plan catalog, trials and subscriptions, what happens without one, metered domain usage, and Stripe checkout.
 ---
 
 ## Plans
 
 The public catalog is returned by `GET /v1/plans` (along with a
-`billing: { configured, mode }` block).
+`billing: { configured, mode, trial_days }` block).
 
 Entitlements gate which products a tenant may use. **Enforced today:** `Power`
 (the `/v1/connections/{id}/power*` surface), `Secure` (the `/v1/ssl*` surface)
-and `WhiteLabel` (widget branding). An unentitled tenant gets
+and `WhiteLabel` (widget branding); an unentitled tenant gets
 `402 plan_upgrade_required`. `Connect` is included on every plan and needs no
 gate. `Monitor` is not gated per tenant yet; the deployment-level
 `MONITOR_ALERTS_ENABLED` flag governs it for everyone.
 
 | Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
 | --- | --- | --- | --- | --- | --- | --- |
-| `free` | $0 | 10 | 1 | **yes** | Connect | self-serve |
-| `startup` | $149/mo | 600 | 50 | no | Connect | self-serve |
-| `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve |
+| `starter` | $10/mo | 10 | 1 | **yes** | Connect | self-serve, 14 day free trial |
+| `startup` | $149/mo | 600 | 50 | no | Connect | self-serve, 14 day free trial |
+| `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
 | `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (preview) | contact sales |
 | `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
 
@@ -27,33 +27,37 @@ Prices and both domain columns above are transcribed from `GET /v1/plans`
 (`price_cents`, `domains_per_year`, `domains_per_month`). If this table and that
 endpoint ever disagree, the endpoint is right and this page is stale.
 
+**Starter replaced the Free plan on 2026-09-29.** `free` is retired: no new
+workspace is put on it, `GET /v1/plans` no longer lists it and Checkout refuses
+it. Workspaces that were on Free keep working while they move to a paid plan;
+see [The Free plan's retirement](#the-free-plans-retirement).
+
 ### Two numbers, and which one gates you
 
 A tier is **sold** annually but **metered** monthly: the meter counts domain
 connections per UTC calendar month, and the quota gate compares against
-`domains_per_month`, which is `ceil(domains_per_year / 12)`. Startup's 600/year is
-therefore **50 in any one month**, and Free's 10/year is **1/month**.
+`domains_per_month`, which is `ceil(domains_per_year / 12)`. Startup's 600/year
+is therefore **50 in any one month**, and Starter's 10/year is **1/month**.
 Ceiling division means the annualized entitlement never shrinks below what was
-sold (Free's 1/month is 12/year effective).
+sold (Starter's 1/month is 12/year effective).
 
 > **Whether that monthly number *blocks* takes both a plan property and a
 > deployment switch.** The plan property is `hard_cap`, and it is `true` only on
-> `free`; see [Overage](#overage) for why no paid tier is ever refused. The
-> switch is `BILLING_ENFORCE_QUOTA`: `infra/docker-compose.prod.yml` ships it
-> defaulted to `0`, so the hosted service runs meter-only and refuses nothing;
-> `1` turns enforcement on. Both must hold, so a paid tier is never refused under
-> any deployment setting. Note the gate also fails **open** by design even when
-> enabled: a billing subscribe/subscription/usage lookup error allows the
-> connect rather than blocking a customer during a billing outage. The gate is
-> `enforceQuota` in `services/control-plane/internal/api/billing.go`; the
-> billing service applies the same `hard_cap` rule in `ConnectDomain`, so the
-> two cannot disagree.
+> `starter` (and the retired `free`); see [Overage](#overage) for why no larger
+> tier is ever refused. The switch is `BILLING_ENFORCE_QUOTA`:
+> `infra/docker-compose.prod.yml` ships it defaulted to `0`, so the hosted
+> service runs meter only and refuses nothing at quota; `1` turns enforcement
+> on. Both must hold. The gate also fails **open** by design even when enabled:
+> a billing lookup error allows the connect rather than blocking a customer
+> during a billing outage. The gate is `enforceQuota` in
+> `services/control-plane/internal/api/billing.go`; the billing service applies
+> the same `hard_cap` rule in `ConnectDomain`, so the two cannot disagree.
 
 Both numbers are published on `GET /v1/plans` (`domains_per_year` and
 `domains_per_month`); `GET /v1/billing/usage`'s `quota` is the monthly one,
 because `used` is a monthly count.
 
-Self-serve plans (`free`, `startup`, `growth`) are bought through Stripe
+Self-serve plans (`starter`, `startup`, `growth`) are bought through Stripe
 Checkout. `premium` and `enterprise` route to a "book a demo" CTA and have no
 public price.
 
@@ -69,27 +73,128 @@ unbranded styling. See
 
 > **Not included, despite older copy:** **SSO** and **SCIM** are *not* built and
 > no tier grants them. SCIM's `/scim/v2/*` surface is deliberately unmounted, and
-> the console's authentication supports email/password, optional Google sign-in
-> and WebAuthn passkeys; there is no SAML/OIDC provider. **Monitor** is DNS
-> *record-drift* detection only; nothing probes a domain or origin for
+> the console's authentication supports email/password, optional Google and GitHub
+> sign-in, and WebAuthn passkeys; there is no SAML/OIDC provider. **Monitor** is DNS
+> *record drift* detection only; nothing probes a domain or origin for
 > reachability, status code or latency, so there is no uptime monitoring. Drift
 > alerts are additionally off unless the deployment sets
 > `MONITOR_ALERTS_ENABLED`; see [Webhooks](/docs/webhooks/overview).
 
-> **Status:** the plan catalog is always public, but Checkout and the billing
-> portal are live only where `STRIPE_SECRET_KEY` **and** the `STRIPE_PRICE_*` ids
-> are configured. Without them those routes return `503 service_unavailable` and
-> `billing.configured` is `false` (the case on a fresh self-hosted deployment).
-> On the hosted service today `GET /v1/plans` returns
-> `billing: { "configured": true, "mode": "live" }`, so Checkout and the portal
-> are live there. Read that block rather than assuming either state. See
-> [Checkout & portal](#checkout--portal).
+## Subscriptions and trials
+
+Every workspace needs an active subscription (or a free trial of one) to
+connect **new** domains. Domains that are already connected are never touched
+by billing: live traffic, certificate renewals, rechecks and monitoring carry on
+whatever the billing state.
+
+- **A new workspace** chooses a plan when it is created (Starter is
+  preselected) and starts a **14 day free trial** through Stripe Checkout. The
+  card is collected at Checkout and the first charge happens when the trial
+  ends; canceling before then costs nothing. Until the trial starts, new
+  connections are refused.
+- **Promotion codes** are entered on the Stripe Checkout page, or applied to a
+  running subscription with `POST /v1/billing/promotion-code`.
+- **Changing plans** on a running subscription is
+  `POST /v1/billing/change-plan`; Stripe prorates the difference. During a
+  trial, the new price applies from the trial's end.
+- **Card updates and cancellation** happen in the Stripe Billing Portal
+  (`POST /v1/billing/portal`, with `flow: "payment_method_update"` or
+  `"subscription_cancel"` to open straight at that task).
+
+### Billing states
+
+`GET /v1/billing/status` (owners and admins) evaluates the workspace into one
+of eight states. Only the last three refuse new connections.
+
+| State | Meaning | New connections |
+| --- | --- | --- |
+| `trialing` | In the free trial of a paid plan; the first charge is at `trial_ends_at`. | allowed |
+| `active` | A paid subscription in good standing. | allowed |
+| `past_due` | A payment failed and Stripe is retrying it. Owners and admins are asked to update the card; nothing else changes. | allowed |
+| `comped` | Complimentary access granted by CustomDomain™ (until `comped_until`, or with no end). | allowed |
+| `grace` | A workspace that was on Free, inside its 14 day grace period. | allowed |
+| `legacy_free` | A Free workspace whose grace has not started yet. | allowed |
+| `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** |
+| `canceled` | The subscription ended. | **refused** |
+
+### What a refusal looks like
+
+The control plane refuses at one place, before a connection is created, for
+every surface that can start one: the console, the API, bulk connect, the MCP
+server, the embedded widget and the start of a domain purchase.
+
+- The workspace itself (an API key, an agent token, an app-scoped token) gets
+  `402 billing_required`, with the reason and where to fix it in `details`.
+- The tenant's **end users** in the embedded widget get
+  `402 connections_unavailable` and a neutral sentence that says nothing about
+  the tenant's plan or billing. The widget maps both to `PlanLimitError` on its
+  `customdomain:error` event.
+
+The switch is `BILLING_REQUIRE_SUBSCRIPTION` (default `1`). With it set to `0`,
+or on a deployment where no Starter price is configured (so nobody could
+subscribe), nothing is refused. The check fails open on a lookup error.
+
+### The Free plan's retirement
+
+A workspace that was on Free keeps its 10 domains a year while it moves:
+
+1. **The grace starts** the first time an owner or admin signs in to the
+   console after the change, or at the workspace's first connection attempt,
+   whichever comes first. (Starting it at deploy time would have run the clock
+   down for workspaces nobody had looked at.) Owners and admins are emailed
+   when it starts.
+2. **For 14 days** everything keeps working. Owners and admins see the setup
+   flow when they sign in to their own workspace (with a "Not now" for the rest
+   of that session; someone who joined the workspace by invite gets the banner
+   instead), a banner on every console page, and email reminders with 7, 3 and
+   1 days left.
+3. **Subscribing during the grace costs nothing before the grace ends:** the
+   subscription starts with a trial that runs exactly to the grace's end.
+4. **After the grace**, without a subscription, new connections are refused.
+   Live domains keep serving.
+
+### Payment failures
+
+A failed payment moves the subscription to `past_due`: owners and admins get an
+email with a link to update the card in the Billing Portal, and a banner, while
+Stripe retries on its own schedule. Nothing is refused during the retries. If
+every retry fails, what happens next is the Stripe account's setting
+("if all retries for a payment fail"): **cancel the subscription** or **mark it
+unpaid** both end in new connections being refused (`canceled`, or `blocked`
+with `reason: "unpaid"`), with an email first. Leaving it past due would never
+restrict anything. An unpaid subscription is fixed with a working card, which
+pays the open invoice; a second checkout is refused (`409`).
+
+### Who sees billing
+
+Billing belongs to a workspace's **owners and admins** (`billing:manage`). The
+billing routes (status, invoices, checkout, portal, plan changes, promotion
+codes, the grace start) answer members, viewers and widget tokens with `403`,
+and the console shows members and viewers a neutral note ("ask an owner or
+admin") instead of the billing page. Two reads stay open to every member:
+`GET /v1/billing/usage` gives them the counts without the billing fields, and
+`GET /v1/billing/notice` tells them only whether billing needs attention and
+whether new connections are paused, never the plan, dates or amounts.
+
+### Billing emails
+
+Owners and admins of the workspace get these, each exactly once:
+
+| Email | When |
+| --- | --- |
+| Trial started | The trial begins (Checkout completed). |
+| Trial ending | 3 days before the first charge. |
+| Payment failed | A charge fails; links to the card update in the Billing Portal. |
+| Free plan ending | The grace starts, and again with 7, 3 and 1 days left. |
+| New connections paused | The workspace becomes restricted (grace or comp ended, or unpaid after retries). |
+| Subscription active again | A restricted or past due workspace is back in good standing. |
+| Subscription canceled | The subscription ends. |
 
 ## Metered usage
 
 `GET /v1/billing/usage` reports the caller tenant's metered **domain
 connections** for the period against the plan's included quota. The tenant is
-derived from the authenticated credential (never a query parameter), and
+derived from the authenticated credential, never a query parameter, and
 `?period=` defaults to the current UTC calendar month.
 
 ```json
@@ -105,6 +210,7 @@ derived from the authenticated credential (never a query parameter), and
   "metered": true,
   "hard_cap": false,
   "status": "active",
+  "billing_state": "active",
   "quota_state": "at_limit",
   "quota_enforced": false,
   "remaining": 0,
@@ -116,35 +222,38 @@ Compare `used` against **`quota`**: the plan's included connections for one
 calendar month, i.e. `domains_per_month` from the catalog (`0` means unlimited).
 `limit` is an alias carrying the identical value: the published schema had
 always declared `limit` while the handler only ever emitted `quota`, so both are
-sent now and either may be read.
+sent now and either may be read. `status`, `has_billing_account` and
+`billing_state` are billing data and are only sent to a credential that holds
+`billing:manage`.
 
 `quota_state` is the server's own verdict: `ok`, `approaching` (at or past 80%
-of quota) or `at_limit`. `remaining` is `quota - used` floored at zero,
-omitted entirely on an unlimited plan.
+of quota) or `at_limit`. `remaining` is `quota - used` floored at zero, omitted
+entirely on an unlimited plan.
 
-`hard_cap` is the plan's refusal policy (`true` only on `free`), and
+`hard_cap` is the plan's refusal policy (`true` only on `starter`), and
 `quota_enforced` reports whether a `402` is actually possible **right now**: it
 needs `hard_cap` *and* the deployment's `BILLING_ENFORCE_QUOTA`, the second of
-which a client cannot see. On every paid tier `quota_enforced` is `false` at any
-usage. The example above is a `growth` tenant at 412 used against a quota of 50:
-`at_limit`, `quota_enforced: false`, and nothing refused. Treat `at_limit` as
-"over the line", never as "blocked"; check `quota_enforced` for that.
+which a client cannot see. On every larger tier `quota_enforced` is `false` at
+any usage. The example above is a `growth` tenant at 412 used against a quota of
+50: `at_limit`, `quota_enforced: false`, and nothing refused. Treat `at_limit`
+as "over the line", never as "blocked"; check `quota_enforced` for that.
 
 ### Overage
 
-**No paid plan is ever refused a connection.** On `startup`, `growth`,
-`premium` and `enterprise`, a connection past the monthly quota is allowed,
-recorded as overage, and surfaced, never blocked. `free` is the only tier that
-returns `402 quota_exceeded` at its quota.
+**No plan above Starter is ever refused a connection at quota.** On `startup`,
+`growth`, `premium` and `enterprise`, a connection past the monthly quota is
+allowed, recorded as overage, and surfaced, never blocked. `starter` is the only
+tier that returns `402 quota_exceeded` at its quota (where the deployment
+enforces quotas at all).
 
 The reason is the blast radius of the refusal, not generosity. The quota gate
-sits on the connection-create path that the **embedded widget** calls with an
-end-user credential, so a `402` does not land on the tenant's admin; it lands
-on *their* end user, mid-connect, inside the customer's own signup funnel.
-Breaking a paying customer's funnel to collect overage is a bad trade at any
-quota, and doubly so here because **no code path has ever reported usage to
-Stripe**: the Stripe client has no usage-record or meter-event call at all, so
-the debt being enforced was never billed in the first place.
+sits on the connection path that the **embedded widget** calls with an end user
+credential, so a `402` does not land on the tenant's admin; it lands on *their*
+end user, mid-connect, inside the customer's own signup funnel. Breaking a
+paying customer's funnel to collect overage is a bad trade at any quota, and
+doubly so here because **no code path has ever reported usage to Stripe**: the
+Stripe client has no usage record or meter event call at all, so the debt being
+enforced was never billed in the first place.
 
 Overage is instead recorded and surfaced: `/v1/billing/usage` reports
 `quota_state` and `remaining`, the console warns at 80% and again past quota,
@@ -152,56 +261,62 @@ and the usage band feeds the CRM so the account team can right-size the plan.
 An overage becomes a conversation, not an outage.
 
 `metered` on `growth`/`enterprise` describes how a tier is *priced* and carries
-no enforcement meaning at all. Read **`hard_cap`** for a plan's refusal policy;
-it is `true` only on `free`.
+no enforcement meaning at all. Read **`hard_cap`** for a plan's refusal policy.
 
-> **Retraction.** An earlier revision of this page said every tier was
-> hard-capped, and promised that metered tiers would only stop blocking *in the
-> same change that started charging for overage*. **That promise is withdrawn.**
-> Paid tiers stop blocking now, and no charging is being introduced: the change
-> is strictly in the customer's favour, which is why it ships without the notice
-> period that promise described. If usage-based billing is ever built (Stripe
-> Billing Meters; the legacy Usage Records API is deprecated), it will be
-> announced before it takes effect.
+> **Retraction.** An earlier revision of this page said every tier was hard
+> capped, and promised that metered tiers would only stop blocking *in the same
+> change that started charging for overage*. **That promise is withdrawn.** Paid
+> tiers stopped blocking, and no charging was introduced: the change is strictly
+> in the customer's favour, which is why it shipped without the notice period
+> that promise described. If usage based billing is ever built (Stripe Billing
+> Meters; the legacy Usage Records API is deprecated), it will be announced
+> before it takes effect.
 
 ## Checkout & portal
 
 ```bash
-# Start a Stripe Checkout session for a self-serve plan
+# Start a Stripe Checkout for a self-serve plan (a new workspace gets its 14 day trial)
 curl -X POST http://localhost:8080/v1/billing/checkout \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
-  -d '{"plan":"growth","success_url":"https://app.acme.example/ok","cancel_url":"https://app.acme.example/cancel"}'
-# → { "url": "https://checkout.stripe.com/..." }
+  -d '{"plan":"starter","success_url":"https://app.acme.example/ok","cancel_url":"https://app.acme.example/cancel"}'
+# → { "id": "cs_...", "url": "https://checkout.stripe.com/...", "trial_days": 14, "first_charge_at": "..." }
 
-# Open the Stripe Billing Portal (requires a prior checkout)
+# Open the Stripe Billing Portal at the card update (requires a prior checkout)
 curl -X POST http://localhost:8080/v1/billing/portal \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
-  -d '{"return_url":"https://app.acme.example/billing"}'
+  -d '{"return_url":"https://app.acme.example/billing","flow":"payment_method_update"}'
 ```
 
-Checkout and the portal require `STRIPE_SECRET_KEY` (and the `STRIPE_PRICE_*`
-ids) to be configured; without them these routes return
-`503 service_unavailable` while the plan catalog stays public. Enforcement is on
-the control-plane write path only, never on the edge `ask` hot path, so serving
-traffic never blocks on billing.
+Pass `return_url` instead of `success_url` and `cancel_url` for Stripe
+**Embedded** Checkout; the response then carries a `client_secret` to mount.
+Checkout and the portal require `STRIPE_SECRET_KEY` and the `STRIPE_PRICE_*`
+ids (`STRIPE_PRICE_STARTER`, `STRIPE_PRICE_STARTUP`, `STRIPE_PRICE_GROWTH`);
+without them these routes return `503 service_unavailable` while the plan
+catalog stays public. A workspace that already has a running subscription is
+refused a second checkout with `409`. Enforcement is on the control plane's
+write path only, never on the edge `ask` hot path, so serving traffic never
+blocks on billing.
 
-### When the plan actually changes
+### When the subscription is recorded
 
 **Starting a checkout grants nothing.** `POST /v1/billing/checkout` validates the
-tier (unknown ids and the two contact-sales tiers are rejected with `400`) and
-opens a Stripe session stamped with the tenant and tier. The plan is assigned
-only when Stripe delivers a signature-verified `checkout.session.completed`
-whose session reads `status: "complete"` **and** `payment_status: "paid"` (or
-`no_payment_required`). An abandoned, expired or unpaid session leaves the
-tenant exactly where it was, and a failed checkout has nothing to roll back.
+tier (unknown ids, the retired `free` and the two contact-sales tiers are
+rejected with `400`) and opens a Stripe session stamped with the tenant and
+tier. The subscription is recorded only from a session that reads
+`status: "complete"` **and** `payment_status: "paid"` (or
+`no_payment_required`, which is what a trial reads), confirmed either by
+Stripe's signature-verified `checkout.session.completed` event or by
+`POST /v1/billing/checkout:confirm`, which the console calls when Stripe returns
+the browser and which reads the session from Stripe itself. An abandoned,
+expired or unpaid session leaves the tenant exactly where it was.
 
-> **Operators: `STRIPE_WEBHOOK_SECRET` is required for plan changes to take
-> effect.** Without it `POST /v1/stripe/webhook` returns `503` and no checkout is
-> ever confirmed, so paying customers stay on their old tier. Configure the
-> webhook endpoint before enabling self-serve checkout.
+> **Operators: `STRIPE_WEBHOOK_SECRET` is required**, and the webhook endpoint
+> must subscribe to `checkout.session.completed`,
+> `customer.subscription.created`, `customer.subscription.updated`,
+> `customer.subscription.deleted`, `customer.subscription.trial_will_end`,
+> `invoice.paid` and `invoice.payment_failed`. Without them renewals, payment
+> failures and cancellations never reach the workspace's state.
 
-`customer.subscription.*` events mirror Stripe's subscription status onto the
-tenant record, so `status` on `GET /v1/billing/usage` reflects reality
-(`active`, `past_due`, `canceled`, …). Mirroring the status does **not** change
-the plan, the quota or any entitlement; what a lapsed subscription should do to
-product access is a separate policy that is not yet implemented.
+`customer.subscription.*` events apply Stripe's subscription (its status, trial
+end, period end, price and cancellation) to the workspace, and the state above
+follows from it.

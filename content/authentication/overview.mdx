@@ -33,6 +33,14 @@ types share the surface, each with a different blast radius.
     everything.
 - Revocable; a revoked key stops authenticating on its next request. Removing a
   member revokes their member-scoped key.
+- **Every application in the tenant.** A key belongs to one application, but it
+  reads and acts on a connection of any application in its tenant: detail,
+  records, diagnose, recheck, the apply rails (API token, provider sign-in,
+  one-click setup, the Route 53 access role), managed mode, SSL, Power and
+  disconnect. Calls whose answer depends on the application take an
+  `application_id` of the key's tenant, defaulting to the key's own:
+  `POST /v1/connections`, `POST /v1/domains:check` and
+  `POST /v1/sharing/connect`.
 
 Manage keys under an application:
 
@@ -41,6 +49,11 @@ POST   /v1/applications/{id}/keys           # create (key returned once)
 GET    /v1/applications/{id}/keys           # list (metadata only, never the secret)
 DELETE /v1/applications/{id}/keys/{keyId}   # revoke
 ```
+
+Deleting an application (`DELETE /v1/applications/{id}`, admin and above)
+revokes its keys. It is refused for the tenant's default application, for the
+application the calling key belongs to, and while the application still has
+domains.
 
 Each application also has a `client_secret` (returned once at application
 creation, or from `tenants:provision`). The `client_secret` is **not** an API
