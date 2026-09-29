@@ -20,8 +20,8 @@ curl -X POST https://api.customdomain.ai/v1/domains:check \
 ```
 
 Branch on **`rails`** and **`recommended_rail`**, not on `setup_type`:
-`automatic` only means an adapter exists (for GoDaddy that is an API key most
-accounts cannot get). `end_user_automatic: true` is the only field that means
+`automatic` only means an adapter exists (for GoDaddy that is a Personal Access
+Token the user has to create at GoDaddy). `end_user_automatic: true` is the only field that means
 "nobody has to type anything". A `blocked_reason` (`unregistered`,
 `platform_subdomain`) means stop and tell the user why. `dashboard_url` is
 where to send them for manual records. If you supply your own `records`, pass

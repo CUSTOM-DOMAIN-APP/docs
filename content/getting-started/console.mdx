@@ -109,15 +109,19 @@ provider, straight from the server. The options appear in this order; the
 recommended one is marked.
 
 1. **Sign in with the provider**: Cloudflare, DNSimple, Netlify, Vercel,
-   WordPress.com. Approve once in a popup; we add the records with a
-   one-time token we never store. Fastest.
+   WordPress.com (and DigitalOcean, Linode, Porkbun and OVHcloud where this
+   deployment has them set up). Approve once in a popup; we add the records
+   with a one-time token we never store. Fastest.
 2. **One-click setup**: only where the provider serves our template
-   (NameSilo, Glauca Digital, Domain Chief today). GoDaddy, IONOS and
-   Cloudflare are *not* offered this, on purpose.
-3. **API key**: paste a scoped provider credential; used once, discarded
-   (opt in to remember it). GoDaddy only issues API access to 10+ domain or
-   paid accounts, and Namecheap needs an IP allowlist, so for most accounts
-   skip to manual.
+   (NameSilo, Glauca Digital, Domain Chief today). GoDaddy, IONOS, Aruba,
+   Squarespace and Cloudflare are *not* offered this, on purpose: they have not
+   onboarded our templates.
+3. **API key**: paste a scoped provider credential, one labeled field per part,
+   with a link to where it is created and the steps. We keep it encrypted when
+   **Remember this key** stays ticked (untick it to use the key once). Any
+   GoDaddy account that holds a domain can create a Personal Access Token;
+   Namecheap's API needs an eligible account and our server's IP on its
+   allowlist. Route 53 offers an access role first, with no key to paste.
 4. **Add the records by hand**: the exact rows to copy, with a link to your
    provider's DNS panel. Then **Check now**.
 

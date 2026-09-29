@@ -1,41 +1,54 @@
 ---
 title: Managed connections
-description: Opt a connection into managed mode so the control plane can silently re-apply and revert its records with a stored, encrypted grant.
+description: Opt a connection into managed mode so the control plane can re-apply and revert its records with a stored, encrypted grant.
 ---
 
-> **Availability on the hosted service:** managed mode needs an async one-click
-> grant from the DNS provider, which requires provider onboarding
-> (`OAUTH_DC_<PROVIDER>_CLIENT_ID`). No provider has issued one to
-> customdomain.ai yet, so on the hosted service every connection is use-once,
-> `managed` is always `false`, and `:reapply` / the MCP `reapply-connection` and
-> `disconnect-domain` tools return `409`. Drift is reported, not healed.
-> Self-hosters who complete onboarding get the behaviour below.
+> **Availability:** managed mode needs a grant the control plane can keep, and
+> there are two ways to get one. An **async one-click grant** needs the DNS
+> provider to onboard us (`OAUTH_DC_<PROVIDER>_CLIENT_ID`); no provider has
+> issued one to customdomain.ai yet. A **managed sign-in grant** needs the
+> deployment to list the provider in `OAUTH_MANAGED_PROVIDERS` and to set
+> `GRANT_ENCRYPTION_KEY`. Where neither applies, every connection is use-once,
+> `managed` stays `false`, and `:reapply` and the MCP `reapply-connection` and
+> `disconnect-domain` tools return `409`: drift is reported, not healed.
 
 Most connections are **use-once**: a [rail](/docs/connect-flow/overview#the-four-rails)
 writes the desired records a single time and the platform keeps no credential.
 **Managed mode** is the opt-in exception. When a connection is managed, the
-control plane holds a durable, **encrypted** *async grant* (issued through the
-provider-hosted one-click protocol) for the customer's provider, so it can
-re-apply or revert the template **server-side, without asking the customer to
-re-consent**.
+control plane holds a durable, **encrypted** grant for the customer's DNS
+provider, so it can re-apply or revert the records **server side, without
+asking the customer to consent again**. The grant comes from one of two rails:
+
+- the **async one-click** protocol (the async variant of Domain Connect), for a
+  provider that has onboarded us;
+- a **provider sign-in** whose credential is kept: the token, key pair or
+  consumer key a sign-in handed over, for a provider listed in
+  `OAUTH_MANAGED_PROVIDERS` (see [Managed sign-in grants](#managed-sign-in-grants)).
 
 ## What "managed" means
 
 - **Opt-in only.** A connection is never managed by default. It becomes managed
-  when the customer completes the **async one-click** consent flow. Start it
-  with `POST /v1/connections/{id}/domainconnect:start` with `{"managed": true}`
-  (equivalently `{"rail":"async"}`). When the provider supports the async
-  variant, the response is an async consent URL; otherwise the call falls
-  through to the ordinary sync `apply_url` and the connection stays use-once.
-- **Encrypted grant, pinned base.** The async callback
-  (`GET /v1/connect/dc/callback`) exchanges the code for a durable grant against
-  the provider API base that was pinned into the signed `state` at start (never
-  re-derived from fresh discovery) and stores it encrypted at rest. The customer's
-  browser token from the sync/OAuth rails is *not* this; those are discarded
-  immediately.
+  when the customer completes one of the two consents:
+  - the **async one-click** consent: start it with
+    `POST /v1/connections/{id}/domainconnect:start` with `{"managed": true}`
+    (equivalently `{"rail":"async"}`). When the provider supports the async
+    variant, the response is an async consent URL; otherwise the call falls
+    through to the ordinary sync `apply_url` and the connection stays use-once;
+  - a **sign-in** at a provider the deployment keeps grants for: start it with
+    `POST /v1/connections/{id}/oauth:start`. Its response says `managed: true`
+    ahead of time, and so does the domain check's `rails.oauth`.
+- **Encrypted grant.** The async callback (`GET /v1/connect/dc/callback`)
+  exchanges the code for a durable grant against the provider API base that
+  was pinned into the signed `state` at start (never re-derived from fresh
+  discovery). The sign-in callback (`GET /v1/connect/oauth/callback`) keeps
+  what the provider handed over. Both are stored encrypted at rest
+  (AES-256-GCM with `GRANT_ENCRYPTION_KEY`), one grant per connection. The
+  browser token of the sync one-click rail is *not* a grant, and neither is a
+  sign-in at a provider that is not listed: both are discarded right after the
+  write.
 - **Silent re-apply.** With the grant in hand the platform can recompute the
-  connection's authoritative desired records and push any drift through the
-  provider's async one-click API on demand, with no customer interaction.
+  connection's authoritative desired records and push any drift to the
+  provider on demand, with no customer interaction.
 - **Auto-heal-ready.** Because re-apply is a single server-side call, managed
   connections are the substrate for automatic drift healing: when
   [Monitor](/docs/webhooks/overview#event-catalog) reports that a record was
@@ -44,11 +57,65 @@ re-consent**.
 
 The [connection detail](/docs/connect-flow/create-a-connection#response) response
 carries a `managed` boolean so your dashboard can tell the two kinds apart
-(`false` is omitted on the wire). You *enable* managed mode by running the async
-consent flow above. You can turn it back **off** in two ways: keep the domain
+(`false` is omitted on the wire). You *enable* managed mode by running one of
+the consents above. You can turn it back **off** in two ways: keep the domain
 connected but drop the grant with [disable managed](#disabling-managed-mode)
 (`DELETE /v1/connections/{id}/grant`), or take the domain off entirely by
 [disconnecting](/docs/connect-flow/offboarding) it.
+
+## Managed sign-in grants
+
+`OAUTH_MANAGED_PROVIDERS` is a comma list of provider ids (empty by default,
+which keeps every sign-in one-time). For a listed provider, the credential a
+[sign-in](/docs/dns/providers#one-click-nothing-to-paste) obtained is kept as
+the connection's encrypted grant, in the same grant store the async one-click
+rail uses, and the connection is marked `managed`. Without
+`GRANT_ENCRYPTION_KEY` the store refuses the grant and the connect stays
+one-time.
+
+What each provider hands over, and how it stays usable:
+
+| Provider | Sign-in | What is kept | How it stays valid |
+| --- | --- | --- | --- |
+| Cloudflare | `oauth2` | access token, refresh token and expiry | refresh token rotation; `offline_access` is requested only for a managed connect |
+| DigitalOcean, Akamai Cloud (Linode) | `oauth2` | access token, plus the refresh token and expiry when the provider returns them | refresh token rotation |
+| DNSimple, Netlify, WordPress.com | `oauth2` | a long-lived access token | nothing to rotate |
+| Vercel | `vercel_integration` | the integration's token and its team | nothing to rotate; keep the integration installed on that team |
+| Porkbun | `porkbun_handoff` | the approved API key pair | nothing to rotate; keep the key named CustomDomain™ |
+| OVHcloud | `ovh_consent` | the consumer key and its region (the application secret stays in the deployment's environment) | the validity chosen on OVHcloud's page, so choose **Unlimited** |
+
+- **Re-apply.** `POST /v1/connections/{id}:reapply` (and the fleet reconciler)
+  rewrites the records through the provider's DNS API with the kept credential,
+  into the zone the sign-in wrote.
+- **Refresh rotation.** An access token at or past its expiry is rotated with
+  its refresh token before the write, and a token the provider refuses is
+  rotated once and the write retried. Cloudflare invalidates a refresh token as
+  soon as it is used, so rotation is single flight per grant (in process, and
+  through a lease in the shared store when `REDIS_URL` is set), and the rotated
+  pair is saved before it is used: a rotated refresh token is never lost.
+- **`oauth_reconnect_needed`.** When the provider no longer accepts the kept
+  sign-in (a `401` or `403` that survives a rotation, or a refused refresh
+  token), the grant is dropped, the connection leaves managed mode with
+  `error_code` `oauth_reconnect_needed`, and `connection.reapply.failed` is
+  emitted. `:reapply` then answers `409` until the customer signs in again: a
+  new sign-in stores a fresh grant, clears the code and makes the connection
+  managed again. The console's domain page says the sign-in stopped working
+  and offers the sign-in button right there.
+- **Disconnect revokes.** `DELETE /v1/connections/{id}` deletes the records the
+  grant wrote (never a merged SPF `TXT` record, which carries the customer's own
+  mechanisms), unless another connection still serves the domain, then
+  withdraws the credential at the provider where the provider allows it:
+  tokens are revoked at the provider's revocation endpoint and an OVHcloud
+  consumer key is expired. Porkbun has no API to delete a key, and a Vercel
+  token is the integration installation itself (shared by every domain of that
+  team), so neither is touched: remove them at the provider if you want them
+  gone.
+
+To make an existing connection managed through its sign-in, run the sign-in
+again: `POST /v1/connections/{id}/oauth:start` (with `region` for OVHcloud),
+then let the customer approve. In the console, **Make this connection
+managed** on a domain whose provider keeps sign-ins opens that sign-in instead
+of the async one-click consent.
 
 ## Re-apply on demand
 
@@ -71,7 +138,9 @@ managed or has no stored grant, it responds **`409`**.
 If the push fails it emits `connection.reapply.failed`. When the provider reports
 the grant was **revoked** (a `401` kill-switch: the customer withdrew consent at
 their provider), the platform clears the stored grant and flags the connection for
-re-consent; the next `:reapply` returns `409` until the customer re-authorizes.
+re-consent; the next `:reapply` returns `409` until the customer authorizes
+again. For a sign-in grant that flag is `error_code` `oauth_reconnect_needed`
+(see [Managed sign-in grants](#managed-sign-in-grants)).
 
 ## Managed lifecycle events
 
@@ -81,8 +150,8 @@ managed lifecycle:
 | Event | Fires when |
 | --- | --- |
 | `connection.records.updated` | A `:reapply` succeeded: the desired records were (re-)written and the connection re-verified. |
-| `connection.reapply.failed` | A `:reapply` push failed; if the grant was revoked, the connection is flagged for re-consent. |
-| `connection.disconnected` | The connection was [disconnected](/docs/connect-flow/offboarding); for a managed connection the template was reverted through the grant first. |
+| `connection.reapply.failed` | A `:reapply` push failed; if the grant was revoked, the connection is flagged for re-consent (`oauth_reconnect_needed` for a sign-in grant). |
+| `connection.disconnected` | The connection was [disconnected](/docs/connect-flow/offboarding); for a managed connection the records were reverted through the grant first. |
 
 ## Disabling managed mode
 
@@ -94,15 +163,16 @@ curl -X DELETE http://localhost:8080/v1/connections/<ID>/grant \
 # → 200 { "connection_id": "<ID>", "managed": false }
 ```
 
-`DELETE /v1/connections/{id}/grant` deletes the encrypted async grant and
-clears the connection's `managed` flag, **leaving the connection and its
-applied records in place**. The records the provider already wrote stay live; the
+`DELETE /v1/connections/{id}/grant` deletes the encrypted grant and clears the
+connection's `managed` flag, **leaving the connection and its applied records in
+place**. A sign-in grant is also withdrawn at its provider first, the same way a
+disconnect withdraws it. The records the provider already wrote stay live; the
 platform simply stops holding a credential to re-apply or revert them, so the
-connection reverts to the default use-once posture. A later async consent can
+connection reverts to the default use-once posture. A later consent can
 re-enable managed mode.
 
 This is deliberately **not** `DELETE /v1/connections/{id}`: that path reverts the
-template at the provider and removes the whole connection (see below). Here nothing
+records at the provider and removes the whole connection (see below). Here nothing
 is reverted and the connection survives. The call is **idempotent**: a connection
 that is already unmanaged returns **`200`** with `managed: false`. It does not emit
 a webhook event.
@@ -111,6 +181,8 @@ a webhook event.
 
 To take a managed domain off your product, [disconnect it](/docs/connect-flow/offboarding)
 with `DELETE /v1/connections/{id}`. For a managed connection the platform first
-**reverts** the applied template through the stored grant, then deletes the
-connection and all its child state (records, origin, monitor watch, and the grant
-itself), and emits `connection.disconnected`.
+**reverts** the records through the stored grant (an async one-click grant
+reverts the applied template; a sign-in grant deletes the records it wrote and
+is then revoked, see above), then deletes the connection and all its child state
+(records, origin, monitor watch, and the grant itself), and emits
+`connection.disconnected`.

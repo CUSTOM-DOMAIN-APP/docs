@@ -1,6 +1,6 @@
 ---
 title: The OAuth flow
-description: The agent authorization endpoints (DCR, authorize + PKCE, consent, token, refresh, revoke) plus JWKS and RFC 8414 discovery.
+description: "The agent authorization endpoints: client metadata documents or DCR, authorize with PKCE, consent, token, refresh, revoke, plus JWKS and RFC 8414 discovery."
 ---
 
 > **Live on customdomain.ai.** Every endpoint below is serving in production.
@@ -22,25 +22,87 @@ curl https://api.customdomain.ai/.well-known/oauth-authorization-server
 # → { "issuer", "authorization_endpoint", "registration_endpoint",
 #     "token_endpoint", "revocation_endpoint", "jwks_uri",
 #     "scopes_supported": ["domains:read","domains:connect","domains:purchase"],
-#     "code_challenge_methods_supported": ["S256"], … }
+#     "code_challenge_methods_supported": ["S256"],
+#     "token_endpoint_auth_methods_supported": ["none"],
+#     "client_id_metadata_document_supported": true, … }
 
-# RFC 7517 JWKS — the ES256 public keys resource servers verify tokens against
+# RFC 7517 JWKS: the ES256 public keys resource servers verify tokens against
 curl https://api.customdomain.ai/.well-known/jwks.json
 ```
 
-## 1. Register (Dynamic Client Registration)
+## 1. Identify your agent
 
-The agent self-registers as a **public** client (PKCE, no secret). Redirect URIs
-must be `https` (or `http` on a loopback host for native apps).
+Agents are **public** clients (PKCE, no secret). There are two ways to get a
+`client_id`, and both lead to the same authorize, consent and token steps.
+
+### Option A: a Client ID Metadata Document (recommended)
+
+The MCP authorization spec prefers this. Publish a JSON document about your
+agent at an `https` URL with a path, and use that URL itself as your
+`client_id`. Nothing is registered ahead of time, and one document serves every
+workspace that connects your agent.
+
+```json
+{
+  "client_id": "https://atlas.example/oauth/client.json",
+  "client_name": "Atlas",
+  "redirect_uris": ["https://atlas.example/cb", "http://127.0.0.1/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+CustomDomain™ fetches the document when your agent first sends someone to the
+authorize endpoint, and uses it only when:
+
+- `client_id` in the document is exactly the URL it was fetched from;
+- it names the agent (`client_name`) and lists at least one redirect URI
+  (`https`, or `http` on `localhost`, `127.0.0.1` or `[::1]`);
+- it asks for public-client authentication (`none`, or no method at all) and
+  carries no client secret;
+- if it lists `grant_types` or `response_types`, they include
+  `authorization_code` and `code` (other values are ignored);
+- it is served as `application/json`, is at most 5 KB, and answers `200`
+  directly from a public host (redirects are not followed).
+
+Documents are cached as their HTTP caching headers allow (5 minutes when they
+give none, never more than 24 hours), so a change reaches CustomDomain™ within
+that time.
+
+### Option B: Dynamic Client Registration
+
+Register with RFC 7591. The standard metadata MCP clients send
+(`grant_types`, `response_types`, `token_endpoint_auth_method`, and fields such
+as `client_uri` or `application_type`, which are ignored) is accepted. Redirect
+URIs must be `https` (or `http` on a loopback host for native apps); at most 10
+per client.
 
 ```bash
 curl -X POST https://api.customdomain.ai/oauth/agent/register \
   -H "Content-Type: application/json" \
   -d '{"client_name":"Atlas","redirect_uris":["https://atlas.example/cb"]}'
-# → { "client_id":"agc_…", "token_endpoint_auth_method":"none",
+# → { "client_id":"agc_…", "client_id_issued_at":1790000000,
+#     "token_endpoint_auth_method":"none",
 #     "grant_types":["authorization_code","refresh_token"],
 #     "response_types":["code"] }
 ```
+
+Registration is open, so it is bounded: each address may register 20 clients
+per hour (ten times that for registrations whose redirect URIs are all a known
+assistant's own callback, since hosted assistants register for every user from
+a few addresses), and a client nobody approves into a workspace is removed
+after 30 days; register again if yours was. Grant and response types beyond
+`authorization_code` and `code` are ignored. Errors use the RFC 7591 shape, for
+example `{"error":"invalid_redirect_uri","error_description":"…"}`.
+
+**Names.** Your agent's name is shown to the person approving it, so it may not
+claim a brand that its redirect addresses do not belong to. A client named
+after Claude, Anthropic, ChatGPT, OpenAI, Devin or CustomDomain™ is refused
+unless every redirect URI is on that brand's own domains or on a loopback
+address. Names are at most 100 characters, may not contain control or
+invisible characters, and may not mix Latin letters with look-alike letters
+from another alphabet (Cyrillic, Greek, Armenian, Cherokee, Lisu or Coptic).
 
 ## 2. Authorize
 
@@ -59,16 +121,25 @@ GET https://api.customdomain.ai/oauth/agent/authorize
   &state=<opaque>
 ```
 
-The redirect URI must **exactly** match one registered in step 1, and
-`code_challenge_method` must be `S256`; plain PKCE is rejected.
+The redirect URI must **exactly** match one registered in step 1 (or listed in
+your metadata document), and `code_challenge_method` must be `S256`; plain PKCE
+is rejected. A loopback redirect URI such as `http://127.0.0.1/callback`
+matches on any port, so a native app can bind a new port each session
+(RFC 8252).
 
 ## 3. Consent
 
-The console authenticates the owner and shows what the agent is requesting. On
-approval it hands the browser back to the agent's `redirect_uri` with an
-authorization `code` and the original `state`. (The consent record itself is
-written server-side with your workspace credential; see
-[Managing access](/docs/agents/managing-access).)
+The console authenticates the owner and shows what the agent is requesting,
+led by **where its access would go**: the host of your redirect URI. That host
+is labelled verified (a known assistant's own address, such as `claude.ai` or
+`chatgpt.com`), local tool (a loopback address, with a warning), or
+unverified; an unverified agent can only be approved after the owner confirms
+they recognize the host. On approval the console hands the browser back to the
+agent's `redirect_uri` with an authorization `code` and the original `state`.
+If the owner denies, a verified or local agent gets
+`error=access_denied` and the `state`; an unverified one is not redirected to.
+(The consent record itself is written server-side with your workspace
+credential. See [Managing access](/docs/agents/managing-access).)
 
 ## 4. Token
 
@@ -97,10 +168,19 @@ curl -X POST https://api.customdomain.ai/oauth/agent/token \
   -d "grant_type=refresh_token" \
   -d "refresh_token=art_…" \
   -d "client_id=agc_…"
+# → { "access_token":"eyJ…", "refresh_token":"art_…(a new one)", … }
 ```
 
-Refresh keeps working until the grant is revoked or expires, so revocation takes
-effect within one access-token lifetime.
+`client_id` is required and must be the client the grant belongs to. **Refresh
+tokens rotate:** every refresh returns a new refresh token and the one you sent
+stops working, so store the new one each time. Presenting a refresh token that
+was already used is treated as theft: the whole grant is revoked and the owner
+is told why, and the agent has to be approved again. The one exception is your
+own client sending the same token twice within a few seconds (two requests
+refreshing at once): the second is refused with `invalid_grant` and the grant
+stands, so keep the token from the response that succeeded. Refresh keeps working
+until the grant is revoked or expires, so revocation takes effect within one
+access-token lifetime.
 
 ## 5. Use the token
 
@@ -132,5 +212,9 @@ refresh tokens; the owner can also revoke from the console.
 - **Exact redirect-URI match**: an unregistered URI is refused without
   redirecting (no open redirect).
 - **Authorization codes are single-use** and short-lived; replay is rejected.
+- **Refresh tokens rotate**, and a reused one revokes the grant.
+- **The consent screen shows where access goes** (the redirect host) and
+  whether it is verified, and refuses agents whose name imitates a brand their
+  host does not belong to.
 - Tokens are **ES256** with an alg-confusion guard: an `alg:none` or HS256
   forgery is never accepted.

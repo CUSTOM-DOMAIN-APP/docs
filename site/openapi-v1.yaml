@@ -574,12 +574,15 @@ paths:
                     description: census routing for the detected provider
                   one_click:
                     type: boolean
-                    description: true when the user only approves (oauth or Domain Connect rails)
+                    description: >-
+                      true when the user only approves: an OAuth-routed provider,
+                      or a Domain Connect provider whose template check shows it
+                      holds our template
                   domain_connect:
                     type: object
                     required: [supported, sync, async]
                     properties:
-                      supported: { type: boolean }
+                      supported: { type: boolean, description: the provider can complete a one-click Domain Connect setup of our template here }
                       sync: { type: boolean }
                       async: { type: boolean }
                       provider: { type: string, description: provider name from DC discovery }
@@ -876,8 +879,12 @@ paths:
         one-click) connection the control plane first **reverts** the applied template
         through the pinned provider API using the stored grant, then deletes the
         connection and all its child state (records, origin, monitor watch, managed
-        grant). A non-managed connection is simply deleted. Emits
-        `connection.disconnected`.
+        grant). For a connection managed through a provider sign-in
+        (`OAUTH_MANAGED_PROVIDERS`) it deletes the records it wrote through the
+        kept credential (never a merged SPF TXT) and revokes that credential at
+        the provider where the provider allows it. Either revert is skipped while
+        another connection still serves the domain. A non-managed connection is
+        simply deleted. Emits `connection.disconnected`.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1185,10 +1192,12 @@ paths:
       summary: Turn managed mode OFF without disconnecting
       tags: [Connections]
       description: >-
-        Drops the stored async grant and clears the connection's
-        `managed` flag, leaving the connection and its applied records in place.
-        The records the provider already wrote stay live; the control plane simply
-        stops holding a credential to re-apply / revert them. This is **not**
+        Drops the stored grant (async one-click, or a kept provider sign-in,
+        which is also revoked at the provider where it allows it) and clears the
+        connection's `managed` flag, leaving the connection and its applied
+        records in place. The records the provider already wrote stay live; the
+        control plane simply stops holding a credential to re-apply / revert
+        them. This is **not**
         `DELETE /v1/connections/{id}` (which reverts the template at the provider
         and removes the whole connection). Idempotent: a connection that is already
         unmanaged returns `200`.
@@ -1265,11 +1274,15 @@ paths:
         **Managed mode only.** Recomputes the connection's authoritative desired
         record set and writes any drift through the provider's async one-click
         API using the stored, encrypted grant (the provider API base pinned at
-        onboarding); the end user does **not** re-consent. On success the
-        connection is re-verified and `connection.records.updated` is emitted. A
-        failure emits `connection.reapply.failed`; if the provider reports the grant
-        was revoked (401 kill-switch) the grant is cleared and the connection is
-        flagged for re-consent.
+        onboarding), or, for a connection managed through a provider sign-in,
+        through the provider's DNS API with the kept credential (a refresh token
+        is rotated first when the access token has expired); the end user does
+        **not** re-consent. On success the connection is re-verified and
+        `connection.records.updated` is emitted. A failure emits
+        `connection.reapply.failed`; if the provider reports the grant was
+        revoked (401 kill-switch, or a refused refresh token) the grant is
+        cleared and the connection is flagged for re-consent (a sign-in grant
+        leaves `error_code` `oauth_reconnect_needed`).
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1329,13 +1342,23 @@ paths:
   /connections/{id}/oauth:start:
     post:
       operationId: startConnectionOAuth
-      summary: Begin the OAuth-into-DNS-provider authorization for a connection
+      summary: Begin the sign-in to the DNS provider for a connection
       tags: [Connections]
       description: >-
-        **Rail C (flagship).** Returns the provider authorize URL (PKCE S256 +
-        HMAC-signed single-use `state`). The widget opens it in a popup; the
-        provider redirects back to `/v1/connect/oauth/callback`, which writes the
-        connection's records with the one-time access token and never persists it.
+        **Rail C (flagship).** Returns the URL the widget opens in a popup, bound
+        to an HMAC-signed single-use `state`. The provider redirects back to
+        `/v1/connect/oauth/callback`, which writes the connection's records with
+        what the provider handed over. `flow` says which sign-in runs:
+        `oauth2` (authorization code with PKCE S256), `vercel_integration` (the
+        CustomDomain™ integration's install page; the user picks the Vercel team
+        that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
+        handoff: the user approves a key named after the domain; no client
+        registration is needed) or `ovh_consent` (an OVHcloud consumer key
+        limited to the domain's DNS zone, validated on OVHcloud's page for the
+        chosen `region`). The credential is used for that write and dropped,
+        unless the deployment keeps grants for this provider
+        (`OAUTH_MANAGED_PROVIDERS` with `GRANT_ENCRYPTION_KEY`), in which case
+        `managed` is true and it is stored encrypted for `:reapply`.
       security:
         - widgetJWT: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -1351,19 +1374,54 @@ paths:
                 return_origin:
                   type: string
                   description: Web origin the callback page may postMessage the outcome to; must be on the server's allowlist.
+                region:
+                  type: string
+                  enum: [eu, ca, us]
+                  description: >-
+                    OVHcloud only: the API region the user's OVHcloud account
+                    lives in (default `eu`). The domain check's `rails.oauth.regions`
+                    lists the regions this deployment offers.
       responses:
         '200':
-          description: Authorize URL
+          description: The URL to open, and what it runs
           content:
             application/json:
               schema:
                 type: object
-                required: [authorize_url]
+                required: [authorize_url, provider, flow]
                 properties:
                   authorize_url: { type: string, format: uri }
+                  provider: { type: string }
+                  flow:
+                    type: string
+                    enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent]
+                  managed:
+                    type: boolean
+                    description: The connect will keep its credential (managed mode).
+                  callback_origin:
+                    type: string
+                    description: >-
+                      Origin the result will be postMessaged from; check
+                      `MessageEvent.origin` against it.
+                  region:
+                    type: string
+                    description: OVHcloud only, the region the consent was requested in.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '429':
+          description: >-
+            `provider_rate_limited`: the provider refused to start another
+            sign-in from our servers for now (Porkbun allows 20 key requests
+            an hour per IP address); `details` says when to retry.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: "`provider_unavailable`: the provider did not start the sign-in (Porkbun key request, OVHcloud consumer key request)."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connect/oauth/callback:
     get:
@@ -1372,14 +1430,30 @@ paths:
       tags: [Connections]
       description: >-
         The provider's browser redirect target, **not** a bearer-authenticated
-        endpoint. It consumes the signed single-use `state`, exchanges the code,
-        writes the connection's records with the one-time token (discarded
-        after), and returns an HTML page that postMessages
-        `{ type: "customdomain:oauth", payload }` to the vetted return origin.
+        endpoint, and the Redirect URL of the CustomDomain™ Vercel integration.
+        It consumes the signed single-use `state`, turns what the provider sent
+        into a credential (exchanges the `code`; for Porkbun retrieves the
+        approved key pair with the PKCE verifier; for OVHcloud uses the
+        validated consumer key), writes the connection's records with it
+        (dropped after, unless kept for managed mode), and returns an HTML page
+        that postMessages `{ type: "customdomain:oauth", payload }` to the
+        vetted return origin. `payload` carries `ok`, `managed`, and on failure
+        a `code` and `message`: besides the provider's own `error` (for example
+        `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
+        `apex_not_supported`, `forwarding_not_supported`, the rail specific
+        codes are `porkbun_api_access_disabled` (turn on API access for the
+        domain at Porkbun), `vercel_team_scope` (install on the team that owns
+        the domain) and `ovh_zone_not_found` (pick the OVHcloud region the
+        account lives in). A failure is also stored as the connection's
+        `error_code`.
       security: []
       parameters:
         - { name: code, in: query, schema: { type: string } }
         - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: teamId, in: query, schema: { type: string }, description: "Vercel install flow: the team the integration was installed on." }
+        - { name: configurationId, in: query, schema: { type: string }, description: "Vercel install flow: the installation id." }
+        - { name: status, in: query, schema: { type: string, enum: [approved, denied] }, description: "Porkbun key handoff: the account holder's decision." }
+        - { name: requestToken, in: query, schema: { type: string }, description: "Porkbun key handoff: echoed by Porkbun; must match the request the server started." }
       responses:
         '200':
           description: HTML finish page (postMessages the outcome to the vetted return origin)
@@ -1408,6 +1482,54 @@ paths:
           description: HTML finish page (postMessages the outcome to the vetted return origin)
         '400':
           description: Invalid, expired, replayed, or wrong-rail state
+  /connect/dc/return/{state}:
+    get:
+      operationId: dcSyncReturn
+      summary: One-click sync return (public; authenticated by the signed state)
+      tags: [Connections]
+      description: >-
+        Where the DNS provider sends the browser after the user approves or
+        cancels a one-click sync apply. It is the `redirect_uri` the signed
+        `apply_url` carries, **not** a bearer-authenticated endpoint. The signed
+        single-use `state` rides in the path because some providers (Cloudflare)
+        drop the separate `state` parameter. It records a provider-reported
+        `error` on the connection, runs the propagation check at once, and
+        returns the same HTML finish page as the OAuth callback, which
+        postMessages `{ type: "customdomain:oauth", payload }` to the origin
+        vetted at start. A clean return never marks the connection live by
+        itself: only the records appearing in public DNS do.
+      security: []
+      parameters:
+        - { name: state, in: path, required: true, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string }, description: OAuth 2.0 error code the provider reports (access_denied when the user cancels). }
+        - { name: error_description, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: HTML finish page (postMessages the outcome to the vetted return origin)
+        '400':
+          description: Invalid, expired, replayed, or wrong-rail state
+        '503':
+          description: The return is not configured on this server
+  /connect/dc/return:
+    get:
+      operationId: dcSyncReturnQuery
+      summary: One-click sync return with the state as a query parameter
+      tags: [Connections]
+      description: >-
+        The same return as `/connect/dc/return/{state}`, for a provider that
+        hands the signed state back as `?state=`.
+      security: []
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+        - { name: error_description, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: HTML finish page (postMessages the outcome to the vetted return origin)
+        '400':
+          description: Invalid, expired, replayed, or wrong-rail state
+        '503':
+          description: The return is not configured on this server
   /connections/{id}/domainconnect:start:
     post:
       operationId: startDomainConnect
@@ -1424,6 +1546,17 @@ paths:
         (plural) bundles several templates under one managed consent (async only;
         the OAuth scope is the space-separated list and the callback applies each);
         on the sync fallthrough only the first template applies.
+
+
+        Either rail is offered only when the DNS provider holds the exact
+        template: the control plane runs the Domain Connect template check
+        against the provider's API first (remembered for a few minutes), and a
+        provider that has not onboarded it is refused with a `503` that names it.
+        A root domain uses `apex-a` (an `A` record to the edge address, which needs
+        `APEX_A_TARGETS`). The sync `apply_url`
+        carries a signed `redirect_uri` back to `/connect/dc/return/{state}`
+        whenever the template allows it; pass `return_origin` on a sync start to
+        have that return page post the outcome to your page.
       security:
         - widgetJWT: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -1454,8 +1587,10 @@ paths:
                 return_origin:
                   type: string
                   description: >-
-                    Vetted web origin the async callback finish page may
-                    postMessage the outcome to; must be on the server allowlist.
+                    Vetted web origin the finish page may postMessage the
+                    outcome to; must be on the server allowlist. Used by the
+                    async callback, and by the sync return page on a plain sync
+                    start.
       responses:
         '200':
           description: >-
@@ -1489,6 +1624,107 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /connections/{id}/route53-role:start:
+    post:
+      operationId: startRoute53Role
+      summary: Start connecting a Route 53 domain through a limited IAM role instead of an access key
+      tags: [Connections]
+      description: >-
+        **Route 53 access role.** For a domain whose DNS is in Amazon Route 53,
+        the customer creates a limited IAM role in their own AWS account from the
+        CustomDomain™ CloudFormation template instead of pasting an AWS access
+        key. This call generates the connection's external ID (once: later calls
+        return the same one), stores the hosted zone id when you pass one, and
+        returns a CloudFormation quick-create link plus plain instructions. The
+        role the link creates can be assumed by CustomDomain™ only with that
+        external ID, can read only the chosen hosted zone, and can change only
+        the records for the connected name. Idempotent. Answers `503` when this
+        deployment has not set the rail up.
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hosted_zone_id:
+                  type: string
+                  description: >-
+                    The Route 53 hosted zone that holds the domain, such as
+                    `Z23YXV4OVPL04A` (a `/hostedzone/` prefix is accepted).
+                    Optional: without it the AWS console lists the account's
+                    zones to choose from.
+      responses:
+        '200':
+          description: The quick-create link and the steps to show the customer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route53RoleStart' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/route53-role:complete:
+    post:
+      operationId: completeRoute53Role
+      summary: Verify the customer's Route 53 access role and write the connection's records with it
+      tags: [Connections]
+      description: >-
+        **Route 53 access role, second step.** Send the `RoleArn` output of the
+        stack the customer created from the `route53-role:start` link.
+        CustomDomain™ assumes the role with the connection's external ID and
+        checks that AWS refuses the role both without an external ID and with a
+        wrong one: a role that lets CustomDomain™ in without the right external
+        ID is refused and never stored. It then finds the hosted zone and writes
+        the connection's records through Route 53 with the role's temporary
+        credentials, and the connection moves to `propagating` exactly as after
+        an API key apply. The verified role is stored, so calling this again
+        with an empty body re-applies the records with it. Branch on `code`:
+        `route53_role_not_started` (409), `route53_role_arn_invalid` (400),
+        `route53_external_id_mismatch` (the role was made from another link),
+        `route53_role_not_found` (AWS refused the role),
+        `route53_external_id_not_required`, `route53_zone_not_found` (no public
+        hosted zone for the domain or a parent of it), `route53_zone_ambiguous`
+        (two public hosted zones share the name and the role can read both),
+        `route53_access_denied` (the role cannot read that zone, or cannot write
+        a record the connection needs) and `route53_record_conflict` (another
+        record holds the name with a type the needed record cannot share;
+        delete or change it in the Route 53 console), all 422, and
+        `route53_unavailable` (503, nothing was changed, try again).
+      security:
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role_arn:
+                  type: string
+                  description: >-
+                    The stack's `RoleArn` output, such as
+                    `arn:aws:iam::123456789012:role/CustomDomainDNSAccess-0123456789abcdef0123456789abcdef`.
+                    Optional once a role has been verified for the connection.
+      responses:
+        '200':
+          description: The records were written and the connection is propagating.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route53RoleComplete' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------------- Sharing
@@ -3466,6 +3702,40 @@ components:
             the materialized template records for a template bundle, otherwise
             the connection's default desired set.
           items: { $ref: '#/components/schemas/DnsRecord' }
+    Route53RoleStart:
+      type: object
+      description: The answer of `POST /connections/{id}/route53-role:start`.
+      required: [connection_id, quick_create_url, template_url, region, stack_name, role_name, external_id, trusted_principal_arn, record_name, instructions]
+      properties:
+        connection_id: { type: string }
+        quick_create_url:
+          type: string
+          format: uri
+          description: Opens the AWS CloudFormation console with the template and every parameter filled in. Open it in a new tab.
+        template_url: { type: string, format: uri, description: The public S3 URL of the CloudFormation template. }
+        region: { type: string, description: 'The AWS console region the link opens in. IAM roles are global, so it does not limit the role.' }
+        stack_name: { type: string, description: The stack name the link proposes. }
+        role_name: { type: string, description: 'The role the stack creates: CustomDomainDNSAccess- followed by the external ID.' }
+        external_id: { type: string, description: 'The external ID the role requires, generated by CustomDomain™ once per connection. AWS does not treat it as a secret.' }
+        trusted_principal_arn: { type: string, description: The CustomDomain™ AWS principal the role trusts. }
+        record_name: { type: string, description: 'The name the role may change, together with its www name and their verification names.' }
+        hosted_zone_id: { type: string, description: 'The hosted zone passed to this call, when one was.' }
+        role_arn: { type: string, description: 'The role already verified for this connection, when there is one.' }
+        instructions:
+          type: array
+          items: { type: string }
+          description: Plain steps to show the customer.
+    Route53RoleComplete:
+      type: object
+      description: The answer of `POST /connections/{id}/route53-role:complete`.
+      required: [connection, records, role_arn, zone]
+      properties:
+        connection: { $ref: '#/components/schemas/Connection' }
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/DnsRecord' }
+        role_arn: { type: string, description: 'The verified role, now stored so an empty call re-applies with it.' }
+        zone: { type: string, description: The Route 53 hosted zone the records were written into. }
     RailInfo:
       type: object
       required: [available]
@@ -3473,23 +3743,43 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, rail_disabled, no_adapter, unregistered, platform_subdomain]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, no_adapter, unregistered, platform_subdomain]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
             it does, but this deployment has no client registered (operator
             task). `not_discovered`: no Domain Connect discovery answer.
             `template_not_onboarded`: the provider speaks Domain Connect but
-            has not onboarded our template. `rail_disabled`: the sync rail is
+            has not onboarded our template. `redirect_unavailable`: the
+            provider requires our return link on a one-click apply and the
+            template cannot carry it yet. `rail_disabled`: the sync rail is
             off in this deployment. `no_adapter`: no write adapter for the
             API-key rail. `unregistered` / `platform_subdomain`: the domain is
             blocked (see `blocked_reason`).
         caveat:
           type: string
           description: >-
-            A note on an AVAILABLE rail most users still cannot use (GoDaddy
-            gates API access to 10+ domain / paid accounts). Show it; do not
+            A note on an AVAILABLE rail: what the end user must create or
+            qualify for before it works (a GoDaddy Personal Access Token;
+            Namecheap's API eligibility and IP allowlist). Show it; do not
             treat it as unavailability.
+        flow:
+          type: string
+          enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent]
+          description: >-
+            Available `oauth` rail only: the sign-in it runs, so a client can
+            label its button (see `POST /connections/{id}/oauth:start`).
+        managed:
+          type: boolean
+          description: >-
+            Available `oauth` rail only: the connect will keep its credential
+            (managed mode). Omitted when it will not.
+        regions:
+          type: array
+          items: { type: string, enum: [eu, ca, us] }
+          description: >-
+            Available `ovh_consent` rail only: the OVHcloud API regions this
+            deployment can run the consent in, the default first.
     DomainCheck:
       type: object
       required: [domain, setup_type]

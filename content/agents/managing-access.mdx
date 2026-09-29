@@ -13,10 +13,28 @@ control plane parks the request and sends the owner to the console consent scree
 (`/agent/consent`). If you're signed out, you're bounced to sign in first: a
 grant can only be approved by a real, signed-in owner.
 
-The screen shows which agent is asking and the scopes it requested. You approve a
-subset, choose whether access is **persistent** (the default) or expiring, and,
-if `domains:purchase` is requested, set a monthly spend cap and save a card. On
-approval the browser is handed back to the agent to finish the token exchange.
+The screen shows which agent is asking and the scopes it requested. An agent
+chooses its own name, so the screen leads with what the agent cannot choose
+freely: **where its access would go**, the host your approval sends the browser
+(and the access) back to. That host carries one of four labels:
+
+- **Verified**: a known assistant's own address, such as `claude.ai`,
+  `chatgpt.com` or `app.devin.ai`.
+- **Local tool**: a program on your own computer (`localhost`). Approve only if
+  you started that program yourself just now.
+- **Unverified**: any other address. You can still approve, after confirming
+  that you recognize the host and started the connection yourself.
+- **Blocked**: the agent's name imitates a brand (Claude, ChatGPT, OpenAI,
+  Anthropic, Devin, CustomDomain™) that its host does not belong to. It can only
+  be denied.
+
+The screen also shows when the agent registered, or which site publishes its
+details. You approve a subset of the scopes, choose whether access is
+**persistent** (the default) or expiring, and, if `domains:purchase` is
+requested, set a monthly spend cap and save a card. On approval the browser is
+handed back to the agent to finish the token exchange. **Deny** cancels the
+request so it cannot be approved later; a verified or local agent is told it was
+denied, and an unverified or blocked one is not sent anywhere.
 
 > Consent is recorded by the console **server-side** with your workspace API key,
 > and the approving member must belong to your workspace. A browser/embed token
@@ -45,6 +63,9 @@ You're kept in the loop automatically:
 - **Acted**: when the agent takes an action (e.g. connects a domain).
 - **Purchased**: immediately when it spends money (an urgent alert).
 - **Revoked**: when access ends.
+- **Revoked for your safety**: when CustomDomain™ ends an agent's access on its
+  own because one of its credentials was used twice, which can mean it was
+  copied. Reconnect the agent if you still want it.
 
 Every email links to your agent-management screen so you can review or revoke in
 one click.

@@ -118,17 +118,19 @@ By default the automatic rails use a customer's DNS-provider credential exactly
   outcome to a **return origin on the server's allowlist**
   (`OAUTH_ALLOWED_RETURN_ORIGINS`).
 - **API token (Rail B)** uses the scoped credential you pass on a single write.
-  It is **discarded after that write by default**; it is persisted **only if the
-  user explicitly opts in** to remembering it (see below). The console collects
-  multi-part credentials as separate labeled fields and joins them only for that
-  request.
+  Through the API it is **discarded after that write** unless the request asks
+  to remember it; in the console the remember box starts ticked and can be
+  unticked (see below). The console collects multi-part credentials as separate
+  labeled fields and joins them only for that request.
 - **One-click setup (Rail A)** uses no server-to-server credential; its apply
   URLs are RS256-signed from `DC_SIGNING_KEY_FILE`.
 
 ### Optionally remembered API keys
 
-A Rail B provider key can be **optionally** saved for reuse, off by default and
-opt-in per key. When saved:
+A Rail B provider key can be saved for reuse. Through the API that is opt-in per
+request (`remember`); in the console the **Remember this key** box starts ticked
+and the user can untick it. Account passwords and tokens that expire within
+hours are never saved. When saved:
 
 - it is **sealed at rest** with **AES-256-GCM** under the console's
   `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key), scoped to one **tenant + provider**
