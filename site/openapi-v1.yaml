@@ -66,13 +66,13 @@ tags:
   - name: Webhooks
     description: Registering receivers and inspecting delivery attempts.
   - name: Billing
-    description: Plans, metered usage, checkout, and the billing portal.
+    description: Plans, metered usage, the subscription (trial, grace, invoices), checkout, and the billing portal.
   - name: Enterprise
     description: RBAC reference matrix and the audit log.
   - name: Meta
     description: Public service discovery and capability advertisement.
   - name: Analytics
-    description: The tenant's connect funnel and connection outcomes.
+    description: The tenant's connect funnel, connection outcomes, and the traffic its domains receive at the edge.
 
 paths:
   # ------------------------------------------------------------------ Tenancy
@@ -301,6 +301,35 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteApplication
+      summary: Delete an application
+      tags: [Applications]
+      description: >-
+        Deletes one of your applications together with what belongs only to
+        it: its API keys stop working, and its webhook endpoints, share links
+        and settings are removed. Needs an admin or owner key (it revokes keys).
+        Another tenant's application is a 404.
+
+
+        Refused with `409` when deleting would break something that works,
+        each with the reason in `details`: `default_application` (your
+        workspace's default application, the oldest one: the signup key and
+        your team's access belong to it, so it also keeps your last
+        application), `application_key_in_use` (the key making the request
+        belongs to this application) and `application_has_domains` (it still
+        has domains, in any state; disconnect them first with
+        `DELETE /connections/{id}`).
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /applications/{id}/keys:
     post:
       operationId: createApiKey
@@ -377,8 +406,16 @@ paths:
   /members:
     post:
       operationId: inviteMember
-      summary: Invite a member to the caller's tenant (invite_token shown once)
+      summary: Invite a member to the caller's tenant
       tags: [Members]
+      description: >-
+        Creates a pending member and its single-use invite link. The response
+        carries `invite_token`; send the invitee a link built from it. The link
+        works for 7 days, after which the member is reported as `expired` until
+        an admin resends or revokes it. The inviter's email is taken from the
+        credential that sends the invite, never from the body. Requires admin
+        or owner (`member:manage`); a caller cannot invite a role above their
+        own, and `owner` is reached only by promoting an existing member.
       security:
         - apiKey: []
       requestBody:
@@ -391,6 +428,9 @@ paths:
               properties:
                 email: { type: string }
                 role: { $ref: '#/components/schemas/Role' }
+                inviter_name:
+                  type: string
+                  description: Display name of the person sending the invite, shown to the invitee. Optional; at most 80 characters.
       responses:
         '201':
           description: Invited
@@ -399,10 +439,16 @@ paths:
               schema: { $ref: '#/components/schemas/Member' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
     get:
       operationId: listMembers
       summary: List the caller tenant's members
       tags: [Members]
+      description: >-
+        Every member and pending invite of the caller's tenant, each with its
+        `status`: `active` once accepted, `pending` while its invite link
+        works, `expired` once the link has lapsed. Invite tokens never appear
+        here.
       security:
         - apiKey: []
       responses:
@@ -418,11 +464,50 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Member' }
         '401': { $ref: '#/components/responses/Error' }
+  /members:preview:
+    post:
+      operationId: previewInvite
+      summary: Preview an invite by its token, without accepting it
+      tags: [Members]
+      description: >-
+        What an invite link is for: the invited email, the workspace, the role,
+        who sent it, and whether it still works. Nothing is accepted or spent.
+        Public: the token is the capability, exactly as for `members:accept`,
+        and it travels in the body so it never lands in an access log. A link
+        that stopped working says why (`accepted`, `expired`, `revoked`, or
+        `replaced` by a newer invite to the same address); a token that was
+        never issued is a 404. Rate-limited per client address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, description: The invite token from the invite link. }
+      responses:
+        '200':
+          description: The invite
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitePreview' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
   /members:accept:
     post:
       operationId: acceptMember
       summary: Accept an invite (single-use token)
       tags: [Members]
+      description: >-
+        Accepts the invite and returns the member with a member-scoped API key
+        for the inviter's tenant. The token is the capability, so no API key is
+        needed; when `email` is supplied it must match the invited email. The
+        token is spent on success. A pending invite whose link has lapsed is
+        refused with 410 `invite_expired`.
+      security: []
       requestBody:
         required: true
         content:
@@ -433,14 +518,23 @@ paths:
               properties:
                 token: { type: string }
                 email: { type: string, description: "When supplied, must match the invited email." }
+                user_id: { type: string, description: 'The accepting user''s id in the calling application, recorded as `invited_by`.' }
       responses:
         '200':
           description: Accepted
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Member' }
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Member' }
+                  - type: object
+                    required: [application_id, api_key]
+                    properties:
+                      application_id: { type: string, description: The inviter tenant's default application. }
+                      api_key: { type: string, description: 'Member-scoped API key for the inviter''s tenant; shown once.' }
         '400': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
   /members/{id}:
     patch:
       operationId: updateMemberRole
@@ -466,11 +560,16 @@ paths:
               schema: { $ref: '#/components/schemas/Member' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     delete:
       operationId: removeMember
       summary: Remove a member or revoke a pending invite (owner-protected)
       tags: [Members]
+      description: >-
+        Removing a member revokes their member-scoped API key at once. Revoking
+        a pending invite stops its link working; a preview of that link then
+        reports `revoked`.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -478,7 +577,64 @@ paths:
         '204': { description: Removed }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /members/{id}/invite:
+    get:
+      operationId: getMemberInvite
+      summary: Get a pending member's current invite token
+      tags: [Members]
+      description: >-
+        Returns the pending member with its current `invite_token`, so an admin
+        can copy the link again. Reading it changes nothing: the link already
+        sent keeps working. Requires admin or owner (`member:manage`). A member
+        who already joined has no invite: 404.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The pending member and its invite token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /members/{id}/invite:resend:
+    post:
+      operationId: resendMemberInvite
+      summary: Re-issue a pending invite with a fresh link
+      tags: [Members]
+      description: >-
+        Gives a pending (or expired) invite a new token that works for another
+        7 days and returns it as `invite_token`; send the invitee a link built
+        from it. The previous link stops working at once, and a preview of it
+        reports `replaced`. Requires admin or owner (`member:manage`). A member
+        who already joined is a 409.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inviter_name:
+                  type: string
+                  description: Display name of the person resending, shown to the invitee. Optional; at most 80 characters.
+      responses:
+        '200':
+          description: Re-issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------- Tokens
   /tokens:
@@ -609,8 +765,16 @@ paths:
         when this particular target needs one the provider cannot host, so an
         apex connection that would be refused at apply time is refused here
         instead, before any connection is created.
+
+
+        The answer is for one application (where its domains point:
+        `target_mode` and the apex strategy). A widget JWT checks for its own
+        application. An API key checks for `application_id`, which must be an
+        application in the key's tenant (404 otherwise), or for the key's own
+        application when it is omitted.
       security:
         - widgetJWT: []
+        - apiKey: []
       requestBody:
         required: true
         content:
@@ -620,6 +784,12 @@ paths:
               required: [domain]
               properties:
                 domain: { type: string }
+                application_id:
+                  type: string
+                  description: >-
+                    With an API key, the application to check for (defaults to
+                    the key's own). A widget JWT may only omit it or send its own
+                    application id (403 otherwise).
       responses:
         '200':
           description: Detection result
@@ -628,6 +798,8 @@ paths:
               schema: { $ref: '#/components/schemas/DomainCheck' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------- Connections
   /connections:
@@ -729,6 +901,22 @@ paths:
               schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '402':
+          description: >-
+            A new connection is refused. `billing_required`: the workspace has
+            no active or trialing subscription (a new workspace that has not
+            started its trial, a Free workspace past its grace period, a comp
+            that ended, or a subscription Stripe marked unpaid or canceled);
+            domains already connected keep working, and an owner or admin sets
+            up billing in the console. `quota_exceeded`: a plan that is refused
+            past its quota (Starter, and the retired Free) is at it and the
+            deployment enforces quotas. A connect-scoped widget token (the
+            tenant's own end user) gets `connections_unavailable` instead of
+            `billing_required`, and neutral wording for both, so the tenant's
+            customers are never told about the tenant's billing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     get:
       operationId: listConnections
       summary: List connections
@@ -1228,8 +1416,15 @@ paths:
         to write the records and is never stored. The connection advances to
         `propagating`; the poller promotes it to `live` once the records appear
         in public DNS.
+
+
+        A widget JWT applies to its own application's connections (a
+        domain-bound token to its own domain only). An API key applies to a
+        connection of any application in its tenant; a member's key needs a role
+        that operates apps (not viewer).
       security:
         - widgetJWT: []
+        - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -1366,8 +1561,15 @@ paths:
         unless the deployment keeps grants for this provider
         (`OAUTH_MANAGED_PROVIDERS` with `GRANT_ENCRYPTION_KEY`), in which case
         `managed` is true and it is stored encrypted for `:reapply`.
+
+
+        A widget JWT starts the sign-in for its own application's connections
+        (a domain-bound token for its own domain only); an API key for a
+        connection of any application in its tenant, and a member's key needs a
+        role that operates apps.
       security:
         - widgetJWT: []
+        - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -1580,8 +1782,15 @@ paths:
         carries a signed `redirect_uri` back to `/connect/dc/return/{state}`
         whenever the template allows it; pass `return_origin` on a sync start to
         have that return page post the outcome to your page.
+
+
+        A widget JWT starts either rail for its own application's connections
+        (a domain-bound token for its own domain only); an API key for a
+        connection of any application in its tenant, and a member's key needs a
+        role that operates apps.
       security:
         - widgetJWT: []
+        - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -1664,9 +1873,13 @@ paths:
         role the link creates can be assumed by CustomDomain™ only with that
         external ID, can read only the chosen hosted zone, and can change only
         the records for the connected name. Idempotent. Answers `503` when this
-        deployment has not set the rail up.
+        deployment has not set the rail up. Takes a widget JWT for the
+        connection's own application or an API key for a connection of any
+        application in its tenant (a member's key needs a role that operates
+        apps), like `route53-role:complete`.
       security:
         - widgetJWT: []
+        - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: false
@@ -1722,6 +1935,7 @@ paths:
         `route53_unavailable` (503, nothing was changed, try again).
       security:
         - widgetJWT: []
+        - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: false
@@ -1779,8 +1993,16 @@ paths:
         over any cap the call is a `429` `rate_limited` and no link is minted. When
         the email cannot be sent the link is still returned, with
         `email_error: "not_sent"`, so the widget can offer to copy it instead.
+
+
+        **From a server.** An API key mints a link for `application_id` (an
+        application in the key's tenant, 404 otherwise) or for the key's own
+        application, and the teammate's flow then connects the domain into that
+        application. A member's key needs a role that operates apps. A widget
+        JWT always shares for its own application.
       security:
         - widgetJWT: []
+        - apiKey: []
       requestBody:
         required: true
         content:
@@ -1788,6 +2010,12 @@ paths:
             schema:
               type: object
               properties:
+                application_id:
+                  type: string
+                  description: >-
+                    With an API key, the application the shared flow connects
+                    into (defaults to the key's own). A widget JWT may only omit it
+                    or send its own application id (403 otherwise).
                 domain: { type: string, description: Single domain the teammate will connect. }
                 domains:
                   type: array
@@ -1838,6 +2066,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
         '429':
           description: Share-by-email cap reached (`rate_limited`); no link was minted.
           content:
@@ -1938,7 +2167,7 @@ paths:
         Opens a Stripe Checkout session in `setup` mode: it saves a card
         WITHOUT charging it. This is the card-on-file flow that agent purchases
         and domain buys draw against later; it is not a plan purchase (see
-        `/billing/checkout` for that). Requires `billing:manage` (owner).
+        `/billing/checkout` for that). Requires `billing:manage` (owners and admins).
 
         Supply EITHER `return_url` for the embedded flow, OR both `success_url`
         and `cancel_url` for the hosted redirect flow. Supplying neither is a
@@ -2041,6 +2270,78 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+
+  /traffic:
+    get:
+      operationId: getTrafficSummary
+      summary: Edge traffic for the workspace or one application, with its busiest domains
+      tags: [Analytics]
+      description: >-
+        Requests the CustomDomain™ edge served for the tenant's domains, by
+        status class, and the bytes it relayed to visitors, as a series (one
+        point per hour for `24h` and `7d`, per UTC day for `30d` and `90d`,
+        every bucket present) with totals and the busiest domains. Only
+        traffic that passes through the edge is counted: a domain whose
+        records point at the integrator's own servers (connected for DNS
+        only) never appears. Counts arrive from the edge once a minute.
+        Hourly figures are kept 14 days, daily figures 400 days. API key; any
+        member role; `app_id` narrows to one application of the key's tenant
+        (another tenant's application is a 404).
+      security:
+        - apiKey: []
+      parameters:
+        - { name: range, in: query, required: false, schema: { type: string, enum: [24h, 7d, 30d, 90d], default: 7d } }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, description: How many of the busiest domains to return., schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        '200':
+          description: Traffic summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TrafficSummary' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/traffic:
+    get:
+      operationId: getConnectionTraffic
+      summary: Edge traffic for one domain
+      tags: [Analytics]
+      description: >-
+        What the edge served for one connected domain: requests by status
+        class, bytes relayed to visitors, the origin's time to first byte
+        (p50, p95, p99 and mean over the requests that reached it) and
+        approximate unique visitors, as a series with totals, plus when the
+        edge last served a request for it. `serving` says whether the
+        domain's visitors reach the edge at all: `live` and `verifying` are
+        served by the edge; `not_live` will be once the domain is live;
+        `dns_only` means its records point somewhere other than the edge (it
+        was connected for DNS only), so its traffic never passes through
+        CustomDomain™ and there is nothing to count. Visitors are estimated
+        from a sketch of keyed hashes of client addresses; no address is
+        stored, and a visitor seen on two UTC days counts once on each. A
+        tenant API key reads a domain of any application in its tenant; a
+        widget token minted with scope `app` (or a delegated agent token)
+        reads its own application's domains; an end user's connect-scoped
+        widget token is refused.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - { name: range, in: query, required: false, schema: { type: string, enum: [24h, 7d, 30d, 90d], default: 7d } }
+      responses:
+        '200':
+          description: Domain traffic
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionTraffic' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
 
   /share/{token}:
     # API-13: this route is served at the ROOT, not under /v1. The document's
@@ -2428,10 +2729,29 @@ paths:
       operationId: listPlans
       summary: Public plan catalog (plus billing {configured, mode})
       tags: [Billing]
+      description: >-
+        The public plan catalog: `starter` ($10 a month, the default for a new
+        workspace, 14 day trial), `startup`, `growth`, and the contact-sales
+        `premium` and `enterprise`. The retired `free` plan is not listed; a
+        workspace created before it was retired keeps it until it subscribes.
       security: []
       responses:
         '200':
           description: Plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items: { $ref: '#/components/schemas/Plan' }
+                  billing:
+                    type: object
+                    properties:
+                      configured: { type: boolean, description: Whether a Stripe key is configured. }
+                      mode: { type: string, enum: ['test', 'live', ''] }
+                      trial_days: { type: integer, description: The trial a new workspace's first subscription starts with. }
   /billing/usage:
     get:
       operationId: getUsage
@@ -2458,20 +2778,35 @@ paths:
       operationId: createCheckout
       summary: Start a Stripe Checkout session for a self-serve plan
       tags: [Billing]
+      description: >-
+        Starts a subscription Checkout for the caller's workspace. Requires
+        `billing:manage` (owners and admins); a widget token is refused. The
+        session allows promotion codes and collects the card up front. A new
+        workspace's first subscription starts with a 14 day trial; a workspace
+        inside its grace period (the retired Free plan) gets a trial that ends
+        when its grace ends, so subscribing early never costs a day; anyone else
+        is charged today. A workspace that already has a running subscription
+        gets `409` (change the plan with `/billing/change-plan` instead).
+        Nothing is granted until Stripe confirms the checkout.
+
+
+        Supply EITHER `return_url` (embedded Checkout, the response carries
+        `client_secret`) OR both `success_url` and `cancel_url` (hosted
+        Checkout, the response carries `url`).
       security:
         - apiKey: []
-        - widgetJWT: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [plan, success_url, cancel_url]
+              required: [plan]
               properties:
                 plan: { $ref: '#/components/schemas/PlanId' }
                 success_url: { type: string, format: uri }
                 cancel_url: { type: string, format: uri }
+                return_url: { type: string, format: uri, description: Selects embedded Checkout. }
       responses:
         '200':
           description: Checkout session
@@ -2480,19 +2815,30 @@ paths:
               schema:
                 type: object
                 properties:
-                  url: { type: string, format: uri }
+                  id: { type: string }
+                  url: { type: string, description: Hosted Checkout URL (redirect flow). }
+                  client_secret: { type: string, description: Embedded Checkout client secret (return_url flow). }
+                  trial_days: { type: integer, description: 'Trial length, when the checkout starts one by days.' }
+                  trial_end: { type: [string, 'null'], format: date-time, description: 'When the trial ends, when it ends at a fixed time (the grace end).' }
+                  first_charge_at: { type: string, format: date-time, description: When the card is first charged, when there is a trial. }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /billing/portal:
     post:
       operationId: createPortalSession
       summary: Open a Stripe Billing Portal session
       tags: [Billing]
-      description: Requires the tenant to have completed a checkout (has a Stripe customer).
+      description: >-
+        Opens the Stripe Billing Portal (invoices, the card, cancellation) for
+        the caller's workspace. Requires `billing:manage` (owners and admins)
+        and a Stripe customer (a completed checkout). `flow` deep-links into one
+        task: `payment_method_update` (the "update your card" link of a payment
+        failure email) or `subscription_cancel`.
       security:
         - apiKey: []
-        - widgetJWT: []
       requestBody:
         required: true
         content:
@@ -2502,6 +2848,7 @@ paths:
               required: [return_url]
               properties:
                 return_url: { type: string, format: uri }
+                flow: { type: string, enum: [payment_method_update, subscription_cancel] }
       responses:
         '200':
           description: Portal session
@@ -2510,9 +2857,208 @@ paths:
               schema:
                 type: object
                 properties:
+                  id: { type: string }
                   url: { type: string, format: uri }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/notice:
+    get:
+      operationId: getBillingNotice
+      summary: Whether billing needs attention (every member)
+      tags: [Billing]
+      description: >-
+        What the console needs on every page to decide on a billing banner or
+        the setup flow. Any member of the workspace may read it with their own
+        tenant API key. Members and viewers get only `role`, `can_manage`,
+        `configured`, `attention` and `restricted`: never the plan, dates or
+        amounts. Owners and admins also get the billing state.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Billing notice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingNotice' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /billing/status:
+    get:
+      operationId: getBillingStatus
+      summary: The workspace's subscription (owners and admins)
+      tags: [Billing]
+      description: >-
+        The billing page: plan, state, trial or grace countdown, the next
+        charge, the card on file, what a checkout started now would give, and
+        this month's usage. Requires `billing:manage` (owners and admins);
+        members and viewers get `403`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Billing status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingStatus' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/invoices:
+    get:
+      operationId: listBillingInvoices
+      summary: The workspace's recent invoices (owners and admins)
+      tags: [Billing]
+      description: Read from Stripe, newest first. Requires `billing:manage`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Invoices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices:
+                    type: array
+                    items: { $ref: '#/components/schemas/Invoice' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/grace:start:
+    post:
+      operationId: startBillingGrace
+      summary: Start a legacy Free workspace's grace period (owners and admins)
+      tags: [Billing]
+      description: >-
+        Called by the console when an owner or admin opens it: a workspace still
+        on the retired Free plan gets its 14 day grace period from now (and its
+        owners and admins an email). Idempotent, and a no-op in any other state.
+        A Free workspace that never signs in gets the same grace at its first
+        connection attempt. Requires `billing:manage`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: The grace state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  started: { type: boolean, description: Whether this call started the grace. }
+                  state: { $ref: '#/components/schemas/BillingState' }
+                  grace_ends_at: { type: [string, 'null'], format: date-time }
+                  days_left: { type: integer }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/checkout:confirm:
+    post:
+      operationId: confirmBillingCheckout
+      summary: Record a completed plan checkout now (owners and admins)
+      tags: [Billing]
+      description: >-
+        Called when Stripe returns the browser from a completed Checkout, so the
+        subscription is recorded at once instead of when Stripe's
+        `checkout.session.completed` event arrives. The session is read from
+        Stripe, never trusted from the caller: it must belong to the caller's
+        workspace (another workspace's session is a `404`) and be complete and
+        paid (a trial's "no payment required" counts); otherwise `confirmed` is
+        false and nothing changes. Idempotent with the webhook. Requires
+        `billing:manage`.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id: { type: string, examples: ['cs_test_a1B2c3'] }
+      responses:
+        '200':
+          description: Whether the checkout was recorded, and the billing status after
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  confirmed: { type: boolean }
+                  session_status: { type: string, examples: ['complete', 'open'] }
+                  payment_status: { type: string, examples: ['paid', 'no_payment_required', 'unpaid'] }
+                  billing: { $ref: '#/components/schemas/BillingStatus' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/change-plan:
+    post:
+      operationId: changeBillingPlan
+      summary: Move a running subscription to another self-serve plan
+      tags: [Billing]
+      description: >-
+        Swaps the price of the workspace's running Stripe subscription (Stripe
+        prorates the difference). Self-serve plans only; a workspace without a
+        running subscription gets `409` and subscribes through
+        `/billing/checkout`. Requires `billing:manage`.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { $ref: '#/components/schemas/PlanId' }
+      responses:
+        '200':
+          description: The new billing status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingStatus' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /billing/promotion-code:
+    post:
+      operationId: applyBillingPromotionCode
+      summary: Apply a promotion code to the running subscription
+      tags: [Billing]
+      description: >-
+        Applies a promotion code, as a customer types it, to the workspace's
+        running subscription (a new subscription takes codes on the Checkout
+        page itself). An unknown or inactive code is a `404`. Requires
+        `billing:manage`.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '200':
+          description: The new billing status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingStatus' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ---------------------------------------------------------------- Enterprise
@@ -3268,12 +3814,27 @@ components:
       in: path
       required: true
       schema: { type: string }
+    ActorEmail:
+      name: X-Actor-Email
+      in: header
+      required: false
+      description: >-
+        The email of the person acting through the owner dashboard, recorded as
+        the actor on the billing audit trail (the management key names no one).
+        Read only on these operator routes. Absent or not an email: the actor
+        is recorded as "owner dashboard".
+      schema: { type: string, format: email }
   responses:
     Error:
       description: 'Error envelope: {code, title, details}.'
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    AdminBillingTenant:
+      description: The workspace after the action, with its invoices and audit trail.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AdminBillingTenantDetail' }
   schemas:
     Error:
       type: object
@@ -3290,7 +3851,263 @@ components:
       enum: [owner, admin, member, viewer]
     PlanId:
       type: string
-      enum: [free, startup, growth, premium, enterprise]
+      description: '`free` is retired: legacy workspaces still carry it until they subscribe, and it cannot be bought or assigned.'
+      enum: [starter, startup, growth, premium, enterprise, free]
+    Plan:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/PlanId' }
+        name: { type: string }
+        price_cents: { type: integer, description: Monthly price in US cents; 0 when not public. }
+        public_price: { type: boolean }
+        domains_per_year: { type: integer, description: The marketed annual allowance. }
+        domains_per_month: { type: integer, description: 'The enforced monthly allowance (`domains_per_year` ceiling-divided by 12; 0 = unlimited).' }
+        metered: { type: boolean }
+        overage_increment: { type: integer }
+        motion: { type: string, enum: [self_serve, contact_sales] }
+        entitlements: { type: object }
+        hard_cap: { type: boolean, description: 'Connections past the monthly allowance are refused (`starter`) rather than recorded as overage.' }
+        trial_days: { type: integer, description: The trial a new workspace's first subscription to this plan starts with (0 for contact sales). }
+        default: { type: boolean, description: The plan preselected for a new workspace (`starter`). }
+    BillingState:
+      type: string
+      description: >-
+        A workspace's billing state, evaluated from its record and the clock.
+        `trialing` and `active` are a running Stripe subscription; `past_due`
+        is a failed payment Stripe is still retrying (nothing is refused);
+        `grace` is a legacy Free workspace (or an operator extension) inside its
+        grace period; `legacy_free` is a Free workspace whose grace has not
+        started; `comped` is an operator comp; `blocked` and `canceled` refuse
+        new connections (`402 billing_required`) while live domains keep
+        working.
+      enum: [trialing, active, past_due, grace, blocked, comped, canceled, legacy_free]
+    BillingNotice:
+      type: object
+      required: [role, can_manage, configured, attention, restricted]
+      properties:
+        role: { $ref: '#/components/schemas/Role' }
+        can_manage: { type: boolean, description: Whether this member holds billing:manage (owners and admins). }
+        configured: { type: boolean, description: Whether a workspace can subscribe on this deployment. }
+        attention: { type: boolean, description: 'Billing needs an owner or admin: a trial or grace to act on, a failed payment, or a block.' }
+        restricted: { type: boolean, description: New domain connections are refused right now. }
+        setup_required: { type: boolean, description: 'Owners and admins only: send them through the billing setup flow.' }
+        state: { $ref: '#/components/schemas/BillingState' }
+        reason: { type: string, description: 'Why a restricted workspace is restricted: setup_required, grace_ended, unpaid, comp_ended or canceled.' }
+        plan_id: { type: string }
+        plan_name: { type: string }
+        days_left: { type: integer, description: Whole days left in the trial or grace; -1 otherwise. }
+        trial_ends_at: { type: [string, 'null'], format: date-time }
+        grace_ends_at: { type: [string, 'null'], format: date-time }
+        current_period_end: { type: [string, 'null'], format: date-time }
+        cancel_at_period_end: { type: boolean }
+        payment_failed: { type: boolean }
+    BillingStatus:
+      type: object
+      properties:
+        tenant_id: { type: string }
+        state: { $ref: '#/components/schemas/BillingState' }
+        reason: { type: string }
+        restricted: { type: boolean }
+        attention: { type: boolean }
+        setup_required: { type: boolean }
+        days_left: { type: integer }
+        price_cents: { type: integer, description: What the workspace pays per month (the Stripe amount, else the catalog price). }
+        currency: { type: string }
+        trial_ends_at: { type: [string, 'null'], format: date-time }
+        grace_started_at: { type: [string, 'null'], format: date-time }
+        grace_ends_at: { type: [string, 'null'], format: date-time }
+        current_period_end: { type: [string, 'null'], format: date-time }
+        cancel_at_period_end: { type: boolean }
+        ended_at: { type: [string, 'null'], format: date-time }
+        comped: { type: boolean }
+        comped_until: { type: [string, 'null'], format: date-time }
+        payment_failed: { type: boolean }
+        payment_failed_at: { type: [string, 'null'], format: date-time }
+        has_billing_account: { type: boolean }
+        portal_available: { type: boolean }
+        can_change_plan: { type: boolean }
+        mode: { type: string, enum: ['test', 'live', ''] }
+        plan:
+          type: object
+          properties:
+            id: { $ref: '#/components/schemas/PlanId' }
+            name: { type: string }
+            price_cents: { type: integer }
+            public_price: { type: boolean }
+            domains_per_year: { type: integer }
+            domains_per_month: { type: integer }
+            hard_cap: { type: boolean }
+            retired: { type: boolean }
+        next_charge:
+          type: [object, 'null']
+          properties:
+            at: { type: string, format: date-time }
+            amount_cents: { type: integer }
+            currency: { type: string }
+        checkout:
+          type: object
+          description: What a checkout started now would give.
+          properties:
+            available: { type: boolean }
+            trial_days: { type: integer }
+            trial_end: { type: [string, 'null'], format: date-time }
+            first_charge_at: { type: string, format: date-time }
+            default_plan: { $ref: '#/components/schemas/PlanId' }
+        usage:
+          type: object
+          properties:
+            used: { type: integer }
+            quota: { type: integer }
+            period_start: { type: string, format: date-time }
+            period_end: { type: string, format: date-time }
+        payment_method:
+          type: [object, 'null']
+          properties:
+            brand: { type: string }
+            last4: { type: string }
+            exp_month: { type: integer }
+            exp_year: { type: integer }
+    Invoice:
+      type: object
+      properties:
+        id: { type: string }
+        number: { type: string }
+        status: { type: string, description: 'Stripe invoice status: draft, open, paid, uncollectible or void.' }
+        amount_due_cents: { type: integer }
+        amount_paid_cents: { type: integer }
+        currency: { type: string }
+        created_at: { type: [string, 'null'], format: date-time }
+        hosted_invoice_url: { type: [string, 'null'] }
+        invoice_pdf: { type: string }
+    AdminBillingSummary:
+      type: object
+      required: [currency, mrr_cents, counts]
+      properties:
+        currency: { type: string }
+        mrr_cents: { type: integer }
+        counts:
+          type: object
+          required: [trialing, active, past_due, grace, blocked, comped, canceled, legacy_free]
+          properties:
+            trialing: { type: integer }
+            active: { type: integer }
+            past_due: { type: integer }
+            grace: { type: integer }
+            blocked: { type: integer }
+            comped: { type: integer }
+            canceled: { type: integer }
+            legacy_free: { type: integer }
+        tenants: { type: integer }
+        paying: { type: integer }
+        can_subscribe: { type: boolean }
+        enforcement: { type: boolean, description: Whether BILLING_REQUIRE_SUBSCRIPTION is on. }
+        mode: { type: string }
+        trial_days: { type: integer }
+        generated_at: { type: string, format: date-time }
+        starter_price_on: { type: boolean }
+    AdminBillingTenant:
+      type: object
+      required: [tenant_id, name, owner_email, plan_id, plan_name, price_cents, status, trial_ends_at, grace_ends_at,
+        current_period_end, cancel_at_period_end, comped_until, stripe_customer_id, stripe_subscription_id, usage, created_at]
+      properties:
+        tenant_id: { type: string }
+        name: { type: string }
+        owner_email: { type: string }
+        plan_id: { type: string }
+        plan_name: { type: string }
+        price_cents: { type: integer }
+        status: { $ref: '#/components/schemas/BillingState' }
+        trial_ends_at: { type: [string, 'null'], format: date-time }
+        grace_ends_at: { type: [string, 'null'], format: date-time }
+        current_period_end: { type: [string, 'null'], format: date-time }
+        cancel_at_period_end: { type: boolean }
+        comped_until: { type: [string, 'null'], format: date-time }
+        stripe_customer_id: { type: [string, 'null'] }
+        stripe_subscription_id: { type: [string, 'null'] }
+        usage:
+          type: object
+          properties:
+            used: { type: integer }
+            quota: { type: integer }
+            period_start: { type: [string, 'null'], format: date-time }
+            period_end: { type: [string, 'null'], format: date-time }
+        created_at: { type: [string, 'null'], format: date-time }
+        reason: { type: string }
+        restricted: { type: boolean }
+        comped: { type: boolean }
+        comp_reason: { type: string }
+        payment_failed: { type: boolean }
+        stripe_status: { type: string }
+        currency: { type: string }
+        grace_started_at: { type: [string, 'null'], format: date-time }
+        days_left: { type: integer }
+        updated_at: { type: [string, 'null'], format: date-time }
+    AdminBillingTenantDetail:
+      allOf:
+        - { $ref: '#/components/schemas/AdminBillingTenant' }
+        - type: object
+          properties:
+            invoices:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  number: { type: string }
+                  status: { type: string }
+                  amount_due_cents: { type: integer }
+                  amount_paid_cents: { type: integer }
+                  currency: { type: string }
+                  created_at: { type: [string, 'null'], format: date-time }
+                  hosted_invoice_url: { type: [string, 'null'] }
+            invoices_error: { type: string }
+            events:
+              type: array
+              description: The billing audit trail, newest first.
+              items:
+                type: object
+                properties:
+                  at: { type: [string, 'null'], format: date-time }
+                  kind: { type: string, examples: ['grace.started', 'comp.granted', 'subscription.active'] }
+                  actor: { type: string, examples: ['ops@example.com', 'owner dashboard', 'stripe:webhook', 'system:sweeper'] }
+                  detail: { type: object }
+            notices:
+              type: array
+              description: The billing email log, newest first.
+              items:
+                type: object
+                properties:
+                  kind: { type: string }
+                  key: { type: string }
+                  status: { type: string, enum: [pending, sent, failed, skipped] }
+                  attempts: { type: integer }
+                  error: { type: [string, 'null'] }
+                  created_at: { type: [string, 'null'], format: date-time }
+                  sent_at: { type: [string, 'null'], format: date-time }
+            previous_status: { $ref: '#/components/schemas/BillingState' }
+    PromoCode:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        active: { type: boolean }
+        coupon:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: [string, 'null'] }
+            percent_off: { type: [number, 'null'] }
+            amount_off_cents: { type: [integer, 'null'] }
+            currency: { type: [string, 'null'] }
+            duration: { type: string, enum: [once, repeating, forever] }
+            duration_in_months: { type: [integer, 'null'] }
+            valid: { type: boolean }
+        max_redemptions: { type: [integer, 'null'] }
+        times_redeemed: { type: integer }
+        expires_at: { type: [string, 'null'], format: date-time }
+        first_time_transaction: { type: boolean }
+        created_at: { type: [string, 'null'], format: date-time }
+        created_here: { type: boolean, description: Created from the owner dashboard (as opposed to elsewhere on the shared Stripe account). }
     SetupType:
       type: string
       description: How a connection reaches live.
@@ -3473,6 +4290,119 @@ components:
         key: { type: string }
         total: { type: integer }
         live: { type: integer }
+    TrafficStatusCounts:
+      type: object
+      description: Requests by the status class of the answer the visitor got.
+      required: [1xx, 2xx, 3xx, 4xx, 5xx]
+      properties:
+        1xx: { type: integer, description: 'Mostly 101 Switching Protocols (websockets).' }
+        2xx: { type: integer }
+        3xx: { type: integer, description: Includes the edge's own redirects (redirect_to and the www redirect). }
+        4xx: { type: integer, description: 'Includes 421 answered by the edge when the domain has no origin set.' }
+        5xx: { type: integer, description: 'Includes 502 answered by the edge when the origin could not be reached.' }
+    TrafficLatency:
+      type: object
+      description: The origin's time to first response byte, in milliseconds, over the requests that reached it.
+      required: [p50, p95, p99, mean, samples]
+      properties:
+        p50: { type: number }
+        p95: { type: number }
+        p99: { type: number, description: 'Estimated from a fixed histogram; anything slower than 10 seconds reads as 10000.' }
+        mean: { type: number }
+        samples: { type: integer }
+    TrafficRetention:
+      type: object
+      required: [hourly_days, daily_days]
+      properties:
+        hourly_days: { type: integer, description: How long hourly figures are kept. }
+        daily_days: { type: integer, description: How long daily figures are kept. }
+    ConnectionTraffic:
+      type: object
+      required: [connection_id, domain, range, granularity, from, to, serving, last_request_at, totals, series, retention]
+      properties:
+        connection_id: { type: string }
+        domain: { type: string }
+        range: { type: string, enum: [24h, 7d, 30d, 90d] }
+        granularity: { type: string, enum: [hour, day] }
+        from: { type: string, format: date-time, description: Start of the first bucket. }
+        to: { type: string, format: date-time, description: End of the last bucket (exclusive); the last bucket is the current one. }
+        serving:
+          type: object
+          required: [through_edge, reason]
+          properties:
+            through_edge: { type: boolean, description: Whether this domain's visitors reach the edge. }
+            reason: { type: string, enum: [live, verifying, not_live, dns_only] }
+        last_request_at: { type: [string, 'null'], format: date-time, description: End of the last minute in which the edge served this domain; null when never (within retention). }
+        totals:
+          type: object
+          required: [requests, status, bytes_out, error_rate, latency_ms, visitors]
+          properties:
+            requests: { type: integer }
+            status: { $ref: '#/components/schemas/TrafficStatusCounts' }
+            bytes_out: { type: integer, description: Response body bytes relayed to visitors. }
+            error_rate: { type: number, description: 'Share of requests answered with a 5xx, 0 to 1.' }
+            latency_ms: { oneOf: [ { $ref: '#/components/schemas/TrafficLatency' }, { type: 'null' } ] }
+            visitors: { type: integer, description: 'Approximate unique visitors; one seen on two UTC days counts once on each.' }
+        series:
+          type: array
+          items:
+            type: object
+            required: [t, requests, status, bytes_out, error_rate, latency_ms, visitors]
+            properties:
+              t: { type: string, format: date-time, description: Bucket start. }
+              requests: { type: integer }
+              status: { $ref: '#/components/schemas/TrafficStatusCounts' }
+              bytes_out: { type: integer }
+              error_rate: { type: number }
+              latency_ms: { oneOf: [ { $ref: '#/components/schemas/TrafficLatency' }, { type: 'null' } ] }
+              visitors: { type: integer }
+        retention: { $ref: '#/components/schemas/TrafficRetention' }
+    TrafficSummary:
+      type: object
+      required: [application_id, range, granularity, from, to, totals, series, top_domains, retention]
+      properties:
+        application_id: { type: string, description: The application the summary is narrowed to; empty for the whole workspace. }
+        range: { type: string, enum: [24h, 7d, 30d, 90d] }
+        granularity: { type: string, enum: [hour, day] }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        totals:
+          type: object
+          required: [requests, status, bytes_out, error_rate, domains_with_traffic]
+          properties:
+            requests: { type: integer }
+            status: { $ref: '#/components/schemas/TrafficStatusCounts' }
+            bytes_out: { type: integer }
+            error_rate: { type: number }
+            domains_with_traffic: { type: integer, description: How many domains the edge served at least once in the range. }
+        series:
+          type: array
+          items:
+            type: object
+            required: [t, requests, status, bytes_out, error_rate]
+            properties:
+              t: { type: string, format: date-time }
+              requests: { type: integer }
+              status: { $ref: '#/components/schemas/TrafficStatusCounts' }
+              bytes_out: { type: integer }
+              error_rate: { type: number }
+        top_domains:
+          type: array
+          description: The busiest domains, most requests first.
+          items:
+            type: object
+            required: [connection_id, domain, application_id, requests, status, bytes_out, error_rate, share, last_request_at]
+            properties:
+              connection_id: { type: string }
+              domain: { type: string }
+              application_id: { type: string }
+              requests: { type: integer }
+              status: { $ref: '#/components/schemas/TrafficStatusCounts' }
+              bytes_out: { type: integer }
+              error_rate: { type: number }
+              share: { type: number, description: 'This domain''s part of the scope''s requests, 0 to 1.' }
+              last_request_at: { type: [string, 'null'], format: date-time }
+        retention: { $ref: '#/components/schemas/TrafficRetention' }
     ApiKey:
       type: object
       required: [id, last4]
@@ -3485,14 +4415,47 @@ components:
         revoked_at: { type: [string, 'null'], format: date-time }
     Member:
       type: object
-      required: [id, role, status]
+      required: [id, tenant_id, email, role, status, created_at]
       properties:
         id: { type: string }
+        tenant_id: { type: string }
         email: { type: string }
         role: { $ref: '#/components/schemas/Role' }
-        status: { type: string, enum: [invited, active] }
-        invite_token: { type: string, description: present only in the invite response; shown once }
+        status:
+          type: string
+          enum: [active, pending, expired]
+          description: '`active` once accepted, `pending` while the invite link works, `expired` once it has lapsed.'
+        invited_by: { type: string, description: 'The accepting user''s id in the calling application, when one was supplied at accept.' }
+        inviter_email: { type: string, description: 'Who sent (or last re-sent) the invite, resolved from the sending credential.' }
+        inviter_name: { type: string, description: 'The sender''s display name, when one was supplied.' }
+        invite_sent_at: { type: string, format: date-time, description: When the current invite link was issued. }
+        invite_expires_at: { type: string, format: date-time, description: When the current invite link stops working. Absent for members never invited by link. }
+        invite_token:
+          type: string
+          description: >-
+            The single-use invite token. Present only in the invite, resend and
+            get-invite responses, never in the roster.
+        accepted_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+    InvitePreview:
+      type: object
+      required: [status, email, role, tenant_id, workspace_name]
+      properties:
+        status:
+          type: string
+          enum: [pending, accepted, expired, revoked, replaced]
+          description: >-
+            `pending`: the link works. `accepted`: it was used. `expired`: it
+            lapsed. `revoked`: an admin withdrew the invite. `replaced`: a newer
+            invite was sent to the same address.
+        email: { type: string, description: The invited address. }
+        role: { $ref: '#/components/schemas/Role' }
+        tenant_id: { type: string }
+        workspace_name: { type: string, description: The tenant's display name. }
+        inviter_name: { type: string }
+        inviter_email: { type: string }
+        invited_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time, description: When the link stops (or stopped) working. Absent when it never expires. }
     DnsRecord:
       type: object
       required: [type, host, value]
@@ -3998,8 +4961,12 @@ components:
         Metered usage for ONE calendar month, for the tenant the credential
         belongs to (never a query parameter). `org`, `period`, `used` and `mode`
         are always present; the plan block below it is present whenever the org
-        resolves to a subscription, which, since orgs predating billing default
-        to Free, is every legitimate tenant.
+        resolves to a billing record, which is every legitimate tenant (a new
+        workspace starts on `starter`). `status`, `has_billing_account` and
+        `billing_state` are billing data: they are sent only to a credential
+        holding `billing:manage` (owners and admins, and a workspace's own
+        non-member API key), never to a member's or viewer's key or a widget
+        token.
       required: [org, period, used, mode]
       properties:
         org: { type: string, description: 'The tenant the usage belongs to, derived from the authenticated credential.' }
@@ -4035,11 +5002,12 @@ components:
           description: >-
             Whether this PLAN refuses connections past `quota` (`402
             quota_exceeded`) rather than allowing and recording them as
-            overage. `true` only on tiers nobody pays for (today, `free` alone).
-            Every paid tier (`startup`, `premium`, `growth`, `enterprise`) is
-            `false` and is never refused, because the refusal would surface to
-            the tenant's own end users through the embedded widget. Independent
-            of the deployment's `BILLING_ENFORCE_QUOTA`; combine the two via
+            overage. `true` only on the entry tiers: `starter` ($10 a month)
+            and the retired `free`. Every larger tier (`startup`, `premium`,
+            `growth`, `enterprise`) is `false` and is never refused at quota.
+            The refusal reaches the tenant's own end users through the embedded
+            widget, so it is worded neutrally for them. Independent of the
+            deployment's `BILLING_ENFORCE_QUOTA`; combine the two via
             `quota_enforced`.
         quota_state:
           type: string
@@ -4064,8 +5032,9 @@ components:
           description: >-
             `quota - used`, floored at `0`. Omitted entirely on an unlimited
             plan, where no remainder is meaningful.
-        status: { type: string, description: 'Subscription status mirrored from Stripe, e.g. `active`, `past_due`.' }
-        has_billing_account: { type: boolean, description: '`true` when a Stripe customer exists for the org, i.e. the billing portal is available.' }
+        status: { type: string, description: 'Subscription status mirrored from Stripe, e.g. `active`, `past_due` (empty for a workspace that has not subscribed). Owners and admins only.' }
+        has_billing_account: { type: boolean, description: '`true` when a Stripe customer exists for the org, i.e. the billing portal is available. Owners and admins only.' }
+        billing_state: { $ref: '#/components/schemas/BillingState' }
     WebhookEndpoint:
       type: object
       required: [id, url]

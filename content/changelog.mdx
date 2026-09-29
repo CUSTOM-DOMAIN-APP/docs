@@ -15,6 +15,35 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Traffic for every domain.** Each domain the edge serves shows its
+  requests by the kind of answer, bandwidth, server errors, how fast its
+  origin answered and approximate visitors, and **Analytics** shows the
+  workspace's edge traffic with the busiest domains. A domain connected for
+  DNS only says why it has no figures instead of showing zeros. No visitor's
+  IP address is stored. New on the API: `GET /v1/connections/{id}/traffic`
+  and `GET /v1/traffic`.
+- **Starter replaces the Free plan.** Starter is $10 a month for 10 domains a
+  year, and every new workspace starts with a 14 day free trial (the card is
+  added at checkout and charged when the trial ends). Workspaces that were on
+  Free get 14 days from their first sign-in to choose a plan and are not
+  charged before those days end; after that, new connections pause until a plan
+  is chosen, while connected domains keep working. Billing is now managed by a
+  workspace's owners **and admins**, with promotion codes, plan changes, card
+  updates and invoices in the console. See
+  [Plans & quotas](/docs/billing/plans-and-quotas).
+- **Every domain opens, whatever its application.** A domain of an
+  application other than the one the console is switched to used to read
+  "Domain not found", and its actions failed the same way. The console now
+  acts on every domain in your workspace, and a domain that isn't live says
+  what happened and what to do next. On the API, a tenant API key reaches the
+  apply rails, provider sign-in, one-click setup and the Route 53 access role
+  for a connection of any application in its tenant, and
+  `POST /v1/domains:check` and `POST /v1/sharing/connect` take an
+  `application_id`.
+- **A page for each application.** Its domains, API keys, widget and where its
+  domains point, with rename and delete. `DELETE /v1/applications/{id}` is
+  new; it is refused for the default application and while an application
+  still has domains.
 - **The 100 largest registrars, and the platforms that sell domains.** More
   than 150 DNS hosts, registrars and domain platforms are now known by name,
   among them all of the 100 largest registrars, and the widget has step by
@@ -48,13 +77,13 @@ never change meaning or disappear without a new major version. See the
   for you. A DNSPod key is best created for a CAM sub-user limited to DNS
   records, and Internet.bs needs `34.192.32.132` on the account's API
   allowlist. See [Provider setup](/docs/dns/provider-setup).
-- **Sign in with Google Cloud, built and not switched on yet.** Google Cloud
-  DNS will connect through a Google sign-in: we find the Google Cloud project
-  that holds the domain's public zone, so there is no project ID or access
-  token to paste, and a failure says which Google account was used and what
-  to change. It is switched on once its Google client is configured, and
-  until Google verifies the app only its listed test users can sign in. Until
-  then, Google Cloud DNS connects with a project ID and an access token.
+- **Sign in with Google Cloud.** Google Cloud DNS connects through a Google
+  sign-in: we find the Google Cloud project that holds the domain's public
+  zone, so there is no project ID or access token to paste, and a failure says
+  which Google account was used and what to change. Until Google finishes
+  reviewing the app's Cloud DNS permissions, Google shows an "unverified app"
+  notice before its approval screen. A project ID and an access token still
+  work too.
 - **Sign in through a registrar's MCP server, built and not switched on
   yet.** Hostinger, Namecheap, Spaceship, Unstoppable Domains and XServer
   Domain run MCP servers with their own sign-in and DNS tools, and the

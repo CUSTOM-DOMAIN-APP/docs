@@ -52,23 +52,28 @@ as static reference) at `GET /v1/rbac`:
 | `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
 | `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built**; see [Plans & quotas](/docs/billing/plans-and-quotas).) |
 | `agent:manage` | | | ✅ | ✅ | Approve, list and revoke delegated-agent grants (a grant can carry `domains:purchase` with a spend cap against the tenant's saved card, so it is gated at the same tier as billing) |
-| `billing:manage` | | | | ✅ | Billing, plan, payout |
+| `billing:manage` | | | ✅ | ✅ | Billing: the subscription, plan changes, card and invoices (Stripe Billing Portal), promotion codes. Owners and admins since 2026-09-29; members and viewers get `403` on every billing route |
 | `org:delete` | | | | ✅ | Delete / transfer the org |
 
 `app:write` is the permission behind the **whole mutating connection family**,
-not just application settings. It gates 18 routes:
+not just application settings. It gates 21 routes:
 
 - **Connections:** `POST /v1/connections`, `POST /v1/connections:bulk`,
   `POST /v1/connections/{id}/apply`, `POST /v1/connections/{id}:reapply`,
   `POST /v1/connections/{id}:recheck`, `DELETE /v1/connections/{id}`,
   `DELETE /v1/connections/{id}/grant`.
 - **Provider rails:** `POST /v1/connections/{id}/oauth:start`,
-  `POST /v1/connections/{id}/domainconnect:start`.
+  `POST /v1/connections/{id}/domainconnect:start`,
+  `POST /v1/connections/{id}/route53-role:start` and `:complete`.
+- **Share links:** `POST /v1/sharing/connect`.
 - **SSL:** `ssl:provision`, `ssl:renew`, `ssl:import`, and
   `DELETE /v1/connections/{id}/ssl`.
 - **Power:** `POST /v1/connections/{id}/power`, `power:repower`, and
   `DELETE /v1/connections/{id}/power`.
 - **Webhooks:** `POST /v1/webhooks`, `DELETE /v1/webhooks/{id}`.
+
+An API key reaches these for a connection of any application in its tenant,
+whichever application the key belongs to; the member's role is what decides.
 
 So a `viewer`'s member-scoped key is refused with `403` on all of them: it
 cannot delete a live connection, deprovision a certificate, or register a
@@ -85,7 +90,9 @@ console's role gates are defense-in-depth, not the security boundary. In
 particular:
 
 - **Minting or revoking an API key** and **inviting / removing a member or
-  changing a role** require `admin` or `owner`.
+  changing a role** require `admin` or `owner`. So does **deleting an
+  application** (`DELETE /v1/applications/{id}`), because it revokes the
+  application's keys.
 - **Approving, listing or revoking a delegated-agent grant** requires `admin` or
   `owner` (`agent:manage`).
 - **Billing** (checkout, portal) requires `owner`. A widget token is refused
