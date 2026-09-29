@@ -57,9 +57,11 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 
 | Their DNS provider | The modal offers | They type |
 | --- | --- | --- |
-| Cloudflare, DNSimple, Netlify, Vercel, WordPress.com | **Sign in with the provider** (OAuth, one-time token) | nothing |
-| NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider | nothing |
-| GoDaddy, Namecheap, Name.com, IONOS, OVH, Route 53, everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider, and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where offered) let CustomDomain™ host the DNS | the records (about two minutes), or nothing |
+| Cloudflare, DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Authorize with the provider** (OAuth, one-time token) | nothing |
+| Vercel | **Install CustomDomain™ on Vercel**, on the team that owns the domain | nothing |
+| Porkbun | **Approve access at Porkbun** (API access must be on for the domain) | nothing |
+| NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider, which sends them back when they approve | nothing |
+| GoDaddy, Namecheap, Name.com, IONOS, OVHcloud, Route 53, a site builder or shop that sold the domain (Shopify, Wix, Squarespace, Canva and more), everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider (125 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where offered) let CustomDomain™ host the DNS | the records (about two minutes), or nothing |
 | Unknown provider | a provider picker, then the records | the records |
 
 This table is what `POST /v1/domains:check` returns as `rails`; the widget
@@ -75,6 +77,11 @@ verified and reported but **never served** and gets **no certificate**; that is
 by design. [Bring your own records](/docs/dns/bring-your-own-records).
 
 ## 5. After the modal closes
+
+After a sign-in or one-click setup writes the records, the modal waits for DNS
+to show them, which usually takes seconds. Past a minute it tells the customer
+the wait is unusual and that they can close the window, because the domain
+connects on its own as soon as DNS updates.
 
 `onSuccess` fires when the domain is `live`. If the customer closes early,
 the connection keeps being checked (`pending` never fails on its own); the

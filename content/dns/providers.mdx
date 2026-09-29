@@ -9,13 +9,22 @@ DNS, then offer the easiest way in that works at that provider, in this order:
 1. **Sign in with the provider** (OAuth) or **approve access at the provider**:
    one click, nothing to paste, and the one-time token is never stored.
 2. **One-click setup** (Domain Connect): the provider applies our signed
-   template after the customer approves it on the provider's site.
+   template after the customer approves it on the provider's site, then sends
+   the customer back.
 3. **An access role** (Amazon Route 53): the customer lets our AWS account
    change the zone, with no secret to paste.
 4. **An API key**: the customer creates a scoped credential at the provider and
    pastes it; we write the records for them.
 5. **Add the records by hand**: the exact rows to copy, with provider-specific
    steps and a link to the provider's DNS page. This works at every provider.
+
+CustomDomain™ knows more than 150 DNS hosts, registrars and domain platforms,
+among them every one of the 100 largest registrars (by domains under
+management in ICANN's registry reports for May 2026), and names most of them
+from the domain's nameservers. Knowing a provider is not the same as writing
+its records: most registrars give no third party a way to change DNS, so for
+them the fifth way, with that provider's own steps, is the way in. The tables
+below are what the hosted service offers as of 2026-09-29.
 
 The console and the widget read the same verdict from
 `POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
@@ -32,25 +41,52 @@ records only you know (SES DKIM, a verification `TXT`), see
 | Provider | How it connects | Notes |
 | --- | --- | --- |
 | Cloudflare | **Sign in with Cloudflare** | A root CNAME is fine: Cloudflare flattens it. |
-| DNSimple, Netlify, Vercel, WordPress.com | **Sign in with the provider** | Netlify writes need the domain on Netlify DNS. |
-| DigitalOcean, Linode (Akamai Cloud) | **Sign in with the provider** | Available when this deployment has registered an OAuth app for the provider; otherwise use a personal access token. |
-| Porkbun | **Approve access at Porkbun** | Shown when enabled for this deployment. Porkbun only lets the API change domains that have API Access turned on. |
-| OVHcloud | **Grant access at OVHcloud** | Shown when enabled for this deployment; otherwise use an OVHcloud application key. |
+| DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Sign in with the provider** | Netlify writes need the domain on Netlify DNS. |
+| Vercel | **Install CustomDomain™ on Vercel** | The sign-in is our Vercel integration: install it on the Vercel team that owns the domain. |
+| Porkbun | **Approve access at Porkbun** | Porkbun adds an API key named for CustomDomain™ to the account. Porkbun only lets the API change domains that have API Access turned on. |
 | NameSilo, Glauca Digital, Domain Chief | **One-click setup** (Domain Connect) | These providers serve our templates. |
 | Amazon Route 53 | **Access role** (recommended) | Create a role in your AWS account that lets us change this zone; nothing secret to paste. An IAM access key works too. |
 
 Sign-in and approval tokens are used once to write the records and are never
 stored, which also means we cannot repair those records later without asking
-again.
+again. (A deployment can keep them as encrypted grants instead; see
+[Managed connections](/docs/connect-flow/managed-connections#managed-sign-in-grants).)
+
+A self-hosted deployment offers each sign-in once it has registered an app with
+that provider; see
+[Signing in with the provider](/docs/dns/provider-setup#signing-in-with-the-provider).
+
+### Built, but not switched on yet
+
+These sign-ins exist in the product but are not offered on the hosted service
+today, so none of them appears in the console or the widget:
+
+- **Sign in with Google Cloud** (Google Cloud DNS): the customer signs in with
+  the Google account that can edit the domain's public Cloud DNS zone, and we
+  find the Google Cloud project that holds it. It is switched on once its
+  Google client is configured, and until Google verifies the app only the test
+  users listed in its Google Auth Platform can sign in. Until then, Google
+  Cloud DNS connects with a project ID and an access token.
+- **Grant access at OVHcloud**: a consent page limited to the domain's zone,
+  which needs an OVHcloud application for each region a deployment serves. The
+  hosted service has none, so OVHcloud connects with an application key.
+- **Sign in through the provider's MCP server** (Hostinger, Namecheap,
+  Spaceship, Unstoppable Domains and XServer Domain): the provider's own MCP
+  server signs the customer in and its DNS tools write the records. Each one
+  is switched on only after the provider approves CustomDomain™ and a live test
+  passes. Until then Hostinger, Namecheap and Spaceship connect with an API key
+  (Namecheap only for accounts that qualify), and Unstoppable Domains and
+  XServer Domain take the records by hand.
 
 ### Speaks one-click setup, but has not onboarded our templates
 
 GoDaddy, IONOS, Aruba and Squarespace answer Domain Connect discovery but have
 not onboarded our templates, so the console does not offer a one-click button
-that would end on the provider's error page. Cloudflare answers too; its sign-in
-is the one-click path. Until each provider onboards the templates, GoDaddy and
-IONOS connect with an API key, and Aruba and Squarespace take the records by
-hand.
+that would end on the provider's error page. Cloudflare and Vercel answer too
+and serve none of our templates, and WordPress.com has not onboarded them
+either; for those three, the sign-in is the one-click path. Until each provider
+onboards the templates, GoDaddy and IONOS connect with an API key, and Aruba
+and Squarespace take the records by hand.
 
 ## With an API key
 
@@ -72,7 +108,7 @@ the credential is created, and lists the steps; see
 | Constellix | API key and secret key | |
 | cPanel hosts | cPanel username, API token and server hostname | For hosts that run cPanel; we connect on port 2083. |
 | deSEC | API token | |
-| DigitalOcean | Personal access token with the domain scopes | Or sign in with DigitalOcean when available. |
+| DigitalOcean | Personal access token with the domain scopes | Or sign in with DigitalOcean. |
 | DNSimple | Account API access token | Or sign in with DNSimple. |
 | DNS Made Easy | API key and secret key | |
 | DreamHost | API key with the `dns-*` functions | |
@@ -81,11 +117,13 @@ the credential is created, and lists the steps; see
 | Epik | API signature | Allow `34.192.32.132` in Epik's API settings. |
 | Gandi | Personal access token with "Manage domain name technical configurations" | |
 | GleSYS | API key with Domain access, and the project ID | |
-| Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. |
+| Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. Sign in with Google Cloud is built but not switched on yet. |
 | Hetzner | Hetzner Console project API token (Read & Write) | Tokens from the old DNS Console no longer work. |
 | Hostinger | hPanel API token | |
+| Infomaniak | API token with `dns:read` and `dns:write` | The zone must be at Infomaniak. The API allows 60 requests a minute. |
+| Internet.bs | API key and API password | Allow `34.192.32.132` under API allowed IP address(es). |
 | IONOS | API key (public prefix and secret) | |
-| Linode | Personal access token with Domains read/write | Or sign in with Linode when available. |
+| Linode | Personal access token with Domains read/write | Or sign in with Linode. |
 | LuaDNS | API key and account email | Turn on API access first. |
 | Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
 | NameBright | API application (account, application name, secret) | NameBright grants API access on request; whitelist `34.192.32.132` on the application. |
@@ -93,13 +131,14 @@ the credential is created, and lists the steps; see
 | Netlify | Personal access token | Or sign in with Netlify. |
 | Njalla | API token | |
 | Openprovider | API token from `/v1beta/auth/login` | API access must be enabled for the user; tokens last 48 hours, so they are used once. |
-| OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Or grant access at OVHcloud when available. |
-| Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun when available. |
+| OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
+| Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun. |
 | Simply.com | API key and account number | |
 | Spaceship | API key and secret with the DNS record scopes | |
+| Tencent Cloud DNSPod | Tencent Cloud API key (SecretId and SecretKey), ideally from a CAM sub-user allowed only the DNSPod record actions | Choose the China or International site the account is on. Records are written on the Default line; other lines are left alone. |
 | TransIP | Access token | Switch off the token's whitelisted IP option, or whitelist `34.192.32.132`. |
 | united-domains | DNS API key | Needs the DNS API add-on. |
-| Vercel | Access token | Or sign in with Vercel. |
+| Vercel | Access token | Or install CustomDomain™ on Vercel. |
 | Vultr | API key | Add `34.192.32.132/32` under Access Control. |
 
 `34.192.32.132` is the address the hosted service's DNS writes come from
@@ -136,9 +175,11 @@ yourself:
 | `cloudns` | `authId:password`, `sub:subAuthId:password` or `subuser:subAuthUser:password` |
 | `constellix`, `dnsmadeeasy`, `spaceship` | `apiKey:secret` |
 | `cpanel` | `user:token:host` |
+| `dnspod` | `secretId:secretKey`, prefixed with `intl:` for a Tencent Cloud International account |
 | `easydns` | `token:key` |
 | `gcpdns` | `projectId:accessToken` |
 | `glesys` | `projectId:apiKey` |
+| `internetbs` | `apiKey:apiPassword` |
 | `ionos`, `uniteddomains` | `publicPrefix.secret` (one key, prefix and secret joined by a dot) |
 | `luadns` | `email:apiKey` |
 | `namebright` | `account:appName:secret` |
@@ -150,21 +191,64 @@ yourself:
 
 ## By hand, with provider-specific steps
 
-Every provider can be connected by adding the records the console shows. For
-these the console also names the provider and shows its own steps (where the
-DNS page is, what the name field wants for the root, and the pitfalls): 123 Reg,
-ALL-INKL.COM, Arsys, Aruba, BigRock, Bluehost (and HostMonster and Just Host),
-Crazy Domains, Domain.com, Enom, Epik, Fasthosts, FatCow, Freename, GreenGeeks,
-home.pl, HostGator, Hosting.com, Hostpoint, Hover, InMotion Hosting, iPage,
-iwantmyname, Locaweb, Mijndomein, NameBright, Namecheap, Network Solutions,
-o2switch, one.com, OpenSRS, Papaki, Register.com, Register.it, Registro.br,
-ResellerClub, Shopify, SiteGround, Squarespace, STRATO, united-domains, Web.com,
-Wix, World4You and xneelo, plus generic cPanel steps for hosts that run cPanel.
-Any other provider gets the same records with general steps.
+Every provider can be connected by adding the records the console shows, with
+a link to the provider's DNS page where we know it. For 125 providers and
+platforms the widget also shows that provider's own steps (where the DNS page
+is, what the Name field wants for the root, and the pitfalls): 123 Reg, Akamai
+Cloud (Linode), Alibaba Cloud DNS, ALL-INKL.COM, Amazon Route 53, Arsys,
+Aruba.it, Atak Domain, Azure DNS, BigCommerce, BigRock, Bluehost, Bolt
+(bolt.new), Bunny DNS, Canva, Cloudflare, ClouDNS, Cosmotown, cPanel, Crazy
+Domains, DigitalOcean, Directnic, DNSimple, Domain.com, DomainDiscount24,
+DonDominio, DreamHost, Dynadot, easyDNS, Elementor, eName, Enom, Epik,
+Fasthosts, Fastmail, FatCow, Freename, Gabia, Gandi, Gname, GoDaddy, Google
+Cloud DNS, GreenGeeks, Hetzner, HighLevel (LeadConnector), home.pl, HostGator,
+Hosting.com, Hostinger, Hostpoint, Hover, Infomaniak, InMotion Hosting,
+Internet.bs, IONOS, iPage, isimtescil.net, iwantmyname, Jimdo, Joker.com,
+Juming, Just Host, Kajabi, Locaweb, Lovable, METUnic, Microsoft 365,
+Mijndomein, Moniker, Name.com, NameBright, Namecheap, NameMart, NameSilo,
+Namify, Natro, Netlify, Network Solutions, NiceNIC, Now.cn, o2switch, Odoo
+Online, Onamae.com, one.com, Openprovider, OpenSRS, OVHcloud, Papaki, Porkbun,
+REG.RU, Register.com, Register.it, Registro.br, ResellerClub, RU-CENTER,
+Sav.com, Shopify, Simply.com, SITE123, SiteGround, Spaceship, Square Online
+(Weebly), Squarespace Domains, STRATO, Strikingly, Subreg.cz, Tencent Cloud
+DNSPod, TransIP, Tumblr, Turbify (formerly Yahoo Small Business),
+Turkticaret.Net, united-domains, Vercel, Vultr, Web.com, Webcentral, Webnode,
+West.cn, Wix, WordPress.com, World4You, Xinnet, xneelo, Yola and Yuqu. Any
+other provider gets the same records with general steps.
+
+Wholesale, corporate and drop-catch registrars rarely give the end customer a
+DNS panel of their own. Their entries in `GET /v1/providers/census` say who
+edits the records instead: the reseller that sold the domain, the company's
+domain administrator, or NameBright for a domain won at DropCatch.
+
+## Domains bought through a site builder or shop
+
+Site builders, shops and email suites often sell the domain inside their own
+product, and then the records go in on that product's DNS screen. Twenty
+platforms where people buy or keep a domain (mostly those, plus
+DomainDiscount24 and Just Host) are recognized with their own steps:
+
+- **With nameservers of their own**, named from the nameservers: Microsoft
+  365, Fastmail, Turbify, SITE123, BigCommerce, Jimdo and DomainDiscount24
+  (which registers domains bought when signing up for Google Workspace), plus
+  Just Host, whose zones are named Bluehost because Just Host now sends its
+  customers there.
+- **On another provider's nameservers**, offered in the widget's provider list
+  with their steps: Canva, Strikingly, Webnode, Lovable, Bolt, HighLevel,
+  Kajabi, Elementor, Tumblr, Square Online, Yola and Odoo Online.
+
+Where a platform keeps its domains on another provider's nameservers,
+detection would name that provider, whose sign-in or API key cannot reach a
+zone held in the platform's account. So when the root also points at an
+address only that platform hands out, detection names the platform instead and
+shows its steps: a Shopify store on Google Cloud DNS's nameservers, a Tumblr
+domain on WordPress.com's, and a Canva domain on OpenSRS's shared DNS. The
+domain is then connected by adding the records in the platform's own settings.
 
 ## Where keys are kept
 
-Sign-in tokens and one-click setup store nothing. An API key is used for the
+Sign-ins and one-click setup store nothing, unless the connection is made
+[managed](/docs/connect-flow/managed-connections). An API key is used for the
 write and kept only when the customer leaves **Remember this key** ticked in the
 console (through the API, only when the request sets `remember`). A kept key is
 encrypted with AES-256-GCM, scoped to one workspace and provider, used only
@@ -182,3 +266,12 @@ template and returns. There is no server-to-server token. Discovery is via
 synchronous redirect and the asynchronous variant are supported
 (`POST /v1/connections/{id}/domainconnect:start`). The button is only offered
 for providers that serve our templates.
+
+Every template we publish names our return domains (`syncRedirectDomain`:
+`api.customdomain.ai`, `app.customdomain.ai` and `customdomain.ai`), since
+version 2 of the templates was merged into the public Domain Connect template
+repository on 2026-09-29. So a synchronous apply always carries a signed
+return link: after the customer approves (or cancels) at the provider, the
+provider sends the browser back to us, the window closes, and the widget or
+console that opened it learns the result. The records still count only once
+public DNS shows them; a return that says "done" is never taken as proof.

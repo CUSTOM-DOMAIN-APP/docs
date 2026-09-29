@@ -118,10 +118,10 @@ There is no single number, and the number you are given is usually wrong.
 - **Changed record, name queried recently:** up to the previous record's TTL.
 - **Name queried while it did not exist:** this is the slow case. Resolvers
   cache the *absence* of a record (RFC 2308 §5), for a duration set by the
-  zone's `SOA` minimum, which is 5 minutes at Cloudflare, 30 minutes at
-  DigitalOcean, and an hour at GoDaddy. Checking whether it works *before*
-  creating the record is what causes the "I waited an hour and it still says
-  not found" report.
+  zone's `SOA` minimum, which is 30 minutes at Cloudflare and DigitalOcean,
+  and an hour at GoDaddy. Checking whether it works *before* creating the
+  record is what causes the "I waited an hour and it still says not found"
+  report.
 
 The practical rule: lower the TTL *before* you change anything, and do not query
 a name until after you have created it.

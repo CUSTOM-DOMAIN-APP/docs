@@ -25,7 +25,7 @@ The status machine is deliberately small:
 
 | Status | Meaning |
 | --- | --- |
-| `pending` | Created; records not yet seen. Fast backoff for 72 hours, then it stays `pending` with `error_code: setup_incomplete` and is re-checked every six hours. **Never fails on its own.** |
+| `pending` | Created; records not yet seen. Checked every five seconds at first, backing off to every 15 minutes; after 72 hours it stays `pending` with `error_code: setup_incomplete` and is re-checked every six hours. **Never fails on its own.** |
 | `propagating` | Records were written (by a rail) and are being checked against public DNS. |
 | `live` | Every desired record resolves to its intended value. The edge serves TLS for the host (only when the record set includes an edge record; an email-only set is verified but never served). |
 | `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`), or a rail rejected the write. **Not terminal.** See Retrying. |
@@ -57,12 +57,19 @@ target). Once a rail writes records, the stored set is returned instead.
 
 ## Propagation → live
 
-A background poller (running automatically on a 1-minute interval) drains
-`propagating` and `pending` connections, resolving each desired record against
-public DNS with **value checking** (a CNAME must resolve to the expected target;
-an A/AAAA must contain the exact address). When all records resolve, the
-connection flips to `live` and `connection.live` fires exactly once, guarded by
-a compare-and-swap so the API and the worker can't double-fire.
+A background poller drains `propagating` and `pending` connections, resolving
+each desired record against public DNS with **value checking** (a CNAME must
+resolve to the expected target; an A/AAAA must contain the exact address). It
+looks for due connections every five seconds. A young connection is due every
+5 seconds for its first 5 minutes, then every 30 seconds until 15 minutes,
+every 2 minutes until an hour, and every 15 minutes after that; a rail's write
+makes it due at once. When the public resolver does not show a record yet
+(it may still remember the name as missing, or hold the old value), the check
+asks the zone's own nameservers, and every one that answers must serve the
+value, so a fresh write is usually verified within seconds.
+When all records resolve, the connection flips to `live` and `connection.live`
+fires exactly once, guarded by a compare-and-swap so the API and the worker
+can't double-fire.
 
 ## Idempotency & tenancy
 

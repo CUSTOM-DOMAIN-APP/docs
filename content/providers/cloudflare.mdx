@@ -9,7 +9,7 @@ description: "Put a custom domain from Cloudflare on your app with automatic HTT
 
 **Setup type: One-click (OAuth).** You sign in to Cloudflare in a popup and approve the change. No records to copy; no password is shared with the app.
 
-Cloudflare is the smoothest case: it supports native OAuth, so your users click, sign in to Cloudflare, approve, and the records are written for them, no copy-paste. Cloudflare also implements the Domain Connect standard, but the OAuth rail is preferred because it maps to Cloudflare's own permission model.
+Cloudflare is the smoothest case: it supports native OAuth, so your users click, sign in to Cloudflare, approve, and the records are written for them, no copy-paste. Cloudflare also speaks the Domain Connect standard, but it serves none of our one-click templates, so sign-in is the way in.
 
 ## What you'll need
 
@@ -22,15 +22,15 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 ## Setting it up on Cloudflare
 
-1. In the connect widget, choose **Cloudflare** and click connect.
+1. Enter the domain in the connect flow (the console, or the widget inside the product you're connecting to). It detects Cloudflare and offers to sign in with Cloudflare.
 2. A Cloudflare sign-in window opens. Approve the requested DNS change.
-3. The records apply automatically; you're returned to the app, which verifies and goes live.
+3. The records apply automatically; you're returned to the app, which usually verifies them within seconds and goes live.
 
 ## Cloudflare specifics
 
 - The OAuth token requests only `dns.write` and `zone.read`, the minimum to add the records, nothing more. Cloudflare's API requires the dotted `resource.action` scope form; the colon form (`dns_records:write`) is rejected as an invalid scope.
-- Cloudflare is on the canonical Domain Connect provider list, so the one-click path works even if the OAuth app is unavailable.
-- DC sync also live per the canonical DC list; OAuth preferred.
+- Cloudflare hand-curates its Domain Connect templates and serves none of our 18 (checked 2026-09-28), so one-click setup is not offered. If you would rather not sign in, a scoped API token or adding the records by hand works too.
+- A root CNAME is fine: Cloudflare flattens it at the apex.
 
 ## How you know it worked
 

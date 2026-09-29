@@ -22,13 +22,14 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 ## Setting it up on DigitalOcean
 
-1. In the connect widget, choose **DigitalOcean** and click connect.
+1. Enter the domain in the connect flow (the console, or the widget inside the product you're connecting to). It detects DigitalOcean and offers to sign in with DigitalOcean.
 2. A DigitalOcean sign-in window opens. Approve the requested DNS change.
-3. The records apply automatically; you're returned to the app, which verifies and goes live.
+3. The records apply automatically; you're returned to the app, which usually verifies them within seconds and goes live.
 
 ## DigitalOcean specifics
 
-- The OAuth token requests `read` and `write`, DigitalOcean's granularity, which covers adding the DNS records and nothing beyond your account's DNS.
+- The sign-in asks only for `domain:read` and `domain:update`: enough to add the DNS records, and nothing else in your account.
+- If you would rather not sign in, a personal access token with the domain scopes works too.
 
 ## How you know it worked
 

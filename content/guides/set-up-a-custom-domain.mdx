@@ -142,11 +142,11 @@ with an OAuth flow, which gets the same result by a different mechanism: the
 user authorizes, the records are written for them.
 
 **By hand.** Everything else. The vendor shows the records; the user copies them
-into their panel. This is not a rare fallback; it is the majority case. In our
-own census of 63 providers, 38 have no working automated write rail. Domain
-Connect's own site lists nine live DNS provider implementations. Any vendor
-claiming universal one-click coverage is describing something other than what
-the standards support.
+into their panel. This is not a rare fallback; it is the majority case. Our
+own census lists 154 providers (September 2026), and 118 of them are connected
+by hand. Domain Connect's own site lists nine live DNS provider
+implementations. Any vendor claiming universal one-click coverage is
+describing something other than what the standards support.
 
 When you type records by hand, two conventions cause most of the errors:
 
@@ -168,7 +168,9 @@ minimum field (RFC 2308 §5), which is commonly an hour. Refreshing repeatedly
 during setup is actively counterproductive.
 
 Check against the authoritative server rather than your local resolver to see
-the true state:
+the true state (CustomDomain™'s own check does the same: when a public resolver
+still has the old answer, it asks the zone's nameservers, and every one that
+answers must serve the record):
 
 ```bash
 dig +short app.example.com CNAME @$(dig +short NS example.com | head -1)

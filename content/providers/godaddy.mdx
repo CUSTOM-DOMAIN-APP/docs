@@ -9,7 +9,7 @@ description: "Put a custom domain from GoDaddy on your app with automatic HTTPS.
 
 **Setup type: Automatic (API token).** You paste a scoped GoDaddy API token once and the app writes the records for you; nothing to copy by hand.
 
-GoDaddy connects with a scoped access token you generate once, and CustomDomain™ writes the records for you. GoDaddy is also on the Domain Connect list, so a one-click approve-at-GoDaddy path is available too.
+GoDaddy connects with a scoped access token you generate once, and CustomDomain™ writes the records for you. GoDaddy speaks the Domain Connect standard, but it has not onboarded our one-click templates yet, so a token (or adding the records by hand) is the way in today.
 
 ## What you'll need
 
@@ -23,15 +23,15 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 ## Setting it up on GoDaddy
 
-1. Create a scoped DNS token in the GoDaddy dashboard ([open it](https://dcc.godaddy.com/manage-dns)).
-2. Paste it into the connect widget.
+1. Create a Personal Access Token on GoDaddy's [Personal Access Token page](https://developer.godaddy.com/en/personal-access-token), with only `domains.domain:read` and `domains.dns:update` and a short expiration.
+2. Paste it into the console's connect flow, under **API key**. (The widget doesn't take provider keys from your customers; it shows them the records to add by hand.)
 3. CustomDomain™ writes the records for you and verifies them.
 
 ## GoDaddy specifics
 
-- Use a BYO Personal Access Token (a `gd_pat_...` key) created at developer.godaddy.com with the Domains & DNS scope.
-- GoDaddy appears on the canonical Domain Connect provider list, which is the no-token, approve-in-a-popup alternative.
-- BYO Personal Access Token (gd_pat_...) from developer.godaddy.com with the Domains & DNS scope; legacy KEY:SECRET pairs still work but are account-tier gated. No DC templates (0/18) and no third-party OAuth, so there is no one-click rail. No apex ALIAS/ANAME, a root domain needs A records (APEX_A_TARGETS) or connect www instead.
+- Use a Personal Access Token (a `gd_pat_...` key) from developer.godaddy.com. Any GoDaddy account that holds a domain can create one. Older key and secret pairs still work, but GoDaddy has deprecated them for the Domains API.
+- One-click setup (Domain Connect) is waiting on GoDaddy to onboard our templates (none of our 18 served on 2026-09-28), and GoDaddy offers no sign-in to third parties.
+- GoDaddy has no ALIAS or ANAME record, so a root domain needs A records; or connect `www` instead.
 
 ## How you know it worked
 
@@ -41,11 +41,11 @@ CustomDomain™ polls public DNS and issues the TLS certificate automatically. W
 
 ### Where do I get the GoDaddy token?
 
-At developer.godaddy.com, create a Personal Access Token with the Domains & DNS scope. Paste it into the connect widget once; it's used only to add the records for the domain you're connecting.
+On developer.godaddy.com, create a Personal Access Token with only `domains.domain:read` and `domains.dns:update`. Paste it into the connect flow once; it's used only to add the records for the domain you're connecting.
 
 ### Can I avoid the token entirely?
 
-Yes, GoDaddy is on the Domain Connect list, so you can use the one-click path that sends you to GoDaddy to approve the change instead of pasting a token.
+Not with one click yet: GoDaddy has not onboarded our Domain Connect templates and offers no sign-in to third parties. You can add the records by hand in GoDaddy's DNS panel instead; the app shows them and verifies them.
 
 ## Related
 

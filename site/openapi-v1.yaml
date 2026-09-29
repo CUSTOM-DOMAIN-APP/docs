@@ -1349,13 +1349,20 @@ paths:
         to an HMAC-signed single-use `state`. The provider redirects back to
         `/v1/connect/oauth/callback`, which writes the connection's records with
         what the provider handed over. `flow` says which sign-in runs:
-        `oauth2` (authorization code with PKCE S256), `vercel_integration` (the
+        `oauth2` (authorization code with PKCE S256; for Google Cloud DNS,
+        Sign in with Google Cloud, whose callback first finds the Google Cloud
+        project that holds the domain's public zone), `vercel_integration` (the
         CustomDomain™ integration's install page; the user picks the Vercel team
         that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
         handoff: the user approves a key named after the domain; no client
-        registration is needed) or `ovh_consent` (an OVHcloud consumer key
+        registration is needed), `ovh_consent` (an OVHcloud consumer key
         limited to the domain's DNS zone, validated on OVHcloud's page for the
-        chosen `region`). The credential is used for that write and dropped,
+        chosen `region`) or `mcp_oauth` (OAuth through the provider's hosted
+        MCP server, for Hostinger, Unstoppable Domains, XServer, Namecheap and
+        Spaceship: the endpoints are discovered from the server's metadata,
+        the client is one the control plane registered for itself, and the
+        records are written through the server's DNS tools; offered only for
+        the providers the deployment lists in `MCP_SIGNIN_PROVIDERS`). The credential is used for that write and dropped,
         unless the deployment keeps grants for this provider
         (`OAUTH_MANAGED_PROVIDERS` with `GRANT_ENCRYPTION_KEY`), in which case
         `managed` is true and it is stored encrypted for `:reapply`.
@@ -1394,7 +1401,7 @@ paths:
                   provider: { type: string }
                   flow:
                     type: string
-                    enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent]
+                    enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent, mcp_oauth]
                   managed:
                     type: boolean
                     description: The connect will keep its credential (managed mode).
@@ -1443,8 +1450,24 @@ paths:
         `apex_not_supported`, `forwarding_not_supported`, the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
         domain at Porkbun), `vercel_team_scope` (install on the team that owns
-        the domain) and `ovh_zone_not_found` (pick the OVHcloud region the
-        account lives in). A failure is also stored as the connection's
+        the domain), `ovh_zone_not_found` (pick the OVHcloud region the
+        account lives in), `oauth_scope_not_granted` (a permission was left
+        unticked on the provider's consent screen; sign in again and allow
+        them all), and for Google Cloud DNS `gcpdns_zone_not_found` (no public
+        Cloud DNS zone for the domain in a Google Cloud project the account
+        can edit), `gcpdns_zone_ambiguous` (more than one) and
+        `gcpdns_search_incomplete` (the account can see more projects than
+        the search reaches, so the one zone found is not written to). With
+        the first two, `payload.account` names the Google account that signed
+        in, when Google said which; the connection's stored `error_message`
+        never does. After
+        an `mcp_oauth` sign-in, `apply_failed` also
+        reports a write refused before anything changed because a record the
+        provider's DNS tools may not remove is in the way (a Namecheap URL
+        redirect, a record a provider's product manages; the `message` names
+        it and where to remove it), and `ProviderAuthenticationError` a DNS
+        tool the user did not approve at the provider (sign in again and
+        approve DNS access). A failure is also stored as the connection's
         `error_code`.
       security: []
       parameters:
@@ -3747,8 +3770,9 @@ components:
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
-            it does, but this deployment has no client registered (operator
-            task). `not_discovered`: no Domain Connect discovery answer.
+            it does, but this deployment has not set it up: no client
+            registered, or an MCP server sign-in not listed in
+            `MCP_SIGNIN_PROVIDERS` (operator task). `not_discovered`: no Domain Connect discovery answer.
             `template_not_onboarded`: the provider speaks Domain Connect but
             has not onboarded our template. `redirect_unavailable`: the
             provider requires our return link on a one-click apply and the
@@ -3765,7 +3789,7 @@ components:
             treat it as unavailability.
         flow:
           type: string
-          enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent]
+          enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent, mcp_oauth]
           description: >-
             Available `oauth` rail only: the sign-in it runs, so a client can
             label its button (see `POST /connections/{id}/oauth:start`).

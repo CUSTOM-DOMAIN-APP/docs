@@ -7,7 +7,7 @@ description: "Put a custom domain from Namecheap on your app with automatic HTTP
 
 # Connect a Namecheap domain
 
-**Setup type: Guided manual.** Namecheap has no safe delegated write path, so you add the records in the Namecheap DNS panel yourself. The app shows the exact values and verifies them for you.
+**Setup type: Guided manual.** Namecheap's API is open only to some accounts and replaces the whole zone on each write, so by default you add the records in the Namecheap DNS panel yourself. The app shows the exact values and verifies them for you.
 
 Namecheap connects via the guided-manual path by default: CustomDomain™ shows the exact records and you add them in Namecheap's Advanced DNS panel, then it verifies. Namecheap does have an API, but its shape makes copy-paste the safer default.
 
@@ -30,7 +30,8 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 - Namecheap's DNS API is a full-zone `setHosts` replace, it overwrites the whole record set rather than adding one record, and it is IP-allowlisted, so the guided-manual path is the default to avoid clobbering existing records.
 - Add the records under Domain List > Manage > Advanced DNS.
-- API is full-zone setHosts (dangerous replace) and IP-allowlisted, manual by default, adapter available for tenants who accept the risk.
+- For accounts that qualify (20 or more domains, a $50 balance, or $50 spent in the last 2 years), an API key works too: switch API access on, whitelist `34.192.32.132`, and paste the key in the console's connect flow. The adapter reads the zone and writes it back with only our records changed. See [Provider setup](/docs/dns/provider-setup#namecheap).
+- Domains on Namecheap **hosting** nameservers are edited in cPanel's Zone Editor instead.
 
 ## How you know it worked
 
