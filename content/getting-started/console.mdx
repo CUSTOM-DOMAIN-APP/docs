@@ -108,14 +108,18 @@ The **What works at …** card (named for your provider) is the truth for *your*
 provider, straight from the server. The options appear in this order; the
 recommended one is marked.
 
-1. **Sign in with the provider**: Cloudflare, DNSimple, Netlify, Vercel,
-   WordPress.com (and DigitalOcean, Linode, Porkbun and OVHcloud where this
-   deployment has them set up). Approve once in a popup; we add the records
-   with a one-time token we never store. Fastest.
+1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
+   Netlify, Vercel (by installing the CustomDomain™ integration) and
+   WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup;
+   we add the records with a one-time token we never store. Fastest. Sign in
+   with Google Cloud, OVHcloud's consent page and sign-in through a provider's
+   MCP server are built but not switched on yet; see
+   [DNS providers](/docs/dns/providers#built-but-not-switched-on-yet).
 2. **One-click setup**: only where the provider serves our template
-   (NameSilo, Glauca Digital, Domain Chief today). GoDaddy, IONOS, Aruba,
-   Squarespace and Cloudflare are *not* offered this, on purpose: they have not
-   onboarded our templates.
+   (NameSilo, Glauca Digital, Domain Chief today). After you approve the change
+   there, the provider sends you back here. GoDaddy, IONOS, Aruba,
+   Squarespace, Cloudflare and Vercel are *not* offered this, on purpose: they
+   have not onboarded our templates.
 3. **API key**: paste a scoped provider credential, one labeled field per part,
    with a link to where it is created and the steps. We keep it encrypted when
    **Remember this key** stays ticked (untick it to use the key once). Any
@@ -139,10 +143,13 @@ teammate** emails them to whoever is. Replies go to you.
 ## 5. Verify
 
 The connection sits in `pending` until the records resolve, then goes
-`live`. You can leave and come back: **Domains** shows every connection with
-its reason and a **Resume** link. After three minutes of waiting the page
-offers a fallback. A stalled connection is *paused*, not failed: it keeps
-being checked every six hours.
+`live`. Records written for you (a sign-in, one-click setup or an API key)
+usually verify within seconds: a new connection is checked every five seconds
+at first, and when public DNS still has an old answer, we ask the domain's
+own nameservers instead. You can leave and come back:
+**Domains** shows every connection with its reason and a **Resume** link.
+After three minutes of waiting the page offers a fallback. A stalled
+connection is *paused*, not failed: it keeps being checked every six hours.
 
 While a domain is waiting, its detail page opens **What public DNS shows
 right now**: each record's Name to type, whether public DNS has it, what

@@ -23,9 +23,10 @@ provider, one-click setup or a Route 53 access role needs no key at all; see
 
 Some providers only answer API calls from addresses on a list. On the hosted
 service, DNS writes come from **`34.192.32.132`**. It must be allowed at
-Namecheap, Dynadot, Epik, NameBright and Vultr, and on any IP restriction you set
-at ClouDNS, NameSilo, TransIP, GleSYS or Openprovider. A self-hosted deployment
-uses its own address (the control plane's `CONNECT_CLIENT_IP`).
+Namecheap, Dynadot, Epik, NameBright, Internet.bs and Vultr, and on any IP
+restriction you set at ClouDNS, NameSilo, TransIP, GleSYS or Openprovider. A
+self-hosted deployment uses its own address (the control plane's
+`CONNECT_CLIENT_IP`).
 
 ## Registrars and DNS hosts
 
@@ -41,7 +42,7 @@ uses its own address (the control plane's `CONNECT_CLIENT_IP`).
 | Constellix | `constellix` | **Manage Profile**, **Generate API Keys**; copy the API Key and Secret Key (shown once). | |
 | cPanel hosts | `cpanel` | In cPanel, **Security**, **Manage API Tokens**, **Create**; copy the token, your cPanel username and the server's hostname. | We connect on port 2083. |
 | deSEC | `desec` | [Token management](https://desec.io/tokens): create a token and copy the secret (shown once). | |
-| DigitalOcean | `digitalocean` | [API tokens](https://cloud.digitalocean.com/account/api/tokens): **Generate New Token** with every domain scope under Custom Scopes. | Or sign in with DigitalOcean when available. |
+| DigitalOcean | `digitalocean` | [API tokens](https://cloud.digitalocean.com/account/api/tokens): **Generate New Token** with every domain scope under Custom Scopes. | Or sign in with DigitalOcean. |
 | DNSimple | `dnsimple` | Account page, **API & Access** tab, **Add**, **Generate token**. | Or sign in with DNSimple. |
 | DNS Made Easy | `dnsmadeeasy` | **Config**, **Account Information**: tick the box to generate API keys, then copy the API Key and Secret Key. | Business (DNS-25) plan and above; only the account's primary user sees the keys. |
 | DreamHost | `dreamhost` | [API page](https://panel.dreamhost.com/?tree=home.api): tick `dns-list_records`, `dns-add_record` and `dns-remove_record`, generate the key. | |
@@ -52,8 +53,10 @@ uses its own address (the control plane's `CONNECT_CLIENT_IP`).
 | GleSYS | `glesys` | Profile, **Control API access**, **Create** for the project; allow **Domain** under Permissions. The username is the project ID (`CL12345`). | |
 | Hetzner | `hetzner` | [Hetzner Console](https://console.hetzner.com/projects): the project, **Security**, **API tokens**, **Generate API token** with **Read & Write**. | Tokens from the old DNS Console (dns.hetzner.com) no longer work. |
 | Hostinger | `hostinger` | [hPanel, API](https://hpanel.hostinger.com/profile/api): create a token. | |
+| Infomaniak | `infomaniak` | [Manager, API tokens](https://manager.infomaniak.com/v3/ng/profile/user/token/list): **Create a token** with the `dns:read` and `dns:write` scopes, confirm with your password and copy it (shown once). | The DNS zone must be at Infomaniak. The API allows 60 requests a minute. |
+| Internet.bs | `internetbs` | Sign in, **My Account**, **Get my API key**; set the API password under **My Account**, **Account Security**, **Change API password**; add `34.192.32.132` under **My Account**, **My Profile**, **Reseller Settings**, **API allowed IP address(es)**. | Internet.bs refuses calls from addresses that are not on that list. |
 | IONOS | `ionos` | [Developer portal](https://developer.hosting.ionos.com/keys): create an API key; copy the public prefix and the secret (shown once). | IONOS has not onboarded one-click setup for us yet. |
-| Linode | `linode` | [API tokens](https://cloud.linode.com/profile/tokens): **Domains** Read/Write, everything else No Access. | Or sign in with Linode when available. |
+| Linode | `linode` | [API tokens](https://cloud.linode.com/profile/tokens): **Domains** Read/Write, everything else No Access. | Or sign in with Linode. |
 | LuaDNS | `luadns` | **Account Settings**: tick **Enable API Access**, then create an API key; use it with your account email. | |
 | Name.com | `namecom` | [API settings](https://www.name.com/account/settings/api): create a production token; copy the username and token. | With two-step verification on, also switch on **Name.com API Access** in Security settings. |
 | NameBright | `namebright` | [API management](https://my.namebright.com/my-account/api-management): request access, create an API application with `34.192.32.132` in its IP whitelist, copy the secret. | NameBright grants API access on request. |
@@ -61,13 +64,14 @@ uses its own address (the control plane's `CONNECT_CLIENT_IP`).
 | Netlify | `netlify` | [Applications](https://app.netlify.com/user/applications#personal-access-tokens): **New access token**. | The domain must use Netlify DNS. Or sign in with Netlify. |
 | Njalla | `njalla` | [API settings](https://njal.la/settings/api/): add a token. | |
 | Openprovider | `openprovider` | Enable **API access** for your user (**Account**, **Account Overview**, username, **Edit**), then POST your control panel username and password to `https://api.openprovider.eu/v1beta/auth/login` and copy `data.token`. | Tokens last 48 hours, so they are used once. |
-| OVHcloud | `ovh` | Token page for your region ([Europe](https://eu.api.ovh.com/createToken/), [Canada](https://ca.api.ovh.com/createToken/), [United States](https://api.us.ovhcloud.com/createToken/)): rights `GET`, `POST`, `PUT` and `DELETE` on `/domain/zone/*`, then copy the application key, application secret and consumer key. | Or grant access at OVHcloud when available. |
-| Porkbun | `porkbun` | [API Access](https://porkbun.com/account/api): create a key and copy the API Key and Secret Key. | Turn on **API Access** for the domain (**Domain Management**, **Details**). If the key has an IP allowlist, include `34.192.32.132`; if it has a domain allowlist, include this domain. The domain must use Porkbun's nameservers. Or approve access at Porkbun when available. |
+| OVHcloud | `ovh` | Token page for your region ([Europe](https://eu.api.ovh.com/createToken/), [Canada](https://ca.api.ovh.com/createToken/), [United States](https://api.us.ovhcloud.com/createToken/)): rights `GET`, `POST`, `PUT` and `DELETE` on `/domain/zone/*`, then copy the application key, application secret and consumer key. | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
+| Porkbun | `porkbun` | [API Access](https://porkbun.com/account/api): create a key and copy the API Key and Secret Key. | Turn on **API Access** for the domain (**Domain Management**, **Details**). If the key has an IP allowlist, include `34.192.32.132`; if it has a domain allowlist, include this domain. The domain must use Porkbun's nameservers. Or approve access at Porkbun. |
 | Simply.com | `simply` | **Account**, **API keys**: create a key; use it with your account number (`S123456`). | |
 | Spaceship | `spaceship` | [API Manager](https://www.spaceship.com/application/api-manager/): **New API key** with `dnsrecords:read` and `dnsrecords:write`. | |
+| Tencent Cloud DNSPod | `dnspod` | [CAM console](https://console.cloud.tencent.com/cam) (International site: console.tencentcloud.com/cam): a sub-user with programmatic access and a policy allowing only `dnspod:DescribeRecordList`, `dnspod:CreateRecord`, `dnspod:ModifyRecord` and `dnspod:DeleteRecord` (or `QcloudDNSPodFullAccess`), then create an API key and copy the SecretId and SecretKey (the SecretKey is shown only when created). | Choose the site the account is on (China or International). Records are written on the Default line. |
 | TransIP | `transip` | [API settings](https://www.transip.eu/cp/account/api/): switch the API on, create an access token (up to 1 month), Read-only off. | Switch off the token's whitelisted IP option, or whitelist `34.192.32.132`. |
 | united-domains | `uniteddomains` | Order the **DNS API** product in your portfolio, then **Create new API key**; copy the whole key (prefix, dot, secret; shown once). | The DNS API is an add-on. |
-| Vercel | `vercel` | [Tokens](https://vercel.com/account/settings/tokens): create a token for the scope that owns the domain. | Or sign in with Vercel. |
+| Vercel | `vercel` | [Tokens](https://vercel.com/account/settings/tokens): create a token for the scope that owns the domain. | Or install CustomDomain™ on Vercel. |
 | Vultr | `vultr` | [API settings](https://my.vultr.com/settings/#settingsapi): enable the API, copy the key, add `34.192.32.132/32` under **Access Control**. | |
 
 ## Cloud DNS
@@ -94,6 +98,16 @@ Open [Cloud Shell](https://console.cloud.google.com/?cloudshell=true) in the
 project that holds the zone, signed in with the DNS Administrator role, run
 `gcloud auth print-access-token`, and paste the token with the project ID. The
 token expires within an hour, so it is used once and never kept.
+
+**Sign in with Google Cloud** is built, but the hosted service has not
+switched it on yet. Where a deployment has set it up, it skips all of the
+above: sign in with the Google account that can edit the zone, and we find the
+project that holds it among the projects that account can see. The zone must
+be a public Cloud DNS zone (a private zone is never used) in a project that
+account can edit, and there must be only one such zone for the domain;
+otherwise the sign-in says which account you used and what to change. Until
+Google verifies the app, only the test users listed in the deployment's Google
+Auth Platform can sign in.
 
 ### Azure DNS (`azuredns`)
 
@@ -155,7 +169,8 @@ and [Security](/docs/security/overview#provider-credentials).
 
 ## Connecting more domains on the same account
 
-For **Cloudflare, GoDaddy, Amazon Route 53, and Namecheap**, one key can connect
+For **Cloudflare, GoDaddy, Amazon Route 53, Namecheap, IONOS, united-domains,
+Epik, NameBright and cPanel hosts (including o2switch)**, one key can connect
 the *other* domains on that account in a single step. After the first apply, the
 console offers **Connect more domains**, lists the account's other zones, and
 lets you **Select all** or pick a subset, with no need to re-enter the key. See
@@ -165,7 +180,29 @@ lets you **Select all** or pick a subset, with no need to re-enter the key. See
 
 Signing in with the provider needs an OAuth app **registered with that provider
 under your company's identity**, which is a business step, not code. The hosted
-service has it for Cloudflare, DNSimple, Netlify, Vercel and WordPress.com;
-DigitalOcean, Linode, Porkbun and OVHcloud appear when a deployment configures
-them. Until then, API keys, one-click setup and adding records by hand cover the
-same providers.
+service has one for Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Vercel
+(the CustomDomain™ integration) and WordPress.com, and offers Porkbun's
+**Approve access at Porkbun**, which needs no registration.
+
+Built, but not yet switched on for the hosted service:
+
+- **Sign in with Google Cloud** for Google Cloud DNS, once its Google client is
+  configured (only the test users listed in the Google Auth Platform until
+  Google verifies the app).
+- **Grant access at OVHcloud**, which needs an OVHcloud application for each
+  region served.
+- **Sign in through the provider's MCP server** for Hostinger, Namecheap,
+  Spaceship, Unstoppable Domains and XServer Domain. A deployment switches each
+  one on by listing it in `MCP_SIGNIN_PROVIDERS`; the hosted service lists none
+  until the provider approves CustomDomain™ and a live test passes.
+
+Until a sign-in is on, API keys, one-click setup and adding records by hand
+cover the same providers.
+
+A self-hosted deployment switches a sign-in on with the app's credentials:
+`OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` (for Google
+Cloud DNS, `OAUTH_GCPDNS_CLIENT_ID` and `OAUTH_GCPDNS_CLIENT_SECRET`), an
+OVHcloud application key and secret per region, or an entry in
+`MCP_SIGNIN_PROVIDERS` for an MCP server sign-in. Porkbun's approval needs
+none of these. Every sign-in also needs `OAUTH_STATE_KEY` and the page origins
+allowed to receive its result, `OAUTH_ALLOWED_RETURN_ORIGINS`.

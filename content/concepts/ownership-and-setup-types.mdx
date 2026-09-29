@@ -51,12 +51,14 @@ instead:
 
 - **`rails.<rail>.available`**: can this rail run for *this* domain right now.
   When false, **`reason`** is one machine code: `provider_has_no_oauth`,
-  `oauth_client_not_registered` (an operator task on your deployment),
-  `not_discovered`, `template_not_onboarded` (the provider speaks Domain
-  Connect but hasn't onboarded our template: GoDaddy, IONOS, Cloudflare,
-  Vercel), `redirect_unavailable` (the provider needs our return link for
-  one-click setup, and the template can't carry it yet), `rail_disabled`,
-  `no_adapter`, `unknown_provider`.
+  `oauth_client_not_registered` (the provider has a sign-in but this
+  deployment has not switched it on: an operator task; on the hosted service
+  this is the answer for Google Cloud DNS, OVHcloud and the sign-ins through a
+  provider's MCP server for now), `not_discovered`, `template_not_onboarded`
+  (the provider speaks Domain Connect but hasn't onboarded our template:
+  GoDaddy, IONOS, Cloudflare, Vercel), `redirect_unavailable` (the provider
+  needs our return link for one-click setup, and this deployment cannot send
+  one), `rail_disabled`, `no_adapter`, `unknown_provider`.
 - **`caveat`**: a note on an *available* rail most users still can't use.
   Show it; don't treat it as unavailability.
 - **`recommended_rail`**: the server's pick, `oauth` → `domain_connect` →
@@ -111,7 +113,8 @@ Account passwords and tokens that expire within hours are never saved.
 A remembered key is encrypted at rest (AES-256-GCM, scoped to one tenant +
 provider) and its plaintext never leaves the server. On the next connect at that
 provider, **"Use saved key"** applies records in one click without re-entering
-anything, and for Cloudflare / GoDaddy / Route 53 / Namecheap the same key can
+anything, and for Cloudflare, GoDaddy, Route 53, Namecheap, IONOS,
+united-domains, Epik, NameBright and cPanel hosts the same key can
 [bulk-connect the account's other domains](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
 Revoke a saved key any time under **Settings → Connected provider accounts**. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional) and

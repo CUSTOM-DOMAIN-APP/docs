@@ -9,7 +9,7 @@ description: "Put a custom domain from WordPress.com on your app with automatic 
 
 **Setup type: One-click (OAuth).** You sign in to WordPress.com in a popup and approve the change. No records to copy; no password is shared with the app.
 
-WordPress.com supports native OAuth plus a public REST DNS API, so connecting a WordPress.com-managed domain is a one-click sign-in-and-approve flow. WordPress.com is also on the Domain Connect list, which remains as a fallback.
+WordPress.com supports native OAuth plus a public REST DNS API, so connecting a WordPress.com-managed domain is a one-click sign-in-and-approve flow. WordPress.com is also on the Domain Connect list, but it has not onboarded our one-click templates, so sign-in is the way in; adding the records by hand works too.
 
 ## What you'll need
 
@@ -22,15 +22,16 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 ## Setting it up on WordPress.com
 
-1. In the connect widget, choose **WordPress.com** and click connect.
+1. Enter the domain in the connect flow (the console, or the widget inside the product you're connecting to). It detects WordPress.com and offers to sign in with WordPress.com.
 2. A WordPress.com sign-in window opens. Approve the requested DNS change.
-3. The records apply automatically; you're returned to the app, which verifies and goes live.
+3. The records apply automatically; you're returned to the app, which usually verifies them within seconds and goes live.
 
 ## WordPress.com specifics
 
 - The OAuth token uses the `global` scope because DNS on WordPress.com is account-wide rather than per-site.
 - The DNS write is diff-based (add/remove), so it changes only the records the connection needs.
-- Native WordPress.com OAuth + public REST DNS API (diff-based add/remove); also on the canonical DC list (fallback). TXT >255 unsupported.
+- TXT records longer than 255 characters are not supported.
+- A Tumblr domain is served by WordPress.com's nameservers but edited in Tumblr's own domain settings; detection names Tumblr when the root points at Tumblr, and a WordPress.com sign-in cannot reach it.
 
 ## How you know it worked
 

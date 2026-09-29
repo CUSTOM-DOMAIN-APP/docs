@@ -5,13 +5,19 @@ description: Short answers to common questions about connecting domains.
 
 ### Which DNS providers auto-configure records?
 
-38 providers have a built-in adapter (Cloudflare, Route 53, Google Cloud DNS,
-Azure DNS, GoDaddy, Namecheap, and more), plus provider-hosted one-click setup
-as a redirect-based, tokenless option, and a full parity census routing ~63
-targets to their working
-mode. See [DNS providers](/docs/dns/providers) for the fleet and
-[Provider setup](/docs/dns/provider-setup) for per-provider credential steps and
-eligibility gates.
+The hosted service writes the records for the customer at 47 DNS providers,
+through a sign-in, an API key or an access role (Cloudflare, Route 53, Google
+Cloud DNS, Azure DNS, GoDaddy, Namecheap, and more). `GET /v1/providers` lists
+every built-in adapter; those with `automatic: true` can write, and one of
+them, PowerDNS, points at a server you run yourself. NameSilo, Glauca
+Digital and Domain Chief add provider-hosted one-click setup, a redirect with
+no token at all. More than 150 providers, registrars and domain platforms are
+known by name (`GET /v1/providers/census`). Any provider can be connected by
+adding the records by hand, and 125 providers and platforms have their own
+steps for that. See
+[DNS providers](/docs/dns/providers) for which way each one connects and
+[Provider setup](/docs/dns/provider-setup) for per-provider credential steps
+and eligibility gates.
 
 ### Can I buy a new domain here too?
 
@@ -66,10 +72,15 @@ your onboarding flow.
 
 ### How long does DNS propagation usually take?
 
-It depends on the TTL of any records being replaced and the customer's
-resolver/registrar: from minutes (a fresh record via a rail) to longer if a
-previous record had a long TTL. The connection sits in `propagating` until every
-desired record resolves; `GET /v1/connections/{id}` shows current status.
+For records written for the customer (a sign-in, one-click setup or an API
+key), usually seconds: the connection is checked every five seconds at first,
+and when public resolvers still hold an old or missing answer, we ask the
+zone's own nameservers. Records added by hand are verified as soon as the
+provider serves them, so the wait is mostly how long the customer takes. Some
+visitors can still reach the old host until a replaced record's TTL runs out.
+The connection sits in `propagating` (or `pending`, for records added by hand)
+until every desired record resolves; `GET /v1/connections/{id}` shows current
+status.
 
 ### What happens if I revoke or delete an API key?
 

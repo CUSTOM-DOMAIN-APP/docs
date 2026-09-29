@@ -22,15 +22,14 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 ## Setting it up on Netlify
 
-1. In the connect widget, choose **Netlify** and click connect.
+1. Enter the domain in the connect flow (the console, or the widget inside the product you're connecting to). It detects Netlify and offers to sign in with Netlify.
 2. A Netlify sign-in window opens. Approve the requested DNS change.
-3. The records apply automatically; you're returned to the app, which verifies and goes live.
+3. The records apply automatically; you're returned to the app, which usually verifies them within seconds and goes live.
 
 ## Netlify specifics
 
 - The Netlify token is a full-account token (no granular scopes), like DNSimple.
-- This works only when the domain's nameservers are delegated to Netlify DNS. If the domain still uses your registrar's nameservers, use the guided-manual path instead, the write has to happen where the domain actually resolves.
-- Native Netlify OAuth (full-account token, no granular scopes, like DNSimple); the same bearer drives the Netlify DNS API. DNS writes require the domain's nameservers delegated to Netlify DNS.
+- This works only when the domain's nameservers are delegated to Netlify DNS. If the domain still uses your registrar's nameservers, the write has to happen where the domain actually resolves: connect it at that provider, or use the guided-manual path.
 
 ## How you know it worked
 
