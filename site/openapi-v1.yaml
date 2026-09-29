@@ -2820,7 +2820,7 @@ paths:
                   client_secret: { type: string, description: Embedded Checkout client secret (return_url flow). }
                   trial_days: { type: integer, description: 'Trial length, when the checkout starts one by days.' }
                   trial_end: { type: [string, 'null'], format: date-time, description: 'When the trial ends, when it ends at a fixed time (the grace end).' }
-                  first_charge_at: { type: string, format: date-time, description: When the card is first charged, when there is a trial. }
+                  first_charge_at: { type: string, format: date-time, description: 'When the card is first charged, when there is a trial.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
@@ -3911,7 +3911,7 @@ components:
         attention: { type: boolean }
         setup_required: { type: boolean }
         days_left: { type: integer }
-        price_cents: { type: integer, description: What the workspace pays per month (the Stripe amount, else the catalog price). }
+        price_cents: { type: integer, description: 'What the workspace pays per month (the Stripe amount, else the catalog price).' }
         currency: { type: string }
         trial_ends_at: { type: [string, 'null'], format: date-time }
         grace_started_at: { type: [string, 'null'], format: date-time }
