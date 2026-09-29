@@ -15,15 +15,21 @@ curl -X POST http://localhost:8080/v1/connections/<ID>/oauth:start \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{"return_origin":"https://app.acme.example"}'
-# → { "authorize_url": "https://<provider>/authorize?..." }
+# → { "authorize_url": "https://<provider>/authorize?...", "provider": "cloudflare",
+#      "flow": "oauth2", "callback_origin": "<this API's public origin>" }
 ```
 
 The widget opens `authorize_url` in a popup. The provider redirects the customer
 to `GET /v1/connect/oauth/callback`, which consumes the HMAC-signed single-use
 `state`, exchanges the code, writes the records with the **one-time** access
-token (discarded immediately, never stored), and returns an HTML page that
-postMessages `{ type: "customdomain:oauth", payload }` to the vetted
-`return_origin`. The connection is now `propagating`.
+token (discarded immediately, never stored, unless the deployment keeps
+[managed sign-in grants](/docs/connect-flow/managed-connections#managed-sign-in-grants)),
+and returns an HTML page that postMessages `{ type: "customdomain:oauth", payload }`
+to the vetted `return_origin`. The connection is now `propagating`. `flow` says
+which kind of sign-in the popup runs: `oauth2`, `vercel_integration` (the
+CustomDomain™ integration install), `porkbun_handoff` (Porkbun's key approval),
+`ovh_consent` or `mcp_oauth` (sign-in through the provider's MCP server, not
+switched on for any provider on the hosted service yet).
 
 ## Rail A: provider-hosted one-click setup
 
@@ -31,13 +37,24 @@ postMessages `{ type: "customdomain:oauth", payload }` to the vetted
 curl -X POST http://localhost:8080/v1/connections/<ID>/domainconnect:start \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
-  -d '{}'
+  -d '{"return_origin":"https://app.acme.example"}'
 # → { "apply_url": "https://<provider>/domainconnect/...", "service_id": "...", "dc_provider": "..." }
 ```
 
 Redirect the customer to `apply_url`; their provider applies the signed template.
 Both the synchronous redirect and the asynchronous variant are supported.
 `service_id` may be omitted when a single/default template is loaded.
+
+The synchronous `apply_url` carries a signed `redirect_uri` back to
+`GET /v1/connect/dc/return/{state}`. Every template we publish allows that
+return since version 2 of the templates was merged into the public Domain
+Connect template repository on 2026-09-29. After the customer approves or
+cancels, the provider sends the browser to the return page, which records any
+error the provider reports on the connection, starts the DNS check at once,
+posts the same `{ type: "customdomain:oauth", payload }` message as the OAuth
+callback to the `return_origin` you passed (it must be on the server's
+allowlist), and closes the window. A return that reports success is never
+taken as proof: only public DNS promotes the connection.
 
 ## Rail B: API token (BYO)
 
@@ -74,9 +91,11 @@ same account in a single step. In the console this is the **"Connect more
 domains"** panel: it lists the account's other zones and lets you **Select all**
 or pick a subset, then connects them without re-entering the key.
 
-Listing is supported for **Cloudflare, GoDaddy, Amazon Route 53, and Namecheap**.
-Other providers can't enumerate an account's domains, so they degrade to
-connecting one domain at a time.
+Listing is supported for **Cloudflare, GoDaddy, Amazon Route 53, Namecheap,
+IONOS, united-domains, Epik, NameBright and cPanel hosts (including
+o2switch)**. Other providers can't enumerate an account's domains (or would
+need a broader key than the records do), so they degrade to connecting one
+domain at a time.
 
 Two control-plane endpoints back it:
 
@@ -114,9 +133,13 @@ is required: the poller watches for them.
 
 ## Watch propagation → live
 
-The control-plane's background poller (every minute) resolves each desired
-record against public DNS and, when they all match their intended values, flips
-the connection to `live`. On that transition the edge issues the TLS certificate
+The control-plane's background poller resolves each desired record against
+public DNS and, when they all match their intended values, flips the connection
+to `live`. When the public resolver does not show a record yet (it may still
+remember the name as missing, from a lookup before the record existed, or hold
+the old value), the check asks the zone's own nameservers instead: every one of
+them that answers must serve the record, so a provider still copying the change
+between its nameservers is not counted as done. On that transition the edge issues the TLS certificate
 on the next handshake and a `connection.live` [webhook](/docs/webhooks/overview)
 fires (exactly once). Treat webhooks as the primary signal and **poll
 `GET /v1/connections/{id}` as the fallback**: delivery is durable but can lag
@@ -124,10 +147,18 @@ fires (exactly once). Treat webhooks as the primary signal and **poll
 
 Timing, honestly:
 
-- A **`pending`** connection (records not yet seen) never fails on its own. For
-  the first 72 hours it is checked on a fast backoff; after that it stays
-  `pending` with `error_code: setup_incomplete` and is re-checked every six
-  hours, forever. The moment the records appear it goes live.
+- **A write is checked at once.** When a rail writes the records (a sign-in, an
+  API key apply, a one-click return or an async callback), the connection is
+  due on the poller's next pass, and the poller looks every five seconds. A
+  record the provider serves right away is usually verified within seconds.
+- **Checks back off with age.** Counted from when the connection was created
+  (or last re-entered verification): every 5 seconds for the first 5 minutes,
+  every 30 seconds until 15 minutes, every 2 minutes until an hour, then every
+  15 minutes.
+- A **`pending`** connection (records not yet seen) never fails on its own.
+  After 72 hours it stays `pending` with `error_code: setup_incomplete` and is
+  re-checked every six hours, forever. The moment the records appear it goes
+  live.
 - A **`propagating`** connection (a rail wrote the records) that never resolves
   within 24 hours becomes `failed` with `error_code: propagation_timeout` and
   fires `connection.failed` (the event carries `error_code` / `error_message`).
@@ -137,10 +168,13 @@ Timing, honestly:
   arriving at the edge for a failed host re-enters it into verification
   automatically. Only a manual disconnect removes a connection.
 
-Where a rail can complete today: one-click setup completes at NameSilo, Glauca
-Digital and Domain Chief (the providers measured to serve our template
-catalog); GoDaddy, IONOS and Cloudflare have not onboarded it, so they are
-never offered one-click. Sign-in (OAuth) runs at Cloudflare, DNSimple, Netlify,
-Vercel and WordPress.com, with a one-time token that is never stored. Read
-`rails` on the pre-flight rather than memorizing this list; see
+Where a rail can complete today on the hosted service: one-click setup
+completes at NameSilo, Glauca Digital and Domain Chief (the providers measured
+to serve our template catalog); GoDaddy, IONOS, Cloudflare and Vercel have not
+onboarded it, so they are never offered one-click. Sign-in runs at Cloudflare,
+DigitalOcean, DNSimple, Linode, Netlify, Vercel (the integration install) and
+WordPress.com, and Porkbun's key approval runs too; each credential is used
+once and never stored. Google Cloud DNS's sign-in, OVHcloud's consent and the
+sign-ins through a provider's MCP server are built but not switched on yet.
+Read `rails` on the pre-flight rather than memorizing this list; see
 [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

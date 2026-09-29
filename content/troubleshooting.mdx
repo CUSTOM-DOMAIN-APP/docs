@@ -6,10 +6,10 @@ description: Common failure modes, including stuck connections, propagation dela
 ## A connection is waiting in `pending`
 
 `pending` means we have not yet seen the DNS records in public DNS. **There is
-no deadline**: a pending connection is re-checked every minute at first, then
-every few minutes, and after three days every six hours, for as long as it
-takes. Add the records whenever you're ready and the domain connects on its
-own. After three days the console shows *"We haven't detected the DNS records
+no deadline**: a pending connection is re-checked every five seconds at first,
+backing off to every 15 minutes, and after three days every six hours, for as
+long as it takes. Add the records whenever you're ready and the domain
+connects on its own. After three days the console shows *"We haven't detected the DNS records
 yet"* so you know what's outstanding; that is a diagnosis, not a failure.
 
 To check right now instead of waiting: **Re-check now** on the domain page
@@ -98,10 +98,14 @@ Permanent IAM-user keys (`AKIA…`) don't need it.
 
 Records were written but aren't all resolving to their intended values yet.
 
-- DNS propagation can take minutes to hours depending on the previous record's
-  TTL and the customer's resolver/registrar.
+- It is rarely propagation itself. When public resolvers still hold an old
+  answer, we ask the zone's own nameservers, and every one that answers must
+  serve the value we expect. A provider still copying the change between its
+  nameservers takes a moment; one that never does points at the records.
 - Verify the records at the provider's dashboard: a rail write can succeed at the
   API but land on the wrong host, or a customer may have edited them afterward.
+- Visitors whose resolver cached the old answer can still reach the old host
+  until that record's TTL runs out, even after the connection is `live`.
 - `propagating` connections that never resolve within **24 hours** transition to
   `failed` and fire `connection.failed`.
 
@@ -117,18 +121,23 @@ provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
 
 `apply` returns an error carrying the provider's message when the scoped token is
 wrong-scoped, expired, or the zone doesn't match. Confirm the token has DNS
-**edit** rights on the exact `zone` you passed, and mind provider gates (GoDaddy
-account tier, Namecheap IP allowlist); see
+**edit** rights on the exact `zone` you passed, and mind provider gates
+(Namecheap's account eligibility, and the IP allowlists at Namecheap, Dynadot,
+Epik, NameBright, Internet.bs and Vultr); see
 [Provider setup](/docs/dns/provider-setup).
 
-## OAuth (Rail C) never returns
+## A sign-in or one-click popup never reports back
 
 - **PopupBlockedError**: the browser blocked the authorize window; trigger
   `oauth:start` from a direct user gesture.
-- The callback only postMessages to a `return_origin` on the server's allowlist
-  (`OAUTH_ALLOWED_RETURN_ORIGINS`); a mismatched origin silently drops the result.
+- The OAuth callback, and the one-click return page
+  (`GET /v1/connect/dc/return/{state}`), only postMessage to a `return_origin`
+  on the server's allowlist (`OAUTH_ALLOWED_RETURN_ORIGINS`); a mismatched
+  origin silently drops the result.
 - An expired or replayed `state` returns `400` from the callback; re-run
   `oauth:start` to get a fresh one.
+- Either way the connection keeps being checked, and it goes live once public
+  DNS shows the records, whether or not the page heard back.
 
 ## A live domain stopped working
 

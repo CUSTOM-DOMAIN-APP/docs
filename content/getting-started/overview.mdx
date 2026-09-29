@@ -24,9 +24,13 @@ of them, that is a bug. Tell us.
 
 - **Four statuses.** `pending` (records not yet seen), `propagating` (a rail
   wrote them, we are watching DNS), `live`, `failed`.
-- **`pending` has no deadline.** Fast checks for 72 hours, then the connection
-  stays `pending` with `error_code: setup_incomplete` and is re-checked every
-  six hours, forever. It goes live the moment the records appear.
+- **`pending` has no deadline.** Checks run every five seconds at first and
+  back off to every 15 minutes; after 72 hours the connection stays `pending`
+  with `error_code: setup_incomplete` and is re-checked every six hours,
+  forever. It goes live the moment the records appear.
+- **Records written for the user usually verify in seconds.** A rail's write
+  is checked at once, and when public resolvers still hold an old answer we
+  ask the zone's own nameservers.
 - **`propagating` fails after 24 hours** (`error_code: propagation_timeout`):
   records were written but never resolved. Usually a wrong value or a
   Cloudflare proxy (orange cloud) in the way.
