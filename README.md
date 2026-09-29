@@ -27,22 +27,24 @@ runnable API examples that GitHub's MDX preview does not.
 
 ## What it covers
 
-Connecting a customer's domain means provider detection across 63 DNS and registrar providers,
-one-click provider authorization (or a scoped API token, or a guided manual flow with automatic
+Connecting a customer's domain means provider detection across more than 150 DNS hosts,
+registrars and domain platforms (all of the 100 largest registrars among them), one-click
+provider authorization (or a scoped API token, or a guided manual flow with automatic
 verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy
-edge that terminates TLS with strict multi-tenant isolation. A domain connected through provider
-authorization is typically live in about thirty seconds.
+edge that terminates TLS with strict multi-tenant isolation. Records written through provider
+authorization are usually verified within seconds of the approval.
 
 There is no separate ownership challenge and no verification TXT record to paste: control is
 proven by the rail that writes the DNS, or by the records appearing in the domain's own
 authoritative DNS. Documenting that honestly takes room, which is why this runs to well over a
 hundred pages and not a single one.
 
-The honest limit, stated here as plainly as it is stated in the docs: **38 of the 63 providers
-have no working automated write rail**, because they ship no delegated DNS-write API or ship one
-that replaces a whole zone. Those domains go through the guided manual path: the app shows the
-exact records and verifies them automatically, but a human still pastes them. Verified against
-the live census on 2026-09-26: 63 catalogued, 17 provider API, 6 OAuth, 2 Domain Connect, 38 manual.
+The honest limit, stated here as plainly as it is stated in the docs: **118 of the 154 providers
+in the census are connected by hand**, because they ship no DNS write a third party can use,
+gate it, or ship one that replaces a whole zone. Those domains go through the guided manual path:
+the app shows the exact records and verifies them automatically, but a human still pastes them.
+Verified against the live census on 2026-09-29: 154 catalogued, 29 provider API, 6 OAuth,
+1 Domain Connect, 118 manual.
 
 Where to start, depending on why you are here:
 

@@ -43,13 +43,13 @@ This project has a documented history of overclaiming, and every number in these
 | Endpoint count | `site/openapi-v1.yaml`, counted, not remembered |
 | MCP tool count | `GET https://mcp.customdomain.ai/.well-known/agent/mcp.json`, the live server's tool list |
 
-Three provider numbers are true and mean different things. Keep them apart:
+Three provider numbers are true and mean different things. Keep them apart (all as of 2026-09-29):
 
-- **63** providers are catalogued.
-- **25** of those have an automatic path (6 provider OAuth, 2 Domain Connect, 17 scoped API token).
-- **38** built-in adapters ship in the Go registry, a different quantity again: 26 of them map to a catalogued provider and 12 cover providers the census does not list.
+- **154** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Counting the adapters the census does not list, "more than 150 providers are known" is the safe phrasing.
+- **36** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 29 scoped API key); the other 118 are connected by hand.
+- **50** built-in adapters ship in the Go registry (`GET /v1/providers`), a different quantity again: 39 of them belong to a catalogued provider and 11 cover providers the census does not list. Two of the 50 (Unstoppable Domains, XServer Domain) only sign in through the provider's MCP server and are switched off, and PowerDNS only reaches a server you run, so the hosted service writes records at 47.
 
-Never attach 63 to an automatic verb. "One-click across 63 providers" is false. "25 of 63 auto-configure" is true.
+Never attach 154 to an automatic verb. "One-click across 154 providers" is false. "36 of 154 auto-configure" is true.
 
 ## The product name
 
