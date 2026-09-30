@@ -33,14 +33,18 @@ with an API key, app-scoped with a widget JWT) and
 | `connection.failed` | A `propagating` connection's records never appeared within 24h. |
 | `connection.records.updated` | A [managed](/docs/connect-flow/managed-connections) connection was re-applied (`POST /v1/connections/{id}:reapply`); its desired records were re-written and the connection re-verified. |
 | `connection.reapply.failed` | A managed re-apply push failed; if the stored grant was revoked, the connection is flagged for re-consent. |
-| `connection.disconnected` | A connection was disconnected (`DELETE /v1/connections/{id}`); for a managed connection the template was reverted through the grant first. |
+| `connection.disconnected` | A domain was [removed](/docs/connect-flow/offboarding). `removal` says what happened to its DNS records: `choice`, `outcome` (`removed`, `partly_removed`, `kept`, `manual`, `in_use`, `not_needed`, `failed`), `via`, and the records `removed`, `restored`, `left_in_place` and `failed`, plus any `manual_steps`. |
 | `connection.records_outdated` | A non-managed connection's applied records were computed against a superseded edge target; the envelope carries a `connect_link` to re-run setup. |
-| `domain.record_missing` | Monitor saw a baseline record disappear or get repointed (drift). |
-| `domain.record_restored` | A previously missing baseline record is observed again. |
+| `certificate.issued` | The edge issued the first certificate for a domain. |
+| `certificate.renewed` | The edge renewed a domain's certificate. |
+| `certificate.failed` | Issuing or renewing failed (once per failure episode); the edge keeps retrying. |
+| `certificate.expiring` | A certificate that has not renewed expires in 14, 7 or 3 days, or expired. The certificate events carry a `certificate` object (`status`, `issuer`, `issued_at`, `expires_at`, `days_left`, `error`). See [Certificates](/docs/connect-flow/certificates). |
+| `domain.record_missing` | [Monitoring](/docs/connect-flow/monitoring) confirmed a record disappeared or was repointed. `drift` carries `record_type`, `verdict` (`record_missing` or `record_changed`), `expected`, `observed` and `action` (`auto_fixed`, `fix_failed` or `action_required`). |
+| `domain.record_restored` | A previously missing record is observed again. |
 | `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed: the domain is registered (and only then is the card captured). |
 | `purchase.error` | A purchase failed; the card authorization was released. |
 | `purchase.confirmation.expired` | A pending purchase's checkout session timed out unpaid; the buyer never confirmed. Release the cart. |
-| `secure_status` | A certificate's provisioning status changed (`secure_status` on the envelope). |
+| `secure_status` | A certificate's provisioning status changed (`secure_status` on the envelope). Sent only where the deployment has Secure on (`SECURE_ENABLED`). |
 | `power_status` | A reverse-proxy host's provisioning status changed (`power_status` on the envelope). |
 
 When the connection carries a recorded diagnosis at emit time, the envelope also includes `error_code` and `error_message` (for example `propagation_timeout`, `access_denied`, `ProviderAuthenticationError`, or `setup_incomplete` on a stalled pending connection), so a receiver need not fetch the connection to learn why.
@@ -93,6 +97,8 @@ Additional conditional fields ride connection events:
   observe a connection never claim to have written anything.
 - `redirection_status`: `pending`, `success` or `failed` for the apex↔www
   redirect, and present only on connections created with `www_redirect: true`.
+- `connection_id`: the connection the event is about, on connection,
+  certificate and drift events.
 
 ## Delivery & retries
 

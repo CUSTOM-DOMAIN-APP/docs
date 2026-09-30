@@ -1,0 +1,81 @@
+---
+title: Monitoring and services
+description: Every live domain is checked each hour against the records it went live with. Drift is confirmed before anything happens; missing records CustomDomain™ wrote can be put back where it holds continuous access.
+---
+
+## How monitoring works
+
+Every live domain is checked once an hour against the records it is held to:
+the records a rail wrote, or, for a domain connected by hand or with Domain
+Connect one-click, the records verified before it went live.
+
+- **Drift is confirmed first.** A record that looks missing or changed is
+  looked up again at the zone's own nameservers, with no resolver cache in
+  between. A lookup that does not answer is `inconclusive` and never counts as
+  drift.
+- **Missing records are put back** when CustomDomain™ holds continuous access
+  (the zone it hosts, a kept sign-in or Domain Connect authorization, a
+  continuous [provider account](/docs/connect-flow/provider-accounts)) and the
+  deployment has automatic repair switched on. The action is `auto_fixed`, or
+  `fix_failed` when it did not work or did not hold.
+- **Only what disappeared, only what CustomDomain™ wrote.** A repair writes
+  back the record sets that went missing, from the records CustomDomain™
+  wrote for the domain; a kept Domain Connect authorization re-applies its
+  template, the only write it allows. A domain whose records CustomDomain™
+  did not write is left for you.
+- **Only new drift.** A repair runs only when the records disappeared after a
+  check found them in place. Records that were already missing when
+  monitoring first looked are left for you.
+- **Bounded.** Repairs are paced and capped per hourly check and per provider
+  account, and every one is in the audit log. After 3 repairs of a domain
+  within 24 hours the monitor stops and reports `fix_failed`: something keeps
+  removing the records, and that needs a person.
+- **A changed record is never overwritten.** Pointing a record somewhere else
+  is often deliberate, so the action is `action_required`.
+- **Without continuous access**, or where automatic repair is switched off,
+  drift is `action_required`. `repair.paused` is `true` when CustomDomain™
+  holds the access but repair is off, and `repair.detail` says what would
+  repair it.
+
+## Read the state
+
+`GET /v1/connections/{id}/monitor`:
+
+```json
+{
+  "watched": true,
+  "every": "hour",
+  "last_checked_at": "2026-09-29T12:00:00Z",
+  "result": "drift",
+  "drift_since": "2026-09-29T11:00:00Z",
+  "drift": [ { "subdomain": "@", "type": "CNAME", "verdict": "record_missing", "expected": ["edge.customdomain.ai"] } ],
+  "action": { "kind": "auto_fixed", "description": "CustomDomain™ put the missing records back." },
+  "repair": { "automatic": true, "via": "provider_account", "detail": "..." },
+  "watching": [ { "name": "shop", "type": "CNAME", "value": "edge.customdomain.ai" } ],
+  "history": [ { "kind": "drift.found" }, { "kind": "drift.fixed" } ]
+}
+```
+
+`GET /v1/monitor/domains` (API key) lists the domains of the workspace with
+their state, the ones needing attention first, a page at a time: `limit`
+(200 by default, 1000 at most) and `cursor`, the previous page's
+`next_cursor`, which is absent on the last page. `summary` counts every
+domain, and `auto_repair` says whether the deployment puts missing records
+back.
+
+## Alerts
+
+`domain.record_missing` and `domain.record_restored` carry a `drift` object
+with the record, the expected and observed values and what was done. Owners and
+admins get one email per drift episode that needs them. Both are delivered where
+`MONITOR_ALERTS_ENABLED=1`; the console always shows the state.
+
+## Services per domain
+
+`GET /v1/connections/{id}/services` lists every CustomDomain™ service with its
+state for the domain (`active`, `pending`, `attention`, `paused` for automatic
+repair that is switched off, `inactive`): DNS
+connect (with the rail that wrote the records and the access held), managed
+DNS, edge serving, the HTTPS certificate, Power, monitoring, automatic repair,
+redirects, email records and CAA. `GET /v1/services:summary` (API key) counts
+them per application and for the workspace.

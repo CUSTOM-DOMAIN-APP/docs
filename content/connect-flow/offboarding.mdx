@@ -1,50 +1,128 @@
 ---
-title: Offboarding
-description: Disconnect a domain with DELETE /v1/connections/{id}. The platform reverts a managed template, then deletes the connection.
+title: Removing a domain
+description: Remove a connected domain and choose what happens to the DNS records CustomDomain™ added. Removal can take them out and put back what they replaced, ask for one more sign-in, or list the exact manual steps.
 ---
 
-Taking a domain off your product is a single call:
-`DELETE /v1/connections/{id}` disconnects the domain and deletes the connection.
+Removing a domain always stops serving it, stops its certificate from
+renewing and stops monitoring it. What happens to the DNS records CustomDomain™
+added is a choice: **remove** them (and put back what each one replaced) or
+**keep** them.
 
-## Disconnect a domain
+## 1. Read the plan
+
+`GET /v1/connections/{id}/removal` says what removal can do, and changes
+nothing:
 
 ```bash
-curl -X DELETE http://localhost:8080/v1/connections/<ID> \
-  -H "Authorization: Bearer <WIDGET_JWT>"
-# → 204 No Content
+curl https://api.customdomain.ai/v1/connections/<ID>/removal \
+  -H "Authorization: Bearer <WIDGET_JWT or API key>"
 ```
 
-What happens depends on whether the connection is
-[managed](/docs/connect-flow/managed-connections):
+```json
+{
+  "domain": "shop.acme.com",
+  "connected_via": "sign_in",
+  "access": "one_time",
+  "record_removal": "reauthorize",
+  "default_choice": "keep",
+  "records": [
+    { "type": "CNAME", "name": "shop", "value": "edge.customdomain.ai",
+      "change": "replaced", "prior": [ { "type": "CNAME", "value": "shops.oldhost.example" } ],
+      "action": "restore" }
+  ],
+  "reauthorize": { "methods": ["sign_in", "api_key"], "provider": "cloudflare", "flow": "oauth2" },
+  "manual_steps": [ "At Cloudflare, change the CNAME record at \"shop\" from ... back to ..." ],
+  "teardown": [ "The domain stops being served through CustomDomain™. ..." ]
+}
+```
 
-- **Managed connection** (async one-click setup, stored grant): the platform
-  first **reverts** the applied template at the customer's provider through the
-  pinned provider API using the stored grant, so the edge records it added are
-  removed automatically. It then deletes the connection.
-- **Use-once connection** (any other rail): the platform never retained a
-  credential, so it cannot touch the customer's DNS. The connection is simply
-  deleted; the customer removes the edge records at their DNS provider themselves.
+Every write records what it did to each name (`change`: `created`, `added`,
+`replaced`, `merged`) and the values it replaced (`prior`), read from the
+provider or public DNS right before the write. Removal only touches values
+that are still ours: a record someone changed since is left and reported.
 
-**Exception:** if the same domain is also connected under a *different*
-application (the same zone shared across two of your apps, or across two
-tenants), the revert is **skipped** even for a managed connection: the platform
-never pulls out records another app is still actively serving. Only the deleted
-connection's own state goes away; the other application's connection and its
-live records are untouched.
+`record_removal` depends on the access CustomDomain™ still holds:
 
-Either way the delete cascades to all of the connection's child state (records,
-origin, the monitor watch, and any managed grant) and emits a
-`connection.disconnected` [webhook](/docs/webhooks/overview#event-catalog). The
-call is idempotent-friendly: a missing connection returns `404`.
+| How it was connected | Access held | `record_removal` |
+| --- | --- | --- |
+| Managed DNS (the zone we host) | continuous | `automatic` |
+| Kept sign-in, continuous provider account | continuous | `automatic` |
+| Kept Domain Connect authorization | continuous | `automatic` (`partial` when a value must be put back) |
+| Route 53 access role | continuous, writes only | `partial` (deletions by hand) |
+| API key or sign-in that was not kept | one time | `reauthorize`: one more sign-in or key, or the manual steps |
+| Domain Connect one-click, manual records | none | `manual` |
+| Another application still serves the domain | | `in_use`: every record stays |
 
-## After the records are gone
+## 2. Remove
 
-Once the edge records no longer resolve to the edge:
+```bash
+# Remove the records (and put back what they replaced) where access allows
+curl -X DELETE "https://api.customdomain.ai/v1/connections/<ID>?records=remove" \
+  -H "Authorization: Bearer <WIDGET_JWT or API key>"
 
-- the domain stops being served: the edge only proxies hosts that resolve to it;
-- for a use-once connection you removed by hand, [Monitor](/docs/webhooks/overview#event-catalog)
-  observes the change and fires `domain.record_missing` before you delete, so your
-  integration can react (e.g. mark the domain disconnected in your own system).
+# Keep the records
+curl -X DELETE "https://api.customdomain.ai/v1/connections/<ID>?records=keep" ...
+```
 
-For a **managed** connection you don't need to wait for drift: the revert on
-delete removes the records for you, and `connection.disconnected` confirms it.
+With `records` the answer is `200` and says what happened to each record
+(`removed`, `restored`, `left_in_place`, `failed`, `manual_steps`). Without it
+the call keeps its original contract and answers `204`: the records are taken
+out only through a kept Domain Connect authorization, a kept sign-in or a zone
+CustomDomain™ hosts, and kept otherwise (a connected provider account or the
+Route 53 access role never write on a `DELETE` without a choice).
+
+A removal never touches a record whose value changed since it was written, a
+value that was already there before CustomDomain™ wrote it, or a record another
+connected domain still uses (a `www` record a root domain's redirect and a
+`www` connection share, a CAA record several subdomains rely on). A key or a
+sign-in must reach the zone that holds the records: when it shows none of them
+(it may belong to another account), the answer lists the manual steps instead
+of claiming anything was removed.
+
+When removing the records needs access that was not kept, `?records=remove`
+answers `409 reauthorization_required` with the plan. Then either:
+
+- **Sign in once more**: `POST /v1/connections/{id}/oauth:start` with
+  `"purpose": "remove"`. The provider sign-in removes the records and the
+  domain, and its result carries `"purpose": "remove"` and the outcome. The
+  sign-in is used once and never kept.
+- **Paste a key**: `POST /v1/connections/{id}:disconnect` with
+  `{ "records": "remove", "provider": "cloudflare", "credential": { "token": "..." } }`.
+  The key is used once and never stored.
+- **Do it by hand**: remove the domain with `?records=keep` and follow
+  `manual_steps`.
+
+While a removal runs, a second one answers `409 removal_in_progress`.
+
+## What always happens
+
+- The edge stops approving the host at once and every edge forgets it within a
+  minute (`GET /internal/removed-hosts`), so the certificate stops renewing and
+  is deleted from the edge cache.
+- Monitoring stops.
+- `connection.disconnected` fires with a `removal` object: the choice, the
+  outcome, the records removed, restored and left, and any manual steps. See
+  the [event catalog](/docs/webhooks/overview#event-catalog).
+- `GET /v1/connections/{id}/removal` keeps answering once the connection is
+  gone: `removed: true` and `result`, what the removal did with the records.
+  Read it, not the connection's `404`, to learn the outcome.
+
+## From the widget
+
+`customdomain.removeDomain({ applicationId, token, connectionId })` (or
+`prefilledDomain` in place of `connectionId`) opens the same flow for your end
+user: the records, the choice, one more sign-in when needed, and a summary with
+anything left to delete by hand, in their language. The outcome arrives in
+`onRemoved` and the `customdomain:removed` event. See the
+[SDK reference](/docs/widget-sdk/reference).
+
+Mint the widget token on your server for that end user and that domain:
+`POST /v1/tokens` with `domain` and `end_user_ref` (your own id for the end
+user). An end user's token that is not bound to the domain, or bound to another
+end user than the one the connection names, cannot remove it. A connection
+created with a token that carries `end_user_ref` is stamped with it.
+
+## Finding the connection
+
+An app that stored the domain but not the id can call
+`GET /v1/connections:lookup?domain=shop.acme.com`.

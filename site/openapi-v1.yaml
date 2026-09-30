@@ -73,6 +73,10 @@ tags:
     description: Public service discovery and capability advertisement.
   - name: Analytics
     description: The tenant's connect funnel, connection outcomes, and the traffic its domains receive at the edge.
+  - name: Provider accounts
+    description: >-
+      DNS provider and registrar keys a workspace connects once, with one time
+      or continuous access, for some or all of the account's domains.
 
 paths:
   # ------------------------------------------------------------------ Tenancy
@@ -660,6 +664,17 @@ paths:
                 domain:
                   type: string
                   description: Optional. Binds the token to a single hostname.
+                end_user_ref:
+                  type: string
+                  maxLength: 256
+                  description: >-
+                    Optional. Binds the token to one end user: your own id for
+                    them. A connection created with the token is stamped with
+                    it (a different `end_user_ref` in the create body is
+                    refused), and an end user's token removes a domain, or reads
+                    its monitoring, services and timeline, only when it is
+                    bound to the domain and minted with the connection's own
+                    `end_user_ref`.
                 scope:
                   type: string
                   enum: [connect, app]
@@ -1060,27 +1075,424 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     delete:
       operationId: disconnectConnection
-      summary: Disconnect a domain (revert managed records, then delete the connection)
+      summary: Remove a domain, removing or keeping the DNS records we added
       tags: [Connections]
       description: >-
-        **Managed-mode offboarding + delete.** For a managed (async
-        one-click) connection the control plane first **reverts** the applied template
-        through the pinned provider API using the stored grant, then deletes the
-        connection and all its child state (records, origin, monitor watch, managed
-        grant). For a connection managed through a provider sign-in
-        (`OAUTH_MANAGED_PROVIDERS`) it deletes the records it wrote through the
-        kept credential (never a merged SPF TXT) and revokes that credential at
-        the provider where the provider allows it. Either revert is skipped while
-        another connection still serves the domain. A non-managed connection is
-        simply deleted. Emits `connection.disconnected`.
+        Removes the domain, and with `records` says what happens to the DNS
+        records we added. `remove` deletes them and puts back what they
+        replaced, when we know it; `keep` leaves them. What `remove` can do
+        depends on how the domain was connected, and
+        `GET /connections/{id}/removal` says so before you call this: with
+        access we kept (our hosted zone, a kept sign-in, a continuous provider
+        account, a kept Domain Connect authorization) it is automatic; with a
+        one time sign-in or key it needs one more authorization, and this
+        answers `409 reauthorization_required` with the plan (sign in again
+        with `oauth:start` and `purpose: "remove"`, send a key to
+        `POST /connections/{id}:disconnect`, or call this with
+        `records=keep` and follow the manual steps); for Domain Connect
+        one-click and manual setups the answer lists the exact manual steps.
+        Records whose value changed since we wrote them, values that were
+        already there before we wrote them, and records another connected
+        domain still uses are never touched. With a key or a sign-in, the zone
+        must show at least one of our records before any record is reported
+        removed or gone; otherwise the answer lists the manual steps (the key
+        may belong to another account).
+
+
+        Whatever the choice, the domain stops being served the moment the
+        removal starts (edges forget it within a minute), its certificate
+        stops renewing and is deleted, its monitoring stops, and
+        `connection.disconnected` carries a `removal` object with what
+        happened to the records. `GET /connections/{id}/removal` answers the
+        same outcome once the connection is gone. A second removal of the same
+        domain while one runs answers `409 removal_in_progress`.
+
+
+        Without `records` the call keeps its original contract: records are
+        taken out only where it always took them out (a kept Domain Connect
+        authorization, a kept sign-in, our hosted zone) and kept otherwise,
+        including with a connected provider account or the Route 53 access
+        role; the answer is `204` with no body. With `records` the answer is
+        `200` with the outcome.
+
+
+        An end user's widget token (scope `connect`) must be bound to the
+        domain and, when the connection names an end user, minted with that
+        `end_user_ref`; otherwise `403`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: records
+          in: query
+          required: false
+          schema: { type: string, enum: [remove, keep] }
+          description: What to do with the DNS records we added.
+      responses:
+        '200':
+          description: Removed; what happened to the records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisconnectResult' }
+        '204': { description: "Removed (no records choice given): records taken out only through a kept Domain Connect authorization, a kept sign-in or our hosted zone, kept otherwise" }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `reauthorization_required`: removing the records needs one more
+            sign-in or key; `plan` is the removal plan. `removal_in_progress`:
+            another removal of the domain is running. Nothing was changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [reauthorization_required, removal_in_progress] }
+                  title: { type: string }
+                  details: { type: string }
+                  plan: { $ref: '#/components/schemas/RemovalPlan' }
+  /connections/{id}/removal:
+    get:
+      operationId: getRemovalPlan
+      summary: What removing a domain would do with its DNS records
+      tags: [Connections]
+      description: >-
+        Read-only. Lists the records we added, what each one did to its name
+        when we wrote it (created, added to a shared set, replaced, merged) and
+        what it held before when we know, what a removal would do with each,
+        whether that can happen automatically, needs one more sign-in or key,
+        or only by hand, and the exact manual steps. Show it before asking
+        the person to confirm. While a removal runs, `removal_started_at` is
+        set. Once the domain is removed, it answers `removed: true` with
+        `result`, what the removal did, to the callers that could have removed
+        it: read this, not the connection's `404`, to learn the outcome. An end
+        user's widget token must be bound as for `DELETE /connections/{id}`.
       security:
         - widgetJWT: []
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
-        '204': { description: "Disconnected (grant reverted, if any, and connection deleted)" }
+        '200':
+          description: The removal plan, or the outcome of a finished removal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemovalPlan' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/certificate:
+    get:
+      operationId: getDomainCertificate
+      summary: The domain's certificate, its renewal and its history
+      tags: [Connections]
+      description: >-
+        The HTTPS certificate the edge holds for the domain, as the edge last
+        reported it: status, issuer, when it was issued and last renewed, when
+        it expires and the next renewal starts, the last error while renewing
+        keeps failing, and the certificate history (issued, renewed, failed,
+        expiring). An apex that redirects www also gets `www_certificate`.
+        Every served domain has one, so this read is not behind the Secure
+        plan feature (the `/ssl` management routes are). `status` is
+        `not_reported` until the edge reports the certificate.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The certificate
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connection_id, certificate, renewal, history]
+                properties:
+                  connection_id: { type: string }
+                  certificate: { $ref: '#/components/schemas/CertificateView' }
+                  www_certificate: { $ref: '#/components/schemas/CertificateView' }
+                  renewal:
+                    type: object
+                    properties:
+                      automatic: { type: boolean }
+                      needs_dns_access:
+                        type: boolean
+                        description: Always false; the edge renews through the domain itself (TLS-ALPN-01 or HTTP-01).
+                      retry_every: { type: string }
+                      how: { type: string }
+                  history:
+                    type: array
+                    items: { $ref: '#/components/schemas/DomainEvent' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/services:
+    get:
+      operationId: getConnectionServices
+      summary: The CustomDomain™ services the domain uses
+      tags: [Connections]
+      description: >-
+        Every CustomDomain™ service with whether this domain uses it, computed
+        from stored facts: DNS connect (with the rail that wrote the records
+        and the access CustomDomain™ holds), managed DNS, edge serving, the
+        HTTPS certificate, Power, monitoring, automatic repair, redirects,
+        email records and CAA. `state` is `active`, `pending` (set up, not
+        serving yet), `attention` (in use, and something needs a person),
+        `paused` (automatic repair where CustomDomain™ holds the access but
+        the deployment has not switched repair on, `MONITOR_AUTO_REPAIR`) or
+        `inactive`.
+        An end user's widget token (scope `connect`) reads this only when it
+        is bound to the domain and minted with the connection's own
+        `end_user_ref`; use an API key otherwise.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The services
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionServices' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}/events:
+    get:
+      operationId: listConnectionEvents
+      summary: The domain's timeline
+      tags: [Connections]
+      description: >-
+        What happened to the domain, newest first: certificates issued,
+        renewed, failing and expiring; drift found and what was done about
+        it; access kept and revoked. `kind` narrows it to a prefix
+        (`certificate.`, `drift.`, `access.`); `before` pages back with the
+        previous page's `next_before`.
+        An end user's widget token (scope `connect`) reads this only when it
+        is bound to the domain and minted with the connection's own
+        `end_user_ref`; use an API key otherwise.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string }
+        - name: before
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: The events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connection_id, domain, events]
+                properties:
+                  connection_id: { type: string }
+                  domain: { type: string }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/DomainEvent' }
+                  next_before: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /services:summary:
+    get:
+      operationId: getServicesSummary
+      summary: How many domains use each service, per application and workspace
+      tags: [Connections]
+      description: >-
+        For the API key's workspace (or one application with `app_id`), the
+        number of domains using each service, and the number needing
+        attention, in total and per application, and which domains need
+        attention and why.
+      security:
+        - apiKey: []
+      parameters:
+        - name: app_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: The counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [catalog, workspace, applications, needs_attention, truncated]
+                properties:
+                  catalog:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                  workspace:
+                    type: object
+                    properties:
+                      domains: { type: integer }
+                      services: { type: object, additionalProperties: { type: integer } }
+                      attention: { type: object, additionalProperties: { type: integer } }
+                  applications:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        application_id: { type: string }
+                        name: { type: string }
+                        domains: { type: integer }
+                        services: { type: object, additionalProperties: { type: integer } }
+                        attention: { type: object, additionalProperties: { type: integer } }
+                  needs_attention:
+                    type: array
+                    description: "The domains behind the attention counts, by domain name: one item per service that needs someone, at most 50."
+                    items:
+                      type: object
+                      required: [connection_id, application_id, domain, service, name, detail]
+                      properties:
+                        connection_id: { type: string }
+                        application_id: { type: string }
+                        domain: { type: string }
+                        service: { type: string, description: "The service id, as in catalog." }
+                        name: { type: string }
+                        detail: { type: string, description: "What needs doing, for people." }
+                  truncated: { type: boolean, description: True when the workspace has more domains than one summary counts (2000). }
+        '401': { $ref: '#/components/responses/Error' }
+  /connections/{id}/monitor:
+    get:
+      operationId: getConnectionMonitor
+      summary: What the drift monitor last found for the domain, and what was done
+      tags: [Monitor]
+      description: >-
+        Every live domain is checked against its records once an hour. This
+        returns the last check (when, the result, the drifted records with
+        expected and observed values), what was done about drift (put back
+        automatically with the continuous access CustomDomain™ holds, or left
+        for the tenant because the record was changed rather than removed,
+        because there is no continuous access, or because automatic repair is
+        not switched on), whether repairs are automatic for this domain and
+        why, the records it is held to, and the drift history.
+        An end user's widget token (scope `connect`) reads this only when it
+        is bound to the domain and minted with the connection's own
+        `end_user_ref`; use an API key otherwise.
+
+
+        Automatic repair runs only where the deployment switched it on
+        (`MONITOR_AUTO_REPAIR`; `repair.paused` is true otherwise). It puts
+        back only the record sets that disappeared, from the records
+        CustomDomain™ wrote (a kept Domain Connect authorization re-applies
+        its template, the only write it allows), and only for drift that
+        began after a clean check. A record missing since monitoring started
+        is left for the tenant. Repairs are paced and capped per hourly pass
+        and per provider account, and after 3 repairs of a domain within 24
+        hours the monitor stops and reports `fix_failed`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The monitoring state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitorView' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections:lookup:
+    get:
+      operationId: lookupConnection
+      summary: Find your connection for a domain
+      tags: [Connections]
+      description: >-
+        Returns the caller's connection for a domain, for an app that stored
+        the domain but not the connection id (for example to open the removal
+        flow). A connect-scoped widget token must be minted for that domain,
+        and finds a connection that names an end user only when minted with
+        the same `end_user_ref`; an app-scoped token finds any domain of its
+        application, and an API key any domain of its tenant.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters:
+        - name: domain
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The connection
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /connections/{id}:disconnect:
+    post:
+      operationId: disconnectConnectionWithChoice
+      summary: Remove a domain, optionally authorizing the record removal once with a key
+      tags: [Connections]
+      description: >-
+        The same removal as `DELETE /connections/{id}` with a body. Send
+        `credential` (a DNS provider API key) to authorize removing the
+        records once when we did not keep the access that added them; it is
+        used for this removal and never stored. The zone must show at least one
+        of our records with that key, or the outcome lists the manual steps
+        (the key may belong to another account). Answers `200` with the
+        outcome; an end user's widget token must be bound as for
+        `DELETE /connections/{id}`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                records: { type: string, enum: [remove, keep] }
+                provider: { type: string, description: DNS provider id; defaults to the connection's provider. }
+                zone: { type: string, description: The DNS zone; found from the key when omitted. }
+                credential:
+                  type: object
+                  properties:
+                    token: { type: string, description: 'The provider API key, used once.' }
+      responses:
+        '200':
+          description: Removed; what happened to the records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisconnectResult' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409':
+          description: "`reauthorization_required` or `removal_in_progress`, as for `DELETE /connections/{id}`."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: string, enum: [reauthorization_required, removal_in_progress] }
+                  plan: { $ref: '#/components/schemas/RemovalPlan' }
   /connections/{id}/diagnose:
     get:
       operationId: diagnoseConnection
@@ -1478,6 +1890,14 @@ paths:
         revoked (401 kill-switch, or a refused refresh token) the grant is
         cleared and the connection is flagged for re-consent (a sign-in grant
         leaves `error_code` `oauth_reconnect_needed`).
+
+
+        A domain kept by a continuous provider account (and no kept grant) is
+        re-applied with the account's key: the records
+        CustomDomain™ wrote for the domain are written back and the receipt
+        says `via: provider_account`. A domain whose records CustomDomain™
+        did not write is refused with `409`, since re-applying would write
+        records nobody put there. The same webhooks are sent.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1495,7 +1915,8 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked; re-consent required" }
+        '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked (re-consent required); or a provider account keeps it and CustomDomain™ did not write its records, or the account holds no usable key" }
+        '422': { description: "The provider refused the provider account's key (`ProviderAuthenticationError`) or the write (`dns_write_failed`)" }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:recheck:
     post:
@@ -1590,6 +2011,32 @@ paths:
                     OVHcloud only: the API region the user's OVHcloud account
                     lives in (default `eu`). The domain check's `rails.oauth.regions`
                     lists the regions this deployment offers.
+                purpose:
+                  type: string
+                  enum: [connect, remove]
+                  default: connect
+                  description: >-
+                    `remove` signs in once more to remove the records we added
+                    (and put back what they replaced) for a connection whose
+                    access we did not keep, then disconnects the domain, as
+                    `GET /connections/{id}/removal` offers when its
+                    `record_removal` is `reauthorize`. The sign-in is used for
+                    the removal and withdrawn; it is never kept. The callback's
+                    message carries `purpose: "remove"` and the `records`
+                    outcome, and `GET /connections/{id}/removal` answers it once
+                    the domain is gone. An end user's widget token must be bound
+                    as for `DELETE /connections/{id}`.
+                access:
+                  type: string
+                  enum: [continuous, one_time]
+                  description: >-
+                    The person's choice for a connect. `continuous` keeps the
+                    sign-in, encrypted, so we can put back records that
+                    disappear and remove them when the domain is removed;
+                    offered only where the deployment can keep this provider's
+                    sign-in (`rails.oauth.managed` on the domain check).
+                    `one_time` uses it for this write and drops it. Omitted,
+                    the deployment's default applies (kept where it can be).
       responses:
         '200':
           description: The URL to open, and what it runs
@@ -1607,6 +2054,14 @@ paths:
                   managed:
                     type: boolean
                     description: The connect will keep its credential (managed mode).
+                  access:
+                    type: string
+                    enum: [continuous, one_time]
+                    description: What will happen to the credential after the sign-in.
+                  purpose:
+                    type: string
+                    enum: [remove]
+                    description: Present for a removal sign-in.
                   callback_origin:
                     type: string
                     description: >-
@@ -2597,6 +3052,72 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /monitor/domains:
+    get:
+      operationId: listMonitoredDomains
+      summary: Every domain of the workspace with its last drift check
+      tags: [Monitor]
+      description: >-
+        The monitoring state of the domains in the API key's workspace (or
+        one application with `app_id`), the ones needing attention first, a
+        page at a time, with counts over every domain. Pass the previous
+        page's `next_cursor` as `cursor` for the next page; there is no
+        `next_cursor` on the last one. The per domain detail (watched records,
+        repair route, history) is on `GET /connections/{id}/monitor`.
+      security:
+        - apiKey: []
+      parameters:
+        - name: app_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 200 }
+          description: Domains per page; a larger value is read as 1000.
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: The previous page's `next_cursor`.
+      responses:
+        '200':
+          description: One page of domains, and a summary of all of them
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [domains, summary, every, auto_repair]
+                properties:
+                  every: { type: string }
+                  auto_repair:
+                    type: boolean
+                    description: Whether this deployment puts missing records back automatically (`MONITOR_AUTO_REPAIR`).
+                  next_cursor:
+                    type: string
+                    description: Present when more domains follow; pass it as `cursor`.
+                  summary:
+                    type: object
+                    properties:
+                      domains: { type: integer }
+                      watched: { type: integer }
+                      ok: { type: integer }
+                      drift: { type: integer }
+                      needs_action: { type: integer }
+                      inconclusive: { type: integer }
+                      not_checked: { type: integer }
+                  domains:
+                    type: array
+                    items:
+                      allOf:
+                        - { $ref: '#/components/schemas/MonitorView' }
+                        - type: object
+                          properties:
+                            application_id: { type: string }
+                            status: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Webhooks
   /webhooks:
@@ -2628,7 +3149,18 @@ paths:
                     so you can never subscribe to an event that cannot arrive.
                     `connection.records.updated` / `connection.reapply.failed` /
                     `connection.disconnected` cover the managed (async one-click)
-                    re-apply and disconnect lifecycle.
+                    re-apply and disconnect lifecycle; `connection.disconnected`
+                    carries a `removal` object saying what happened to the DNS
+                    records. `certificate.issued` / `certificate.renewed` /
+                    `certificate.failed` follow the edge's certificate reports,
+                    and `certificate.expiring` fires 14, 7 and 3 days before an
+                    unrenewed certificate expires and when it expired; each
+                    carries a `certificate` object. `domain.record_missing` /
+                    `domain.record_restored` carry a `drift` object with the
+                    record, what public DNS shows and what was done about it.
+                    `secure_status` is sent only where the deployment has
+                    Secure on (`SECURE_ENABLED`), once each time a
+                    certificate's status changes.
                   items:
                     type: string
                     enum:
@@ -2648,6 +3180,10 @@ paths:
                       - connection.reapply.failed
                       - connection.records_outdated
                       - connection.disconnected
+                      - certificate.issued
+                      - certificate.renewed
+                      - certificate.failed
+                      - certificate.expiring
       responses:
         '201':
           description: Created (secret returned once)
@@ -3571,6 +4107,342 @@ paths:
                     items: { $ref: '#/components/schemas/BulkResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+  /provider-accounts:
+    post:
+      operationId: createProviderAccount
+      summary: Connect a provider account with a key
+      tags: [Provider accounts]
+      description: >-
+        Keeps a DNS provider or registrar key for the workspace, encrypted
+        (GRANT_ENCRYPTION_KEY; `503` without it). The key is checked first by
+        listing the provider's domains, or, for a provider that cannot list
+        them, by reading one of the selected domains or `check_domain`; with
+        neither, `400` `check_domain_required`, and a key is never kept
+        unchecked. `access` is `continuous` (kept until revoked, used only to
+        put back records it wrote that disappear where the deployment has
+        automatic repair on, remove records when a domain is removed, and
+        re-apply the records it wrote on request) or `one_time` (usable for an
+        hour, and deleted as soon as the chosen domains are connected or the
+        hour passes). `scope` is `all` of the account's domains or `selected`
+        ones. The key is never returned.
+
+
+        Anyone whose role operates applications may connect a key, read the
+        accounts and revoke one. Changing an account's access, scope or
+        domains, connecting domains with it and replacing its key take an
+        admin, an owner or the member who connected it (`can_manage`).
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, credential]
+              properties:
+                provider: { type: string }
+                label: { type: string }
+                access: { type: string, enum: [continuous, one_time], default: continuous }
+                scope: { type: string, enum: [all, selected] }
+                domains:
+                  type: array
+                  items: { type: string }
+                check_domain:
+                  type: string
+                  description: >-
+                    A domain the key manages, read to check the key when the
+                    provider cannot list its domains and `scope` is `all`.
+                credential:
+                  type: object
+                  required: [token]
+                  properties:
+                    token: { type: string }
+                    params: { type: object, additionalProperties: { type: string } }
+      responses:
+        '201':
+          description: The account, and the provider's domains when it lists them
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+                  zones:
+                    type: array
+                    items: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`)" }
+        '503': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listProviderAccounts
+      summary: Every connected account, with the kept sign-ins and Domain Connect grants
+      tags: [Provider accounts]
+      description: >-
+        The workspace's provider accounts with their access mode, the domains
+        they cover, when they were last used and when they expire, and
+        whether the caller may manage each one (`can_manage`); and, in
+        `kept_access`, the sign-ins and Domain Connect authorizations kept per
+        domain, grouped by provider. A kept sign-in is stopped per domain with
+        `DELETE /connections/{id}/grant`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: The accounts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accounts, kept_access, keeping_available]
+                properties:
+                  accounts:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProviderAccount' }
+                  kept_access:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string, enum: [sign_in, domain_connect] }
+                        provider: { type: string }
+                        provider_name: { type: string }
+                        access: { type: string, enum: [continuous] }
+                        connections:
+                          type: array
+                          items: { $ref: '#/components/schemas/AccountConnection' }
+                        created_at: { type: string, format: date-time }
+                        last_used_at: { type: string, format: date-time }
+                        uses:
+                          type: array
+                          items: { type: string }
+                  keeping_available: { type: boolean, description: Whether this deployment can keep keys (GRANT_ENCRYPTION_KEY is set). }
+        '401': { $ref: '#/components/responses/Error' }
+  /provider-accounts/{id}:
+    get:
+      operationId: getProviderAccount
+      summary: One provider account with its domains
+      tags: [Provider accounts]
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: updateProviderAccount
+      summary: Change an account's label, access or scope
+      tags: [Provider accounts]
+      description: >-
+        Narrowing the scope detaches the domains it no longer covers; they stay
+        connected, without continuous access. Switching to `one_time` deletes
+        the key now. Switching to `continuous` needs the key still held.
+        Changing `access`, `scope` or `domains` takes an admin, an owner or the
+        member who connected the account (`403` otherwise); the label is
+        anyone's who operates applications.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+                access: { type: string, enum: [continuous, one_time] }
+                scope: { type: string, enum: [all, selected] }
+                domains:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: revokeProviderAccount
+      summary: Revoke an account
+      tags: [Provider accounts]
+      description: >-
+        Deletes the key and the account. Its domains stay connected and
+        served, without continuous access; each domain's timeline records it.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  revoked: { type: boolean }
+                  domains_kept_connected: { type: integer }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /provider-accounts/{id}/zones:
+    post:
+      operationId: listProviderAccountZones
+      summary: The domains the account's key can reach
+      tags: [Provider accounts]
+      description: >-
+        Lists the provider's domains with the kept key. `listed` is false for a
+        provider that cannot list them. A refused key flags the account
+        `needs_reconnect`. A one time account past its hour answers `409`, and
+        its key is deleted then if the hourly cleanup has not deleted it yet.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The domains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zones:
+                    type: array
+                    items: { type: string }
+                  listed: { type: boolean }
+                  message: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the key; the account is flagged `needs_reconnect`" }
+        '503': { $ref: '#/components/responses/Error' }
+  /provider-accounts/{id}/connect:
+    post:
+      operationId: connectWithProviderAccount
+      summary: Connect domains with the account
+      tags: [Provider accounts]
+      description: >-
+        Creates a connection for each domain under the application and writes
+        its records with the account's key (keeping the CAA and TXT values
+        already there and recording what each write replaced). Each domain is
+        linked to the account; a continuous account then keeps them in sync.
+        A domain the application already serves is only linked. A one time
+        account deletes its key once the domains are connected, even when the
+        caller has gone away by then, and past its hour answers `409`. A
+        domain in a zone the key does not reach fails alone
+        (`zone_not_reached` on the connection); the account is flagged
+        `needs_reconnect` only when the provider refuses the key itself, which
+        is checked with a request that does not depend on the zone. Takes an
+        admin, an owner or the member who connected the account.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [application_id, domains]
+              properties:
+                application_id: { type: string }
+                domains:
+                  type: array
+                  items: { type: string }
+                www_redirect: { type: boolean }
+      responses:
+        '200':
+          description: Per domain results and the account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        domain: { type: string }
+                        connection_id: { type: string }
+                        status: { type: string, enum: [connected, already, failed] }
+                        message: { type: string }
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /provider-accounts/{id}/reconnect:
+    post:
+      operationId: reconnectProviderAccount
+      summary: Give an account a new key
+      tags: [Provider accounts]
+      description: >-
+        For an account the provider stopped accepting, or a one time account
+        whose key was deleted. Everything is checked before anything is kept:
+        the access mode, then the key (listing the provider's domains, or
+        reading `check_domain`, a selected domain or a domain the account
+        connected, for a provider that cannot list them), and for a `selected`
+        account that the key reaches every selected domain. `params` sent
+        with the key replace the kept ones. Takes an admin, an owner or the
+        member who connected the account.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                access: { type: string, enum: [continuous, one_time] }
+                check_domain:
+                  type: string
+                  description: A domain the key manages, read to check the key when the provider cannot list its domains.
+                credential:
+                  type: object
+                  required: [token]
+                  properties:
+                    token: { type: string }
+                    params: { type: object, additionalProperties: { type: string } }
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`)" }
+        '503': { $ref: '#/components/responses/Error' }
   /providers/{provider}/zones:list:
     post:
       operationId: listProviderZones
@@ -4473,6 +5345,390 @@ components:
         ttl: { type: integer, default: 3600 }
         priority: { type: [integer, 'null'], description: MX only }
         applied: { type: boolean, description: true once written through a provider }
+        change:
+          type: string
+          enum: [created, added, replaced, merged, existing]
+          description: >-
+            What writing this record did to its name, recorded when we wrote it
+            through a provider API. `created`: nothing of this type was there.
+            `added`: our value joined a shared TXT or CAA set and the values
+            already there were kept. `replaced`: the values of this type at the
+            name were replaced (`prior` holds them). `merged`: an SPF policy was
+            merged with the one already there (`prior` holds the original).
+            `existing`: our exact value was already there, so removing the
+            domain leaves it.
+            Omitted when not recorded (a manual or one-click setup, or a record
+            written before this was recorded).
+        prior:
+          type: array
+          description: >-
+            The values this record replaced, so removing the domain can put them
+            back. Omitted when nothing was replaced or it is unknown.
+          items: { $ref: '#/components/schemas/PriorValue' }
+        prior_source:
+          type: string
+          enum: [provider, public_dns]
+          description: >-
+            Where `prior` was read: `provider` (through the provider's API right
+            before the write) or `public_dns` (observed in public DNS before the
+            change). Omitted when unknown.
+    PriorValue:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string }
+        value: { type: string }
+        ttl: { type: integer }
+        priority: { type: integer }
+    RemovalRecord:
+      type: object
+      required: [type, host, name, value, change, action]
+      properties:
+        type: { type: string, description: 'The type as a DNS panel shows it (ALIAS, A, CNAME, TXT, MX, CAA).' }
+        host: { type: string, description: fully-qualified record name }
+        name: { type: string, description: 'the name a DNS panel wants ("@", "www", "_dmarc")' }
+        value: { type: string }
+        ttl: { type: integer }
+        priority: { type: integer }
+        change:
+          type: string
+          enum: [created, added, replaced, merged, existing, unknown]
+          description: What writing the record did to its name (see `DnsRecord.change`).
+        action:
+          type: string
+          enum: [delete, remove_value, restore, keep]
+          description: >-
+            What a removal does with it: `delete` our value, take our value out
+            of a shared TXT or CAA set (`remove_value`), put back what it
+            replaced (`restore`), or `keep` it (another connected domain uses
+            it, it was already there before we wrote it, or it is an SPF policy
+            whose original we do not know).
+        prior:
+          type: array
+          items: { $ref: '#/components/schemas/PriorValue' }
+        prior_source: { type: string, enum: [provider, public_dns] }
+        note: { type: string }
+    RemovalPlan:
+      type: object
+      required: [connection_id, domain, connected_via, access, record_removal, default_choice, records_in_use_elsewhere, records, manual_steps, teardown]
+      properties:
+        connection_id: { type: string }
+        domain: { type: string }
+        provider: { type: string }
+        provider_name: { type: string }
+        connected_via:
+          type: string
+          description: The rail that wrote the records (see `Connection.write_rail`), `manual` when none did, or `unknown_api` for an older connection written through a provider API.
+        access:
+          type: string
+          enum: [kept, one_time, none]
+          description: What access we hold now.
+        access_detail: { type: string }
+        record_removal:
+          type: string
+          enum: [automatic, partial, reauthorize, manual, in_use, not_needed]
+          description: >-
+            What choosing `remove` can do: `automatic` with the access we
+            kept; `partial` (some automatically, the rest by hand: a Domain
+            Connect revert cannot restore a replaced value, and the Route 53
+            access role cannot delete); `reauthorize` (one more sign-in or key,
+            see `reauthorize`); `manual` (only by hand, see `manual_steps`);
+            `in_use` (another connection still serves the domain, so the
+            records stay); `not_needed` (nothing was added).
+        default_choice:
+          type: string
+          enum: [remove, keep]
+          description: >-
+            The choice to offer first: `remove` when it can run without the
+            person (automatic or partial), `keep` otherwise. A `DELETE` without
+            a records choice keeps its original behaviour instead (see
+            `DELETE /connections/{id}`).
+        reauthorize:
+          type: object
+          properties:
+            methods:
+              type: array
+              items: { type: string, enum: [sign_in, api_key] }
+            provider: { type: string }
+            flow: { type: string }
+            regions: { type: array, items: { type: string } }
+        records_in_use_elsewhere: { type: boolean }
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/RemovalRecord' }
+        manual_steps:
+          type: array
+          items: { type: string }
+          description: The exact steps to remove the records by hand, in order.
+        notes:
+          type: array
+          items: { type: string }
+        teardown:
+          type: array
+          items: { type: string }
+          description: What always happens, whatever the choice.
+        removal_started_at:
+          type: string
+          format: date-time
+          description: Set while a removal of the domain is running.
+        removed:
+          type: boolean
+          description: >-
+            True once the domain is removed: the connection is gone and
+            `result` is what the removal did with its records.
+        removed_at: { type: string, format: date-time }
+        result: { $ref: '#/components/schemas/RemovalOutcome' }
+    RemovalOutcome:
+      type: object
+      required: [choice, outcome]
+      properties:
+        choice: { type: string, enum: [remove, keep] }
+        outcome:
+          type: string
+          enum: [removed, partly_removed, kept, manual, in_use, not_needed, failed]
+        via: { type: string }
+        removed: { type: array, items: { $ref: '#/components/schemas/RemovalResult' } }
+        restored: { type: array, items: { $ref: '#/components/schemas/RemovalResult' } }
+        left_in_place: { type: array, items: { $ref: '#/components/schemas/RemovalResult' } }
+        failed: { type: array, items: { $ref: '#/components/schemas/RemovalResult' } }
+        manual_steps: { type: array, items: { type: string } }
+    RemovalResult:
+      type: object
+      required: [type, name, value]
+      properties:
+        type: { type: string }
+        name: { type: string }
+        value: { type: string }
+        note: { type: string }
+    CertificateView:
+      type: object
+      required: [host, status, managed]
+      properties:
+        host: { type: string }
+        status:
+          type: string
+          enum: [issued, renewing, failed, pending, revoked, not_reported]
+          description: >-
+            `issued`: a valid certificate. `renewing`: renewing keeps failing
+            while the current certificate still serves (`last_error` says
+            why). `failed`: no valid certificate. `not_reported`: the edge
+            has not reported one yet.
+        issuer: { type: string, description: "The issuing CA certificate's name, for example R11 or E6 (Let's Encrypt)." }
+        issued_at: { type: string, format: date-time }
+        renewed_at: { type: string, format: date-time }
+        not_before: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        days_left: { type: integer }
+        next_renewal_at:
+          type: string
+          format: date-time
+          description: When the edge starts renewing (about 30 days before expiry). Omitted while a failing renewal is being retried.
+        last_error: { type: string }
+        failing_since: { type: string, format: date-time }
+        failure_count: { type: integer }
+        managed: { type: boolean }
+        attention:
+          type: string
+          enum: [failed, renewal_failing, expired, expiring]
+        updated_at: { type: string, format: date-time }
+    DomainEvent:
+      type: object
+      required: [id, domain, kind, created_at]
+      properties:
+        id: { type: string }
+        application_id: { type: string }
+        connection_id: { type: string }
+        domain: { type: string }
+        kind:
+          type: string
+          description: >-
+            One of connection.disconnected, records.removed,
+            certificate.issued, certificate.renewed, certificate.failed,
+            certificate.expiring, certificate.removed, drift.found,
+            drift.fixed, drift.fix_failed, drift.action_required,
+            drift.restored, access.granted, access.revoked,
+            access.needs_reconnect.
+        detail: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+    AccountConnection:
+      type: object
+      properties:
+        id: { type: string }
+        application_id: { type: string }
+        domain: { type: string }
+        status: { type: string }
+    ProviderAccount:
+      type: object
+      required: [id, kind, provider, provider_name, label, access, scope, domains, credential_held, status, connections, uses, can_manage, created_at]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [api_key] }
+        provider: { type: string }
+        provider_name: { type: string }
+        label: { type: string }
+        access: { type: string, enum: [continuous, one_time] }
+        scope: { type: string, enum: [all, selected] }
+        domains:
+          type: array
+          description: The selected zones (scope `selected`).
+          items: { type: string }
+        credential_held: { type: boolean, description: "Whether the key is still kept and usable (false for a one time account past its hour). The key itself is never returned." }
+        status: { type: string, enum: [active, used, expired, needs_reconnect] }
+        last_error: { type: string }
+        created_by: { type: string }
+        last_used_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time, description: When a one time account's key is deleted at the latest. }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        connections:
+          type: array
+          items: { $ref: '#/components/schemas/AccountConnection' }
+        uses:
+          type: array
+          description: What the account's access is used for.
+          items: { type: string }
+        can_manage:
+          type: boolean
+          description: >-
+            Whether the caller may change the account's access, scope or
+            domains, connect domains with it and replace its key: an admin,
+            an owner, or the member who connected it.
+    ConnectionServices:
+      type: object
+      required: [connection_id, application_id, domain, status, access, services, active_count]
+      properties:
+        connection_id: { type: string }
+        application_id: { type: string }
+        domain: { type: string }
+        status: { type: string }
+        provider: { type: string }
+        provider_name: { type: string }
+        access:
+          type: object
+          required: [mode, detail, connected_via]
+          properties:
+            mode:
+              type: string
+              enum: [kept, one_time, none]
+              description: >-
+                `kept`: CustomDomain™ holds continuous access (the zone it
+                hosts, a kept sign-in or Domain Connect grant, a continuous
+                provider account, the Route 53 access role). `one_time`: the
+                records were written with access that was not kept. `none`:
+                a person or the provider wrote them.
+            via: { type: string, enum: [managed_dns, sign_in, domain_connect, provider_account, route53_role] }
+            detail: { type: string }
+            connected_via: { type: string, description: The rail that wrote the records. }
+        services:
+          type: array
+          items:
+            type: object
+            required: [id, name, active, state, detail]
+            properties:
+              id:
+                type: string
+                enum: [dns_connect, managed_dns, edge, tls, power, monitoring, auto_repair, redirects, email_records, caa]
+              name: { type: string }
+              active: { type: boolean }
+              state: { type: string, enum: [active, pending, attention, paused, inactive] }
+              detail: { type: string }
+              since: { type: string, format: date-time }
+        active_count: { type: integer }
+    DriftRecord:
+      type: object
+      required: [subdomain, type, verdict, expected]
+      properties:
+        subdomain: { type: string, description: The record's name relative to the domain ("@" for the domain itself). }
+        type: { type: string }
+        verdict: { type: string, enum: [record_missing, record_changed] }
+        expected:
+          type: array
+          items: { type: string }
+        observed:
+          type: array
+          items: { type: string }
+    MonitorView:
+      type: object
+      required: [connection_id, domain, watched, active, every, last_checked_at, result, drift, checked, repair, alerts]
+      properties:
+        connection_id: { type: string }
+        domain: { type: string }
+        watched: { type: boolean }
+        active: { type: boolean }
+        every: { type: string, description: How often the domain is checked (hour). }
+        last_checked_at: { type: [string, 'null'], format: date-time }
+        next_check_at: { type: string, format: date-time }
+        result:
+          type: string
+          enum: [ok, drift, inconclusive, not_checked, not_watched]
+          description: >-
+            The last check. `drift` is only reported after a second,
+            independent look at the zone's own nameservers confirmed it;
+            `inconclusive` means the lookup did not answer and the previous
+            finding stands.
+        drift_since: { type: string, format: date-time }
+        drift:
+          type: array
+          items: { $ref: '#/components/schemas/DriftRecord' }
+        checked: { type: integer, description: Records compared in the last check. }
+        error: { type: string }
+        action:
+          type: object
+          description: >-
+            What was done about the drift: `auto_fixed` (put back),
+            `fix_failed` (the repair failed, did not hold, or the records were
+            put back 3 times in 24 hours and disappeared again) or
+            `action_required` (left for the tenant).
+          properties:
+            kind: { type: string, enum: [auto_fixed, fix_failed, action_required] }
+            at: { type: string, format: date-time }
+            description: { type: string }
+        attention:
+          type: string
+          enum: [action_required, fix_failed, drift]
+          description: Set while drift needs the tenant (action_required, fix_failed) or is being repaired (drift).
+        repair:
+          type: object
+          required: [automatic, detail]
+          properties:
+            automatic: { type: boolean, description: True when CustomDomain™ holds continuous access and puts disappeared records back itself. }
+            paused:
+              type: boolean
+              description: >-
+                True when CustomDomain™ holds the access (`via`) but this
+                deployment has automatic repair switched off
+                (`MONITOR_AUTO_REPAIR`): missing records are reported, not put
+                back. Omitted otherwise.
+            via: { type: string, enum: [managed_dns, sign_in, domain_connect, provider_account] }
+            detail: { type: string }
+        alerts:
+          type: object
+          properties:
+            webhooks: { type: boolean }
+            email: { type: boolean }
+        watching:
+          type: array
+          description: The records the domain is held to.
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              type: { type: string }
+              value: { type: string }
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/DomainEvent' }
+    DisconnectResult:
+      type: object
+      required: [connection_id, domain, disconnected, records, serving, certificate, monitoring]
+      properties:
+        connection_id: { type: string }
+        domain: { type: string }
+        disconnected: { type: boolean }
+        records: { $ref: '#/components/schemas/RemovalOutcome' }
+        serving: { type: string, enum: [stopped] }
+        certificate: { type: string, enum: [removed, kept, none] }
+        monitoring: { type: string, enum: [stopped] }
     WritableRecord:
       type: object
       required: [type, value]
@@ -4610,6 +5866,28 @@ components:
           description: >-
             Human-readable detail for `error_code`. Populated on the same paths
             and cleared alongside it. Omitted when there is none.
+        # --- Lifecycle ---
+        write_rail:
+          type: string
+          enum: [api_key, sign_in, domain_connect, domain_connect_async, route53_role, provider_account, managed_dns]
+          description: >-
+            The rail that last wrote this connection's records. Omitted when no
+            rail wrote them (a manual setup, or a connection from before this
+            was recorded). It decides what removing the domain can do with the
+            records (`GET /connections/{id}/removal`).
+        provider_account_id:
+          type: string
+          description: >-
+            The connected provider account whose credential wrote this
+            connection's records and, when the account's access is
+            `continuous`, keeps them (repairs and removal). Omitted when none.
+        removal_started_at:
+          type: string
+          format: date-time
+          description: >-
+            Set while the domain is being removed: the records are being taken
+            out and the connection is deleted when that finishes. The domain no
+            longer serves from this moment. Omitted otherwise.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }
@@ -4679,14 +5957,23 @@ components:
           description: >-
             Always `true` on a `200`: the provider accepted the write for every
             template in the grant's bundle. Failures are reported as `409`
-            (not managed / grant revoked), `503` (managed rail unavailable) or
-            `500`, never as `reapplied: false`.
+            (not managed / grant revoked), `422` (a provider account's key or
+            write refused), `503` (managed rail unavailable) or `500`, never as
+            `reapplied: false`.
+        via:
+          type: string
+          enum: [provider_account]
+          description: >-
+            `provider_account` when a continuous provider account's key wrote
+            the records; omitted for a kept grant or a zone CustomDomain™
+            hosts.
         records:
           type: array
           description: >-
             The authoritative desired record set as recomputed and written:
-            the materialized template records for a template bundle, otherwise
-            the connection's default desired set.
+            the materialized template records for a template bundle, the
+            records CustomDomain™ wrote for a provider account, otherwise the
+            connection's default desired set.
           items: { $ref: '#/components/schemas/DnsRecord' }
     Route53RoleStart:
       type: object

@@ -15,6 +15,23 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Removing a domain, certificates, monitoring and connected accounts.**
+  Removing a domain now asks what to do with the DNS records CustomDomain™
+  added: remove them (putting back what each replaced) or keep them. When the
+  access used to connect was not kept, one more sign-in or key does it, or the
+  exact steps are listed. Each domain's certificate, its renewal and its
+  history are visible, with alerts before an unrenewed certificate expires.
+  Monitoring checks every live domain each hour, confirms drift before acting,
+  and says what it found and what it did; each domain shows whether records
+  CustomDomain™ wrote are put back automatically when they disappear. Each
+  domain lists the services it uses. Provider keys and kept sign-ins are
+  managed in **Connected accounts**, with one time or continuous access for
+  some or all domains; an admin, an owner or the person who connected an
+  account manages it. New on the API: [removal](/docs/connect-flow/offboarding),
+  [certificates](/docs/connect-flow/certificates),
+  [monitoring and services](/docs/connect-flow/monitoring) and
+  [provider accounts](/docs/connect-flow/provider-accounts); in the SDK,
+  `removeDomain()`.
 - **Traffic for every domain.** Each domain the edge serves shows its
   requests by the kind of answer, bandwidth, server errors, how fast its
   origin answered and approximate visitors, and **Analytics** shows the
