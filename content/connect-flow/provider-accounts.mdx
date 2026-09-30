@@ -1,0 +1,64 @@
+---
+title: Provider accounts
+description: Connect a DNS provider or registrar account once, for some or all of its domains, with one time or continuous access.
+---
+
+A provider account is a key for a DNS provider or registrar that the workspace
+connects once. CustomDomain™ checks the key before keeping anything, keeps it
+encrypted (`GRANT_ENCRYPTION_KEY`), and never returns it.
+
+The key is checked by listing the provider's domains. A provider that cannot
+list them is asked for one of the selected domains instead; with scope `all`,
+name a domain the key manages in `check_domain`, or the call answers `400`
+`check_domain_required`. A key is never kept unchecked.
+
+## Access
+
+- **Continuous**: kept until you revoke it, and used for exactly three things:
+  putting back records it wrote that disappear, where the deployment has
+  automatic repair on ([monitoring](/docs/connect-flow/monitoring)), removing
+  records when a domain is [removed](/docs/connect-flow/offboarding), and
+  re-applying the records it wrote when you ask
+  (`POST /v1/connections/{id}:reapply`, which answers `via: "provider_account"`).
+- **One time**: used to connect the domains you choose, then deleted. It works
+  for an hour at most: past the hour every use is refused with `409` and the
+  key is deleted, whether or not the hourly cleanup got to it first. The
+  account stays as the record of what it connected.
+
+Certificates renew without any DNS access, so both behave the same there.
+Sign-ins get the same choice: `oauth:start` takes `"access": "continuous"` or
+`"one_time"`; continuous is offered where the deployment can keep that
+provider's sign-in.
+
+## Scope
+
+All of the account's domains (`"scope": "all"`, including ones added later), or
+a selected list (`"scope": "selected"`, `domains`) picked from the provider's
+own list where it has one.
+
+## Who can manage an account
+
+Anyone whose role operates applications may connect a key, read the accounts
+and revoke one. Changing an account's access, scope or domains, connecting
+domains with it and giving it a new key take an admin, an owner or the member
+who connected it, because the key reaches zones the others were never given;
+anyone else gets `403`. Each account says whether you may (`can_manage`).
+
+## Endpoints (API key)
+
+| Call | Does |
+| --- | --- |
+| `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
+| `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, plus kept sign-ins and Domain Connect authorizations grouped by provider. |
+| `PATCH /v1/provider-accounts/{id}` | Change label, access or scope. A domain taken out stays connected, without continuous access. |
+| `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. |
+| `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain in a zone the key does not reach fails alone (`zone_not_reached`). |
+| `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
+| `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. |
+
+A key the provider refuses marks the account `needs_reconnect` and each of its
+domains records it on its timeline. A refusal that only concerns one zone (the
+key works, but not for that domain) fails that domain and leaves the account
+as it is. The console's **Connected accounts** page
+shows all of this; *Remember this key* on the connect page keeps the key as a
+continuous account.
