@@ -9,8 +9,10 @@ description: Opt a connection into managed mode so the control plane can re-appl
 > issued one to customdomain.ai yet. A **managed sign-in grant** needs the
 > deployment to list the provider in `OAUTH_MANAGED_PROVIDERS` and to set
 > `GRANT_ENCRYPTION_KEY`. Where neither applies, every connection is use-once,
-> `managed` stays `false`, and `:reapply` and the MCP `reapply-connection` and
-> `disconnect-domain` tools return `409`: drift is reported, not healed.
+> `managed` stays `false`, and `:reapply` and the MCP `reapply-connection` tool
+> return `409`: drift is reported, not healed. Removing a domain does not need a
+> grant, so `disconnect-domain` works on any connection (see
+> [Removing a domain](/docs/connect-flow/offboarding)).
 
 Most connections are **use-once**: a [rail](/docs/connect-flow/overview#the-four-rails)
 writes the desired records a single time and the platform keeps no credential.

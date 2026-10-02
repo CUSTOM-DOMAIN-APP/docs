@@ -1,6 +1,6 @@
 ---
-title: MCP, drive it from an agent
-description: "The agent path: the hosted MCP server, its tools, and which of them can complete on the hosted service today."
+title: "MCP: drive it from an agent"
+description: The agent path. The hosted MCP server, its tools, and what works on the hosted service today.
 ---
 
 Use the MCP server when an **agent** (Claude, Cursor, a custom MCP client)
@@ -10,38 +10,81 @@ behalf. It is the same control plane behind a tool interface.
 ## Connect
 
 - Endpoint: `https://mcp.customdomain.ai/mcp` (Streamable HTTP).
-- Bearer: a `cd_live_…` API key from the console's **Keys** page (an older
-  `sk_` key keeps working). Console →
-  **MCP server** shows ready-made client configs.
+- **API key:** a `cd_live_…` key from the console's **API & SDK** page (an older
+  `sk_` key keeps working), sent as `Authorization: Bearer <key>`. It works for
+  every tool except `create-domain-order`. It carries your whole workspace's
+  authority, so give it only to agents you trust.
+- **Agent token:** the scoped option. A person approves exactly which scopes the
+  agent gets (`domains:read`, `domains:connect`, `domains:disconnect`,
+  `domains:purchase`) and can revoke it at any time. See
+  [Agent access](/docs/agents/overview).
+- **Purchases through MCP are off on the hosted service.** Buy a domain in the
+  console instead.
+- The console's **MCP server** page (switch it on in **Settings → Features**)
+  has ready made setup for each client and a connection test.
 
 ## The flow an agent should follow
 
-1. `discover-provider { domain }`: read-only. Says where the domain's DNS
-   lives and which rails can run (the same truth as `rails` on
-   `POST /v1/domains:check`). Do this **before** promising anything.
-2. `connect-domain { domain }`: creates the connection and returns a `link`
-   for the **human** to complete (sign in with the provider, one-click, or the
-   records to add) plus a `jobId`. The agent never writes DNS itself.
-3. `check-connection-status { jobId }`: `pending`, `propagating`,
-   `completed`, `failed`, `error`, `expired`. `pending` has no deadline;
-   `failed` can be retried by starting `connect-domain` again for the same
-   domain (it revives the connection).
-4. `list-connections`: everything the key's applications own.
+1. `discover-provider { domain }` is read only. It says where the domain's DNS
+   lives and which rails can run: `rails`, `recommendedRail` and `blockedReason`
+   (the same truth as `rails` on `POST /v1/domains:check`). Do this **before**
+   promising anything.
+2. `connect-domain { domain }` creates the connection and returns a `link` for
+   the **human** to complete (sign in with the provider, one click, or the
+   records to add) plus a `connectionId`. The agent never writes DNS itself.
+3. `check-connection-status { connectionId }` returns a `status` of `pending`,
+   `propagating`, `live` or `failed`. Stop when `connected` is `true`. A failed
+   connection says why in `errorCode`. `pending` has no deadline; a `failed`
+   connection can be retried by calling `connect-domain` again for the same
+   domain, which revives it.
+4. A domain that is not live yet: `diagnose-connection` says record by record
+   what public DNS shows and what is missing. Once the person has fixed it,
+   `recheck-connection` runs the check now. `check-certificate-status` reads the
+   HTTPS certificate; certificates renew on their own.
+5. `list-connections { status?, limit?, cursor? }` lists the connected domains
+   with their status (every application in the workspace when you use an API
+   key). A page that was cut says `truncated: true`; call again with
+   `nextCursor` as `cursor`.
 
-Buying: `search-domain-availability`, `generate-domain-suggestions`,
-`create-domain-order`, `check-order-status`. Email and forwarding:
-`add-email`, `forward-domain`.
+When a connect fails with `billing_required`, `check-billing-status` says why and
+where an owner fixes it.
 
-## Not available on the hosted service today
+Buying: `search-domain-availability` and `generate-domain-suggestions` work as
+read tools. `create-domain-order` exists, but ordering is off on the hosted
+service. `check-order-status` and `list-domain-orders` read orders. Email and
+forwarding: `add-email`, `forward-domain`.
 
-`reapply-connection` and `disconnect-domain` need a **managed** connection
-(a stored async one-click grant from the DNS provider). No provider has issued
-one to customdomain.ai yet, so on the hosted service they return `409`. See
-[Managed connections](/docs/connect-flow/managed-connections).
+## Re-apply and disconnect
+
+- `reapply-connection` re-pushes the stored records of a **managed** connection.
+  A connection with no stored grant answers `409` (`conflict`), so read `managed`
+  on `list-connections` or `check-connection-status` first. See
+  [Managed connections](/docs/connect-flow/managed-connections).
+- `disconnect-domain { connectionId, confirm }` removes any connection of the
+  application, managed or not. The domain stops being served and its certificate
+  and monitoring go away. DNS records are removed only where a kept grant wrote
+  them; anywhere else they stay at the provider and the user deletes them. It
+  answers `409 removal_in_progress` while another removal of the same connection
+  is running. The domain goes offline, so ask the person first and send the
+  domain they confirmed as `confirm`.
+- Disconnecting needs the `domains:disconnect` scope, which is separate from
+  connecting. A grant approved before that scope existed does not carry it until
+  the person approves the agent again. See
+  [Removing a domain](/docs/connect-flow/offboarding).
+
+## When a call fails
+
+A failed call is an `isError` result with `success: false`, an `error` code and
+`details`. Branch on the code. A token without the tool's scope gets
+`insufficient_scope`, and an account over its limit (5 calls a second, bursts of
+20) gets `rate_limited` with `retryAfterSeconds`. See
+[What a call answers](/docs/mcp/overview#what-a-call-answers).
 
 ## Agent authorization
 
-The control plane's delegated agent auth (an agent registers a client, a human
-grants it scoped access) is live; self-registered agents exist, and a human
-grant is required before an agent token can act on a workspace. Full tool
-reference: [MCP](/docs/mcp).
+Delegated agent access is live. An agent registers as an OAuth client, a person
+approves it on the consent page, and the agent gets a 15 minute token limited to
+the scopes that person approved. Review and revoke agents under **Agents**,
+which switches on after your first approval (see
+[Managing access](/docs/agents/managing-access)). Full tool reference:
+[MCP server](/docs/mcp/overview).

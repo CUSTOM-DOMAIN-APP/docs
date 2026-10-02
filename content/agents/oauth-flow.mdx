@@ -21,7 +21,7 @@ Two well-known documents describe the whole surface:
 curl https://api.customdomain.ai/.well-known/oauth-authorization-server
 # → { "issuer", "authorization_endpoint", "registration_endpoint",
 #     "token_endpoint", "revocation_endpoint", "jwks_uri",
-#     "scopes_supported": ["domains:read","domains:connect","domains:purchase"],
+#     "scopes_supported": ["domains:read","domains:connect","domains:disconnect","domains:purchase"],
 #     "code_challenge_methods_supported": ["S256"],
 #     "token_endpoint_auth_methods_supported": ["none"],
 #     "client_id_metadata_document_supported": true, … }
@@ -29,6 +29,10 @@ curl https://api.customdomain.ai/.well-known/oauth-authorization-server
 # RFC 7517 JWKS: the ES256 public keys resource servers verify tokens against
 curl https://api.customdomain.ai/.well-known/jwks.json
 ```
+
+A client that starts at the MCP endpoint needs no other address: the `401` from
+`https://mcp.customdomain.ai/mcp` points at its protected resource metadata
+(RFC 9728), which names this server first as the authorization server.
 
 ## 1. Identify your agent
 
@@ -123,7 +127,10 @@ GET https://api.customdomain.ai/oauth/agent/authorize
 
 The redirect URI must **exactly** match one registered in step 1 (or listed in
 your metadata document), and `code_challenge_method` must be `S256`; plain PKCE
-is rejected. A loopback redirect URI such as `http://127.0.0.1/callback`
+is rejected. The optional `resource` parameter (RFC 8707) names the server the
+token is for: the MCP endpoint, which is the default, or the API origin. Any other
+value is refused with `invalid_target`. Send the same `resource` on the token
+request. A loopback redirect URI such as `http://127.0.0.1/callback`
 matches on any port, so a native app can bind a new port each session
 (RFC 8252).
 
@@ -158,7 +165,8 @@ curl -X POST https://api.customdomain.ai/oauth/agent/token \
 ```
 
 The **access token** is an ES256 JWT valid for 15 minutes; it carries the tenant,
-the bound application, the granted scopes, and the consenting member. The
+the bound application, the granted scopes, its audience (`aud`, the resource it
+was issued for) and the consenting member. The
 **refresh token** is long-lived and stored hashed at rest.
 
 ### Refresh
@@ -171,7 +179,8 @@ curl -X POST https://api.customdomain.ai/oauth/agent/token \
 # → { "access_token":"eyJ…", "refresh_token":"art_…(a new one)", … }
 ```
 
-`client_id` is required and must be the client the grant belongs to. **Refresh
+`client_id` is required and must be the client the grant belongs to. A refresh
+without `resource` gets the default audience, the MCP endpoint. **Refresh
 tokens rotate:** every refresh returns a new refresh token and the one you sent
 stops working, so store the new one each time. Presenting a refresh token that
 was already used is treated as theft: the whole grant is revoked and the owner
@@ -185,7 +194,8 @@ access-token lifetime.
 ## 5. Use the token
 
 Call MCP tools with the access token. The MCP **verifies it locally** against the
-JWKS (no introspection) and enforces the tool's required scope:
+JWKS (no introspection), checks that its audience is the MCP endpoint, and
+enforces the tool's required scope:
 
 ```bash
 curl -X POST https://mcp.customdomain.ai/mcp \
@@ -195,7 +205,8 @@ curl -X POST https://mcp.customdomain.ai/mcp \
        "params":{"name":"connect-domain","arguments":{"domain":"app.customer.com"}}}'
 ```
 
-A token whose grant lacks the tool's scope is refused with `insufficient_scope`.
+A token whose grant lacks the tool's scope is refused with `insufficient_scope`,
+and one issued for another audience with `401 invalid_token`.
 
 ## 6. Revoke
 

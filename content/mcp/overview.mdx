@@ -1,92 +1,159 @@
 ---
 title: MCP server
-description: The Model Context Protocol server, the twelve domain tools an AI agent can call over JSON-RPC, its transports, and its auth.
+description: The Model Context Protocol server. Seventeen domain tools an AI agent can call over JSON-RPC, their scopes, its transports, and its auth.
 ---
 
-CustomDomain™ ships a **Model Context Protocol (MCP) server** so an AI
-agent can search for, register, and connect domains through the same
-control-plane `/v1` API, without ever handling DNS records itself. It runs as a
-separate process (`services/mcp`) and wraps the control-plane; it adds no
-business logic of its own.
+CustomDomain™ ships a **Model Context Protocol (MCP) server** so an AI agent
+can search for, connect and manage domains through the same control plane `/v1`
+API, without ever handling DNS records itself. It runs as a separate process
+(`services/mcp`) and wraps the control plane; it adds no business logic of its
+own.
 
 The hosted endpoint is live at **`https://mcp.customdomain.ai/mcp`** (Streamable
-HTTP). The console's **MCP server** page (under *Integrate*, at `/app/mcp`) has
-the endpoint, the token URL, and copy-paste client configs for HTTP-native hosts
-and the `mcp-remote` stdio bridge.
+HTTP). The console's **MCP server** page (under **More**, once you switch it on
+in **Settings → Features**) has the endpoint, a connection test and copy and
+paste setup for Claude Code, Claude Desktop, Cursor, VS Code, ChatGPT and any
+other client. The [agent skill](/docs/agents/skills) teaches an agent the safe
+way to use the tools below.
 
 The server reports itself as `customdomain-mcp` (protocol revision
 `2025-06-18`) and advertises only the `tools` capability.
 
 ## Tools
 
-The server registers **twelve tools**, in a fixed order. None of them takes DNS
-records as input: records always come from the control-plane server-side, so an
-agent can never inject them.
+The server registers **seventeen tools**, in a fixed order. None of them takes DNS
+records as input. Records always come from the control plane, so an agent can
+never inject them. Each tool needs one scope (see below).
 
-| Tool | Arguments | What it does |
-| --- | --- | --- |
-| `search-domain-availability` | `{ domain }` | Check whether a domain is available to register, with real-time price + renewal price. |
-| `generate-domain-suggestions` | `{ keywords, limit? }` | Return available-to-register suggestions for a set of keywords (default 5, min 5, max 20), each priced; the cheapest is marked the top pick. |
-| `create-domain-order` | `{ domain }` | Start a registration/purchase through the resolved registrar. Enterprise/direct registrars return an `orderId`; sharing registrars return a checkout `link` + `jobId` to poll. |
-| `connect-domain` | `{ domain }` | Attach a domain the user already owns to their app and set it up to serve over HTTPS. Returns the DNS records to add (`records`), a `link` for the user and a `jobId` to poll. The `link` is a one-click authorization only where the domain's DNS provider supports one-click (Domain Connect) setup; otherwise it opens the same records in the console, and `message` says which you got. Never writes DNS directly. |
-| `check-connection-status` | `{ jobId }` | Read the live status of a connection job, with its records. `status` is `pending`, `propagating`, `live` or `failed`; poll until `connected` is `true`, which is the completion signal. `managed` says whether `reapply-connection` can heal it. |
-| `check-order-status` | `{ orderId }` **or** `{ jobId }` | Read the live status of a domain order, by `orderId` (enterprise) or `jobId` (sharing). Provide exactly one. |
-| `reapply-connection` | `{ connectionId }` | Re-apply a managed connection: the control-plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails (`409`) if the connection isn't managed or has no grant, which is every connection on the hosted service today; see [Managed connections](/docs/connect-flow/managed-connections). |
-| `disconnect-domain` | `{ connectionId }` | Disconnect a managed connection: the control-plane reverts its DNS through the stored grant, then deletes the grant and connection. Never supply records. Same availability note as `reapply-connection`. |
-| `discover-provider` | `{ domain }` | Detect where a domain's DNS is hosted and which automated rails are available (one-click Domain Connect, OAuth, automatic). Read-only. Use before `connect-domain` / `forward-domain` / `add-email`. It also returns the pre-flight advisories to report before asking the user to authorize anything: `recordConflicts`, `willFallbackToManual` and `apexMessage`. |
-| `forward-domain` | `{ target, domain?, connectionId? }` | Forward (permanent 301) a domain to a destination. Where the domain's DNS provider supports one-click (Domain Connect) setup, returns a `link` to authorize at the provider; otherwise returns the records to add (`records`) plus a console `link` with the same setup. Either way returns a `connectionId` to poll with `check-connection-status`. Never writes DNS directly. |
-| `add-email` | `{ domain?, connectionId?, provider?, mxHost?, spfInclude?, dkimSelector?, dkimTarget?, dmarcRua? }` | Configure a domain for email in one step (MX, SPF, DKIM, DMARC) from server-side templates; supply settings, never raw records. `provider` (`google`, `microsoft365` or `zoho`) fills the standard MX and SPF (`microsoft365` still needs your tenant's `mxHost`); DKIM values always come from you. Returns the records to add (`records`), a `link` (one-click where the provider supports it, a console link otherwise) and a `connectionId` to poll. |
-| `list-connections` | `{ status? }` | List the connections on the account, so an agent can inventory and reconcile a whole portfolio. Returns `connections` (each with `connectionId`, `domain`, `status`, `connected`, `setupType` and `managed`) and a `count`. `status` filters to `pending`, `propagating`, `live` or `failed`. With a console API key it covers all of the tenant's applications. It reads one page at the control plane's default limit, so filter by status rather than paging. Read-only. Only rows with `managed: true` can be healed with `reapply-connection`. |
+| Tool | Arguments | Scope | What it does |
+| --- | --- | --- | --- |
+| `search-domain-availability` | `{ domain }` | `domains:read` | Check whether a domain is available to register, with real time price and renewal price. |
+| `generate-domain-suggestions` | `{ keywords, limit? }` | `domains:read` | Return suggestions for a set of keywords, each available to register and priced (default 5, min 5, max 20). The cheapest is marked the top pick. |
+| `create-domain-order` | `{ domain }` | `domains:purchase` | Start a registration through the resolved registrar. Direct registrars return an `orderId`; sharing registrars return a checkout `link` and a `jobId` to poll. Spends money, so it is gated: see below. |
+| `connect-domain` | `{ domain, applicationId? }` | `domains:connect` | Attach a domain the user already owns. Returns the exact DNS `records` to add, a `link` for the user and the `connectionId` to poll (also sent as `jobId`). The link is a one click authorization when the DNS provider supports Domain Connect; otherwise it opens the same records in the console, and `message` says which you got. `applicationId` names the application: an API key may name any application of its workspace, while an agent token or a client credentials token acts only in its own. Never writes DNS directly. |
+| `check-connection-status` | `{ connectionId }` or `{ jobId }` | `domains:read` | Read a connection's live status and its records. `status` is one of `pending`, `propagating`, `live`, `failed`, and `connected: true` is the reliable terminal signal. A failed connection says why in `errorCode`. `managed` says whether `reapply-connection` can heal it. |
+| `check-order-status` | `{ orderId }` **or** `{ jobId }` | `domains:read` | Read the live status of a domain order, by `orderId` (direct) or `jobId` (sharing). Provide exactly one. |
+| `reapply-connection` | `{ connectionId }` | `domains:connect` | Re-apply a managed connection: the control plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails with the code `conflict` (409) when the connection has no stored grant, so read `managed` first. See [Managed connections](/docs/connect-flow/managed-connections). |
+| `disconnect-domain` | `{ connectionId, confirm }` | `domains:disconnect` | Remove any connection of the application, managed or not. The domain stops being served (edges forget the host within a minute), its certificate is removed and monitoring stops. DNS records come out only where a kept grant wrote them; otherwise they stay at the provider for the user to remove. This takes the domain offline and cannot be undone here, so ask the person first and send the domain they confirmed in `confirm`. With an agent token, a `confirm` that names another domain is refused (`409 confirmation_mismatch`) and nothing is removed. Answers `409 removal_in_progress` while another removal of the same connection is running. See [Removing a domain](/docs/connect-flow/offboarding). |
+| `discover-provider` | `{ domain }` | `domains:read` | Detect where a domain's DNS is hosted and which setup rails can run for it. `rails` says per rail (`oauth`, `domainConnect`, `apiKey`, `manual`) whether it can run for this domain, `recommendedRail` is the server's pick, `endUserAutomatic` is true only when that pick needs nothing typed by the person, and `blockedReason` (`unregistered` or `platform_subdomain`) means no rail can proceed. It no longer returns `supportsAutomatic` or `setupType`, which only meant that an adapter exists. Also returns the pre-flight advisories `recordConflicts`, `willFallbackToManual` and `apexMessage`. Read only. Use it before `connect-domain`, `forward-domain` or `add-email`. |
+| `forward-domain` | `{ target, domain? , connectionId? }` | `domains:connect` | Forward (permanent 301) a domain to a destination. Returns a `link` to authorize, or the records to add, plus a `connectionId` to poll. Never writes DNS directly. |
+| `add-email` | `{ domain? , connectionId? , provider? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | `domains:connect` | Configure a domain for a mail provider (MX, SPF, DKIM, DMARC) through server side templates. Supply provider settings, never raw records. `provider` (`google`, `microsoft365` or `zoho`) fills the standard MX and SPF (`microsoft365` still needs your tenant's `mxHost`); DKIM values always come from you. Returns a `link` to authorize, or the records to add, plus a `connectionId` to poll. |
+| `list-connections` | `{ status?, limit?, cursor? }` | `domains:read` | List the connected domains, each with `domain`, `connectionId`, `status`, `connected`, `setupType`, `managed` and, for a failed one, `errorCode`. With an API key it spans every application in the workspace. `status` filters to one of `pending`, `propagating`, `live`, `failed`; `limit` is up to 1000. A page that was cut says `truncated: true` and gives `nextCursor`: call again with it as `cursor`. Read only. |
+| `check-certificate-status` | `{ connectionId }` | `domains:read` | Read the HTTPS certificate of a connected domain: issuer, expiry, days left, whether renewal is failing and the last error. Certificates renew on their own. `attention` is empty when nothing needs a person, else `failed`, `renewal_failing`, `expired` or `expiring`. Read only. |
+| `recheck-connection` | `{ connectionId }` | `domains:connect` | Re-run a connection's DNS check now instead of waiting for the next scheduled one: a failed connection re-enters verification, a live one is checked for drift. Returns which records resolve and the new status; poll `check-connection-status` for the outcome. Writes no DNS. |
+| `diagnose-connection` | `{ connectionId }` | `domains:read` | Explain, record by record, what public DNS shows for a connection and what the user still has to do: each record is `found`, `missing` or `mismatch`, plus the issues that explain it (a hostname typed in the Name field, a proxy in front, a leftover record). Read only. |
+| `check-billing-status` | none | `domains:read` | Check whether the workspace may connect new domains right now. When it may not, `restricted` is `true`, `code` is `billing_required` and `details` say where an owner or admin fixes billing. Also returns the plan and this month's usage. Read only. |
+| `list-domain-orders` | `{ limit? }` | `domains:read` | List the domain purchases made through the account, newest first (default 50, at most 200). A list that was cut says `truncated: true`. Read only. |
+{/* NEW TOOLS GO HERE: add one row per new tool directly above this line, then change the count word ("seventeen") in this page's description and in the sentence under Tools, and in user-journeys.mdx and index.mdx. This marker stays; the docs sync test reads it. */}
+
+The scope is checked twice. A delegated agent token must carry the tool's scope,
+or the call is refused before it runs; the control plane checks the same scope
+again on the route the tool calls. An API key or a client credentials token holds
+no scopes: the control plane authorizes each call.
 
 > **`generate-domain-suggestions` is deterministic, not AI.** Candidates are
 > keyword joins plus a few common affixes (`get`, `try`, `use`, `my`, `…app`,
-> `…hq`), expanded across TLDs by the registrar search and filtered to what's
+> `…hq`), expanded across TLDs by the registrar search and filtered to what is
 > actually available. No LLM is involved: the same keywords always produce the
 > same candidates, which keeps the tool predictable and testable.
 
-> **`create-domain-order` is fail-closed.** The server places a paid order only
-> after a successful call to the integrator's purchase-authorization callback
-> (`MCP_PURCHASE_AUTHZ_URL`, HTTP Basic). If that callback is unset, every
-> purchase is denied (the safe default). Registrar purchasing is also gated on
-> the control-plane by `SELL_PURCHASE_ENABLED` (fail-closed unless it's set). On
-> the hosted service, purchasing is live through the money-safe checkout; see
-> [Buying a domain](/docs/sell/buying-a-domain).
+> **`create-domain-order` is fail closed, and off on the hosted service.** The
+> server places a paid order only after a successful call to the integrator's
+> purchase authorization callback (`MCP_PURCHASE_AUTHZ_URL`, HTTP Basic). If that
+> callback is unset, every purchase is denied. The order itself goes to the
+> control plane's direct purchase route, which has its own switch,
+> `SELL_DIRECT_PURCHASE_ENABLED`, and stays off on the hosted service. While it is
+> off the tool answers `success: false` with the control plane's code
+> (`service_unavailable`), and a purchase authorized without a registrant contact
+> answers the status `buyer_required`, also a failure. So purchases through MCP
+> are off there; buying a domain is live through the console's money safe
+> checkout. See [Buying a domain](/docs/sell/buying-a-domain).
+
+## Scopes
+
+| Scope | Lets an agent |
+| --- | --- |
+| `domains:read` | Look, and change nothing: availability, suggestions, connection, certificate and order status, diagnosis, provider discovery, listings, billing standing. |
+| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward and email setup. A recheck can move a failed connection back into verification, so it is here and not in read. |
+| `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. A grant approved before this scope existed does not carry it: the person approves the agent again to add it. |
+| `domains:purchase` | Register a domain. Spends money, and the grant needs a saved card and a monthly spend cap. |
+
+The discovery documents list them in that order: look, change, remove, spend.
+See [Agent access](/docs/agents/overview) for how a person approves them.
+
+## What a call answers
+
+A success is the tool's JSON object. A failure is an `isError: true` result with
+one shape, whichever tool made it:
+
+```json
+{ "success": false, "error": "billing_required", "message": "An active subscription is needed to connect new domains.", "details": "..." }
+```
+
+`error` is the control plane's own code when it sent one (`billing_required`,
+`quota_exceeded`, `confirmation_required`, `confirmation_mismatch`, `forbidden`,
+`not_found`, `conflict`, `service_unavailable` and so on), else a code the tool
+picks. `details` says where to fix it. Branch on `error`. After a
+`billing_required` failure, `check-billing-status` says why.
+
+Two refusals happen before a tool runs:
+
+- A token without the tool's scope gets the JSON-RPC error `-32003`,
+  `insufficient_scope`, which names the scope it needed.
+- An account over its tool call limit gets `rate_limited` with
+  `retryAfterSeconds`, and the call never reaches the control plane. The limit is
+  5 calls a second with bursts of 20 for each account (`MCP_TENANT_RPS`,
+  `MCP_TENANT_BURST`; 0 turns it off).
+
+Text a third party wrote (domain names, DNS record values, provider and registrar
+names, error text) is data, never instructions. A DNS value is cut at 256
+characters and an error text at 600, and the cut is marked `[truncated]`.
 
 ## Transports
 
 The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
 
-- **`stdio`** (default): line-delimited JSON-RPC on stdin/stdout, one message
-  per line. This is what a locally-launched host (or `mcp-remote`) uses when it
+- **`stdio`** (default): line delimited JSON-RPC on stdin and stdout, one message
+  per line. This is what a locally launched host (or `mcp-remote`) uses when it
   runs the server as a subprocess. It authenticates with a single static
-  control-plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
-- **`http`**: a Streamable-HTTP style endpoint. Three routes:
+  control plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
+- **`http`**: a Streamable HTTP style endpoint. These are all of its routes:
 
   | Route | Purpose |
   | --- | --- |
-  | `POST /mcp` | The MCP JSON-RPC endpoint. **Requires `Authorization: Bearer`** (unless started with `-insecure` for local dev). |
-  | `POST /token` | OAuth 2.0 **client-credentials** grant: exchange `client_id` + `client_secret` for a short-lived Bearer. |
-  | `GET /healthz` | Liveness. |
+  | `POST /mcp` | The MCP JSON-RPC endpoint. **Requires `Authorization: Bearer`** (unless started with `-insecure` for local development). |
+  | `POST /token` | OAuth 2.0 **client credentials** grant: exchange `client_id` and `client_secret` for a short lived Bearer. |
+  | `GET /healthz` | Liveness. Answers `200` with `ok`. |
+  | `GET /.well-known/oauth-protected-resource` | RFC 9728 protected resource metadata, also served at `/.well-known/oauth-protected-resource/mcp`. The `401` from `/mcp` points here. It names the control plane (`https://api.customdomain.ai`) first as the authorization server, then this server, and lists the four scopes. |
+  | `GET /.well-known/oauth-authorization-server` | RFC 8414 authorization server metadata for `/token` (the `client_credentials` grant). The authorization code flow for delegated agents belongs to the control plane, not to this server: see [Agent access](/docs/agents/overview). |
+  | `GET /.well-known/agent/mcp.json` | The agent capability manifest: protocol, transport, endpoint, auth and the live tool list. |
+
+  The three `/.well-known/` documents are public, cacheable for an hour and open
+  to any origin.
 
 The hosted server is at `https://mcp.customdomain.ai` (the MCP endpoint is
 `POST https://mcp.customdomain.ai/mcp`).
 
 ## Authentication
 
-`POST /token` proxies the control-plane's `POST /v1/tokens`: it exchanges an
-application's `client_id` + `client_secret` (also accepted as `application_id`)
-for a widget JWT. Credentials may be sent as HTTP Basic auth, form fields, or a
-JSON body; the only supported `grant_type` is `client_credentials`.
+`POST /token` proxies the control plane's `POST /v1/tokens` with the `app`
+scope: it exchanges an application's `client_id` and `client_secret` (also
+accepted as `application_id`) for a widget JWT that acts as the whole
+application. Credentials may be sent as HTTP Basic auth, form fields, or a JSON
+body; the only supported `grant_type` is `client_credentials`.
 
 ```bash
-# Mint a short-lived Bearer
+# Mint a short lived Bearer
 curl -X POST https://mcp.customdomain.ai/token \
   -u "<APPLICATION_ID>:<CLIENT_SECRET>" \
   -d "grant_type=client_credentials"
 # → { "access_token": "eyJ…", "token_type": "Bearer", "expires_in": 900 }
 ```
 
-`POST /mcp` accepts **three** Bearer forms, so hosts that can't run the token
+`expires_in` is the lifetime of the token in seconds: 900, which is 15 minutes
+(the control plane's `JUSTEASY_TOKEN_TTL`). Mint a new one when it runs out.
+
+`POST /mcp` accepts **three** Bearer forms, so hosts that cannot run the token
 dance still authenticate:
 
 1. a JWT minted by `/token`,
@@ -96,15 +163,21 @@ dance still authenticate:
    for a JWT on the fly.
 
 For these **integrator** credentials the MCP server does not validate tokens
-cryptographically; it forwards the caller's credential to the control-plane,
-which is the authority and rejects bad credentials on every wrapped call.
+cryptographically: it forwards the caller's credential to the control plane,
+which is the authority and rejects bad credentials on every wrapped call. Every
+route a tool calls takes all three credentials; purchases stay closed to API
+keys.
 
-**Delegated agent tokens are the exception.** When a human owner grants an AI
-agent access, the agent presents a short-lived **ES256** token that the MCP
-verifies **locally** against the control-plane JWKS (no per-request callback) and
-enforces the tool's required scope on, so a read-only grant can never reach a
-connect or purchase tool. See [Agent access](/docs/agents/overview) for the
-human-first consent flow.
+**Delegated agent tokens are the exception.** When a person grants an AI agent
+access, the agent presents a short lived **ES256** token that the MCP verifies
+**locally** against the control plane JWKS (no per request callback) and
+enforces the tool's required scope on, so a read only grant can never reach a
+connect, disconnect or purchase tool. The token must name this server's endpoint
+as its audience (`aud`, RFC 8707), `https://mcp.customdomain.ai/mcp` by default;
+a token for another audience is refused with `401 invalid_token`. A client that
+follows the `401` to the protected resource metadata needs no key: it signs the
+person in at the control plane and receives a delegated agent token. See
+[Agent access](/docs/agents/overview) for the human first consent flow.
 
 ```bash
 # Call a tool
@@ -121,9 +194,13 @@ The `http` transport reads these (flags shown; each has an env alias):
 
 | Flag / env | Purpose |
 | --- | --- |
-| `-api` / `MCP_API_BASE` | Control-plane base URL (default `https://api.customdomain.ai`). |
+| `-api` / `MCP_API_BASE` | Control plane base URL (default `https://api.customdomain.ai`). |
 | `-addr` / `MCP_ADDR` | HTTP listen address (default `:8080`). |
-| `-link-base` / `MCP_LINK_BASE` | Console URL prefix for guided-DNS fallback links. |
+| `-public-base` / `MCP_PUBLIC_BASE` | Public origin used in the discovery documents and as the base of the token audience (default `https://mcp.customdomain.ai`). |
+| `-auth-server` / `MCP_AUTH_SERVER` | Public origin of the control plane that issues agent tokens, named first in the protected resource metadata (default `https://api.customdomain.ai`). It must equal the issuer that server reports. |
+| `-agent-jwks-url` / `MCP_AGENT_JWKS_URL` | The control plane's JWKS. Empty leaves delegated agent tokens off. |
+| `-tenant-rps` / `MCP_TENANT_RPS`, `-tenant-burst` / `MCP_TENANT_BURST` | Tool calls per second (default 5) and burst (default 20) for each account. 0 turns the limit off. |
+| `-link-base` / `MCP_LINK_BASE` | Console URL prefix for guided DNS fallback links. |
 | `-preferred-registrar` / `MCP_PREFERRED_REGISTRAR` | Registrar tried first during order resolution. |
-| `-purchase-authz-url/-user/-pass` / `MCP_PURCHASE_AUTHZ_*` | The fail-closed purchase-authorization callback. Unset ⇒ purchases denied. |
-| `-insecure` / `MCP_INSECURE=1` | Serve `/mcp` without Bearer auth (**local development only**). |
+| `-purchase-authz-url/-user/-pass` / `MCP_PURCHASE_AUTHZ_*` | The fail closed purchase authorization callback. Unset means purchases are denied. |
+| `-insecure` / `MCP_INSECURE=1` | Serve `/mcp` without Bearer auth. **Local development only.** |

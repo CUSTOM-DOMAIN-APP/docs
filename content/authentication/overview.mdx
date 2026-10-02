@@ -1,9 +1,9 @@
 ---
 title: Overview
-description: The three credential types, member roles, and the unauthenticated surfaces.
+description: The four credential types, member roles, and the unauthenticated surfaces.
 ---
 
-Authenticated requests send `Authorization: Bearer <token>`. Three credential
+Authenticated requests send `Authorization: Bearer <token>`. Four credential
 types share the surface, each with a different blast radius.
 
 ## API keys (tenant)
@@ -65,6 +65,33 @@ Short-lived JWTs minted server-side via `POST /v1/tokens`. Scoped to one
 application and, optionally, one domain. They authorize only the browser-facing
 Connect endpoints. This is the only credential that ever reaches the browser;
 see [Widget tokens](/docs/authentication/widget-tokens).
+
+## Agent tokens (delegated)
+
+When a person approves an AI agent, the agent receives a delegated **agent
+token** instead of a key. It is an **ES256** JWT signed by the control plane and
+valid for **15 minutes**. The agent renews it with a **rotating refresh token**:
+every refresh returns a new refresh token and retires the old one, and a retired
+token presented again later revokes the grant (see
+[The OAuth flow](/docs/agents/oauth-flow#refresh) for the one exception). A token
+carries:
+
+- **Scopes** the person approved: `domains:read`, `domains:connect`,
+  `domains:disconnect` and `domains:purchase`. A call that needs a scope the grant
+  lacks is refused.
+- **An application binding.** A grant acts within one application and cannot
+  read another application's connections.
+- **An audience**: the MCP endpoint by default, or the API origin when the client
+  asks. The MCP refuses a token issued for anything else.
+- **The workspace and the member who approved it**, so access is always delegated
+  from a person and revocable by them.
+
+An agent token works at the [MCP server](/docs/mcp/overview), which verifies it
+locally against the JWKS, and on the connection and order routes the MCP tools
+call. It cannot manage keys, members, billing or webhooks; the one billing route
+it reaches is the read only standing. Revoke the grant and its tokens stop
+working within one token lifetime. See
+[Agent access](/docs/agents/overview) and [The OAuth flow](/docs/agents/oauth-flow).
 
 ## Management & provision secrets (operator)
 

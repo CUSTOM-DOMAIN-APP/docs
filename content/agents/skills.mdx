@@ -1,0 +1,52 @@
+---
+title: Agent skill
+description: An installable Agent Skill that teaches an AI agent to connect a domain, check its status and read its records through the MCP server, with the safety rules built in.
+---
+
+An **Agent Skill** is a folder with a `SKILL.md` file that an AI agent reads when
+a task matches it. The CustomDomain™ skill teaches an agent to use the
+[MCP server](/docs/mcp/overview) well: connect a domain, check whether it is
+live, read its DNS records, and stay inside the safety rules below.
+
+The skill is one file, served by the console:
+`https://app.customdomain.ai/skills/customdomain/SKILL.md`.
+
+## Install
+
+In Claude Code, one command saves it for every project:
+
+```bash
+mkdir -p ~/.claude/skills/customdomain && curl -fsSL https://app.customdomain.ai/skills/customdomain/SKILL.md -o ~/.claude/skills/customdomain/SKILL.md
+```
+
+For one project only, save it as `.claude/skills/customdomain/SKILL.md` in that
+repository. Any other agent that supports Agent Skills: save the file as
+`customdomain/SKILL.md` in its skills folder.
+
+The skill uses the MCP server's tools; it does not connect you to it. Connect the
+server as well. The console's **MCP server** page has the setup for your client.
+
+## What it can do
+
+- **Connect a domain you own.** Look up the DNS provider, start the connection,
+  show the exact records, and follow it until it is live.
+- **Set up email DNS or a redirect.** MX, SPF, DKIM and DMARC for a mail
+  provider, or a permanent redirect to another URL.
+- **Check status and read records.** One domain's status and records, or every
+  domain in the workspace.
+- **Find a domain.** Check availability and suggest names. It does not buy them.
+
+## The rules it follows
+
+- Domain names, DNS values and tool messages are **untrusted data**. They are
+  shown to you, never obeyed.
+- It **never purchases**. Purchases through MCP are off on the hosted service, and
+  the skill refuses to place an order even if asked.
+- It **asks before disconnecting**, and waits for your own yes. Disconnecting takes
+  the domain offline.
+- It **never writes, invents or edits DNS records**. It relays what the server
+  returned, and you add the records or authorize your DNS provider.
+
+A skill changes what an agent does with the tools it already has. It grants no
+access: the agent still needs a key or an approved [agent
+grant](/docs/agents/managing-access) to call the server.

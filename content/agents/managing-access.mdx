@@ -1,20 +1,24 @@
 ---
 title: Managing access
-description: "The owner side: approving a grant, spend caps and purchases, owner emails, and revoking access from the console."
+description: The owner side. Approving a grant, spend caps and purchases, owner emails, and reviewing and revoking access from the console.
 ---
 
 Everything an agent can do is gated by a **grant** a human owner approved. This
-page covers the owner side: consenting, controlling spend, and revoking.
+page covers the owner side: consenting, controlling spend, and revoking. The
+console's **Agents** page, where you review and revoke grants, is off by default
+for each workspace and switches on after your first approval; see
+[Reviewing and revoking](#reviewing-and-revoking).
 
 ## Approving a grant
 
 When an agent starts the [authorization flow](/docs/agents/oauth-flow), the
-control plane parks the request and sends the owner to the console consent screen
-(`/agent/consent`). If you're signed out, you're bounced to sign in first: a
-grant can only be approved by a real, signed-in owner.
+control plane parks the request and sends the owner to the console consent page
+(`/agent/consent`). It works whether or not the Agents page is on. If you are
+signed out, you are bounced to sign in first: a grant can only be approved by a
+real, signed in owner.
 
-The screen shows which agent is asking and the scopes it requested. An agent
-chooses its own name, so the screen leads with what the agent cannot choose
+The page shows which agent is asking and the scopes it requested. An agent
+chooses its own name, so the page leads with what the agent cannot choose
 freely: **where its access would go**, the host your approval sends the browser
 (and the access) back to. That host carries one of four labels:
 
@@ -28,7 +32,7 @@ freely: **where its access would go**, the host your approval sends the browser
   Anthropic, Devin, CustomDomain™) that its host does not belong to. It can only
   be denied.
 
-The screen also shows when the agent registered, or which site publishes its
+The page also shows when the agent registered, or which site publishes its
 details. You approve a subset of the scopes, choose whether access is
 **persistent** (the default) or expiring, and, if `domains:purchase` is
 requested, set a monthly spend cap and save a card. On approval the browser is
@@ -36,47 +40,60 @@ handed back to the agent to finish the token exchange. **Deny** cancels the
 request so it cannot be approved later; a verified or local agent is told it was
 denied, and an unverified or blocked one is not sent anywhere.
 
-> Consent is recorded by the console **server-side** with your workspace API key,
-> and the approving member must belong to your workspace. A browser/embed token
-> can never approve an agent, so a client can never approve itself.
+The grant is bound to your workspace's default application, so the agent can act
+only on that application's domains.
+
+> Consent is recorded by the console **server side** with your workspace API key,
+> and the approving member must belong to your workspace. A browser or embed
+> token can never approve an agent, so a client can never approve itself.
 
 ## Spend caps and purchases
 
-Purchase access (`domains:purchase`) is **fail-closed**. Granting it requires,
+Purchase access (`domains:purchase`) is **fail closed**. Granting it requires,
 all three:
 
 1. the `domains:purchase` scope is approved,
 2. an explicit **monthly spend cap**, and
 3. a **saved payment method** on file (add one from the consent flow's billing
-   step, which opens a Stripe card-setup with no charge).
+   step, which opens a Stripe card setup with no charge).
 
 At runtime every agent purchase is checked against the grant's cap for the
 current month **before** any money moves. A purchase that would exceed the cap is
-refused, and you're emailed that the cap was reached. A failed registration never
+refused, and you are emailed that the cap was reached. A failed registration never
 consumes the cap.
+
+Purchases through MCP are off on the hosted service, so approving this scope does
+not let an agent spend there.
 
 ## Owner emails
 
-You're kept in the loop automatically:
+You are kept in the loop automatically:
 
 - **Connected**: when a new grant is approved, with exactly what it can do.
-- **Acted**: when the agent takes an action (e.g. connects a domain).
+- **Acted**: when the agent takes an action (for example, connects a domain).
 - **Purchased**: immediately when it spends money (an urgent alert).
 - **Revoked**: when access ends.
 - **Revoked for your safety**: when CustomDomain™ ends an agent's access on its
   own because one of its credentials was used twice, which can mean it was
   copied. Reconnect the agent if you still want it.
 
-Every email links to your agent-management screen so you can review or revoke in
+Every email links to your agent management page so you can review or revoke in
 one click.
 
 ## Reviewing and revoking
 
-Manage grants under **Settings → Agents** (`/app/settings/agents`): each grant
-shows the agent, its scopes, the spend so far against its cap this month, whether
-access is persistent or expiring, and who approved it. **Revoke** ends it
-immediately: the agent's tokens stop working within one token lifetime, and its
-refresh token is killed.
+The **Agents** page (`/app/settings/agents`, in the sidebar under **More**) lists
+every active grant: the agent, the application it acts in, when it was last used,
+and its scopes. A grant that can spend also shows this month's spend against its cap,
+and an expiring grant shows its end date. **Revoke** ends it immediately: the
+agent's tokens stop working within one token lifetime, and its refresh token is
+killed.
+
+The page is off by default for each workspace. It switches on by itself when you
+approve an agent, so you never approve a grant you cannot find. You can
+also switch it on or off under **Settings → Features** (admins and owners), and
+the welcome step for **Run an AI agent** has a **Turn on agent access** button.
+Switching the page off hides it; it does not revoke anything.
 
 The same operations are available over the API with your workspace API key:
 
@@ -90,5 +107,5 @@ curl -X DELETE https://api.customdomain.ai/v1/agent/grants/grt_… \
   -H "Authorization: Bearer cd_live_…"
 ```
 
-These endpoints require the workspace API key (not a widget/browser token), the
-same credential that records consent.
+These endpoints require the workspace API key (not a widget or browser token),
+the same credential that records consent.

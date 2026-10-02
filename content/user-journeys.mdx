@@ -41,26 +41,34 @@ The completeness map: every user-facing flow and the surface that implements it.
 | D8 | Track usage against quota | Console → Usage (`GET /v1/billing/usage`) |
 | D9 | View and change plan | Console → Billing (`GET /v1/plans`, `POST /v1/billing/checkout`, `/portal`) |
 | D10 | Embed the widget safely | `POST /v1/tokens` server-side; the widget JWT is app- (and optionally domain-) scoped |
-| D11 | Buy a new domain, [money-safe](/docs/sell/buying-a-domain) | Console → Sell (`/app/sell`: search → embedded checkout authorizes → registration → capture; auto-connected) |
+| D11 | Buy a new domain, [money-safe](/docs/sell/buying-a-domain) | Console → Sell (`/app/sell`: search → in-page checkout authorizes → registration → capture; auto-connected) |
 | D12 | Resume an abandoned setup | Console → Domains → **Finish setup** (reopens the guided flow at the right step) |
-| D13 | Point an agent at the MCP server | Console → Integrate → MCP server (`/app/mcp`: endpoint, credentials, client configs) |
+| D13 | Point an agent at the MCP server | Console → More → MCP server (`/app/mcp`: endpoint, client setup for Claude Code, Claude Desktop, Cursor, VS Code, ChatGPT and others, a connection test). Switch it on under Settings → Features |
+| D14 | Review and revoke what agents may do | Console → More → Agents (`/app/settings/agents`: each grant's agent, application, last use and scopes, with Revoke). It switches on after your first approval on the consent page (`/agent/consent`) |
 
 ## AI-agent journeys (MCP)
 
-An agent drives domains through the [MCP server](/docs/mcp/overview) (hosted at
-`https://mcp.customdomain.ai/mcp`), which wraps the same `/v1` API with twelve tools.
+An agent drives domains through the [MCP server](/docs/mcp/overview), hosted at
+`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API with seventeen tools.
+A person approves what the agent may do first: see
+[Agent access](/docs/agents/overview).
 
 | # | As an agent, I want to… | Tool |
 | --- | --- | --- |
 | M1 | Check if a domain is available and priced | `search-domain-availability` |
 | M2 | Suggest available domains from keywords | `generate-domain-suggestions` |
-| M3 | Register a domain (fail-closed behind an authz callback) | `create-domain-order` → `check-order-status` |
+| M3 | Register a domain (fail closed behind an authz callback; off on the hosted service) | `create-domain-order` → `check-order-status` |
 | M4 | Connect a domain the user already owns | `connect-domain` → `check-connection-status` |
 | M5 | See how a domain can be configured before acting | `discover-provider` |
 | M6 | Forward a domain to another URL (301) | `forward-domain` → `check-connection-status` |
 | M7 | Set up email (MX/SPF/DKIM/DMARC) for a domain | `add-email` → `check-connection-status` |
-| M8 | Re-apply or tear down a managed connection | `reapply-connection` / `disconnect-domain` |
-| M9 | Inventory every connected domain, not just the one job I started | `list-connections` |
+| M8 | Re-apply a managed connection, or take any connection down (the person confirms the domain first, and the grant needs `domains:disconnect`) | `reapply-connection` / `disconnect-domain` |
+| M9 | See every connected domain and its status (page by page when the list is cut) | `list-connections` |
+| M10 | Check a domain's HTTPS certificate | `check-certificate-status` |
+| M11 | Find out why a domain is not live, then re-run the check after the fix | `diagnose-connection` → `recheck-connection` → `check-connection-status` |
+| M12 | Find out whether the workspace may connect new domains | `check-billing-status` |
+| M13 | List the domain purchases | `list-domain-orders` |
+{/* NEW TOOLS GO HERE: add one row per new tool directly above this line. This marker stays; the docs sync test reads the one in mcp/overview.mdx. */}
 
 ## Platform-operator journeys
 
