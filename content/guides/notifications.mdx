@@ -1,0 +1,107 @@
+---
+title: Notifications
+description: What CustomDomain™ tells you about, in the console and on your phone or computer, who gets it, and how to turn each part off.
+---
+
+CustomDomain™ tells you when something happens to your domains, your billing or
+your agents, so you do not have to keep a tab open. There are two places a
+notification can land, and you choose each one separately:
+
+- **The bell.** The bell at the top right of the console holds your latest
+  notifications, with a count of the ones you have not opened. **See all
+  notifications** opens the full list. Nothing here asks for a permission.
+- **Push.** A notification from your browser, on your phone or computer, even
+  when the console is closed. Push is off until you turn it on in a browser, and
+  your browser asks you first.
+
+Email is separate and unchanged: the billing, certificate, DNS and agent emails
+you already get keep coming. Security and account email is always sent.
+
+## What you are told about
+
+| Notification | When | In the bell | Push |
+| --- | --- | --- | --- |
+| A domain goes live | A domain finishes connecting and is serving your customers. | On | On |
+| A domain needs attention | A domain did not finish connecting after a day, or is still waiting for DNS records. | On | On |
+| DNS records changed | A record we manage changed or went missing and you have to put it right. | On | On |
+| DNS records put back | We restored records that went missing, through access you kept. | On | On |
+| Certificate problems | A certificate could not be issued, keeps failing to renew, is about to expire or has expired. | On | On |
+| A payment fails, choose a plan reminders, adding domains is paused, billing is back in good standing, your trial is ending | The billing moments that already send an email. | On | On |
+| A domain you bought is registered, or the purchase failed | A purchase through your workspace finished or could not be completed. | On | On |
+| An agent spent money, or a new agent was connected | An AI agent bought a domain, or someone gave one access to the workspace. | On | On |
+| A DNS provider needs reconnecting | A provider stopped accepting a saved key, so automatic repair is paused. | On | On |
+| Routine agent actions | What an agent does, such as connecting a domain, once an hour. | On | Off |
+| A customer connects through your widget | One of your customers connected a domain with the widget. | On | Off |
+| Someone joins your team | A person you invited accepted. | On | Off |
+
+These go to the **owners and admins** of the workspace. A member or a viewer
+does not get them. The last three are quiet by default because they can be
+frequent; turn push on for them if you want it.
+
+If you belong to more than one workspace, the bell holds them all, each
+notification starts with its workspace's name, and opening one switches the
+console to that workspace.
+
+A domain going live is the one worth leaving the page for. While a domain waits
+for DNS, its page offers **Get a ping when it is live**, so you can close the tab
+and be told the moment it is connected. It turns push on for that one thing; you
+choose the rest under **Settings → Notifications**. A domain a customer connected
+with the widget has no card, because those stay in the bell.
+
+## Turn push on
+
+1. Open **Settings → Notifications**.
+2. Press **Enable notifications on this device**. Your browser asks whether to
+   allow notifications; choose Allow. It only asks when you press the button.
+3. Press **Send a test notification** to see one arrive.
+
+Push is per device. Do the same in each browser you want it in; the list under
+**Devices with notifications on** shows every one, and **Remove** takes one off.
+
+**On an iPhone or iPad**, notifications work once CustomDomain™ is added to your
+Home Screen: in Safari tap Share, choose Add to Home Screen, then open
+CustomDomain™ from your Home Screen and turn push on there. Safari itself
+cannot receive web push.
+
+**If your browser blocks notifications for the site**, we cannot turn them on
+from the page. Open the browser's site settings (the icon next to the address),
+set Notifications to Allow, then come back and check again.
+
+## Choose what you are told
+
+Under **What to tell you** every kind has two switches, **In app** and
+**Push**. A switch you never touched follows the default above. Changes apply
+at once and are yours alone: they do not change what a teammate gets.
+
+## Turn them off
+
+- **One kind, one place:** switch it off under **What to tell you**.
+- **Push on this device:** press **Turn off on this device**, or remove it from
+  the device list.
+- **Push on every device:** remove each device, or switch **Push** off for every
+  kind.
+- **Everything but the bell:** switch **Push** off for every kind.
+- **Signing out** takes this browser off the device list, so a shared computer
+  stops getting your notifications.
+
+You can also withdraw the permission in your browser's site settings at any
+time. A notification never needs you to keep the console open.
+
+## What we keep
+
+To send push we store your browser's push endpoint and keys, the name of the
+browser (such as Chrome on macOS) so the device list can tell your devices
+apart, and when each was added and last used, linked to your account and
+workspace. Your browser's user agent is read to make that name and is not
+kept. **Remove** deletes them. The bell's notifications are kept for about four
+months. See the [privacy policy](https://app.customdomain.ai/privacy) for the
+rest.
+
+## Self hosting
+
+The bell works with no setup. Push needs a VAPID key pair: run
+`scripts/generate-vapid-keys`, store `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY` and
+`VAPID_SUBJECT` as described in
+[configuration](/docs/self-hosting/configuration), and rebuild the console image,
+because the public key is baked into the build. With no keys the push controls
+stay hidden and the bell still works.

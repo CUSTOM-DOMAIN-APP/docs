@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: "Optional observability environment variables for self-hosted deployments: all opt-in, no-op when unset, and repointable to your own backends."
+description: "Optional observability and push notification environment variables for self-hosted deployments: all opt-in, no-op when unset, and repointable to your own backends."
 ---
 
 CustomDomain™'s default `docker-compose.yml` / `docker-compose.prod.yml` stack runs
@@ -23,8 +23,10 @@ no telemetry to that destination.
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no OTLP export | OTLP/HTTP endpoint the Go services export traces (and metrics) to. |
 | `METRICS_ADDR` | endpoint off | Serves the control-plane Prometheus `/metrics` on a separate internal port. |
 | `EDGE_METRICS` | endpoint off | Set to `1` to expose `/metrics` on the edge's internal health port (`:8081`). |
-| `NEXT_PUBLIC_POSTHOG_KEY` | analytics off | PostHog project key for product analytics in the console. |
-| `NEXT_PUBLIC_POSTHOG_HOST` | n/a | PostHog ingestion host; only used when the key is set. |
+| `APP_SENTRY_DSN` | console error reporting off | Error reporting for the console, in the browser and on the server. Passed to the app container as `NEXT_PUBLIC_SENTRY_DSN` (build time) and `SENTRY_DSN` (runtime). |
+| `NEXT_PUBLIC_POSTHOG_KEY` | analytics off | PostHog project key for product analytics in the console. Baked in at build time. |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.posthog.com` | PostHog UI host (`https://eu.posthog.com` for an EU project); only used when the key is set. |
+| `POSTHOG_HOST` | `https://us.i.posthog.com` | PostHog ingestion host the console's same origin `/ingest` proxy forwards to (`https://eu.i.posthog.com` for an EU project). |
 
 These keys also appear, commented out, in the `.env.example` file at the root of your self-hosted checkout.
 
@@ -36,6 +38,20 @@ initialized and the services make no calls to Sentry. `SENTRY_ENVIRONMENT` label
 the events (for example `production`). Tracing is **not** sent to Sentry: the
 Sentry `TracesSampleRate` is `0`; distributed tracing stays on OpenTelemetry (see
 below). The DSN can point at Sentry's SaaS or at a self-hosted Sentry instance.
+
+The console (`apps/app`) reports its own errors too, in the browser and on the
+server. Set `APP_SENTRY_DSN` in the host's `infra/.env`; `docker-compose.prod.yml`
+passes it to the app as `NEXT_PUBLIC_SENTRY_DSN` (a build argument, baked into the
+browser bundle, so rebuild the app image after changing it) and as `SENTRY_DSN`
+(read at runtime by the server). Unset, nothing is initialized and nothing is
+sent. It is errors only: no tracing, no session replay, no cookies, no request
+bodies and no user, and the query string and fragment are cut from every URL.
+Browser events go to the console's own origin at `/monitoring`, which the server
+forwards to Sentry, so the Content-Security-Policy needs no Sentry host and ad
+blockers do not drop them. That tunnel understands Sentry Cloud DSNs; for a
+self-hosted Sentry the DSN's origin is added to `connect-src` instead.
+`SENTRY_ENVIRONMENT` labels the console's events as well (default `production`).
+Source maps are not uploaded, so browser stack traces are minified.
 
 ### Traces and metrics (OpenTelemetry / Prometheus)
 
@@ -61,14 +77,24 @@ stored. It is on by default; set `EDGE_TRAFFIC=off` on the edge to switch it off
 
 ### Product analytics (PostHog)
 
-`NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` configure product
-analytics in the console. Because they are `NEXT_PUBLIC_*`, they are exposed to the
-browser, so never put a secret in them. Point the host at PostHog Cloud or at your
-own self-hosted PostHog instance. When the key is unset, no analytics are sent.
+`NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` and `POSTHOG_HOST`
+configure product analytics in the console. The key and the UI host are
+`NEXT_PUBLIC_*`, so they are exposed to the browser, so never put a secret in them.
+Point the hosts at PostHog Cloud or at your own self-hosted PostHog instance. When
+the key is unset, no analytics are sent and the console makes no call to PostHog.
 
-> **Note:** PostHog is provisioned in `terraform/posthog` but the browser SDK is not
-> yet wired into the running stack, so these keys are a no-op today regardless of
-> value. They are documented here so self-hosters can plan their own backend.
+The browser SDK is wired in. Events go through the console's own origin at
+`/ingest`, and only after a visitor accepts analytics cookies in the consent
+banner; withdrawing the choice stops them at once. What is sent is narrow on
+purpose: the product events the console emits, clicks on buttons and links (no
+text and no attributes) and page views. Session recording is off. Every URL is cut
+to its path before it is sent, nothing is sent from the password reset, email
+verification, invite, shared view and email preferences pages, and a signed in
+person is identified by their account id only, never an email or a name.
+
+The key and the two hosts are baked into the app image, so rebuild it after
+changing them, and take all three from the same PostHog project and region: a
+mismatch drops events without an error.
 
 ## Running the Grafana Alloy overlay
 
@@ -78,3 +104,38 @@ runs one Alloy forwarder to collect OTLP traces, metrics, and logs and ship them
 Grafana Cloud. Before you enable it, read the caveat below.
 
 > infra/config.alloy is pre-wired to CustomDomain™'s own Grafana Cloud tenant (hardcoded basic-auth user ids + prod-us-east ingest endpoints); a self-hoster who runs docker-compose.alloy.yml as-is points THEIR logs/metrics/traces at CustomDomain™'s tenant. The Alloy path is NOT a simple env-var repoint: config.alloy must be replaced/re-pointed at the self-hoster's own Grafana stack, with their own GRAFANA_CLOUD_TOKEN set in the host's infra/.env (the overlay reads it from the compose project's env by substitution; this page previously named a separate infra/observability.env, which the overlay stopped using several releases ago and which has never been committed here). No credential ships in this repo. The default no-overlay zero-egress claim for the base stack remains true.
+
+## Shared cookies and analytics beacons
+
+Two optional variables control how the console's cookie choice and anonymous
+visitor id are shared with your other sites.
+
+| Variable | When unset | What it does |
+|----------|------------|--------------|
+| `NEXT_PUBLIC_CONSENT_COOKIE_DOMAIN` | derived from the host | Scope of the cookie choice (`cd_consent`) and the anonymous visitor id (`cd_anon`). On a customdomain.ai host they are shared with `Domain=.customdomain.ai`; anywhere else they stay host-only. Set `host` to force host-only, or a parent domain of your console host (for example `example.com`) to share them with your marketing site. Baked in at build time. |
+| `ANALYTICS_BEACON_ORIGINS` | CustomDomain™'s own sites | Comma-separated origins allowed to send first-party analytics events to the console's `/api/e` collector from another site, with credentials. Other origins are refused. Read at runtime. |
+
+The collector never stores an IP address or user agent. Events from another
+origin keep only the page path, the referrer (origin and path), UTM tags and a
+short list of allowed properties.
+
+## Push notifications
+
+The console's bell (the in-app inbox) needs no configuration. Push, a
+notification from the browser that arrives with the console closed, needs a
+VAPID key pair, and is off until you set one.
+
+Generate a pair with `scripts/generate-vapid-keys`, then set:
+
+| Variable | Where | What it does |
+|----------|-------|--------------|
+| `VAPID_PRIVATE_KEY` | control plane | The private key that signs each push. A secret: keep it out of git and out of logs. |
+| `VAPID_PUBLIC_KEY` | control plane | The public half of the same pair. The production compose also bakes it into the console image (as `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, which the browser needs to subscribe), so set it once and rebuild the image after changing it. Empty hides the push controls. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | console, at build time | Only when you build the console without that compose (`next dev`, your own image): the same value as `VAPID_PUBLIC_KEY`. |
+| `VAPID_SUBJECT` | control plane | A `mailto:` or `https:` contact the push services can reach. Empty uses `mailto:support@customdomain.ai`. |
+
+With both keys empty, push stays off and the bell works. If the pair is mistyped
+or the two halves do not match, the control plane logs the reason at startup and
+leaves push off instead of failing each message. Changing the pair later makes
+every device's subscription invalid, and each person turns notifications on again.
+See [Notifications](/docs/guides/notifications) for what people see.
