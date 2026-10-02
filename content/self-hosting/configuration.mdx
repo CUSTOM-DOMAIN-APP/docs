@@ -75,6 +75,26 @@ control plane once a minute (`/internal/traffic`, authenticated with
 `EDGE_ASK_SECRET`). Nothing leaves your deployment and no client IP address is
 stored. It is on by default; set `EDGE_TRAFFIC=off` on the edge to switch it off.
 
+### Visitor addresses (`IP_RETENTION_DAYS`)
+
+The control plane records the IP address and country of the request behind each
+domain lookup (a search, check, price, connect or purchase, from the console, the
+widget, the API, the MCP server or an agent), each connect widget funnel step and
+each audit event, and the console records the address of each sign in. They are for
+security, abuse prevention and support, and nothing sends them to a third party. After
+`IP_RETENTION_DAYS` days (default `180`; a value that is not a whole number of 1 or
+more is `180`) the address is set to NULL and the row stays, with its country. The
+control plane's hourly lifecycle sweep does this for its tables and the console's daily
+upkeep for its own; set the same value on both (the production compose file forwards it
+to both).
+
+Cloudflare's headers are believed only when the request really came through Cloudflare.
+The console's server passes the visitor to the control plane in a signed header, keyed by
+`JUSTEASY_PROVISION_SECRET`, so that value must be the same on both: without it the control
+plane records the console's own address for console traffic. A deployment that is not
+behind Cloudflare records the address of the connection as its proxy saw it, with no
+country.
+
 ### Product analytics (PostHog)
 
 `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` and `POSTHOG_HOST`
@@ -87,14 +107,53 @@ The browser SDK is wired in. Events go through the console's own origin at
 `/ingest`, and only after a visitor accepts analytics cookies in the consent
 banner; withdrawing the choice stops them at once. What is sent is narrow on
 purpose: the product events the console emits, clicks on buttons and links (no
-text and no attributes) and page views. Session recording is off. Every URL is cut
-to its path before it is sent, nothing is sent from the password reset, email
-verification, invite, shared view and email preferences pages, and a signed in
-person is identified by their account id only, never an email or a name.
+text and no attributes) and page views, plus session recording for signed in
+people (described below). Every URL is cut to its path before it is sent,
+nothing is sent from the password reset, email verification, invite, shared view
+and email preferences pages, and a signed in person is identified by their
+account id only, never an email or a name.
 
 The key and the two hosts are baked into the app image, so rebuild it after
 changing them, and take all three from the same PostHog project and region: a
 mismatch drops events without an error.
+
+#### Session recording
+
+With the key set, the console also records how signed in people use it, as a
+replay of the screen: clicks, scrolling and page views. It records only for a
+visitor who has allowed analytics (a current choice, and no Global Privacy
+Control or Do Not Track signal) and only once PostHog knows who is signed in, so
+every recording carries the account id as its distinct id and nothing else.
+
+- Every field a person types into is replaced with asterisks in the recording,
+  so what they type is not recorded. The recording does show what the console
+  displays, such as the names of domains and DNS records.
+- Nothing is recorded on the sign in, sign up, password reset, email
+  verification, invitation, shared view, email preferences, Domain Connect
+  return, agent consent and billing pages, or on the API keys, webhooks, MCP,
+  agent access and security settings pages, and nothing outside the console and
+  the welcome intake is recorded at all. Anything that shows an API key, a token
+  or a signing secret is also blanked wherever it appears.
+- Browser console output, request and response contents, network timing and
+  frames from other origins (such as Stripe's card form) are never recorded, and
+  every URL in a recording is cut to its path.
+- Recording stops at once when the visitor withdraws the choice, signs out or
+  opens one of those pages, and starts again when they leave it.
+
+The PostHog project decides whether recording happens at all: turn on Session
+replay in the project settings, with Mask all inputs on and console logs and
+network capture off, and set the retention there. CustomDomain™'s hosted console
+keeps recordings for 30 days. Switching Session replay off in the project stops
+all recording without a rebuild, because the console only starts a recording the
+project allows. The recorder script loads through the same `/ingest` proxy as the
+rest of PostHog, and the content security policy adds `blob:` to `worker-src` for
+its compression worker when the key is set; nothing else changes.
+
+A visitor turns recording off in Cookie settings (Settings, then Privacy) by
+switching Analytics off, or by sending Global Privacy Control or Do Not Track.
+Recording became part of the Analytics choice in version 2 of the cookie choice,
+so everyone who answered before is asked again, once, the first time they open
+the console after an upgrade to this release.
 
 ## Running the Grafana Alloy overlay
 

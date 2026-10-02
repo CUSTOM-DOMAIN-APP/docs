@@ -84,21 +84,24 @@ unbranded styling. See
 
 Every workspace needs an active subscription (or a free trial of one) to
 connect **new** domains and to hold **new credentials**: creating an API key,
-creating an application and rotating an application's secret. Domains that are
+creating an application and rotating an application's secret. The one exception
+is a new workspace's **first domain**, which is free (see
+[The first domain is free](#the-first-domain-is-free)). Domains that are
 already connected are never touched by billing: live traffic, certificate
 renewals, rechecks and monitoring carry on whatever the billing state, and
 credentials that already exist keep working.
 
 - **A new workspace** can look around first. Signing up does not require a card:
   you can check domains, design and preview your widget and read the docs without
-  one. The setup flow is offered once after sign-up, and skipping it sticks. The
-  card is asked for where it is needed, when you create an API key, create an
-  application or connect your first domain, and that starts a **14 day free
-  trial** in a checkout on the page itself, not a pop-up. The order summary, the
-  total and the buttons are the console's own, in light or dark; only the card
-  fields are Stripe's. The first charge happens when the trial ends; canceling
-  before then costs nothing. Until the trial starts, new connections and new
-  credentials are refused.
+  one, and your first domain connects without one. The setup flow is offered
+  once, after that domain is live, and skipping it sticks. The card is asked for
+  where it is needed, when you create an API key, create an application or
+  connect a second domain, and that starts a **14 day free trial** in a checkout
+  on the page itself, not a pop-up. The order summary, the total and the buttons
+  are the console's own, in light or dark; only the card fields are Stripe's.
+  The first charge happens when the trial ends; canceling before then costs
+  nothing. Until the trial starts, new credentials are refused, and so is every
+  connection after the first.
 - **Promotion codes** are entered in the checkout's order summary, or applied to
   a running subscription with `POST /v1/billing/promotion-code`.
 - **Changing plans** on a running subscription is
@@ -121,7 +124,7 @@ of eight states. Only the last three refuse new connections.
 | `comped` | Complimentary access granted by CustomDomain™ (until `comped_until`, or with no end). | allowed |
 | `grace` | A workspace that was on Free, inside its 14 day grace period. | allowed |
 | `legacy_free` | A Free workspace whose grace has not started yet. | allowed |
-| `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** |
+| `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** (except a new workspace's first domain) |
 | `canceled` | The subscription ended. | **refused** |
 
 ### What a refusal looks like
@@ -146,6 +149,32 @@ domains and the billing routes themselves stay open.
 The switch is `BILLING_REQUIRE_SUBSCRIPTION` (default `1`). With it set to `0`,
 or on a deployment where no Starter price is configured (so nobody could
 subscribe), nothing is refused. The check fails open on a lookup error.
+
+### The first domain is free
+
+A brand new workspace, one that has never had a subscription or a trial,
+connects its **first** domain without a card, whether it connects from the
+console, the API, the MCP server or the embedded widget, so you can see a
+domain work before you are asked for one. While the workspace has no pending,
+propagating or live connection, a new connection (and the start of a domain
+purchase) goes through. A connection that failed does not count, and posting the
+same domain again returns it with `200`, as it always did. The next domain is
+refused with `402 billing_required`, whose `title` says a card is needed to
+connect more domains. Creating an API key or an application still needs the
+trial.
+
+`GET /v1/billing/notice` and `GET /v1/billing/status` carry
+`first_domain_free: true` for such a workspace (owners and admins only). While
+the free domain is unused `restricted` is `false`; once it is connected
+`restricted` is `true` and the notice says a card is for more domains. The
+console offers the setup flow once, after the first domain is live.
+
+The free domain stays for as long as the workspace has no subscription, because
+billing never touches a live domain. The rule never applies to a workspace that
+had a trial, a subscription, a comp or the Free plan. Its switch is
+`BILLING_FIRST_DOMAIN_FREE` (default `1`); with it set to `0`, or switched off
+at runtime, a new workspace is refused its first connection exactly as it was
+before.
 
 ### The Free plan's retirement
 

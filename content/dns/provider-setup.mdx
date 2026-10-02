@@ -121,8 +121,7 @@ Contributor** on the zone's resource group, run
 and paste the token with the subscription ID and resource group. The token
 expires within about an hour, so it is used once and never kept.
 
-**Sign in with Azure DNS** is built, but the hosted service has not switched it
-on yet. Where a deployment has set it up, it skips all of the above: sign in
+**Sign in with Azure DNS** skips all of the above: sign in
 with the Microsoft account that manages the zone, and we find the subscription
 and resource group that hold it among the subscriptions that account can list
 zones in. The zone must be a public Azure DNS zone (a private zone is never
@@ -205,9 +204,8 @@ Built, but not yet switched on for the hosted service:
 - **Sign in with Google Cloud** for Google Cloud DNS, once its Google client is
   configured (only the test users listed in the Google Auth Platform until
   Google verifies the app).
-- **Sign in with Azure DNS** for Azure DNS, once its Microsoft Entra app is
-  registered (users in other organizations see an unverified publisher warning
-  until it has a verified publisher).
+- **Sign in with Azure DNS** for Azure DNS (users in other organizations see an
+  unverified publisher warning until the app has a verified publisher).
 - **Grant access at OVHcloud**, which needs an OVHcloud application for each
   region served.
 - **Sign in through the provider's MCP server** for Hostinger, Namecheap,

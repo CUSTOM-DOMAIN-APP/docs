@@ -856,6 +856,12 @@ paths:
 
         A delegated agent token needs `domains:connect` and creates the
         connection on its own application.
+
+
+        A workspace with no subscription yet connects its first domain without
+        one (`first_domain_free` on the billing reads): a retry of that domain
+        is still replayed with `200`, and the next domain is refused with
+        `402 billing_required` until the workspace starts its trial.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3613,7 +3619,9 @@ paths:
         the setup flow. Any member of the workspace may read it with their own
         tenant API key. Members and viewers get only `role`, `can_manage`,
         `configured`, `attention` and `restricted`: never the plan, dates or
-        amounts. Owners and admins also get the billing state.
+        amounts. Owners and admins also get the billing state, and
+        `first_domain_free` while a new workspace is on the first domain free
+        rule.
       security:
         - apiKey: []
       responses:
@@ -5291,7 +5299,12 @@ components:
         stops a new connection, the start of a domain purchase and the first live
         credential (an application, an API key or a rotated client secret).
         Domains already connected keep working, and an owner or admin sets up
-        billing in the console; `details` says where. `quota_exceeded`
+        billing in the console; `details` says where. A new workspace's first
+        domain is the exception: while it has no pending, propagating or live
+        connection, a connect and the start of a purchase go through
+        (`first_domain_free`), and the next one is refused with a `title` saying
+        a card is needed to connect more domains. Credentials still need the
+        trial. `quota_exceeded`
         (connections only): a plan that is refused past its quota (Starter, and
         the retired Free) is at it and the deployment enforces quotas.
         `connections_unavailable`: what a connect-scoped widget token, the
@@ -5355,7 +5368,9 @@ components:
         grace period; `legacy_free` is a Free workspace whose grace has not
         started; `comped` is an operator comp; `blocked` and `canceled` refuse
         new connections (`402 billing_required`) while live domains keep
-        working.
+        working. A new workspace (`blocked`, reason `setup_required`) is
+        refused only once its first domain is connected: see
+        `first_domain_free`.
       enum: [trialing, active, past_due, grace, blocked, comped, canceled, legacy_free]
     BillingNotice:
       type: object
@@ -5367,6 +5382,14 @@ components:
         attention: { type: boolean, description: 'Billing needs an owner or admin: a trial or grace to act on, a failed payment, or a block.' }
         restricted: { type: boolean, description: New domain connections are refused right now. }
         setup_required: { type: boolean, description: 'Owners and admins only: send them through the billing setup flow.' }
+        first_domain_free:
+          type: boolean
+          description: >-
+            Owners and admins only, and present only when true: this is a new
+            workspace on the first domain free rule. Its first domain connects
+            without a subscription, so `restricted` is false until that domain
+            is connected and true after, and the next one needs the trial.
+            Credentials (an API key, an application) always need it.
         state: { $ref: '#/components/schemas/BillingState' }
         reason: { type: string, description: 'Why a restricted workspace is restricted: setup_required, grace_ended, unpaid, comp_ended or canceled.' }
         plan_id: { type: string }
@@ -5383,6 +5406,12 @@ components:
       properties:
         configured: { type: boolean, description: Whether a workspace can subscribe on this deployment. }
         restricted: { type: boolean, description: New domain connections are refused right now. }
+        first_domain_free:
+          type: boolean
+          description: >-
+            Present only when true: this is a new workspace on the first domain
+            free rule. `restricted` is false until its first domain is
+            connected, and true, with the refusal's words, after.
         attention: { type: boolean, description: 'Billing needs an owner or admin: a trial or grace to act on, a failed payment, or a block.' }
         code: { type: string, description: 'Set when `restricted`: `billing_required`.' }
         title: { type: string, description: 'Set when `restricted`: what the refusal says.' }
@@ -5407,6 +5436,7 @@ components:
         state: { $ref: '#/components/schemas/BillingState' }
         reason: { type: string }
         restricted: { type: boolean }
+        first_domain_free: { type: boolean, description: 'Present only when true: a new workspace on the first domain free rule (see `GET /billing/notice`).' }
         attention: { type: boolean }
         setup_required: { type: boolean }
         days_left: { type: integer }
@@ -5461,11 +5491,15 @@ components:
             period_end: { type: string, format: date-time }
         payment_method:
           type: [object, 'null']
+          description: 'The payment method the workspace is charged on, or null when Stripe holds none. A card has its brand, last four digits and expiry, and names the wallet when it was paid through Apple Pay or Google Pay. A Link account has the email of the account (Stripe never shows the card behind it). Cash App Pay has only its type.'
           properties:
+            type: { type: string, enum: [card, link, cashapp] }
             brand: { type: string }
             last4: { type: string }
             exp_month: { type: integer }
             exp_year: { type: integer }
+            wallet: { type: string, enum: [apple_pay, google_pay], description: 'The wallet a card was paid through, when it was.' }
+            email: { type: string, description: 'The email of the Link account (type link).' }
     Invoice:
       type: object
       properties:
