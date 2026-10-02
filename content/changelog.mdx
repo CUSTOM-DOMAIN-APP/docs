@@ -15,6 +15,38 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Add Google or GitHub after you sign up with a password.** Once the welcome is done, the
+  Overview offers once to add Google and GitHub as more ways to sign in: Add Google, Add GitHub
+  or Not now. It connects only an account that uses the same email address as yours, an answer is
+  remembered on every device, and accounts that came in with Google or GitHub are not asked. The
+  same buttons are under Settings, Security.
+
+- **Sign in with Azure DNS.** Azure DNS connects through a Microsoft sign-in where a
+  deployment has set it up: we find the Azure subscription and resource group that hold
+  the domain's public zone, so there is no subscription ID, resource group or access
+  token to paste, and a failure says which Microsoft account was used and what to
+  change. Azure requires multifactor authentication for the change, and until the app
+  has a verified publisher, users in other organizations see an unverified publisher
+  warning and an organization that limits user consent needs an admin to approve it.
+  The API key way stays beside it.
+
+- **Two more API key rails.** Combell (including combell.nl accounts) and Wix: paste a
+  key and the records are written for you. Combell's API comes with Reseller Hosting and
+  needs `34.192.32.132` on the account's IP restrictions; a Wix key must be made by the
+  account owner and works for domains on Wix's nameservers. See
+  [Provider setup](/docs/dns/provider-setup).
+- **Two more API key rails.** NS1 (IBM NS1 Connect) and netcup: paste a key and the
+  records are written for you. NS1 needs the DNS permission Manage zones, writes an
+  ALIAS at the root and leaves records it steers with filters alone; netcup needs a
+  customer number, an API key and the API password, works on its own nameservers and
+  does not change domains on CloudDNS. See [Provider setup](/docs/dns/provider-setup).
+- **Long console pages became short summaries with views.** A domain opens to its status,
+  the one thing to do and five facts, with DNS, Certificate, Edge, Traffic and History as
+  tabs. Settings, Analytics, API and SDK, an application, Billing, Team and Monitor work the
+  same way, and a row opens a side panel for its detail instead of a longer page. The
+  connect step opens the recommended way and keeps the others one click away. Every old
+  address and in page link still lands on the right view, and the back button returns to
+  where you were.
 - **Sign up asks you to agree to the Terms.** The sign up page has a box for the Terms
   of Service and Privacy Policy, and none of the ways of creating an account (email,
   Google, GitHub) goes on until it is ticked. If you already have an account you are

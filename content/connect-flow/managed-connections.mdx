@@ -82,15 +82,16 @@ What each provider hands over, and how it stays usable:
 | Cloudflare | `oauth2` | access token, refresh token and expiry | refresh token rotation; `offline_access` is requested only for a managed connect |
 | DigitalOcean, Akamai Cloud (Linode) | `oauth2` | access token, plus the refresh token and expiry when the provider returns them | refresh token rotation |
 | Google Cloud DNS | `oauth2` | access token, the refresh token Google issues because a managed connect asks for offline access, its expiry, and the Google Cloud project that holds the zone | the access token is refreshed hourly and the refresh token stays the same; while the app is in Google's Testing status a refresh token expires after seven days, so the connection then needs a new sign-in. Revoking a Google sign-in ends the account's whole consent, so a disconnect revokes it only when no other connection keeps a sign-in of the same Google account |
+| Azure DNS | `oauth2` | access token, the refresh token Microsoft issues because a managed connect asks for the `offline_access` scope, its expiry, and the Azure subscription and resource group that hold the zone | refresh token rotation, the new refresh token saved before use. Microsoft publishes no revocation endpoint, so a disconnect removes the records and drops the grant but cannot revoke it. A sign in without multifactor authentication cannot make changes, so such a connection needs a new sign-in |
 | DNSimple, Netlify, WordPress.com | `oauth2` | a long-lived access token | nothing to rotate |
 | Vercel | `vercel_integration` | the integration's token and its team | nothing to rotate; keep the integration installed on that team |
 | Porkbun | `porkbun_handoff` | the approved API key pair | nothing to rotate; keep the key named CustomDomain™ |
 | OVHcloud | `ovh_consent` | the consumer key and its region (the application secret stays in the deployment's environment) | the validity chosen on OVHcloud's page, so choose **Unlimited** |
 | Hostinger, Unstoppable Domains, XServer Domain, Namecheap, Spaceship (only when listed in `MCP_SIGNIN_PROVIDERS`) | `mcp_oauth` | access and refresh token of the client the control plane registered with the provider, and which client that is | refresh token rotation through that client; Hostinger accepts a refresh only until about five and a half hours after the access token expires, so a kept Hostinger sign-in left idle longer needs a new sign-in. Namecheap publishes no revocation endpoint, so a disconnect removes the records but cannot revoke a kept Namecheap sign-in |
 
-On the hosted service, Google Cloud DNS's sign-in, OVHcloud's consent and the
-`mcp_oauth` sign-ins are built but not switched on yet; their rows describe
-what a deployment that switches them on keeps.
+On the hosted service, Google Cloud DNS's and Azure DNS's sign-ins, OVHcloud's
+consent and the `mcp_oauth` sign-ins are built but not switched on yet; their
+rows describe what a deployment that switches them on keeps.
 
 - **Re-apply.** `POST /v1/connections/{id}:reapply` (and the fleet reconciler)
   rewrites the records through the provider's DNS API with the kept credential,
