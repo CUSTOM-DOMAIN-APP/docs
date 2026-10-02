@@ -2059,7 +2059,9 @@ paths:
         what the provider handed over. `flow` says which sign-in runs:
         `oauth2` (authorization code with PKCE S256; for Google Cloud DNS,
         Sign in with Google Cloud, whose callback first finds the Google Cloud
-        project that holds the domain's public zone), `vercel_integration` (the
+        project that holds the domain's public zone; for Azure DNS, a Microsoft
+        sign-in whose callback first finds the Azure subscription and resource
+        group that hold it), `vercel_integration` (the
         CustomDomain™ integration's install page; the user picks the Vercel team
         that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
         handoff: the user approves a key named after the domain; no client
@@ -2202,14 +2204,21 @@ paths:
         the domain), `ovh_zone_not_found` (pick the OVHcloud region the
         account lives in), `oauth_scope_not_granted` (a permission was left
         unticked on the provider's consent screen; sign in again and allow
-        them all), and for Google Cloud DNS `gcpdns_zone_not_found` (no public
+        them all), for Google Cloud DNS `gcpdns_zone_not_found` (no public
         Cloud DNS zone for the domain in a Google Cloud project the account
         can edit), `gcpdns_zone_ambiguous` (more than one) and
         `gcpdns_search_incomplete` (the account can see more projects than
-        the search reaches, so the one zone found is not written to). With
-        the first two, `payload.account` names the Google account that signed
-        in, when Google said which; the connection's stored `error_message`
-        never does. After
+        the search reaches, so the one zone found is not written to), and for
+        Azure DNS `azuredns_zone_not_found` (no public Azure DNS zone for the
+        domain in a subscription the Microsoft account can list zones in),
+        `azuredns_zone_ambiguous` (more than one), `azuredns_search_incomplete`
+        (the account can see more subscriptions or zones than the search
+        reaches, so the one zone found is not written to) and
+        `azuredns_mfa_required` (Azure requires multifactor authentication for
+        the change and the sign-in did not use it). With the not found and
+        ambiguous codes, `payload.account` names the Google or Microsoft
+        account that signed in, when the provider said which; the connection's
+        stored `error_message` never does. After
         an `mcp_oauth` sign-in, `apply_failed` also
         reports a write refused before anything changed because a record the
         provider's DNS tools may not remove is in the way (a Namecheap URL

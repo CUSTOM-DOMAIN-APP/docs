@@ -39,6 +39,12 @@ The signup form also carries bot protection: a bot-check widget, signup rate
 limits, and disposable-email-address blocking. If the bot check fails, wait a
 moment and try again.
 
+Signed up with an email and a password? Once the welcome is done, **Overview**
+offers once to add Google or GitHub as another way to sign in: **Add Google**,
+**Add GitHub** or **Not now**. It only connects an account that uses the same
+email address as yours, and either answer is remembered on every device. You can
+do the same any time under **Settings, Security**.
+
 ## 2. Tell us what you're building
 
 The first time you sign in, the welcome asks one question first: what do you
@@ -88,12 +94,13 @@ inviting your team.
 | Section | What it's for |
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
-| **Domains** | Every connected domain with its live status and exactly what is left to fix. |
-| **Analytics** | The widget funnel: where customers drop off, by DNS provider and by root versus subdomain. Also the traffic your domains receive at the edge, with the busiest domains. |
+| **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
+| **Analytics** | The widget funnel on its own tab, with a Traffic tab for what your domains receive at the edge (and the busiest domains) and a Providers tab for where customers drop off by DNS provider and by root versus subdomain. |
 | **Widget** | Embed code for your framework, the designer (the widget itself, every screen, light and dark, with a look for each application) and a live preview. |
-| **API & SDK** | Server-side API keys, SDK quickstarts and webhooks. |
+| **API & SDK** | Server-side API keys, with a Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
-| **Settings** | Workspace name, team, billing, and optional features. |
+| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you. |
+| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 
 Optional surfaces (the activity log, DNS monitoring, domain sales, the MCP
 server and agent access) are off until you need them: switch them on under
@@ -119,10 +126,10 @@ active one; switching is remembered in your browser.
 exists you can switch to it or go straight to its widget.
 
 Each application has its own page: open it from **Applications** or from the
-switcher. It shows the application's domains with their status (the ones that
-need attention first, each opening its details), its API keys, its widget,
-and where its domains point, with **Rename**, **Switch to it** and **Delete
-application**. Deleting asks you to type the name, revokes the application's
+switcher. Its summary counts the application's domains by status, and its
+**Domains** (the ones that need attention first, each opening its details),
+**API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
+it** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
@@ -163,8 +170,9 @@ They appear in this order; the recommended one is marked.
    Netlify, Vercel (by installing the CustomDomain™ integration) and
    WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup;
    we add the records with a one-time token we never store. Fastest. Sign in
-   with Google Cloud, OVHcloud's consent page and sign-in through a provider's
-   MCP server are built but not switched on yet; see
+   with Google Cloud, Sign in with Azure DNS (a Microsoft account), OVHcloud's
+   consent page and sign-in through a provider's MCP server are built but not
+   switched on yet; see
    [DNS providers](/docs/dns/providers#built-but-not-switched-on-yet).
 2. **One-click setup**: only where the provider serves our template
    (NameSilo, Glauca Digital, Domain Chief today). After you approve the change
@@ -231,11 +239,11 @@ configured" page: set it under **Domain routing**. Root-domain redirects
 ## 7. See its traffic
 
 Once the CustomDomain™ edge serves a domain, its detail page has a
-**Traffic** section: requests by the kind of answer visitors got (success,
+**Traffic** tab: requests by the kind of answer visitors got (success,
 redirects, client errors, server errors), bandwidth sent to visitors, how
 fast your origin answered (p95 and median time to first byte), approximate
 visitors, and when the last request arrived, over 24 hours, 7, 30 or 90 days.
-**Analytics** adds **Edge traffic** for the whole workspace (or one
+**Analytics** has a **Traffic** tab for the whole workspace (or one
 application), with the busiest domains.
 
 Only traffic that passes through the edge is counted. A domain connected for

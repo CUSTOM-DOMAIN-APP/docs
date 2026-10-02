@@ -67,6 +67,14 @@ today, so none of them appears in the console or the widget:
   Google client is configured, and until Google verifies the app only the test
   users listed in its Google Auth Platform can sign in. Until then, Google
   Cloud DNS connects with a project ID and an access token.
+- **Sign in with Azure DNS** (Azure DNS): the customer signs in with a Microsoft
+  account that can list and edit the domain's zone, and we find the Azure
+  subscription and resource group that hold its public zone. It is switched on
+  once its Microsoft Entra app is registered. Until that app has a verified
+  publisher, users in other organizations see an unverified publisher warning,
+  and an organization that limits user consent needs an admin to approve it.
+  Until then, Azure DNS connects with a subscription ID, a resource group and
+  an access token.
 - **Grant access at OVHcloud**: a consent page limited to the domain's zone,
   which needs an OVHcloud application for each region a deployment serves. The
   hosted service has none, so OVHcloud connects with an application key.
@@ -102,9 +110,10 @@ the credential is created, and lists the steps; see
 | Alibaba Cloud DNS | RAM AccessKey ID and secret (plus an STS security token for temporary credentials) | The domain must already be a zone in Alibaba Cloud DNS. |
 | ALL-INKL.COM | KAS login and password (plus the one-time code with two-factor login) | Used once and never stored. |
 | Arsys | Hosting domain and DNS API password | Activate the DNS API in the Panel de Control. Used once and never stored. |
-| Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. |
+| Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. Sign in with Azure DNS is built but not switched on yet. |
 | Bunny DNS | Account API key | |
 | ClouDNS | API user (or API sub-user) and password | API access comes with ClouDNS's paid plans. |
+| Combell | API key and secret (a combell.nl account chooses its own site) | The API comes with Reseller Hosting. Allow `34.192.32.132` under IP restrictions. The domain must use Combell's nameservers. |
 | Constellix | API key and secret key | |
 | cPanel hosts | cPanel username, API token and server hostname | For hosts that run cPanel; we connect on port 2083. |
 | deSEC | API token | |
@@ -128,8 +137,10 @@ the credential is created, and lists the steps; see
 | Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
 | NameBright | API application (account, application name, secret) | NameBright grants API access on request; whitelist `34.192.32.132` on the application. |
 | NameSilo | API key | Or use one-click setup. |
+| netcup | Customer number, API key and API password | The domain must use netcup's own nameservers; a domain on CloudDNS is added by hand. |
 | Netlify | Personal access token | Or sign in with Netlify. |
 | Njalla | API token | |
+| NS1 | API key secret with the DNS permission Manage zones | The domain must be a primary zone of the account. If the account or the key has an IP allow list, include `34.192.32.132`. |
 | Openprovider | API token from `/v1beta/auth/login` | API access must be enabled for the user; tokens last 48 hours, so they are used once. |
 | OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
 | Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun. |
@@ -140,6 +151,7 @@ the credential is created, and lists the steps; see
 | united-domains | DNS API key | Needs the DNS API add-on. |
 | Vercel | Access token | Or install CustomDomain™ on Vercel. |
 | Vultr | API key | Add `34.192.32.132/32` under Access Control. |
+| Wix | Account level API key and the Account ID | Only the account owner can make the key. The domain must be registered at Wix or connected to a Wix site by nameservers. |
 
 `34.192.32.132` is the address the hosted service's DNS writes come from
 (the control plane's `CONNECT_CLIENT_IP`); a self-hosted deployment uses its own.
@@ -173,6 +185,7 @@ yourself:
 | `arsys` | `hostingDomain:apiPassword` |
 | `azuredns` | `subscriptionId:resourceGroup:accessToken` |
 | `cloudns` | `authId:password`, `sub:subAuthId:password` or `subuser:subAuthUser:password` |
+| `combell` | `apiKey:apiSecret`, prefixed with `nl:` for a combell.nl account |
 | `constellix`, `dnsmadeeasy`, `spaceship` | `apiKey:secret` |
 | `cpanel` | `user:token:host` |
 | `dnspod` | `secretId:secretKey`, prefixed with `intl:` for a Tencent Cloud International account |
@@ -184,9 +197,11 @@ yourself:
 | `luadns` | `email:apiKey` |
 | `namebright` | `account:appName:secret` |
 | `namecom` | `username:token` |
+| `netcup` | `customerNumber:apiKey:apiPassword` (the password may contain colons) |
 | `ovh` | `appKey:appSecret:consumerKey`, prefixed with `ca:` or `us:` outside Europe |
 | `porkbun` | `apiKey:secretApiKey` |
 | `simply` | `accountNumber:apiKey` |
+| `wix` | `apiKey:accountId` |
 | every other provider | the single token or key |
 
 ## By hand, with provider-specific steps

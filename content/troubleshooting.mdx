@@ -15,8 +15,8 @@ yet"* so you know what's outstanding; that is a diagnosis, not a failure.
 To check right now instead of waiting: **Re-check now** on the domain page
 (`POST /v1/connections/{id}:recheck`). It reports each record's verdict.
 
-To see exactly what is wrong, open the domain's page: **What public DNS shows
-right now** (`GET /v1/connections/{id}/diagnose`) lists every record with the
+To see exactly what is wrong, open the domain's **DNS** tab: **What public DNS
+shows right now** (`GET /v1/connections/{id}/diagnose`) lists every record with the
 Name to type at the provider, whether public DNS has it, and what answers
 instead, naming the service when it recognizes it ("Still points to
 Squarespace"). It also flags the mistakes that block a connection even when a
@@ -122,8 +122,9 @@ provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
 `apply` returns an error carrying the provider's message when the scoped token is
 wrong-scoped, expired, or the zone doesn't match. Confirm the token has DNS
 **edit** rights on the exact `zone` you passed, and mind provider gates
-(Namecheap's account eligibility, and the IP allowlists at Namecheap, Dynadot,
-Epik, NameBright, Internet.bs and Vultr); see
+(Namecheap's account eligibility, the IP allowlists at Namecheap, Dynadot, Epik,
+NameBright, Internet.bs and Vultr, and at NS1 when its account or key has one,
+and netcup domains on CloudDNS, which its API does not change); see
 [Provider setup](/docs/dns/provider-setup).
 
 ## A sign-in or one-click popup never reports back
