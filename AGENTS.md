@@ -33,7 +33,7 @@ Endpoint shapes are illustrative; always follow https://docs.customdomain.ai/doc
 
 ## MCP server (for agents)
 
-Hosted MCP endpoint: `https://mcp.customdomain.ai/mcp` (streamable HTTP, OAuth client credentials via `https://mcp.customdomain.ai/token`). Twelve tools: search for and register domains, create and re-apply connections, disconnect, discover a domain's provider, forward a domain, add email records, and read connection and order status. **No tool accepts DNS records as input.** Record values are computed server-side from vetted templates, which closes off prompt-injection paths that end in arbitrary DNS writes.
+Hosted MCP endpoint: `https://mcp.customdomain.ai/mcp` (streamable HTTP; an API key, an OAuth client credentials token via `https://mcp.customdomain.ai/token`, or a delegated agent token). Seventeen tools: discover a domain's provider, connect, diagnose, recheck, re-apply and disconnect a domain, check a domain's certificate and the workspace's billing standing, list connections, forward a domain, add email records, search for and suggest domains, and read domain orders. `create-domain-order` is fail closed and off on the hosted service. **No tool accepts DNS records as input.** Record values are computed server-side from vetted templates, which closes off prompt-injection paths that end in arbitrary DNS writes.
 
 ```bash
 claude mcp add --transport http customdomain https://mcp.customdomain.ai/mcp
