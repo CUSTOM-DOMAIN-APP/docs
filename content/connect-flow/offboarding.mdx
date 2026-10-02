@@ -94,6 +94,12 @@ answers `409 reauthorization_required` with the plan. Then either:
 
 While a removal runs, a second one answers `409 removal_in_progress`.
 
+A delegated agent token can remove a domain too, when its grant carries
+`domains:disconnect` and the connection is in its application. It must send
+`confirm=<domain>`: without it the answer is `400 confirmation_required` (its
+details name the domain), and with another domain `409 confirmation_mismatch`.
+Nothing is removed in either case.
+
 ## What always happens
 
 - The edge stops approving the host at once and every edge forgets it within a

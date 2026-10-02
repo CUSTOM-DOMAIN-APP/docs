@@ -34,8 +34,10 @@ The purchase is ordered so you can never pay for a domain you don't get:
 1. **Search & price**: availability and a live retail quote per domain
    (`GET /v1/registrar/search`, `POST /v1/registrar/quote`; see the
    [Registrar API reference](/docs/api-reference/registrar/searchDomains)).
-2. **Authorize**: an embedded Stripe checkout (in-app, no off-site redirect)
-   collects the card and **authorizes** the amount. Nothing is charged yet.
+2. **Authorize**: a checkout on the page, in place of the search results (no
+   pop-up and no off-site redirect), shows the order and collects the card, and
+   **authorizes** the amount. Nothing is charged yet. **Back to search** puts the
+   results back as you left them.
 3. **Register**: the platform registers the domain server-side, driven by the
    Stripe webhook; the browser returning to the console is only a fallback
    trigger, so closing the tab doesn't strand the order. Fulfillment is
@@ -82,7 +84,9 @@ Buying is live on the hosted service. The purchase engine is **fail-closed**:
 in any environment where `SELL_PURCHASE_ENABLED`, a registrar credential, and a
 Stripe key aren't all configured, purchasing returns `503` rather than taking
 an order it can't fulfill. Search and pricing work independently of the
-purchase gate.
+purchase gate. A purchase that takes no payment (`POST /v1/registrar/purchase`)
+has its own switch, `SELL_DIRECT_PURCHASE_ENABLED`, and is off on the hosted
+service: every purchase there goes through checkout.
 
 Agents can drive the same purchase through the
 [MCP server](/docs/mcp/overview)'s `create-domain-order` and

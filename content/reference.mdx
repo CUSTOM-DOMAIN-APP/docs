@@ -46,7 +46,7 @@ string:
 | `invalid_request` | 400 | Malformed or missing input. |
 | `unauthorized` | 401 | Missing/invalid credential. |
 | `not_found` | 404 | Object doesn't exist or isn't in your tenant. |
-| `billing_required` | 402 | The workspace has no active subscription or trial, so new connections are refused (existing ones keep working). `details` says why and where an owner or admin can fix it. See [Plans & quotas](/docs/billing/plans-and-quotas#what-a-refusal-looks-like). |
+| `billing_required` | 402 | The workspace has no active subscription or trial, so new connections and new credentials (API keys, applications, rotated secrets) are refused (existing ones keep working). `details` says why and where an owner or admin can fix it. See [Plans & quotas](/docs/billing/plans-and-quotas#what-a-refusal-looks-like). |
 | `connections_unavailable` | 402 | The same refusal as the tenant's end users see it, with a neutral message that says nothing about the tenant's billing. |
 | `quota_exceeded` | 402 | A Starter workspace connected its monthly allowance (only where the deployment enforces quotas). |
 | `service_unavailable` | 503 | An optional engine (Sell, templates, billing, webhooks) isn't configured. |

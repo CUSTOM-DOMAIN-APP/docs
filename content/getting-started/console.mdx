@@ -29,24 +29,59 @@ automatically. (Self-hosters: this strict mode is the
 `REQUIRE_EMAIL_VERIFICATION` policy. The production deployment defaults it to
 enforced; unset it only if you deliberately want immediate activation.)
 
+Tick the box under the heading to agree to the Terms of Service and Privacy
+Policy. Email, Google and GitHub all wait for it. If you already had an account
+before the box existed, or you came in through an invite or a Google or GitHub
+sign in from the sign in page, the console asks once, on a page of its own, and
+then takes you where you were going.
+
 The signup form also carries bot protection: a bot-check widget, signup rate
 limits, and disposable-email-address blocking. If the bot check fails, wait a
 moment and try again.
 
 ## 2. Tell us what you're building
 
-The first time you sign in, a one-minute welcome asks four things: your
-company (it names your workspace), what you're using CustomDomain™ for, where
-your customers' domains should send traffic, and your frontend and backend.
-The routing answer is applied for you (your app's address as the default
-origin, or your own hostname as the connection target; see
-[Where domains point](/docs/connect-flow/routing)), and the stack answer picks
-the code samples you see first. Every question can be skipped.
+The first time you sign in, the welcome asks one question first: what do you
+want to use your domain for? Pick any of: publish a website, set up email, run
+an AI agent, white label (let your customers use your brand), allow subdomains,
+let customers connect their own domains in your product, manage domains for
+yourself or your clients, or "not sure yet". Each answer gets only the steps it
+needs:
+
+| You pick | The steps after the question |
+| --- | --- |
+| Publish a website | About you, your domain, where your site lives |
+| Set up email | About you, your domain (the email DNS records are asked for in the same connection), your mail provider. CustomDomain™ sets up the DNS for email (MX, SPF, DKIM, DMARC); it does not host mailboxes |
+| Run an AI agent | About you, agent access (MCP and API key), so your agent can search for and connect domains |
+| White label | About you, your brand with a live preview |
+| Allow subdomains | About you, your domain, where subdomains point |
+| Let customers connect their own domains | About you, your brand with a live preview, where domains point, your frontend and backend |
+| Manage domains | Your domain, connected here or by a registrar sign in |
+| Not sure yet | A short list of things to try, then the path of the one you pick |
+
+Several answers share steps, so nothing is asked twice. Everything that can be
+worked out is filled in for you to confirm: your company name and website come
+from your sign-up email (not from free mail such as Gmail, where it asks for the
+website instead), and your logo, name and brand color are read from your
+website. Change anything that is off.
+
+The domain step finds where the domain is registered and hosted as soon as you
+type it, says whether we can set it up automatically or will show you the
+records, and opens the same connect widget your customers use. If it is not
+registered yet, it lists names close to it that you can buy, with the first year price, and links to the console's domain search to buy one. When something is left, it says
+what and who can do it: anyone with access to your DNS host can finish it.
+
+Your place and answers are saved on every step, so closing the tab and coming
+back resumes where you left off. The last screen shows what you have (your site,
+your records, your agent, your branded widget) and the one next action. Open the
+welcome again any time from the first row of the checklist on **Overview** to
+change what you are doing.
 
 A short tour of the console follows. Replay it any time from the setup
-checklist on **Overview**, which also tracks the next steps: choosing where
-domains point, trying the widget, connecting a first domain, matching the
-widget to your brand, and inviting your team.
+checklist on **Overview**. The checklist follows what you picked: for a website,
+connecting your domain and pointing it at your site; for an embedded widget,
+your brand, the widget and where domains point; and so on, always ending with
+inviting your team.
 
 ## The console at a glance
 
@@ -55,14 +90,20 @@ widget to your brand, and inviting your team.
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. |
 | **Analytics** | The widget funnel: where customers drop off, by DNS provider and by root versus subdomain. Also the traffic your domains receive at the edge, with the busiest domains. |
-| **Widget** | Embed code for your framework, a live preview, and branding. |
+| **Widget** | Embed code for your framework, the designer (the widget itself, every screen, light and dark, with a look for each application) and a live preview. |
 | **API & SDK** | Server-side API keys, SDK quickstarts and webhooks. |
 | **Domain routing** | Where customer domains send traffic. |
 | **Settings** | Workspace name, team, billing, and optional features. |
 
 Optional surfaces (the activity log, DNS monitoring, domain sales, the MCP
 server and agent access) are off until you need them: switch them on under
-**Settings → Features**. A workspace that already used one keeps it on.
+**Settings → Features**. A workspace that already used one keeps it on, and
+agent access switches on by itself when you approve an agent.
+
+The **bell** at the top right holds your latest notifications: a domain going
+live, a domain that needs attention, a failed payment, and more. Turn on push
+under **Settings → Notifications** to get them on your phone or computer too. See
+[Notifications](/docs/guides/notifications).
 
 ### Applications
 
@@ -115,9 +156,8 @@ platform's own subdomain (`www.<name>.vercel.app`). Both used to sit on
 
 ## 4. Choose how to add the records
 
-The **What works at …** card (named for your provider) is the truth for *your*
-provider, straight from the server. The options appear in this order; the
-recommended one is marked.
+The options shown are the truth for *your* provider, straight from the server.
+They appear in this order; the recommended one is marked.
 
 1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
    Netlify, Vercel (by installing the CustomDomain™ integration) and
@@ -171,7 +211,9 @@ connected somewhere else), the next steps in order, and the action that fits:
 attempt nobody will finish. Below it, a short history says when the domain
 was added and through what, and when its DNS was last checked.
 
-While a domain is waiting, its detail page also opens **What public DNS shows
+While a domain is waiting, its detail page offers **Get a ping when it is live**
+(owners and admins), so you can close the tab and be told the moment it connects;
+see [Notifications](/docs/guides/notifications). It also opens **What public DNS shows
 right now**: each record's Name to type, whether public DNS has it, what
 answers instead ("still points to Squarespace"), and the mistakes that block
 a connection even when a record looks right, such as the full hostname typed
@@ -225,31 +267,52 @@ The API returns the same fact as `created_via` on every connection
 (`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). The
 **Overview** shows the split too, under the counts.
 
-## Brand the widget
+## Design the widget
 
-**Widget → Branding** sets what your customers see: color, logo, corner
-radius, dark mode, and whether the footer and confetti show. Saving needs an
-owner or admin.
+**Widget → Design** is where the widget gets your look. The preview is the
+widget itself, the one your customers get, running on example data: nothing
+here is sent anywhere, and no domain or connection is needed.
 
-For the logo, **Upload a logo** (or drop a file on it). PNG, JPEG, WebP, GIF
-(its first frame), AVIF and SVG are accepted. Your browser prepares every
-upload the same way, so logos look consistent: fully transparent edges are
-trimmed, the image is fit inside 512 by 160 pixels (256 by 80 on screen at
-2x), and it is saved as a PNG under 200 KB. An SVG is converted to a PNG; the
-SVG itself is never stored.
+Step through the journey with the row above the preview (enter the domain,
+detect the provider, sign in, apply, connected), open the other screens under
+**More screens** (existing records, manual setup, email records, an error and
+more), and pick the steps of a checklist. Each screen says which status it
+reports to your code. Look at the widget in light or dark, on a computer or a
+phone, and in any language it speaks.
 
-Before you save, the logo is shown on the widget's light and dark
-backgrounds. You'll see a warning when it would be hard to see on either, or
-when it has a solid background that would show as a box. **Use this logo**
-saves it right away: the install code and the preview pick it up at once.
+| Group | What you set |
+| --- | --- |
+| **Brand** | The name in the first heading ("Connect your domain to …"), the logo, a separate logo for dark mode (or a light plate behind a logo drawn for light pages, which the designer offers in one click when a logo would be hard to see on the dark surface), the logo's size, and whether "Powered by CustomDomain™" shows. |
+| **Colors** | The brand color for buttons, links and focus rings. Text on it is chosen to be readable, and it is lifted in dark mode when it would vanish. An optional background and text color, used in both light and dark. |
+| **Shape and type** | One corner radius (buttons, fields, cards and the pop-up follow it in proportion), a system font, the pop-up's width on a computer, and its shadow. |
+| **Behavior** | Light, dark or match the device; the confetti; the close button; the progress steps. |
+| **Screens and options** | "Set up manually instead" on the sign-in screen, "Let an AI assistant do it", "Email these instructions", and the offer to host DNS with CustomDomain™. |
+
+**Each application has its own look.** The designer edits the application
+chosen in the sidebar. **Save** gives that application a look of its own.
+**Save as the workspace default** (under the ⋯ menu) sets the look every
+application without its own uses, and **Use the workspace default for this
+application** drops the application's own look. Saving needs an owner or admin.
+The install code and **Try it live** use the saved look; the preview shows what
+you have not saved yet.
+
+For the logo, **Upload** (or drop a file on it). PNG, JPEG, WebP, GIF (its
+first frame), AVIF and SVG are accepted. Your browser prepares every upload the
+same way, so logos look consistent: fully transparent edges are trimmed, the
+image is fit inside 512 by 160 pixels (256 by 80 on screen at 2x), and it is
+saved as a PNG under 200 KB. An SVG is converted to a PNG; the SVG itself is
+never stored. Each logo is shown on the surface it will sit on, and you'll see a
+warning when it would be hard to see there, or when it has a solid background
+that would show as a box. The upload is hosted at once and appears in the
+preview; it belongs to the application when you press **Save**.
 
 Uploaded logos are served from `https://app.customdomain.ai/brand/logo/…`
 at a URL named for the file's content, so it never changes and is cached
-for a year. **Replace** uploads a new one; **Remove** clears it from your
-branding. Earlier uploads stay available at their URLs (your 20 most recent),
-because a widget you already shipped keeps the logo URL it was pasted with
-until you update its code. You can still paste the URL of a logo you host
-yourself (HTTPS) instead.
+for a year. **Replace** uploads a new one; **Remove** clears it from the design.
+Earlier uploads stay available at their URLs (your 20 most recent, and any an
+application still uses), because a widget you already shipped keeps the logo
+URL it was pasted with until you update its code. You can still paste the URL of
+a logo you host yourself (HTTPS) instead.
 
 ## What the console is *not*
 

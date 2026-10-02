@@ -83,17 +83,24 @@ unbranded styling. See
 ## Subscriptions and trials
 
 Every workspace needs an active subscription (or a free trial of one) to
-connect **new** domains. Domains that are already connected are never touched
-by billing: live traffic, certificate renewals, rechecks and monitoring carry on
-whatever the billing state.
+connect **new** domains and to hold **new credentials**: creating an API key,
+creating an application and rotating an application's secret. Domains that are
+already connected are never touched by billing: live traffic, certificate
+renewals, rechecks and monitoring carry on whatever the billing state, and
+credentials that already exist keep working.
 
-- **A new workspace** chooses a plan when it is created (Starter is
-  preselected) and starts a **14 day free trial** through Stripe Checkout. The
-  card is collected at Checkout and the first charge happens when the trial
-  ends; canceling before then costs nothing. Until the trial starts, new
-  connections are refused.
-- **Promotion codes** are entered on the Stripe Checkout page, or applied to a
-  running subscription with `POST /v1/billing/promotion-code`.
+- **A new workspace** can look around first. Signing up does not require a card:
+  you can check domains, design and preview your widget and read the docs without
+  one. The setup flow is offered once after sign-up, and skipping it sticks. The
+  card is asked for where it is needed, when you create an API key, create an
+  application or connect your first domain, and that starts a **14 day free
+  trial** in a checkout on the page itself, not a pop-up. The order summary, the
+  total and the buttons are the console's own, in light or dark; only the card
+  fields are Stripe's. The first charge happens when the trial ends; canceling
+  before then costs nothing. Until the trial starts, new connections and new
+  credentials are refused.
+- **Promotion codes** are entered in the checkout's order summary, or applied to
+  a running subscription with `POST /v1/billing/promotion-code`.
 - **Changing plans** on a running subscription is
   `POST /v1/billing/change-plan`; Stripe prorates the difference. During a
   trial, the new price applies from the trial's end.
@@ -121,7 +128,13 @@ of eight states. Only the last three refuse new connections.
 
 The control plane refuses at one place, before a connection is created, for
 every surface that can start one: the console, the API, bulk connect, the MCP
-server, the embedded widget and the start of a domain purchase.
+server, the embedded widget and the start of a domain purchase. Creating an API
+key (`POST /v1/applications/{id}/keys`), creating an application
+(`POST /v1/applications` with an API key) and rotating an application's secret
+(`POST /v1/applications/{id}/client-secret:rotate`) are refused the same way
+while a workspace has no trial or subscription, so a widget you embed never
+meets a billing refusal in front of your own customers. Reading, listing, checking
+domains and the billing routes themselves stay open.
 
 - The workspace itself (an API key, an agent token, an app-scoped token) gets
   `402 billing_required`, with the reason and where to fix it in `details`.
@@ -296,6 +309,33 @@ catalog stays public. A workspace that already has a running subscription is
 refused a second checkout with `409`. Enforcement is on the control plane's
 write path only, never on the edge `ask` hot path, so serving traffic never
 blocks on billing.
+
+`ui_mode` is optional and picks how the session is shown. Leave it out (or send
+`embedded`; `null` and an empty string count as leaving it out) and nothing
+changes: Stripe Embedded Checkout, an iframe Stripe styles itself, when
+`return_url` is set, and the hosted redirect when only `success_url` and
+`cancel_url` are. `elements` is Elements with the Checkout Sessions API: you
+render the whole page (the plan, the price, the trial, the promotion code field,
+the totals) and mount only Stripe's Payment Element with the returned
+`client_secret`, so the page can wear your own theme. It needs `return_url`. An
+`elements` session is created on Stripe API version `2026-08-26.dahlia`, pinned
+on that one request. This is the one place the exact version is written down
+(the API reference says only that it is the dahlia release train), so mount the
+session with a Stripe.js of the dahlia train. Every response carries `ui_mode`,
+the mode the session really has: `embedded`, `elements`, or `hosted` for the
+redirect flow. An `elements` request answers `embedded` when Stripe cannot
+create an Elements session, so read the response before you mount anything.
+`hosted` is only ever an answer: a client that keeps the response's `ui_mode`
+must not send it back, because any value other than `embedded` and `elements`
+is a `400`. The same field works on `POST /v1/billing/setup` (save a card) and
+`POST /v1/registrar/checkout` (buy a domain).
+
+```bash
+curl -X POST http://localhost:8080/v1/billing/checkout \
+  -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
+  -d '{"plan":"starter","return_url":"https://app.acme.example/billing/return?session_id={CHECKOUT_SESSION_ID}","ui_mode":"elements"}'
+# → { "id": "cs_...", "client_secret": "cs_..._secret_...", "ui_mode": "elements", "trial_days": 14, "first_charge_at": "..." }
+```
 
 ### When the subscription is recorded
 
