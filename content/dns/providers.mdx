@@ -69,12 +69,11 @@ today, so none of them appears in the console or the widget:
   Cloud DNS connects with a project ID and an access token.
 - **Sign in with Azure DNS** (Azure DNS): the customer signs in with a Microsoft
   account that can list and edit the domain's zone, and we find the Azure
-  subscription and resource group that hold its public zone. It is switched on
-  once its Microsoft Entra app is registered. Until that app has a verified
-  publisher, users in other organizations see an unverified publisher warning,
-  and an organization that limits user consent needs an admin to approve it.
-  Until then, Azure DNS connects with a subscription ID, a resource group and
-  an access token.
+  subscription and resource group that hold its public zone. Until the app has
+  a verified publisher, users in other organizations see an unverified
+  publisher warning, and an organization that limits user consent needs an
+  admin to approve it. Azure DNS can also connect with a subscription ID, a
+  resource group and an access token.
 - **Grant access at OVHcloud**: a consent page limited to the domain's zone,
   which needs an OVHcloud application for each region a deployment serves. The
   hosted service has none, so OVHcloud connects with an application key.
@@ -110,7 +109,7 @@ the credential is created, and lists the steps; see
 | Alibaba Cloud DNS | RAM AccessKey ID and secret (plus an STS security token for temporary credentials) | The domain must already be a zone in Alibaba Cloud DNS. |
 | ALL-INKL.COM | KAS login and password (plus the one-time code with two-factor login) | Used once and never stored. |
 | Arsys | Hosting domain and DNS API password | Activate the DNS API in the Panel de Control. Used once and never stored. |
-| Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. Sign in with Azure DNS is built but not switched on yet. |
+| Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. Sign in with Azure DNS is the easier way in. |
 | Bunny DNS | Account API key | |
 | ClouDNS | API user (or API sub-user) and password | API access comes with ClouDNS's paid plans. |
 | Combell | API key and secret (a combell.nl account chooses its own site) | The API comes with Reseller Hosting. Allow `34.192.32.132` under IP restrictions. The domain must use Combell's nameservers. |
