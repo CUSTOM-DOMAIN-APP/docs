@@ -17,13 +17,16 @@ info:
     plus tenancy, members, billing, and webhooks.
 
 
-    Three credential types authenticate the surface. A **management key** gates
+    Four credential types authenticate the surface. A **management key** gates
     operator/provisioning routes. A tenant **API key** (`cd_live_…` / `cd_test_…`)
     is the long-lived server-to-server credential; keys created before the switch
     to `cd_` start with `sk_live_…` / `sk_test_…` and are still accepted. A
     short-lived **widget JWT**, minted server-side via `POST /v1/tokens`,
     authorizes the browser widget and is scoped to one application (and
-    optionally one domain).
+    optionally one domain). A delegated **agent token**, a 15 minute JWT from the
+    OAuth endpoints under the Agents tag, lets an AI assistant act for one
+    application within the scopes a person approved in the console; each route
+    that accepts it lists the scopes it needs.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -77,6 +80,14 @@ tags:
     description: >-
       DNS provider and registrar keys a workspace connects once, with one time
       or continuous access, for some or all of the account's domains.
+  - name: Agents
+    description: >-
+      AI assistants acting for a workspace. An agent registers, a person approves
+      what it may do in the console, and it works with a short lived token until
+      the grant is revoked. The hosted MCP server accepts these tokens. The
+      authorization server metadata (RFC 8414) and the signing keys (RFC 7517)
+      are served on the API origin at `/.well-known/oauth-authorization-server`
+      and `/.well-known/jwks.json`.
 
 paths:
   # ------------------------------------------------------------------ Tenancy
@@ -231,6 +242,7 @@ paths:
                       client_secret: { type: string, description: mints widget JWTs; shown once }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/BillingRequired' }
     get:
       operationId: listApplications
       summary: List applications
@@ -364,6 +376,7 @@ paths:
                     properties:
                       key: { type: string, description: 'cd_live_… or cd_test_…; shown once, stored hashed' }
         '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/BillingRequired' }
         '404': { $ref: '#/components/responses/Error' }
     get:
       operationId: listApiKeys
@@ -787,9 +800,15 @@ paths:
         application. An API key checks for `application_id`, which must be an
         application in the key's tenant (404 otherwise), or for the key's own
         application when it is omitted.
+
+
+        A delegated agent token needs `domains:read` or `domains:connect` and
+        checks for its own application; naming another application is a `403`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:read']
+        - agentToken: ['domains:connect']
       requestBody:
         required: true
         content:
@@ -833,9 +852,14 @@ paths:
         with an API key, in which case the connection is created on the
         key's application, or on `application_id` when that names another
         application of the same tenant.
+
+
+        A delegated agent token needs `domains:connect` and creates the
+        connection on its own application.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:connect']
       requestBody:
         required: true
         content:
@@ -916,22 +940,8 @@ paths:
               schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '402':
-          description: >-
-            A new connection is refused. `billing_required`: the workspace has
-            no active or trialing subscription (a new workspace that has not
-            started its trial, a Free workspace past its grace period, a comp
-            that ended, or a subscription Stripe marked unpaid or canceled);
-            domains already connected keep working, and an owner or admin sets
-            up billing in the console. `quota_exceeded`: a plan that is refused
-            past its quota (Starter, and the retired Free) is at it and the
-            deployment enforces quotas. A connect-scoped widget token (the
-            tenant's own end user) gets `connections_unavailable` instead of
-            `billing_required`, and neutral wording for both, so the tenant's
-            customers are never told about the tenant's billing.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+        '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/Error' }
     get:
       operationId: listConnections
       summary: List connections
@@ -953,9 +963,13 @@ paths:
 
         A `status` outside the enum is rejected with **400** (it used to reach
         the database and surface as a 500).
+
+
+        A delegated agent token needs `domains:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['domains:read']
       parameters:
         - { name: app_id, in: query, required: false, schema: { type: string } }
         - name: status
@@ -996,6 +1010,7 @@ paths:
                       `?cursor=` to fetch the next page.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /connections:count:
     get:
       operationId: countConnections
@@ -1061,9 +1076,14 @@ paths:
         mode** (the control plane holds a durable, encrypted async grant so it can
         re-apply / revert the template server-side without re-consent); `false`
         (omitted on the wire) for the default use-once connection.
+
+
+        A delegated agent token needs `domains:read` and reads only connections
+        of its own application; another application's connection answers `404`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -1072,6 +1092,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     delete:
       operationId: disconnectConnection
@@ -1119,9 +1140,17 @@ paths:
         An end user's widget token (scope `connect`) must be bound to the
         domain and, when the connection names an end user, minted with that
         `end_user_ref`; otherwise `403`.
+
+
+        A delegated agent token needs `domains:disconnect`, a scope of its own
+        because the removal takes the domain offline, and must send `confirm`
+        naming the domain. Without it the answer is `400 confirmation_required`,
+        and with another domain `409 confirmation_mismatch`; nothing is removed
+        either way. Another application's connection answers `404`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:disconnect']
       parameters:
         - { $ref: '#/components/parameters/Id' }
         - name: records
@@ -1129,6 +1158,16 @@ paths:
           required: false
           schema: { type: string, enum: [remove, keep] }
           description: What to do with the DNS records we added.
+        - name: confirm
+          in: query
+          required: false
+          description: >-
+            Required of a delegated agent token: the domain it is removing, as
+            written on the connection (case, scheme, path and a trailing dot do
+            not matter). Without it the answer is `400 confirmation_required`;
+            with another domain, `409 confirmation_mismatch`. Nothing is removed
+            either way. Other credentials ignore it.
+          schema: { type: string, examples: [shop.acme.com] }
       responses:
         '200':
           description: Removed; what happened to the records
@@ -1136,6 +1175,14 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DisconnectResult' }
         '204': { description: "Removed (no records choice given): records taken out only through a kept Domain Connect authorization, a kept sign-in or our hosted zone, kept otherwise" }
+        '400':
+          description: >-
+            `confirmation_required`: a delegated agent token did not send
+            `confirm`; `details` names the domain to send. `invalid_request`:
+            `records` is neither `remove` nor `keep`. Nothing was removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -1143,14 +1190,16 @@ paths:
           description: >-
             `reauthorization_required`: removing the records needs one more
             sign-in or key; `plan` is the removal plan. `removal_in_progress`:
-            another removal of the domain is running. Nothing was changed.
+            another removal of the domain is running. `confirmation_mismatch`: a
+            delegated agent token's `confirm` names another domain. Nothing was
+            changed.
           content:
             application/json:
               schema:
                 type: object
                 required: [code]
                 properties:
-                  code: { type: string, enum: [reauthorization_required, removal_in_progress] }
+                  code: { type: string, enum: [reauthorization_required, removal_in_progress, confirmation_mismatch] }
                   title: { type: string }
                   details: { type: string }
                   plan: { $ref: '#/components/schemas/RemovalPlan' }
@@ -1197,9 +1246,13 @@ paths:
         Every served domain has one, so this read is not behind the Secure
         plan feature (the `/ssl` management routes are). `status` is
         `not_reported` until the edge reports the certificate.
+
+
+        A delegated agent token needs `domains:read`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -1226,6 +1279,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DomainEvent' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/services:
     get:
@@ -1456,10 +1510,26 @@ paths:
         (the key may belong to another account). Answers `200` with the
         outcome; an end user's widget token must be bound as for
         `DELETE /connections/{id}`.
+
+
+        A delegated agent token needs `domains:disconnect` and must send
+        `confirm`, as for `DELETE /connections/{id}`.
       security:
         - widgetJWT: []
         - apiKey: []
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+        - agentToken: ['domains:disconnect']
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: confirm
+          in: query
+          required: false
+          description: >-
+            Required of a delegated agent token: the domain it is removing, as
+            written on the connection (case, scheme, path and a trailing dot do
+            not matter). Without it the answer is `400 confirmation_required`;
+            with another domain, `409 confirmation_mismatch`. Nothing is removed
+            either way. Other credentials ignore it.
+          schema: { type: string, examples: [shop.acme.com] }
       requestBody:
         required: false
         content:
@@ -1485,13 +1555,13 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '409':
-          description: "`reauthorization_required` or `removal_in_progress`, as for `DELETE /connections/{id}`."
+          description: "`reauthorization_required`, `removal_in_progress` or `confirmation_mismatch`, as for `DELETE /connections/{id}`."
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  code: { type: string, enum: [reauthorization_required, removal_in_progress] }
+                  code: { type: string, enum: [reauthorization_required, removal_in_progress, confirmation_mismatch] }
                   plan: { $ref: '#/components/schemas/RemovalPlan' }
   /connections/{id}/diagnose:
     get:
@@ -1511,9 +1581,13 @@ paths:
         `aaaa_conflict`, `extra_a_records`, `conflicting_record` and
         `caa_blocks`. It never changes the connection; when `all_found` is true,
         call `:recheck` to verify and go live. Cached for about 5 seconds.
+
+
+        A delegated agent token needs `domains:read`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -1522,6 +1596,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectionDiagnosis' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/records:
     get:
@@ -1532,9 +1607,14 @@ paths:
         The single source of truth the widget renders, the OAuth callback
         writes, and the propagation poller verifies. Before records are applied,
         the default edge record is synthesized server-side.
+
+
+        A delegated agent token needs `domains:read` or `domains:connect`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:read']
+        - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -1550,6 +1630,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     put:
       operationId: setConnectionRecords
@@ -1898,9 +1979,13 @@ paths:
         says `via: provider_account`. A domain whose records CustomDomain™
         did not write is refused with `409`, since re-applying would write
         records nobody put there. The same webhooks are sent.
+
+
+        A delegated agent token needs `domains:connect`.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -1914,6 +1999,7 @@ paths:
               schema: { $ref: '#/components/schemas/ReapplyResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked (re-consent required); or a provider account keeps it and CustomDomain™ did not write its records, or the account holds no usable key" }
         '422': { description: "The provider refused the provider account's key (`ProviderAuthenticationError`) or the write (`dns_write_failed`)" }
@@ -1942,9 +2028,14 @@ paths:
 
 
         Idempotent and safe to call repeatedly.
+
+
+        A delegated agent token needs `domains:connect`, because a recheck can
+        move a connection forward.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -1953,6 +2044,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecheckResult' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "A failed connection cannot be retried because the same application already has another active connection for this domain; retry that one instead" }
   /connections/{id}/oauth:start:
@@ -1974,8 +2066,8 @@ paths:
         registration is needed), `ovh_consent` (an OVHcloud consumer key
         limited to the domain's DNS zone, validated on OVHcloud's page for the
         chosen `region`) or `mcp_oauth` (OAuth through the provider's hosted
-        MCP server, for Hostinger, Unstoppable Domains, XServer, Namecheap and
-        Spaceship: the endpoints are discovered from the server's metadata,
+        MCP server, for Hostinger, Unstoppable Domains, XServer, Namecheap,
+        Spaceship and Dynadot: the endpoints are discovered from the server's metadata,
         the client is one the control plane registered for itself, and the
         records are written through the server's DNS tools; offered only for
         the providers the deployment lists in `MCP_SIGNIN_PROVIDERS`). The credential is used for that write and dropped,
@@ -2243,9 +2335,14 @@ paths:
         (a domain-bound token for its own domain only); an API key for a
         connection of any application in its tenant, and a member's key needs a
         role that operates apps.
+
+
+        A delegated agent token needs `domains:connect` and starts the setup of
+        its own application's connections.
       security:
         - widgetJWT: []
         - apiKey: []
+        - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -2299,6 +2396,7 @@ paths:
                   rail: { type: string, description: '"async" on the managed rail; omitted on the sync rail.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '422':
           description: >-
@@ -2577,6 +2675,7 @@ paths:
                     type: string
                     description: sk_… (mints widget JWTs; shown once, stored hashed)
         '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 
@@ -2627,6 +2726,26 @@ paths:
         Supply EITHER `return_url` for the embedded flow, OR both `success_url`
         and `cancel_url` for the hosted redirect flow. Supplying neither is a
         400.
+
+
+        `ui_mode` is optional and picks how the session is shown. Leave it out
+        (a `null` or an empty string counts as leaving it out), or send
+        `embedded`, for the behavior from before it existed: Stripe Embedded
+        Checkout when `return_url` is set, and the hosted redirect when only
+        `success_url` and `cancel_url` are. `elements` is Elements with the
+        Checkout Sessions API: the caller renders the whole page and mounts only
+        Stripe's Payment Element with the returned `client_secret`, so the page
+        can wear its own theme. It needs `return_url`, which is where redirect
+        based payment methods and the finished setup land, and the session is
+        created on a Stripe API version of the dahlia release train (the billing
+        guide names the exact version), so mount it with a Stripe.js of that
+        train. The response's `ui_mode` says what was really created
+        (`embedded`, `elements` or `hosted`): an `elements` request answers
+        `embedded` when Stripe could not create an Elements session, so read it
+        before mounting anything. `hosted` is only ever an answer, never a
+        request value: a client that keeps the response's `ui_mode` must not
+        send it back (the redirect flow is chosen by sending `success_url` and
+        `cancel_url` without `return_url`). Any other value is a 400.
       requestBody:
         required: true
         content:
@@ -2636,16 +2755,25 @@ paths:
               properties:
                 return_url:
                   type: string
-                  description: Where Checkout returns the user (embedded flow).
+                  description: Where Checkout returns the user (embedded and elements flows).
                 success_url:
                   type: string
                   description: Hosted redirect flow; requires cancel_url too.
                 cancel_url:
                   type: string
                   description: Hosted redirect flow; requires success_url too.
+                ui_mode:
+                  type: string
+                  enum: [embedded, elements]
+                  description: >-
+                    How the session is shown. Leave it out (or send null or an
+                    empty string) for Stripe Embedded Checkout when `return_url`
+                    is set and the hosted redirect when only `success_url` and
+                    `cancel_url` are. `elements` requires `return_url`. Never
+                    send `hosted`: it is only an answer.
       responses:
         '200':
-          description: The Checkout session. Embedded flows read `client_secret`; redirect flows read `url`.
+          description: The Checkout session. Embedded and elements flows read `client_secret`; redirect flows read `url`.
           content:
             application/json:
               schema:
@@ -2657,7 +2785,11 @@ paths:
                     description: Hosted Checkout URL (redirect flow).
                   client_secret:
                     type: string
-                    description: Embedded Checkout client secret (return_url flow).
+                    description: Client secret to mount the embedded or elements checkout with.
+                  ui_mode:
+                    type: string
+                    enum: [embedded, elements, hosted]
+                    description: How the session was really created. An `elements` request answers `embedded` when Stripe could not create an Elements session.
         '400': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
@@ -2780,9 +2912,13 @@ paths:
         widget token minted with scope `app` (or a delegated agent token)
         reads its own application's domains; an end user's connect-scoped
         widget token is refused.
+
+
+        A delegated agent token needs `domains:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['domains:read']
       parameters:
         - { $ref: '#/components/parameters/Id' }
         - { name: range, in: query, required: false, schema: { type: string, enum: [24h, 7d, 30d, 90d], default: 7d } }
@@ -2801,7 +2937,7 @@ paths:
   /share/{token}:
     # API-13: this route is served at the ROOT, not under /v1. The document's
     # global `servers` are /v1-suffixed, and without this override the published
-    # URL resolved to /v1/share/{token} — which 404s. The router
+    # URL resolved to /v1/share/{token}, which 404s. The router
     # (`mux.HandleFunc("GET /share/{token}", …)`), the console's proxy
     # (`${CP_BASE}/share/${token}`) and the integration tests all agree on the
     # root path, so the SPEC was the thing that was wrong. Moving the route
@@ -2947,22 +3083,44 @@ paths:
       operationId: searchDomains
       summary: Search domain availability and pricing
       tags: [Registrar]
+      description: >-
+        Availability and retail prices for the typed name. With `suggest=1` it
+        also returns the same name on other TLDs and close variants, each result
+        carrying a `kind` (`exact`, `tld` or `variant`). A widget token of
+        either scope, a tenant API key of any role, or a delegated agent token
+        with `domains:read` may search.
       security:
         - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:read']
       parameters:
         - { name: q, in: query, required: true, schema: { type: string } }
+        - name: suggest
+          in: query
+          required: false
+          description: >-
+            Send `1` for the shop style search: the typed name, the same name on
+            other TLDs and close variants, each with a `kind`.
+          schema: { type: string, enum: ['1'] }
       responses:
         '200':
           description: Results
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /registrar/quote:
     post:
       operationId: quoteDomain
       summary: Cheapest real-time price for a domain
       tags: [Registrar]
+      description: >-
+        The registrar's cheapest real time price for a domain, with the retail
+        markup applied. A widget token of either scope, a tenant API key of any
+        role, or a delegated agent token with `domains:read` may ask.
       security:
         - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:read']
       requestBody:
         required: true
         content:
@@ -2977,6 +3135,7 @@ paths:
           description: Price
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /registrar/purchase:
     post:
@@ -2984,10 +3143,20 @@ paths:
       summary: Register a domain (fail-closed; requires Idempotency-Key)
       tags: [Registrar]
       description: >-
-        Disabled unless `SELL_PURCHASE_ENABLED`. A required `Idempotency-Key`
-        header dedupes retries so a registration is never charged twice.
+        Off on the hosted service. This route registers a domain without taking
+        a payment, so it needs both `SELL_PURCHASE_ENABLED` and its own switch
+        `SELL_DIRECT_PURCHASE_ENABLED`; buy through checkout instead. A required
+        `Idempotency-Key` header dedupes retries so a registration is never
+        charged twice.
+
+
+        A delegated agent token needs `domains:purchase`; the grant's monthly
+        spend cap is charged first, and a purchase that would pass it answers
+        `409`. A tenant API key is refused with `401`. A workspace that billing
+        refuses answers `402`.
       security:
         - widgetJWT: []
+        - agentToken: ['domains:purchase']
       parameters:
         - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
       requestBody:
@@ -3013,6 +3182,8 @@ paths:
           description: Order
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Monitor
@@ -3329,6 +3500,28 @@ paths:
         Supply EITHER `return_url` (embedded Checkout, the response carries
         `client_secret`) OR both `success_url` and `cancel_url` (hosted
         Checkout, the response carries `url`).
+
+
+        `ui_mode` is optional and picks how the session is shown. Leave it out
+        (a `null` or an empty string counts as leaving it out), or send
+        `embedded`, for the behavior from before it existed: Stripe Embedded
+        Checkout when `return_url` is set, and the hosted redirect when only
+        `success_url` and `cancel_url` are. `elements` is Elements with the
+        Checkout Sessions API: the caller renders the whole page (the plan, the
+        price, the trial, the promotion code field, the totals) and mounts only
+        Stripe's Payment Element with the returned `client_secret`, so the page
+        can wear its own theme. It needs `return_url`, which is where redirect
+        based payment methods and the finished payment land, and the session is
+        created on a Stripe API version of the dahlia release train (the billing
+        guide names the exact version), so mount it with a Stripe.js of that
+        train. The trial, the promotion codes and the card up front are the same
+        in every mode. The response's `ui_mode` says what was really created
+        (`embedded`, `elements` or `hosted`): an `elements` request answers
+        `embedded` when Stripe could not create an Elements session, so read it
+        before mounting anything. `hosted` is only ever an answer, never a
+        request value: a client that keeps the response's `ui_mode` must not
+        send it back (the redirect flow is chosen by sending `success_url` and
+        `cancel_url` without `return_url`). Any other value is a 400.
       security:
         - apiKey: []
       requestBody:
@@ -3342,7 +3535,8 @@ paths:
                 plan: { $ref: '#/components/schemas/PlanId' }
                 success_url: { type: string, format: uri }
                 cancel_url: { type: string, format: uri }
-                return_url: { type: string, format: uri, description: Selects embedded Checkout. }
+                return_url: { type: string, format: uri, description: 'Selects embedded Checkout, or the elements checkout with ui_mode elements.' }
+                ui_mode: { type: string, enum: [embedded, elements], description: 'How the session is shown. Leave it out (or send null or an empty string) for Stripe Embedded Checkout when `return_url` is set and the hosted redirect when only `success_url` and `cancel_url` are. `elements` requires `return_url`. Never send `hosted`: it is only an answer.' }
       responses:
         '200':
           description: Checkout session
@@ -3353,7 +3547,8 @@ paths:
                 properties:
                   id: { type: string }
                   url: { type: string, description: Hosted Checkout URL (redirect flow). }
-                  client_secret: { type: string, description: Embedded Checkout client secret (return_url flow). }
+                  client_secret: { type: string, description: Client secret to mount the embedded or elements checkout with. }
+                  ui_mode: { type: string, enum: [embedded, elements, hosted], description: 'How the session was really created. An `elements` request answers `embedded` when Stripe could not create an Elements session.' }
                   trial_days: { type: integer, description: 'Trial length, when the checkout starts one by days.' }
                   trial_end: { type: [string, 'null'], format: date-time, description: 'When the trial ends, when it ends at a fixed time (the grace end).' }
                   first_charge_at: { type: string, format: date-time, description: 'When the card is first charged, when there is a trial.' }
@@ -3418,6 +3613,32 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/BillingNotice' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /billing/standing:
+    get:
+      operationId: getBillingStanding
+      summary: Whether the workspace may connect new domains
+      tags: [Billing]
+      description: >-
+        The lean read the MCP server's `check-billing-status` tool uses: whether
+        a new connection is refused right now, and if so the same `code`, `title`
+        and `details` the refusal carries (`billing_required`), plus the plan and
+        this month's usage. It has no dates, amounts, invoices or card; owners and
+        admins read those from `GET /billing/status`. Any workspace credential may
+        read it: a tenant API key of any role, a delegated agent token with
+        `domains:read`, or a widget token minted with scope `app`. A
+        `connect`-scoped widget token (an end user's) is refused with `403`.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['domains:read']
+      responses:
+        '200':
+          description: The workspace's standing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BillingStanding' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
   /billing/status:
@@ -4512,6 +4733,22 @@ paths:
         completes via `POST /v1/registrar/fulfill`; the card is captured strictly
         after the registrar settles, so a failed registration never charges the
         buyer. `503` when purchasing is disabled on the deployment.
+
+
+        `ui_mode` is optional and picks how the payment is shown. Leave it out
+        (a `null` or an empty string counts as leaving it out), or send
+        `embedded`, for Stripe Embedded Checkout. `elements` is Elements with the
+        Checkout Sessions API: the caller renders the page and mounts only
+        Stripe's Payment Element with the returned `client_secret`, so the page
+        can wear its own theme; the session is created on a Stripe API version
+        of the dahlia release train (the billing guide names the exact version),
+        so mount it with a Stripe.js of that train. Authorizing now and
+        capturing after registration works the same in both. The response's
+        `ui_mode` says what was really created (`embedded` or `elements`; a
+        domain payment has no redirect flow, so it is never `hosted`): an
+        `elements` request answers `embedded` when Stripe could not create an
+        Elements session, so read it before mounting anything. Any other
+        `ui_mode`, `hosted` included, is a 400.
       security:
         - widgetJWT: []
       requestBody:
@@ -4531,14 +4768,16 @@ paths:
                     email: { type: string, format: email }
                     country: { type: string, description: ISO 3166-1 alpha-2. }
                 return_url: { type: string, format: uri }
+                ui_mode: { type: string, enum: [embedded, elements], default: embedded, description: 'How the payment is shown. Leave it out (or send null or an empty string) for embedded: a domain payment has no redirect flow. Never send `hosted`.' }
       responses:
         '200':
-          description: Stripe checkout session (embedded)
+          description: Stripe checkout session (embedded or elements)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CheckoutSession' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/BillingRequired' }
         '503': { $ref: '#/components/responses/Error' }
   /registrar/fulfill:
     post:
@@ -4590,9 +4829,23 @@ paths:
         expired by the hourly reaper after 24 hours (status `expired`, with a
         `purchase.confirmation.expired` webhook), so "quoted" always means
         recent intent.
+
+
+        With a tenant API key it lists the orders of every application of the
+        tenant, or of one with `app_id` (another tenant's id answers `404`). A
+        widget token minted with scope `app`, or a delegated agent token with
+        `domains:read`, lists its own application's orders.
       tags: [Registrar]
       security:
         - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:read']
+      parameters:
+        - name: app_id
+          in: query
+          required: false
+          description: With a tenant API key, list the orders of this one application of the tenant.
+          schema: { type: string }
       responses:
         '200':
           description: Orders
@@ -4607,6 +4860,7 @@ paths:
                     items: { $ref: '#/components/schemas/SellOrderView' }
                   count: { type: integer }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   /sell/orders/{id}:
@@ -4614,8 +4868,14 @@ paths:
       operationId: getSellOrder
       summary: Read a persisted domain-purchase order's status by id
       tags: [Registrar]
+      description: >-
+        A widget token or a delegated agent token (`domains:read`) reads an
+        order of its own application; a tenant API key reads an order of any of
+        its applications. An order of another application answers `404`.
       security:
         - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -4624,6 +4884,296 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SellOrderView' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Agents
+  # The agent OAuth endpoints sit at the origin root, not under /v1, so each
+  # path item names its server. Discovery: GET /.well-known/oauth-authorization-server
+  # (RFC 8414) and GET /.well-known/jwks.json (RFC 7517) are specified by those
+  # RFCs and are not repeated here.
+  /oauth/agent/register:
+    servers:
+      - url: https://api.customdomain.ai
+        description: Hosted control-plane (the origin, not /v1)
+    post:
+      operationId: registerAgentClient
+      summary: Register an agent as an OAuth client
+      tags: [Agents]
+      description: >-
+        Dynamic Client Registration (RFC 7591). An AI assistant registers itself
+        as a public client (PKCE, no secret) and can do nothing until a person
+        approves a grant for it in the console. Registration is open on purpose,
+        so it is bounded: a per-IP hourly budget on top of the global limit, and a
+        client that nobody ever approves into a workspace is deleted after a
+        while. Other client metadata (`client_uri`, `logo_uri`, `scope`,
+        `contacts`, ...) is accepted and ignored. A `client_name` that claims a
+        well known brand (Claude, ChatGPT, ...) is refused unless every redirect
+        host belongs to that brand or is a loopback address. Errors use the RFC
+        7591 envelope.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentClientRegistration' }
+      responses:
+        '201':
+          description: The registered client
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentClient' }
+        '400':
+          description: >-
+            `invalid_client_metadata` (a bad or impersonating name, grant or
+            response types without the authorization code grant) or
+            `invalid_redirect_uri` (none, more than 10, a fragment, user
+            information, or http on a host that is not loopback).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /oauth/agent/authorize:
+    servers:
+      - url: https://api.customdomain.ai
+        description: Hosted control-plane (the origin, not /v1)
+    get:
+      operationId: authorizeAgent
+      summary: Start an agent authorization (code with PKCE)
+      tags: [Agents]
+      description: >-
+        The authorization endpoint. A browser is sent here by an agent; the
+        request is validated (the client, the exact redirect URI, S256 PKCE, the
+        scopes, the resource) and the browser is redirected to the console, where
+        a signed in owner or admin sees what the agent asks for and where its code
+        would go, and approves or denies. The authorization code goes to the
+        redirect URI and is exchanged at `POST /oauth/agent/token`. A request with
+        an unregistered or mismatched redirect URI is refused without redirecting.
+        `client_id` is a registered client or an https URL of a Client ID Metadata
+        Document.
+      security: []
+      parameters:
+        - { name: client_id, in: query, required: true, schema: { type: string } }
+        - { name: redirect_uri, in: query, required: true, schema: { type: string, format: uri } }
+        - { name: response_type, in: query, required: true, schema: { type: string, enum: [code] } }
+        - { name: code_challenge, in: query, required: true, description: 'BASE64URL(SHA-256(code_verifier)).', schema: { type: string } }
+        - { name: code_challenge_method, in: query, required: true, schema: { type: string, enum: [S256] } }
+        - name: scope
+          in: query
+          required: true
+          description: Space separated scopes from `domains:read`, `domains:connect`, `domains:disconnect` and `domains:purchase`. The person may approve fewer.
+          schema: { type: string, example: domains:read domains:connect }
+        - { name: state, in: query, required: false, schema: { type: string } }
+        - name: resource
+          in: query
+          required: false
+          description: >-
+            RFC 8707. The resource the token is for: the MCP endpoint
+            (`https://mcp.customdomain.ai/mcp`, the default) or this API's origin.
+            Anything else is `invalid_target`. The access token carries it as `aud`.
+          schema: { type: string, format: uri }
+      responses:
+        '302':
+          description: Redirect to the console consent screen
+          headers:
+            Location: { schema: { type: string, format: uri } }
+        '400': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /oauth/agent/token:
+    servers:
+      - url: https://api.customdomain.ai
+        description: Hosted control-plane (the origin, not /v1)
+    post:
+      operationId: exchangeAgentToken
+      summary: Exchange an authorization code or a refresh token for an access token
+      tags: [Agents]
+      description: >-
+        `grant_type=authorization_code` (with the PKCE `code_verifier`) or
+        `grant_type=refresh_token`. The access token is an ES256 JWT that lives 15
+        minutes and is verified locally against `/.well-known/jwks.json`; it
+        carries the tenant, the application the grant is bound to, the grant, the
+        scopes and `aud`. A refresh token rotates: every refresh returns a new one
+        and retires the old, and presenting a retired one again revokes the whole
+        grant (a client racing itself within ten seconds is only refused). Errors
+        use the RFC 6749 envelope.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/AgentTokenRequest' }
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentTokenRequest' }
+      responses:
+        '200':
+          description: The tokens
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentTokenResponse' }
+        '400':
+          description: >-
+            `invalid_request`, `invalid_grant` (a code or refresh token that is
+            invalid, expired, spent or revoked, a failed PKCE check, a grant that
+            is no longer active), `invalid_target` (a resource that is not the
+            one approved) or `unsupported_grant_type`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+        '503':
+          description: Agent access is not enabled on this deployment (`temporarily_unavailable`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+  /oauth/agent/revoke:
+    servers:
+      - url: https://api.customdomain.ai
+        description: Hosted control-plane (the origin, not /v1)
+    post:
+      operationId: revokeAgentToken
+      summary: Revoke an agent's access with its refresh token
+      tags: [Agents]
+      description: >-
+        RFC 7009. Revokes the grant behind a refresh token, so the agent's access
+        ends within one access token lifetime (15 minutes at most). It answers
+        `200` for a token it does not know, so it cannot be used to find out which
+        tokens exist. The workspace's owners and admins are told once.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, description: The refresh token. }
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, description: The refresh token. }
+      responses:
+        '200': { description: "Revoked, or the token was not known" }
+        '400':
+          description: '`invalid_request`: no token.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+        '503':
+          description: Agent access is not enabled on this deployment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+  /agent/consent-request/{id}:
+    get:
+      operationId: getAgentConsentRequest
+      summary: Read a pending agent authorization, for the consent screen
+      tags: [Agents]
+      description: >-
+        What the console shows a signed in owner before they approve an agent: the
+        client's name, where its authorization code would go (`redirect_host`),
+        whether that destination is a known assistant's own (`verified`,
+        `verified_as`) or the person's own computer (`local`), whether the name
+        imitates a brand it does not belong to (`imitates`; such a request cannot
+        be approved), how the client identified itself, and the scopes asked for.
+        The unguessable request id is the capability: it needs no other
+        credential and reveals only this.
+      security: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The pending request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentConsentRequest' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: cancelAgentConsentRequest
+      summary: Deny a pending agent authorization
+      tags: [Agents]
+      description: >-
+        Consumes the request so it can no longer be approved, from this tab or any
+        other. Idempotent, and like the read it needs no credential: the request id
+        is the capability, and cancelling is all it allows.
+      security: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Denied }
+        '503': { $ref: '#/components/responses/Error' }
+  /agent/consent:
+    post:
+      operationId: approveAgent
+      summary: Approve an agent and mint its authorization code
+      tags: [Agents]
+      description: >-
+        Called by the console's server after a person signs in and approves, with
+        that member's tenant API key (a widget token is refused, because it lives
+        in browsers). The key's member needs `agent:manage` (owners and admins),
+        and `member_id` must belong to the workspace. The approved scopes are a
+        subset of what was requested. The grant is bound to one `application_id`
+        of the workspace. `domains:purchase` also needs a `spend_cap_cents` and a
+        saved card. Persistent access is the default; `persist: false` ends it
+        after `expires_days`. The authorization code is single use and is
+        exchanged at `POST /oauth/agent/token`.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentConsentApproval' }
+      responses:
+        '200':
+          description: The redirect for the agent, with its code
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentConsentResult' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /agent/grants:
+    get:
+      operationId: listAgentGrants
+      summary: List the workspace's agent grants
+      tags: [Agents]
+      description: >-
+        Every grant of the workspace with the current month's spend, for the
+        console's manage screen. Needs a tenant API key held by an owner or admin
+        (`agent:manage`). Refresh tokens are never returned.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: The grants
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentGrantList' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /agent/grants/{id}:
+    delete:
+      operationId: revokeAgentGrant
+      summary: Revoke an agent's access
+      tags: [Agents]
+      description: >-
+        Ends the grant and kills its refresh tokens; the agent's access token stops
+        working within its 15 minute life. A grant of another workspace answers
+        `404`. The workspace's owners and admins are told once (a repeat is quiet),
+        and the audit log records `agent.revoked`. Needs `agent:manage`.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204': { description: Revoked }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
@@ -4680,6 +5230,27 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Short-lived widget JWT minted server-side via POST /v1/tokens. Scoped to one application (and optionally one domain).
+    agentToken:
+      type: oauth2
+      description: >-
+        A delegated agent access token: an ES256 JWT that lives 15 minutes, sent
+        as a bearer token. A person approves an agent in the console and the
+        agent exchanges its authorization code (with PKCE) at the token
+        endpoint. The token carries the workspace, the one application the grant
+        is bound to, the grant, the approved scopes and its audience, and is
+        verified against `/.well-known/jwks.json`. A route that accepts it lists
+        the scope it needs; a token without the scope is refused with `403`, and
+        a connection or order of another application answers `404`.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://api.customdomain.ai/oauth/agent/authorize
+          tokenUrl: https://api.customdomain.ai/oauth/agent/token
+          refreshUrl: https://api.customdomain.ai/oauth/agent/token
+          scopes:
+            'domains:read': Look at availability, connections, records, certificates, diagnoses, orders and the billing standing.
+            'domains:connect': Connect a domain, recheck it, reapply its records and start a one click setup.
+            'domains:disconnect': Remove a connected domain. The call must name the domain.
+            'domains:purchase': Buy a domain, up to the grant's monthly spend cap.
   parameters:
     Id:
       name: id
@@ -4702,6 +5273,30 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    BillingRequired:
+      description: >-
+        Refused because of the workspace's billing. `billing_required`: the
+        workspace has no active or trialing subscription (a new workspace that
+        has not started its trial, a Free workspace past its grace period, a
+        comp that ended, or a subscription Stripe marked unpaid or canceled). It
+        stops a new connection, the start of a domain purchase and the first live
+        credential (an application, an API key or a rotated client secret).
+        Domains already connected keep working, and an owner or admin sets up
+        billing in the console; `details` says where. `quota_exceeded`
+        (connections only): a plan that is refused past its quota (Starter, and
+        the retired Free) is at it and the deployment enforces quotas.
+        `connections_unavailable`: what a connect-scoped widget token, the
+        tenant's own end user, gets instead of either, with neutral wording, so
+        the tenant's customers are never told about the tenant's billing. A
+        delegated agent token gets the full wording, and `GET /billing/standing`
+        tells it beforehand whether a new connection would be refused.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: billing_required
+            title: An active subscription is needed to connect new domains.
+            details: "This workspace has not started its subscription yet. Domains that are already connected keep working. An owner or admin can set up billing at https://app.customdomain.ai/app/billing."
     AdminBillingTenant:
       description: The workspace after the action, with its invoices and audit trail.
       content:
@@ -4773,6 +5368,29 @@ components:
         current_period_end: { type: [string, 'null'], format: date-time }
         cancel_at_period_end: { type: boolean }
         payment_failed: { type: boolean }
+    BillingStanding:
+      type: object
+      required: [configured, restricted, attention, billing_url]
+      properties:
+        configured: { type: boolean, description: Whether a workspace can subscribe on this deployment. }
+        restricted: { type: boolean, description: New domain connections are refused right now. }
+        attention: { type: boolean, description: 'Billing needs an owner or admin: a trial or grace to act on, a failed payment, or a block.' }
+        code: { type: string, description: 'Set when `restricted`: `billing_required`.' }
+        title: { type: string, description: 'Set when `restricted`: what the refusal says.' }
+        details: { type: string, description: 'Set when `restricted`: why, and where an owner or admin fixes it.' }
+        billing_url: { type: string, description: Where an owner or admin sets up billing. }
+        plan:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            hard_cap: { type: boolean, description: Whether the plan refuses new connections at its quota (when the deployment enforces quotas). }
+        usage:
+          type: object
+          properties:
+            used: { type: integer, description: Domains connected this period. }
+            quota: { type: integer, description: What the plan includes per month. }
+            period: { type: string, description: 'The calendar month, `YYYY-MM` (UTC).' }
     BillingStatus:
       type: object
       properties:
@@ -6423,12 +7041,16 @@ components:
         message: { type: string }
     CheckoutSession:
       type: object
-      description: A Stripe Checkout session for the embedded payment element.
+      description: A Stripe Checkout session for the embedded or elements payment form.
       required: [id]
       properties:
         id: { type: string, examples: [cs_test_123] }
-        url: { type: string, format: uri, description: hosted checkout URL (unused for embedded sessions). }
-        client_secret: { type: string, description: mount Stripe Embedded Checkout with this. }
+        url: { type: string, format: uri, description: hosted checkout URL (unused for embedded and elements sessions). }
+        client_secret: { type: string, description: mount Stripe Embedded Checkout or the elements checkout with this. }
+        ui_mode:
+          type: string
+          enum: [embedded, elements]
+          description: How the session was really created. An `elements` request answers `embedded` when Stripe could not create an Elements session. A domain payment has no redirect flow, so it is never `hosted`.
     SellOrderView:
       type: object
       description: The stable, documented projection of a domain-purchase order.
@@ -6555,3 +7177,185 @@ components:
           description: Plain-language notes for the user (a partial delegation, records a zone file import skipped, records replaced).
         checked_at: { type: string, format: date-time, description: When the delegation was last checked. }
         activated_at: { type: [string, 'null'], format: date-time }
+    AgentScope:
+      type: string
+      enum: ['domains:read', 'domains:connect', 'domains:disconnect', 'domains:purchase']
+      description: >-
+        What an agent grant may do. `domains:read` looks: availability,
+        connections, records, certificates, diagnoses, orders and the billing
+        standing. `domains:connect` changes: connect a domain, recheck it,
+        reapply its records, start a one click setup. `domains:disconnect`
+        removes a connected domain, and the call must name the domain.
+        `domains:purchase` spends, up to the grant's monthly cap.
+    AgentClientRegistration:
+      type: object
+      required: [client_name, redirect_uris]
+      description: >-
+        RFC 7591 client metadata. Anything else a client sends (`client_uri`,
+        `logo_uri`, `scope`, `contacts` and so on) is accepted and ignored.
+      properties:
+        client_name:
+          type: string
+          maxLength: 100
+          description: >-
+            Shown to the person who approves the agent. At most 100 characters,
+            with no control or invisible characters and no Latin letters mixed
+            with look-alike letters from another alphabet. A name that claims a
+            well known brand is refused unless every redirect host belongs to
+            that brand or is a loopback address.
+        redirect_uris:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string, format: uri, maxLength: 2000 }
+          description: >-
+            Where the authorization code may be sent. `https`, or `http` on a
+            loopback host (`localhost`, `127.0.0.1`, `::1`) for a program on the
+            person's own computer. No fragment and no user information. A
+            redirect URI is matched exactly later, except for the port of a
+            loopback one.
+        grant_types:
+          type: array
+          items: { type: string }
+          description: >-
+            Optional. When sent it must include `authorization_code`; other
+            values are ignored. The client is registered for `authorization_code`
+            and `refresh_token`.
+        response_types:
+          type: array
+          items: { type: string }
+          description: Optional. When sent it must include `code`.
+        token_endpoint_auth_method:
+          type: string
+          description: Ignored. Every agent client is a public client (`none`) and PKCE protects its code.
+    AgentClient:
+      type: object
+      required: [client_id, client_id_issued_at, client_name, redirect_uris, token_endpoint_auth_method, grant_types, response_types]
+      properties:
+        client_id: { type: string, description: "Starts with `agc_`." }
+        client_id_issued_at: { type: integer, format: int64, description: Unix time of the registration. }
+        client_name: { type: string }
+        redirect_uris: { type: array, items: { type: string }, description: "The registered URIs, normalized." }
+        token_endpoint_auth_method: { type: string, enum: [none] }
+        grant_types: { type: array, items: { type: string }, examples: [[authorization_code, refresh_token]] }
+        response_types: { type: array, items: { type: string }, examples: [[code]] }
+    OAuthError:
+      type: object
+      required: [error]
+      description: >-
+        The RFC 6749 and RFC 7591 error envelope the token, revoke and register
+        endpoints answer with (the `{code, title, details}` envelope of the rest
+        of the API is not used there).
+      properties:
+        error:
+          type: string
+          description: >-
+            `invalid_request`, `invalid_grant`, `invalid_target`,
+            `unsupported_grant_type`, `invalid_client_metadata`,
+            `invalid_redirect_uri`, `server_error` or `temporarily_unavailable`.
+        error_description: { type: string }
+    AgentTokenRequest:
+      type: object
+      required: [grant_type, client_id]
+      properties:
+        grant_type: { type: string, enum: [authorization_code, refresh_token] }
+        client_id: { type: string }
+        code: { type: string, description: "With `authorization_code`: the single use code from the redirect. It lives 5 minutes." }
+        code_verifier: { type: string, description: "With `authorization_code`: the PKCE verifier for the `code_challenge` sent to authorize." }
+        redirect_uri: { type: string, format: uri, description: "With `authorization_code`: exactly the `redirect_uri` sent to authorize." }
+        refresh_token: { type: string, description: "With `refresh_token`: the latest refresh token. It is good for one exchange." }
+        resource:
+          description: >-
+            RFC 8707. The resource the token is for. With `authorization_code`
+            it must be the one the person approved; with `refresh_token` it
+            picks the audience of the new access token (the MCP endpoint when
+            omitted). In a form body repeat the field; in JSON send a string or
+            a list.
+          oneOf:
+            - { type: string, format: uri }
+            - { type: array, items: { type: string, format: uri } }
+    AgentTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string, description: "An ES256 JWT. Verify it against `/.well-known/jwks.json`." }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer, description: Seconds the access token lives (900). }
+        refresh_token: { type: string, description: A new refresh token. The one just used no longer works. }
+        scope: { type: string, description: "The scopes the grant carries, separated by spaces." }
+    AgentConsentRequest:
+      type: object
+      required: [client_id, client_name, redirect_uri, scopes, redirect_host, verified, local, registration]
+      properties:
+        client_id: { type: string }
+        client_name: { type: string }
+        redirect_uri: { type: string, description: Where the authorization code goes if the person approves. }
+        scopes: { type: array, items: { $ref: '#/components/schemas/AgentScope' }, description: What the agent asked for. }
+        state: { type: string, description: "The agent's own state value, echoed back to it." }
+        redirect_host: { type: string, description: "The host of `redirect_uri`. The client cannot choose it freely the way it chooses its name, so show it." }
+        verified: { type: boolean, description: "True when `redirect_host` is a known assistant's own callback host or a loopback address, and the name imitates no brand." }
+        verified_as: { type: string, description: The known assistant `redirect_host` belongs to. }
+        local: { type: boolean, description: True when the code goes to a program on the approver's own computer (a loopback redirect). }
+        imitates: { type: string, description: The brand the name claims without owning the redirect host. Such a request cannot be approved. }
+        registration:
+          type: string
+          enum: [dynamic, metadata_document]
+          description: How the client identified itself, by RFC 7591 registration or by a Client ID Metadata Document.
+        registered_at: { type: string, format: date-time, description: When a dynamically registered client registered. }
+        client_id_host: { type: string, description: The host that publishes a metadata document client's document. }
+    AgentConsentApproval:
+      type: object
+      required: [request, member_id, application_id, scopes]
+      description: The body is decoded with unknown fields rejected.
+      properties:
+        request: { type: string, description: "The consent request id the browser arrived with (`aqr_...`)." }
+        member_id: { type: string, description: The member who approves. It must belong to the workspace. }
+        application_id: { type: string, description: The one application of the workspace the agent will act within. }
+        scopes:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/AgentScope' }
+          description: What is approved, a subset of what the agent asked for.
+        can_purchase: { type: boolean, deprecated: true, description: "Ignored. Purchase is allowed exactly when `domains:purchase` is among the scopes." }
+        spend_cap_cents:
+          type: integer
+          minimum: 0
+          description: >-
+            The monthly spend cap in US cents. Required, and above 0, with
+            `domains:purchase`, which also needs a saved card (`409` without
+            one).
+        persist: { type: boolean, default: true, description: "True (the default) keeps the access until it is revoked. False ends it after `expires_days`." }
+        expires_days: { type: integer, minimum: 0, default: 30, description: "With `persist: false`, days until the grant expires." }
+    AgentConsentResult:
+      type: object
+      required: [redirect_uri, code, grant_id]
+      properties:
+        redirect_uri: { type: string, description: "Where to send the person: the agent's redirect URI with `code` and `state` added." }
+        code: { type: string, description: The single use authorization code. It lives 5 minutes. }
+        state: { type: string }
+        grant_id: { type: string }
+    AgentGrant:
+      type: object
+      required: [id, tenant_id, agent_client_id, agent_name, scopes, can_purchase, spend_cap_cents, created_at, spend_this_period_cents, period]
+      properties:
+        id: { type: string, description: "Starts with `grt_`." }
+        tenant_id: { type: string }
+        agent_client_id: { type: string }
+        application_id: { type: string, description: The application the grant is bound to. }
+        authorized_by: { type: string, description: The member who approved it. }
+        agent_name: { type: string }
+        scopes: { type: array, items: { $ref: '#/components/schemas/AgentScope' } }
+        can_purchase: { type: boolean, description: True when the grant carries `domains:purchase`. }
+        spend_cap_cents: { type: integer, description: The monthly spend cap in US cents (0 without purchase access). }
+        expires_at: { type: string, format: date-time, description: Absent for persistent access. }
+        created_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, description: Present once the access was ended. }
+        spend_this_period_cents: { type: integer, description: Spent against the cap this month. }
+        period: { type: string, description: 'The month `spend_this_period_cents` counts, `YYYY-MM` (UTC).' }
+    AgentGrantList:
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          items: { $ref: '#/components/schemas/AgentGrant' }
