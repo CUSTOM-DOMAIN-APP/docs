@@ -15,6 +15,91 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Sign up asks you to agree to the Terms.** The sign up page has a box for the Terms
+  of Service and Privacy Policy, and none of the ways of creating an account (email,
+  Google, GitHub) goes on until it is ticked. If you already have an account you are
+  asked once, the next time you open the console, and again only when the Terms change.
+  We keep the version you agreed to and when, and nothing else with it. API keys and the
+  widget are not affected.
+- **The card moves from sign-up to the moment you need it.** Signing up no longer
+  asks for a card at every sign-in. The setup flow is offered once, skipping it
+  sticks, and you can look around, check domains and design your widget without
+  one. A card (which starts your 14 day free trial, with nothing charged until
+  it ends) is asked for when you create an API key, create an application or
+  connect your first domain, with a link that brings you back to where you were.
+  Keys and applications you already have keep working.
+- **Checkout on the page, in the console's own look.** Starting a free trial,
+  subscribing to a plan, buying a domain and saving a card for an agent no longer
+  open a pop-up with Stripe's own page in it. The checkout takes the place of
+  what you were looking at (the plan list, the search results, the permissions
+  under the agent's name), with a way back. The order, the promotion code, the
+  total and the buttons are part of the console, in light and dark, on a phone
+  and on a computer; a trial says when the first charge happens, and a domain
+  says that your card is held, not charged, until it is yours. Only the card
+  fields are Stripe's, in a frame, so card details still never reach
+  CustomDomain™. If Stripe cannot offer this checkout, the console shows
+  Stripe's own, on the page, in its place.
+- **If checkout cannot load, there is a way on.** When something stops the
+  payment form from loading (a blocker, a network that does not reach Stripe, a
+  page left open across an update), the page now says so and Start again opens
+  Stripe's own checkout on the page, instead of a dead end. We are told when it
+  happens, with Stripe's error code and never what you typed. A promotion code
+  cannot be changed while a payment is going through, and Deny stays available
+  while you add a card for an agent. If you run your own deployment: the control
+  plane should go live before the console, and an older one is asked again
+  without the new field so checkout keeps working while you update it; setting
+  `CHECKOUT_UI_MODE` to `embedded` switches the console back to Stripe's own
+  checkout with a container restart and no rebuild.
+- **The welcome says what email and agents mean here, and offers names you can
+  buy.** Setting up email means adding the sending and receiving records (MX, SPF,
+  DKIM and DMARC) for the provider you choose; we do not host mailboxes. Running an
+  AI agent means giving it access over MCP or an API key so it can search for,
+  buy and connect domains. When the domain you type is not registered, the welcome
+  lists names close to it that you can buy, with the first year price, and the
+  search opens with the name already filled in. If you manage domains for clients,
+  the welcome asks whose domain it is and words the next steps to match.
+- **Your logo sits properly in the connect widget.** With a logo set, the widget
+  no longer stacks it over the stock globe tile: the logo stands alone in the
+  header, a little larger (32 pixels tall by default, still adjustable in the
+  widget designer) and with more room above it, on every screen. A logo you
+  supply for the domain icon slot still shows.
+- **Notifications, in the console and on your phone.** A bell at the top of the
+  console holds your latest notifications and counts the ones you have not
+  opened: a domain going live, a domain that needs attention, DNS records that
+  changed or were put back, certificate problems, billing, purchases, agents
+  and DNS providers that need reconnecting. They go to owners and admins. Turn
+  on push under **Settings → Notifications** and the same notifications arrive
+  on your phone or computer even with the console closed. A domain waiting for
+  DNS offers **Get a ping when it is live**, so you can close the tab. You
+  choose, for each kind, whether it reaches the bell, push, both or neither;
+  the routine ones (agent actions, a customer using the widget, a teammate
+  joining) are in the bell only until you want more. Your browser asks before
+  anything is turned on, each device is listed and removable, and signing out
+  takes a browser off the list. The emails you already get are unchanged. See
+  [Notifications](/docs/guides/notifications).
+- **A welcome that starts from what you want.** The first thing the console asks
+  is what you want to use your domain for: a website, email, an AI agent, a white
+  label, subdomains, letting your customers connect their own domains, or managing
+  domains. Each answer gets only the steps it needs, with what we could work out
+  (your company, your website, your logo and brand color) filled in for you to
+  confirm. You can see your brand on the real widget as you set it, connect your
+  domain with the real connect flow, and finish on what you now have instead of a
+  settings page. Your place is saved, so you can leave and come back, and you can
+  change what you are doing any time from the checklist.
+- **Design the widget, one look for each application.** **Widget → Design**
+  now shows the widget itself, running on example data, instead of a sketch of
+  it. Step through every screen (enter the domain, detect the provider, sign in,
+  apply, connected, and the rest), look at light and dark, a computer and a
+  phone, and see each change in the open widget as you make it. The header is
+  balanced around your logo, a logo can have its own version for dark mode, one
+  brand color brings its hover, text and dark mode shades, and one corner radius
+  reaches every corner. New options: the name in the first heading, the logo's
+  size, background and text colors, a font, the pop-up's width and shadow, the
+  close button, the progress steps, and which options the widget offers (set up
+  manually, an AI assistant, email the instructions, hosted DNS). Each
+  application keeps its own look, with a workspace default behind it. Nothing in
+  the preview is sent anywhere. In the SDK, `whiteLabel` takes `logoDark` and
+  `logoPlate`.
 - **Removing a domain, certificates, monitoring and connected accounts.**
   Removing a domain now asks what to do with the DNS records CustomDomain™
   added: remove them (putting back what each replaced) or keep them. When the
@@ -61,6 +146,14 @@ never change meaning or disappear without a new major version. See the
   domains point, with rename and delete. `DELETE /v1/applications/{id}` is
   new; it is refused for the default application and while an application
   still has domains.
+- **Viewers stay read only.** A viewer can no longer mint widget tokens, buy a
+  domain, connect a provider account's other domains or list the domains a
+  provider key manages, in any application: those need a member, admin or owner,
+  and a viewer who tries gets a 403. The **Applications** pages tell viewers the
+  same and hide what they cannot use. On the **API & SDK** page, the key your
+  console itself uses is labeled "This console" and has no Revoke button,
+  because revoking it would cut the console off from your workspace; a
+  teammate's key is marked "Team member" and warns before it is revoked.
 - **The 100 largest registrars, and the platforms that sell domains.** More
   than 150 DNS hosts, registrars and domain platforms are now known by name,
   among them all of the 100 largest registrars, and the widget has step by
@@ -74,8 +167,9 @@ never change meaning or disappear without a new major version. See the
   zone. See
   [DNS providers](/docs/dns/providers#domains-bought-through-a-site-builder-or-shop).
 - **Records written for you verify in seconds.** A write through a sign-in,
-  one-click setup or an API key is checked at once, a new connection is
-  checked every five seconds, and when public DNS still has an old or missing
+  one-click setup or an API key is checked within five seconds, a new
+  connection is checked every five seconds for its first five minutes, and
+  when public DNS still has an old or missing
   answer we ask the zone's own nameservers (every one that answers must serve
   the record). If the wait passes a minute, the widget now says it is unusual
   and that closing the window is safe, because the domain connects on its
@@ -106,9 +200,11 @@ never change meaning or disappear without a new major version. See the
   Domain run MCP servers with their own sign-in and DNS tools, and the
   control plane can now sign in through them (`flow: mcp_oauth` on
   `oauth:start`). None is switched on: each waits for the provider to approve
-  CustomDomain™ and for a live test. Until then Hostinger, Namecheap and
-  Spaceship connect with an API key, and Unstoppable Domains and XServer
-  Domain by adding the records by hand.
+  CustomDomain™ and for a live test. Until then Hostinger and Spaceship
+  connect with an API key, Namecheap with an API key only for accounts it has
+  opened its API to (20 or more domains, a $50 balance or $50 spent in two
+  years, with our server's address on the account's whitelist), and
+  Unstoppable Domains and XServer Domain by adding the records by hand.
 - **More ways to connect without pasting a key.** Vercel connects through the
   CustomDomain™ integration install, Porkbun through "Approve access at
   Porkbun", and Akamai Cloud (Linode) and DigitalOcean through sign-in.
