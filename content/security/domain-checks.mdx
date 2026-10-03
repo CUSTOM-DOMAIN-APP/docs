@@ -1,0 +1,51 @@
+---
+title: CustomDomainBot
+description: What CustomDomainBot is, what it requests from a domain, what we keep and how to ask us to stop.
+---
+
+CustomDomainBot is how CustomDomain™ checks whether a domain that someone entered
+responds on the public internet. If you found `CustomDomainBot/1.0` in your server
+logs or your DNS query logs, this page says what it did and what we keep.
+
+## Why it visits
+
+When a person enters your domain in CustomDomain™ (to search for it, check it, price
+it, connect it or buy it), or signs up with an address at your company's domain, we
+look at the domain's public DNS records and make one ordinary request for its home
+page. We do it to help connect the domain, and to tell a live domain from a parked,
+redirecting or dead one. We have no interest in what your site says.
+
+## What it requests
+
+- **Public DNS.** The domain's addresses, nameservers, mail and certificate
+  authorization records, and its SPF and DMARC records. We read no other TXT record.
+  The questions go to public resolvers, never to servers your DNS named.
+- **One web request.** `GET /` over HTTPS, or over HTTP when HTTPS cannot connect,
+  shake hands or answer in time. It follows up to five redirects and then stops. It
+  never asks for another path, never submits a form, never sends cookies or
+  credentials and never sends a referrer.
+- **Only ordinary ports.** It connects to ports 80 and 443 on public addresses, and
+  refuses anything private, internal or reserved, including on a redirect.
+- **A plain introduction.** `User-Agent: CustomDomainBot/1.0 (+https://docs.customdomain.ai/docs/security/domain-checks)`.
+- **Rarely.** At most once a day for a domain, however many people entered it. A
+  domain that does not answer is tried again after a longer and longer wait, up to a
+  day.
+
+## What we keep
+
+The DNS records we read, whether the domain answered and with what status, where it
+redirects (without query strings), the type and size of the page, whether its
+certificate was valid, and the page title. We read at most the first 64 KiB of an
+HTML page and keep nothing from it but the title. We keep no cookies, no other
+headers and no page content, and the result is a fact about the domain, not about any
+person or account.
+
+## Ask us to stop
+
+Write to [privacy@customdomain.ai](mailto:privacy@customdomain.ai) with the domain.
+We stop checking it and delete what we hold on it. You can also block CustomDomainBot
+at your server or firewall: it identifies itself in the `User-Agent` header, and
+nothing breaks if it is refused.
+
+The [Privacy Policy](https://app.customdomain.ai/privacy) describes domain checks in
+section 3.3.

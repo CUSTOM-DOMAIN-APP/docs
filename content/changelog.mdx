@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **The Privacy Policy now describes domain checks.** When you enter a domain, or sign up
+  with an address at your company's own domain, we check from our own servers whether that
+  domain responds on the public internet, to help you connect it: we read its public DNS
+  records and make one ordinary request for its home page, as CustomDomainBot. We keep what the
+  domain publicly answers (its DNS records, the status, where it redirects, the page title and
+  the page size), never the page itself, cookies or credentials, and check each domain at most
+  once a day. [What CustomDomainBot does](/docs/security/domain-checks), and how to ask us to
+  stop.
 - **Your first domain is free.** A new workspace connects its first domain without adding a card,
   so you can see it go live before deciding anything. Once it is live, the console offers the
   14 day free trial once (skip it and it stays skipped), and a card is needed to connect more
@@ -33,7 +41,7 @@ never change meaning or disappear without a new major version. See the
   server or through an agent), we record the domain that was typed, what happened and the IP
   address and country of the request, and we keep the IP address of each sign in and of each
   account or workspace change. We use it for security, abuse prevention and support, and each
-  address is removed after 180 days. Nothing is sent to our analytics tool.
+  address is kept for as long as your account exists. Nothing is sent to our analytics tool.
 - **Session recording, only with your consent.** If you allow analytics, we now record how you use
   the console (clicks, scrolling and page views, never what you type) so we can improve it. Fields
   you type into show as asterisks, keys, tokens and signing secrets are blanked, and the sign in,
