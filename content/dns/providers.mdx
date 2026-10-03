@@ -119,19 +119,24 @@ the credential is created, and lists the steps; see
 | DigitalOcean | Personal access token with the domain scopes | Or sign in with DigitalOcean. |
 | DNSimple | Account API access token | Or sign in with DNSimple. |
 | DNS Made Easy | API key and secret key | |
+| Domeneshop | API token and its secret | The domain must use Domeneshop's DNS service (ns1 to ns3.hyp.net). |
 | DreamHost | API key with the `dns-*` functions | |
 | Dynadot | Production API key | Whitelist `34.192.32.132` in Dynadot's API settings. |
 | easyDNS | REST API token and key | |
 | Epik | API signature | Allow `34.192.32.132` in Epik's API settings. |
 | Gandi | Personal access token with "Manage domain name technical configurations" | |
+| Gcore | Permanent API token | The token can change every zone in your account. The domain must use Gcore's nameservers. |
 | GleSYS | API key with Domain access, and the project ID | |
 | Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. Sign in with Google Cloud is built but not switched on yet. |
 | Hetzner | Hetzner Console project API token (Read & Write) | Tokens from the old DNS Console no longer work. |
+| hosting.de | API key with Display and Edit under DNS Service, Zones | The domain's DNS zone must be at hosting.de. |
 | Hostinger | hPanel API token | |
 | Infomaniak | API token with `dns:read` and `dns:write` | The zone must be at Infomaniak. The API allows 60 requests a minute. |
 | Internet.bs | API key and API password | Allow `34.192.32.132` under API allowed IP address(es). |
+| INWX | Username and password of a sub account with only the DNS role | No Mobile TAN. Used once and never stored. |
 | IONOS | API key (public prefix and secret) | |
 | Linode | Personal access token with Domains read/write | Or sign in with Linode. |
+| Loopia | API user and password | Needs LoopiaDNS or web hosting. Used once and never stored. |
 | LuaDNS | API key and account email | Turn on API access first. |
 | Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
 | NameBright | API application (account, application name, secret) | NameBright grants API access on request; whitelist `34.192.32.132` on the application. |
@@ -143,8 +148,10 @@ the credential is created, and lists the steps; see
 | Openprovider | API token from `/v1beta/auth/login` | API access must be enabled for the user; tokens last 48 hours, so they are used once. |
 | OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
 | Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun. |
+| Scaleway | Secret key of an IAM API key | Needs the permission set `DomainsDNSFullAccess` on the Project that holds the domain. |
 | Simply.com | API key and account number | |
 | Spaceship | API key and secret with the DNS record scopes | |
+| Subreg.cz | Subreg login and password | Used once and never stored. Allow `34.192.32.132` if Subreg refuses the address. |
 | Tencent Cloud DNSPod | Tencent Cloud API key (SecretId and SecretKey), ideally from a CAM sub-user allowed only the DNSPod record actions | Choose the China or International site the account is on. Records are written on the Default line; other lines are left alone. |
 | TransIP | Access token | Switch off the token's whitelisted IP option, or whitelist `34.192.32.132`. |
 | united-domains | DNS API key | Needs the DNS API add-on. |
@@ -188,11 +195,14 @@ yourself:
 | `constellix`, `dnsmadeeasy`, `spaceship` | `apiKey:secret` |
 | `cpanel` | `user:token:host` |
 | `dnspod` | `secretId:secretKey`, prefixed with `intl:` for a Tencent Cloud International account |
+| `domeneshop` | `token:secret` (the secret may contain colons) |
 | `easydns` | `token:key` |
 | `gcpdns` | `projectId:accessToken` |
 | `glesys` | `projectId:apiKey` |
 | `internetbs` | `apiKey:apiPassword` |
+| `inwx` | `username:password` (the password may contain colons) |
 | `ionos`, `uniteddomains` | `publicPrefix.secret` (one key, prefix and secret joined by a dot) |
+| `loopia` | `apiUser:apiPassword` (the API user ends in `@loopiaapi`; the password may contain colons) |
 | `luadns` | `email:apiKey` |
 | `namebright` | `account:appName:secret` |
 | `namecom` | `username:token` |
@@ -200,6 +210,7 @@ yourself:
 | `ovh` | `appKey:appSecret:consumerKey`, prefixed with `ca:` or `us:` outside Europe |
 | `porkbun` | `apiKey:secretApiKey` |
 | `simply` | `accountNumber:apiKey` |
+| `subreg` | `login:password` (an admin account uses `ADMIN#LOGIN`; the password may contain colons) |
 | `wix` | `apiKey:accountId` |
 | every other provider | the single token or key |
 
