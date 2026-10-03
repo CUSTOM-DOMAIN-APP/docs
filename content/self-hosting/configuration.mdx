@@ -81,12 +81,13 @@ The control plane records the IP address and country of the request behind each
 domain lookup (a search, check, price, connect or purchase, from the console, the
 widget, the API, the MCP server or an agent), each connect widget funnel step and
 each audit event, and the console records the address of each sign in. They are for
-security, abuse prevention and support, and nothing sends them to a third party. After
-`IP_RETENTION_DAYS` days (default `180`; a value that is not a whole number of 1 or
-more is `180`) the address is set to NULL and the row stays, with its country. The
-control plane's hourly lifecycle sweep does this for its tables and the console's daily
-upkeep for its own; set the same value on both (the production compose file forwards it
-to both).
+security, abuse prevention and support, and nothing sends them to a third party. They
+are kept without an end date (`IP_RETENTION_DAYS` defaults to `0`). Set a whole number of
+days from 1 up and, after that many days, the address is set to NULL and the row stays,
+with its country (anything else is `0`). The control plane's hourly lifecycle sweep does
+this for its tables and the console's daily upkeep for its own; set the same value on
+both (the production compose file forwards it to both). Sign in events are kept without
+an end date too unless `SIGN_IN_RETENTION_DAYS` sets a window on the console.
 
 Cloudflare's headers are believed only when the request really came through Cloudflare.
 The console's server passes the visitor to the control plane in a signed header, keyed by
@@ -94,6 +95,28 @@ The console's server passes the visitor to the control plane in a signed header,
 plane records the console's own address for console traffic. A deployment that is not
 behind Cloudflare records the address of the connection as its proxy saw it, with no
 country.
+
+### Domain intel (`DOMAIN_INTEL_ENABLED`, `DOMAIN_INTEL_HTTP`)
+
+The control plane can collect public facts about the domains people enter (a search,
+check, price, connect or purchase, and the company domain of a sign up address) and say
+whether each domain's website is alive: live, parked, redirecting, erroring, with no
+website, or unreachable. It is **off by default**.
+
+- `DOMAIN_INTEL_ENABLED=true` starts a background worker. It finds new domains by
+  polling the tables the control plane already keeps, reads their public DNS records
+  through public resolvers, and stores the result (apply migration `0067` first).
+- `DOMAIN_INTEL_HTTP=true` also lets it make one request for each domain's home page
+  (HTTPS, then HTTP, with up to five redirects) from your server, as `CustomDomainBot`.
+  It does nothing without the first switch. The request only reaches public addresses
+  on ports 80 and 443, sends no cookies or credentials, and keeps only the page title.
+
+A domain is checked at most once a day however many people entered it, and one
+workspace can add at most 200 new domains a day (counted in Redis when `REDIS_URL` is
+set, otherwise per process). Set both variables back to `false` to stop; what was
+collected stays in the `domain_intel` table. `GET /internal/admin/domains/intel` (the
+management key) reads it. If you turn this on, say so in your own privacy policy: the
+requests come from your server's address and name `CustomDomainBot`.
 
 ### Product analytics (PostHog)
 
