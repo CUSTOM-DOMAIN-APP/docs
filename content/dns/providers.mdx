@@ -24,7 +24,7 @@ management in ICANN's registry reports for May 2026), and names most of them
 from the domain's nameservers. Knowing a provider is not the same as writing
 its records: most registrars give no third party a way to change DNS, so for
 them the fifth way, with that provider's own steps, is the way in. The tables
-below are what the hosted service offers as of 2026-09-29.
+below are what the hosted service offers as of 2026-10-03.
 
 The console and the widget read the same verdict from
 `POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
@@ -133,6 +133,7 @@ the credential is created, and lists the steps; see
 | Hetzner | Hetzner Console project API token (Read & Write) | Tokens from the old DNS Console no longer work. |
 | hosting.de | API key with Display and Edit under DNS Service, Zones | The domain's DNS zone must be at hosting.de. |
 | Hostinger | hPanel API token | |
+| Huawei Cloud DNS | IAM Access Key ID and Secret Access Key | Use a sub user's key with only DNS record permissions. |
 | Infomaniak | API token with `dns:read` and `dns:write` | The zone must be at Infomaniak. The API allows 60 requests a minute. |
 | Internet.bs | API key and API password | Allow `34.192.32.132` under API allowed IP address(es). |
 | INWX | Username and password of a sub account with only the DNS role | No Mobile TAN. Used once and never stored. |
@@ -140,6 +141,7 @@ the credential is created, and lists the steps; see
 | Linode | Personal access token with Domains read/write | Or sign in with Linode. |
 | Loopia | API user and password | Needs LoopiaDNS or web hosting. Used once and never stored. |
 | LuaDNS | API key and account email | Turn on API access first. |
+| Moniker | API key and password | API access is activated by Moniker support; give it `34.192.32.132` when you request the key. |
 | Mythic Beasts | API key ID and secret | The domain must use Mythic Beasts DNS (ns1 and ns2.mythic-beasts.com). |
 | Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
 | NameBright | API application (account, application name, secret) | NameBright grants API access on request; whitelist `34.192.32.132` on the application. |
@@ -160,7 +162,9 @@ the credential is created, and lists the steps; see
 | united-domains | DNS API key | Needs the DNS API add-on. |
 | Vercel | Access token | Or install CustomDomain™ on Vercel. |
 | Vultr | API key | Add `34.192.32.132/32` under Access Control. |
+| WEDOS | Account email and a separate WAPI password | WAPI must be turned on with `34.192.32.132` allowed in the client panel. |
 | Wix | Account level API key and the Account ID | Only the account owner can make the key. The domain must be registered at Wix or connected to a Wix site by nameservers. |
+| Zone.ee | ZoneID username and API key | The key can change every zone in the account, so make one just for this. |
 
 `34.192.32.132` is the address the hosted service's DNS writes come from
 (the control plane's `CONNECT_CLIENT_IP`); a self-hosted deployment uses its own.
@@ -202,11 +206,13 @@ yourself:
 | `easydns` | `token:key` |
 | `gcpdns` | `projectId:accessToken` |
 | `glesys` | `projectId:apiKey` |
+| `huaweicloud` | `accessKeyId:secretAccessKey` |
 | `internetbs` | `apiKey:apiPassword` |
 | `inwx` | `username:password` (the password may contain colons) |
 | `ionos`, `uniteddomains` | `publicPrefix.secret` (one key, prefix and secret joined by a dot) |
 | `loopia` | `apiUser:apiPassword` (the API user ends in `@loopiaapi`; the password may contain colons) |
 | `luadns` | `email:apiKey` |
+| `moniker` | `apiKey:password` |
 | `mythicbeasts` | `keyId:secret` (split on the first colon, so the secret may contain colons) |
 | `namebright` | `account:appName:secret` |
 | `namecom` | `username:token` |
@@ -215,7 +221,9 @@ yourself:
 | `porkbun` | `apiKey:secretApiKey` |
 | `simply` | `accountNumber:apiKey` |
 | `subreg` | `login:password` (an admin account uses `ADMIN#LOGIN`; the password may contain colons) |
+| `wedos` | `login:wapiPassword` |
 | `wix` | `apiKey:accountId` |
+| `zoneee` | `username:apiKey` |
 | every other provider | the single token or key |
 
 ## By hand, with provider-specific steps

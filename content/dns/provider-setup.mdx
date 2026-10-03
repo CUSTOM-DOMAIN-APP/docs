@@ -23,10 +23,11 @@ provider, one-click setup or a Route 53 access role needs no key at all; see
 
 Some providers only answer API calls from addresses on a list. On the hosted
 service, DNS writes come from **`34.192.32.132`**. It must be allowed at
-Namecheap, Dynadot, Epik, NameBright, Internet.bs, Combell and Vultr, at Subreg if it
+Namecheap, Dynadot, Epik, NameBright, Internet.bs, Combell, Vultr and WEDOS, at Subreg if it
 refuses the address, and on any IP restriction you set at ClouDNS, NameSilo, TransIP,
-GleSYS, Openprovider, NS1 or Scaleway (an IAM policy with an IP condition). A
-self-hosted deployment uses its own address (the control plane's
+GleSYS, Openprovider, NS1 or Scaleway (an IAM policy with an IP condition). Moniker takes
+the address once, when its support team issues the key, rather than through a self-serve
+list. A self-hosted deployment uses its own address (the control plane's
 `CONNECT_CLIENT_IP`).
 
 ## Registrars and DNS hosts
@@ -59,6 +60,7 @@ self-hosted deployment uses its own address (the control plane's
 | Hetzner | `hetzner` | [Hetzner Console](https://console.hetzner.com/projects): the project, **Security**, **API tokens**, **Generate API token** with **Read & Write**. | Tokens from the old DNS Console (dns.hetzner.com) no longer work. |
 | hosting.de | `hostingde` | [Profile](https://secure.hosting.de/profile): **Create new API key**, allow only **Display** and **Edit** under **DNS Service**, **Zones**, and copy the key (shown once). | The domain's DNS zone must be at hosting.de (ns1 to ns3.hosting.de). For a reseller subaccount's zone, make the key in the subaccount. |
 | Hostinger | `hostinger` | [hPanel, API](https://hpanel.hostinger.com/profile/api): create a token. | |
+| Huawei Cloud DNS | `huaweicloud` | [My Credentials, Access Keys](https://console-intl.huaweicloud.com/iam): **Create Access Key**, copy the Access Key ID and Secret Access Key (shown once). | Use a sub user's key with only DNS record permissions, not the account's own root key. |
 | Infomaniak | `infomaniak` | [Manager, API tokens](https://manager.infomaniak.com/v3/ng/profile/user/token/list): **Create a token** with the `dns:read` and `dns:write` scopes, confirm with your password and copy it (shown once). | The DNS zone must be at Infomaniak. The API allows 60 requests a minute. |
 | Internet.bs | `internetbs` | Sign in, **My Account**, **Get my API key**; set the API password under **My Account**, **Account Security**, **Change API password**; add `34.192.32.132` under **My Account**, **My Profile**, **Reseller Settings**, **API allowed IP address(es)**. | Internet.bs refuses calls from addresses that are not on that list. |
 | INWX | `inwx` | [Customer area](https://www.inwx.com/en/customer): make a sub account that has only the DNS role and no two-factor login, then enter its username and password. | A login that uses Mobile TAN is refused, because a one-time code can't be given unattended. Used once and never stored. The domain must use INWX's nameservers. |
@@ -66,6 +68,7 @@ self-hosted deployment uses its own address (the control plane's
 | Linode | `linode` | [API tokens](https://cloud.linode.com/profile/tokens): **Domains** Read/Write, everything else No Access. | Or sign in with Linode. |
 | Loopia | `loopia` | [Loopia Customer Zone](https://customerzone.loopia.com/api/): **Account Settings**, **LoopiaAPI**, create an API user (its name ends in `@loopiaapi`) and allow `getDomains`, `getSubdomains`, `getZoneRecords`, `addSubdomain`, `addZoneRecord`, `updateZoneRecord` and `removeZoneRecord`. Enter the API user and its password. | The domain needs LoopiaDNS or web hosting, and Loopia's nameservers (ns1.loopia.se and ns2.loopia.se). Used once and never stored. A TXT value over 255 bytes is added by hand. |
 | LuaDNS | `luadns` | **Account Settings**: tick **Enable API Access**, then create an API key; use it with your account email. | |
+| Moniker | `moniker` | Sign in, **My account**, **Request API key**; copy the API key and password. | API access is activated by Moniker support and eligibility depends on account type. Give Moniker `34.192.32.132` when you request the key. |
 | Mythic Beasts | `mythicbeasts` | [API users](https://www.mythic-beasts.com/customer/api-users): create a key with one Primary DNS API v2 permit for your domain (hostname `*`, type all); copy the key ID and secret. | The domain must use Mythic Beasts DNS (ns1 and ns2.mythic-beasts.com). |
 | Name.com | `namecom` | [API settings](https://www.name.com/account/settings/api): create a production token; copy the username and token. | With two-step verification on, also switch on **Name.com API Access** in Security settings. |
 | NameBright | `namebright` | [API management](https://my.namebright.com/my-account/api-management): request access, create an API application with `34.192.32.132` in its IP whitelist, copy the secret. | NameBright grants API access on request. |
@@ -86,7 +89,9 @@ self-hosted deployment uses its own address (the control plane's
 | united-domains | `uniteddomains` | Order the **DNS API** product in your portfolio, then **Create new API key**; copy the whole key (prefix, dot, secret; shown once). | The DNS API is an add-on. |
 | Vercel | `vercel` | [Tokens](https://vercel.com/account/settings/tokens): create a token for the scope that owns the domain. | Or install CustomDomain™ on Vercel. |
 | Vultr | `vultr` | [API settings](https://my.vultr.com/settings/#settingsapi): enable the API, copy the key, add `34.192.32.132/32` under **Access Control**. | |
+| WEDOS | `wedos` | [WEDOS client admin panel](https://client.wedos.com/): open **WAPI** in the left menu, set a WAPI password, and enter your account email with that password (not your account password). Add `34.192.32.132` to the allowed IP list on the same screen. | WEDOS also runs most services from a prepaid deposit balance, so the account needs funds. |
 | Wix | `wix` | [API Keys](https://manage.wix.com/account/api-keys), signed in as the account owner: **Generate API Key**, name it, give it the account permissions that cover domains, copy the key (shown once) and the **Account ID** on the same page. | A key made by a co-owner is refused for domains. The domain must be registered at Wix or connected to a Wix site by nameservers, not by pointing. |
+| Zone.ee | `zoneee` | [Minu Zone](https://my.zone.eu): account menu, **Security**, **API keys**, create a key. | The key can change every DNS zone in the account, so make one just for this. |
 
 ## Cloud DNS
 
