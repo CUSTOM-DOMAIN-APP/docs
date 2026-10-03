@@ -78,12 +78,13 @@ today, so none of them appears in the console or the widget:
   which needs an OVHcloud application for each region a deployment serves. The
   hosted service has none, so OVHcloud connects with an application key.
 - **Sign in through the provider's MCP server** (Hostinger, Namecheap,
-  Spaceship, Unstoppable Domains and XServer Domain): the provider's own MCP
-  server signs the customer in and its DNS tools write the records. Each one
-  is switched on only after the provider approves CustomDomain™ and a live test
-  passes. Until then Hostinger, Namecheap and Spaceship connect with an API key
-  (Namecheap only for accounts that qualify), and Unstoppable Domains and
-  XServer Domain take the records by hand.
+  Spaceship, Unstoppable Domains, XServer Domain and Muumuu Domain): the
+  provider's own MCP server signs the customer in and its DNS tools write the
+  records. Each one is switched on only after the provider approves
+  CustomDomain™ and a live test passes. Until then Hostinger, Namecheap and
+  Spaceship connect with an API key (Namecheap only for accounts that
+  qualify), and Unstoppable Domains, XServer Domain and Muumuu Domain take the
+  records by hand.
 
 ### Speaks one-click setup, but has not onboarded our templates
 
@@ -107,6 +108,7 @@ the credential is created, and lists the steps; see
 | Namecheap | API key (and your username) | Only accounts with 20 or more domains, a $50 balance, or $50 spent in the last 2 years; whitelist `34.192.32.132`. Not for domains on Namecheap hosting DNS. |
 | Amazon Route 53 | IAM access key (plus the session token for temporary `ASIA` keys) | The access role above is the recommended alternative. |
 | Alibaba Cloud DNS | RAM AccessKey ID and secret (plus an STS security token for temporary credentials) | The domain must already be a zone in Alibaba Cloud DNS. |
+| 101domain | API key with the DNS read and DNS write scopes | Only the account's primary user can make one. The domain must use 101domain's nameservers. |
 | ALL-INKL.COM | KAS login and password (plus the one-time code with two-factor login) | Used once and never stored. |
 | Arsys | Hosting domain and DNS API password | Activate the DNS API in the Panel de Control. Used once and never stored. |
 | Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. Sign in with Azure DNS is the easier way in. |
@@ -138,10 +140,11 @@ the credential is created, and lists the steps; see
 | Linode | Personal access token with Domains read/write | Or sign in with Linode. |
 | Loopia | API user and password | Needs LoopiaDNS or web hosting. Used once and never stored. |
 | LuaDNS | API key and account email | Turn on API access first. |
+| Mythic Beasts | API key ID and secret | The domain must use Mythic Beasts DNS (ns1 and ns2.mythic-beasts.com). |
 | Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
 | NameBright | API application (account, application name, secret) | NameBright grants API access on request; whitelist `34.192.32.132` on the application. |
 | NameSilo | API key | Or use one-click setup. |
-| netcup | Customer number, API key and API password | The domain must use netcup's own nameservers; a domain on CloudDNS is added by hand. |
+| netcup | API key alone for CloudDNS, or the customer number, a Legacy API key and the API password for the classic nameservers | The domain must use netcup's own nameservers. |
 | Netlify | Personal access token | Or sign in with Netlify. |
 | Njalla | API token | |
 | NS1 | API key secret with the DNS permission Manage zones | The domain must be a primary zone of the account. If the account or the key has an IP allow list, include `34.192.32.132`. |
@@ -204,9 +207,10 @@ yourself:
 | `ionos`, `uniteddomains` | `publicPrefix.secret` (one key, prefix and secret joined by a dot) |
 | `loopia` | `apiUser:apiPassword` (the API user ends in `@loopiaapi`; the password may contain colons) |
 | `luadns` | `email:apiKey` |
+| `mythicbeasts` | `keyId:secret` (split on the first colon, so the secret may contain colons) |
 | `namebright` | `account:appName:secret` |
 | `namecom` | `username:token` |
-| `netcup` | `customerNumber:apiKey:apiPassword` (the password may contain colons) |
+| `netcup` | `customerNumber:apiKey:apiPassword` on the classic nameservers (the password may contain colons), or the API key alone on CloudDNS |
 | `ovh` | `appKey:appSecret:consumerKey`, prefixed with `ca:` or `us:` outside Europe |
 | `porkbun` | `apiKey:secretApiKey` |
 | `simply` | `accountNumber:apiKey` |
