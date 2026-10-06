@@ -142,19 +142,30 @@ mismatch drops events without an error.
 
 #### Session recording
 
-With the key set, the console also records how signed in people use it, as a
-replay of the screen: clicks, scrolling and page views. It records only for a
-visitor who has allowed analytics (a current choice, and no Global Privacy
-Control or Do Not Track signal) and only once PostHog knows who is signed in, so
-every recording carries the account id as its distinct id and nothing else.
+With the key set, the console also records how people use it, as a replay of
+the screen: clicks, scrolling and page views. It records only for a visitor who
+has allowed analytics (a current choice, and no Global Privacy Control or Do Not
+Track signal).
 
+- The public pages a visitor sees before they have an account (the home page,
+  the docs, the free tools and the sign up form) are recorded without anyone
+  signed in, under PostHog's anonymous id. When the visitor signs up, the
+  identify call links that id to the account, so the journey from the first page
+  to the console reads as one recording.
+- The console and the welcome intake are recorded only once PostHog knows who
+  is signed in, so those recordings carry the account id as their distinct id
+  and nothing else.
 - Every field a person types into is replaced with asterisks in the recording,
-  so what they type is not recorded. The recording does show what the console
-  displays, such as the names of domains and DNS records.
-- Nothing is recorded on the sign in, sign up, password reset, email
-  verification, invitation, shared view, email preferences, Domain Connect
-  return, agent consent and billing pages, or on the API keys, webhooks, MCP,
-  agent access and security settings pages, and nothing outside the console and
+  so what they type is not recorded. The one exception is a field that asks for
+  a domain name (the welcome intake and Connect a domain), marked
+  `data-replay-show`: its value is shown, so you can see which domain someone
+  tried. A password, email or phone field is never shown, whatever its markup.
+  The recording does show what the page displays, such as the names of domains
+  and DNS records.
+- Nothing is recorded on the sign in, password reset, email verification,
+  invitation, shared view, email preferences, Domain Connect return, agent
+  consent and billing pages, or on the API keys, webhooks, MCP, agent access and
+  security settings pages, and nothing outside the public pages, the console and
   the welcome intake is recorded at all. Anything that shows an API key, a token
   or a signing secret is also blanked wherever it appears.
 - Browser console output, request and response contents, network timing and
