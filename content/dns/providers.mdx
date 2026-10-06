@@ -24,7 +24,7 @@ management in ICANN's registry reports for May 2026), and names most of them
 from the domain's nameservers. Knowing a provider is not the same as writing
 its records: most registrars give no third party a way to change DNS, so for
 them the fifth way, with that provider's own steps, is the way in. The tables
-below are what the hosted service offers as of 2026-10-03.
+below are what the hosted service offers as of 2026-10-05.
 
 The console and the widget read the same verdict from
 `POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
@@ -112,6 +112,8 @@ the credential is created, and lists the steps; see
 | ALL-INKL.COM | KAS login and password (plus the one-time code with two-factor login) | Used once and never stored. |
 | Arsys | Hosting domain and DNS API password | Activate the DNS API in the Panel de Control. Used once and never stored. |
 | Azure DNS | Subscription ID, resource group and an access token | Tokens expire within about an hour, so they are used once. Sign in with Azure DNS is the easier way in. |
+| Azion | Personal Token | The token needs access to Edge DNS, and the domain must already be a zone in your Azion account. |
+| Binary Lane | API token | A token can manage your whole account, so it is used once and never stored; delete it in mPanel afterwards. The domain must use Binary Lane's nameservers. |
 | Bunny DNS | Account API key | |
 | ClouDNS | API user (or API sub-user) and password | API access comes with ClouDNS's paid plans. |
 | Combell | API key and secret (a combell.nl account chooses its own site) | The API comes with Reseller Hosting. Allow `34.192.32.132` under IP restrictions. The domain must use Combell's nameservers. |
@@ -119,6 +121,7 @@ the credential is created, and lists the steps; see
 | cPanel hosts | cPanel username, API token and server hostname | For hosts that run cPanel; we connect on port 2083. |
 | deSEC | API token | |
 | DigitalOcean | Personal access token with the domain scopes | Or sign in with DigitalOcean. |
+| DirectAdmin hosts | DirectAdmin username, Login Key and server hostname | For hosts that run DirectAdmin; we connect on port 2222. The server must be reachable from `34.192.32.132` and use a certificate a browser trusts. You choose it yourself, since nothing detects DirectAdmin from nameservers. |
 | DNSimple | Account API access token | Or sign in with DNSimple. |
 | DNS Made Easy | API key and secret key | |
 | Domeneshop | API token and its secret | The domain must use Domeneshop's DNS service (ns1 to ns3.hyp.net). |
@@ -126,6 +129,7 @@ the credential is created, and lists the steps; see
 | Dynadot | Production API key | Whitelist `34.192.32.132` in Dynadot's API settings. |
 | easyDNS | REST API token and key | |
 | Epik | API signature | Allow `34.192.32.132` in Epik's API settings. |
+| Exoscale | IAM API key and secret, from a role that allows only the DNS service | The domain must already be added under DNS. You choose it yourself: its zones use DNSimple's nameservers, so a domain there is detected as DNSimple. |
 | Gandi | Personal access token with "Manage domain name technical configurations" | |
 | Gcore | Permanent API token | The token can change every zone in your account. The domain must use Gcore's nameservers. |
 | GleSYS | API key with Domain access, and the project ID | |
@@ -138,9 +142,11 @@ the credential is created, and lists the steps; see
 | Internet.bs | API key and API password | Allow `34.192.32.132` under API allowed IP address(es). |
 | INWX | Username and password of a sub account with only the DNS role | No Mobile TAN. Used once and never stored. |
 | IONOS | API key (public prefix and secret) | |
+| Joker.com | DMAPI API key from a free Joker.com reseller account | The domain must be in that account and use Joker.com's own nameservers. A write replaces the whole zone, so a zone with a record type the API cannot write back is refused. |
 | Linode | Personal access token with Domains read/write | Or sign in with Linode. |
 | Loopia | API user and password | Needs LoopiaDNS or web hosting. Used once and never stored. |
 | LuaDNS | API key and account email | Turn on API access first. |
+| Metaname | Account reference and API key | The key can change every zone in the account. The domain must use Metaname's own nameservers. |
 | Moniker | API key and password | API access is activated by Moniker support; give it `34.192.32.132` when you request the key. |
 | Mythic Beasts | API key ID and secret | The domain must use Mythic Beasts DNS (ns1 and ns2.mythic-beasts.com). |
 | Name.com | API token and username | With two-step verification on, also switch on Name.com API Access. |
@@ -152,6 +158,7 @@ the credential is created, and lists the steps; see
 | NS1 | API key secret with the DNS permission Manage zones | The domain must be a primary zone of the account. If the account or the key has an IP allow list, include `34.192.32.132`. |
 | Openprovider | API token from `/v1beta/auth/login` | API access must be enabled for the user; tokens last 48 hours, so they are used once. |
 | OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
+| Plesk hosts | Plesk username, password and server hostname | For hosts that run Plesk; we connect on port 8443. The server must be reachable from `34.192.32.132` and serve a trusted certificate. Used once and never stored. You choose it yourself, since nothing detects Plesk from nameservers. |
 | Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun. |
 | Scaleway | Secret key of an IAM API key | Needs the permission set `DomainsDNSFullAccess` on the Project that holds the domain. |
 | Simply.com | API key and account number | |
@@ -162,12 +169,20 @@ the credential is created, and lists the steps; see
 | united-domains | DNS API key | Needs the DNS API add-on. |
 | Vercel | Access token | Or install CustomDomain™ on Vercel. |
 | Vultr | API key | Add `34.192.32.132/32` under Access Control. |
+| webnames.ca | API user and API key | Needs the Domain and Account Management Toolkit add-on and DNS Hosting. Writes only A, AAAA, CNAME and TXT records. |
+| Websupport | API key and secret | The key can change every domain in the account, so make one just for this. |
 | WEDOS | Account email and a separate WAPI password | WAPI must be turned on with `34.192.32.132` allowed in the client panel. |
 | Wix | Account level API key and the Account ID | Only the account owner can make the key. The domain must be registered at Wix or connected to a Wix site by nameservers. |
 | Zone.ee | ZoneID username and API key | The key can change every zone in the account, so make one just for this. |
 
 `34.192.32.132` is the address the hosted service's DNS writes come from
 (the control plane's `CONNECT_CLIENT_IP`); a self-hosted deployment uses its own.
+
+Plesk, DirectAdmin and Exoscale are chosen by the customer, and nothing detects
+them from a domain's nameservers. Plesk and DirectAdmin run on a hosting company's
+own servers, which carry that company's nameservers, the same as cPanel hosts; an
+Exoscale DNS zone uses DNSimple's nameservers, so a domain there is detected as
+DNSimple.
 
 ### Using a provider token through the API
 
@@ -201,9 +216,11 @@ yourself:
 | `combell` | `apiKey:apiSecret`, prefixed with `nl:` for a combell.nl account |
 | `constellix`, `dnsmadeeasy`, `spaceship` | `apiKey:secret` |
 | `cpanel` | `user:token:host` |
+| `directadmin` | `user:loginKey:host` (the host may carry a port, 2222 or 443) |
 | `dnspod` | `secretId:secretKey`, prefixed with `intl:` for a Tencent Cloud International account |
 | `domeneshop` | `token:secret` (the secret may contain colons) |
 | `easydns` | `token:key` |
+| `exoscale` | `apiKey:apiSecret` |
 | `gcpdns` | `projectId:accessToken` |
 | `glesys` | `projectId:apiKey` |
 | `huaweicloud` | `accessKeyId:secretAccessKey` |
@@ -212,15 +229,19 @@ yourself:
 | `ionos`, `uniteddomains` | `publicPrefix.secret` (one key, prefix and secret joined by a dot) |
 | `loopia` | `apiUser:apiPassword` (the API user ends in `@loopiaapi`; the password may contain colons) |
 | `luadns` | `email:apiKey` |
+| `metaname` | `accountRef:apiKey` (split on the first colon, so the key may contain colons) |
 | `moniker` | `apiKey:password` |
 | `mythicbeasts` | `keyId:secret` (split on the first colon, so the secret may contain colons) |
 | `namebright` | `account:appName:secret` |
 | `namecom` | `username:token` |
 | `netcup` | `customerNumber:apiKey:apiPassword` on the classic nameservers (the password may contain colons), or the API key alone on CloudDNS |
 | `ovh` | `appKey:appSecret:consumerKey`, prefixed with `ca:` or `us:` outside Europe |
+| `plesk` | `login:password:host` (the password may contain colons; the host may carry a port, 8443 or 443) |
 | `porkbun` | `apiKey:secretApiKey` |
 | `simply` | `accountNumber:apiKey` |
 | `subreg` | `login:password` (an admin account uses `ADMIN#LOGIN`; the password may contain colons) |
+| `webnamesca` | `apiUser:apiKey` (split on the first colon, so the key may contain colons) |
+| `websupport` | `apiKey:secret` (split on the first colon, so the secret may contain colons) |
 | `wedos` | `login:wapiPassword` |
 | `wix` | `apiKey:accountId` |
 | `zoneee` | `username:apiKey` |
