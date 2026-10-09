@@ -53,8 +53,8 @@ Common reasons the records never show up:
 ## My domain points at CustomDomain™ but shows a connection / certificate error
 
 If you added the DNS records **after** the connection had been marked failed,
-visitors' browsers reach our edge but the connection isn't serving yet. Since
-this release the edge treats that traffic as your signal: the connection is
+visitors' browsers reach our edge but the connection isn't serving yet. The edge
+treats that traffic as your signal: the connection is
 re-entered into verification automatically and goes live on the next check
 (usually within a minute or two). You can also press **Re-check now**. If it
 stays failed, the domain already has another active connection in the same
@@ -144,7 +144,8 @@ password pair); see [Provider setup](/docs/dns/provider-setup).
 
 The lifecycle doesn't demote a `live` connection, but
 [Monitor](/docs/webhooks/overview#event-catalog) fires `domain.record_missing`
-when a live domain's records stop resolving. Have the customer restore the
+when a live domain's records stop resolving (where drift alerts are switched on;
+the hosted service has them off by default, so no such webhook is sent there yet). Have the customer restore the
 records (or re-apply them via a rail). Run `POST /v1/monitor:check` to compare on
 demand.
 
@@ -154,6 +155,43 @@ Certificates are issued **on demand at the TLS handshake**, gated by
 `POST /internal/ask` returning `{ approved: true }`, which happens only once the
 connection is `propagating` or `live`. If the edge can't reach the gate, check
 `EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
+
+## 401 "unknown application or secret" when minting a widget token
+
+`POST /v1/tokens` answers `401` with `unknown application or secret` when the
+`application_id` does not exist or the `client_secret` does not match it. The
+usual cause is an **API key** in the `client_secret` field. An API key
+(`cd_live_…`, `cd_test_…`, or an older `sk_live_…`) and an application client
+secret (`sk_` plus 32 hex characters) are different credentials, and the key
+never works there.
+
+- **You signed up in the console** (most customers): you have no client secret,
+  because the console never shows it. Call
+  `POST https://app.customdomain.ai/api/widget-token` with
+  `Authorization: Bearer <API key>` instead. Create the key on **API & SDK**; the
+  **Install** tab on **Widget** generates the code. See
+  [Widget tokens](/docs/authentication/widget-tokens).
+- **You created the application over the API**: use the `client_secret` from
+  that creation response. Check the `application_id` belongs to the same
+  application. If the secret is lost, rotate it with
+  `POST /v1/applications/{id}/client-secret:rotate`.
+- **Do not rotate a console-created application's secret.** The console keeps its
+  own copy, which would no longer match: its widget preview, **Try it live** and
+  `/api/widget-token` then fail for that application.
+
+The console endpoint has its own errors: `503 no_widget_credentials` means the
+application was not created in the console (mint with `/v1/tokens` and its
+secret), and `403 forbidden` means the `application_id` is not in the key's
+workspace.
+
+## "A card is needed to create API keys" (402 `billing_required`)
+
+A new workspace can look around, check domains and design its widget, and its
+first domain is free, but it needs a card before it holds a live credential: an
+API key, an application's client secret or a new application. Creating one
+before then returns `402 billing_required`. An owner or admin adds a card under
+**Billing** (the 14 day free trial starts; nothing is charged until it ends),
+then creates the key again.
 
 ## The widget says the session ended
 

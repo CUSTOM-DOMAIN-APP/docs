@@ -9,20 +9,29 @@ provider, offers the best rail it can actually complete, and reports back.
 
 ## 1. Mint a widget token on your server
 
-Exchange the application's client secret for a short-lived widget token, on
-your server (never from the browser):
+Your server trades a credential for a short-lived widget token, and only that
+token reaches the browser. If you signed up in the console (most customers),
+create an API key on **API & SDK** with **Create key** and call the console's
+token endpoint. This is what the **Install** tab on the **Widget** page generates
+by default:
 
 ```bash
-curl -X POST https://api.customdomain.ai/v1/tokens \
+curl -X POST https://app.customdomain.ai/api/widget-token \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"application_id":"app_...","client_secret":"...","domain":"shop.acme.com"}'
-# → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
+  -d '{"application_id":"app_...","domain":"shop.acme.com"}'
+# → 200 { "application_id": "app_...", "token": "eyJ…", "expires_in": 900, "token_type": "Bearer" }
 ```
+
+If you created the application over the API, you have its `client_secret`
+instead; mint with `POST /v1/tokens`. The console never shows a client secret, so
+an API key is not a substitute for it. Both calls, the errors and the difference
+between the two credentials are on [Widget tokens](/docs/authentication/widget-tokens).
 
 `domain` binds the token to one hostname (recommended). Tokens last 15
 minutes, so mint one per open and pass `getToken` (step 2) so a long manual
-setup refreshes instead of stopping. The token's default scope, `connect`, runs
-the connect flow and nothing else; see [Widget tokens](/docs/authentication/widget-tokens).
+setup refreshes instead of stopping. The default scope, `connect`, runs the
+connect flow and nothing else.
 
 ## 2. Open the modal
 
@@ -57,11 +66,13 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 
 | Their DNS provider | The modal offers | They type |
 | --- | --- | --- |
-| Cloudflare, DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Authorize with the provider** (OAuth, one-time token) | nothing |
+| Cloudflare, DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Authorize with the provider** (OAuth). On the hosted service the permission is kept, encrypted, so records can be repaired, and the modal says so | nothing |
+| Azure DNS, Dynadot, Unstoppable Domains | **Authorize with the provider** (Dynadot and Unstoppable Domains through their MCP servers; Dynadot needs MCP switched on in its API settings first). The permission is used once | nothing |
+| Google Cloud DNS | **Sign in with Google Cloud**, with the Google account that can edit the zone (on the hosted service, only the app's test users can finish this until Google verifies the app). The permission is used once | nothing |
 | Vercel | **Install CustomDomain™ on Vercel**, on the team that owns the domain | nothing |
 | Porkbun | **Approve access at Porkbun** (API access must be on for the domain) | nothing |
 | NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider, which sends them back when they approve | nothing |
-| GoDaddy, Namecheap, Name.com, IONOS, OVHcloud, Route 53, a site builder or shop that sold the domain (Shopify, Wix, Squarespace, Canva and more), everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider (125 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where offered) let CustomDomain™ host the DNS | the records (about two minutes), or nothing |
+| GoDaddy, Namecheap, Name.com, IONOS, OVHcloud, Route 53, a site builder or shop that sold the domain (Shopify, Wix, Squarespace, Canva and more), everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider (135 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where offered) let CustomDomain™ host the DNS | the records (about two minutes), or nothing |
 | Unknown provider | a provider picker, then the records | the records |
 
 This table is what `POST /v1/domains:check` returns as `rails`; the widget
@@ -97,7 +108,7 @@ fallback.
 ## Don't
 
 - Don't gate your UI on `setupType === "automatic"`; read `rails`.
-- Don't send your API key from the page; the widget JWT is the browser
-  credential.
+- Don't send your API key or client secret from the page; the widget JWT is
+  the browser credential.
 - Don't call `customdomain.open()` for `*.vercel.app`-style hosts; the
   pre-flight refuses them with `platform_subdomain`.

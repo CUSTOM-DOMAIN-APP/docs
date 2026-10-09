@@ -3,60 +3,122 @@ title: Installation & embed
 description: Install customdomain-js, mint a widget token server-side, and open the modal.
 ---
 
-## 1. Mint a token server-side
+## 1. Mint a token on your server
 
-The browser must never see your `client_secret` or an API key. On your backend,
-exchange the application's `client_secret` for a short-lived widget JWT:
+The browser must never see an API key or a `client_secret`. Your server holds
+the credential, asks CustomDomain™ for a short-lived widget token (15 minutes),
+and hands only that token to the browser. Which credential you use depends on
+how the application was created.
+
+**Applications created in the console** (every console signup gets one): use an
+**API key**. The application's `client_secret` is sealed in the console and is
+never shown anywhere, so `POST /v1/tokens` has nothing to authenticate with.
+Create a key on the **API & SDK** page (**Create key**; copy it when it is
+shown, it appears once), keep it in a server environment variable, and call
+the console's `POST /api/widget-token`:
 
 ```js
-// POST /my-backend/mint-widget-token  (your server)
-const res = await fetch(`${API_BASE}/v1/tokens`, {
+// Your server route, for example POST /api/customdomain-token.
+// Only signed-in users should reach it: add your own auth check.
+const res = await fetch("https://app.customdomain.ai/api/widget-token", {
   method: "POST",
-  headers: { "content-type": "application/json" },
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`, // server only
+    "Content-Type": "application/json",
+  },
   body: JSON.stringify({
-    application_id: process.env.CD_APPLICATION_ID,
-    client_secret: process.env.CD_CLIENT_SECRET, // server-only
-    domain: "app.customer.com",                  // optional: bind to one host
+    application_id: "app_...", // optional: defaults to your first application
+    domain: "app.customer.com", // optional: bind the token to one host
   }),
 });
-const { token } = await res.json(); // → hand `token` (+ application_id) to the browser
+const { application_id, token } = await res.json();
+// Return { application_id, token } to your own front end. Never the API key.
 ```
 
-See [Widget tokens](/docs/authentication/widget-tokens) for the token lifecycle.
+The response is `200 { "application_id", "token", "expires_in": 900, "token_type": "Bearer" }`.
+The errors you can get back:
 
-> **App created through the console?** Its `client_secret` is sealed at signup
-> and never shown on any page, so the direct `POST /v1/tokens` call above has
-> nothing to authenticate with. Call the console's `POST /api/widget-token`
-> instead, authenticated with one of your **API keys** (`Authorization: Bearer
-> <API_KEY>`, from the Keys page) rather than the client secret. It resolves
-> your application, opens the sealed secret server-side, and mints the widget
-> token on your behalf. The API key never leaves your server and the client
-> secret never leaves ours.
+| Status | Code | Meaning |
+| --- | --- | --- |
+| 401 | `unauthorized` | The API key is missing or was rejected. |
+| 403 | `no_application` | The key's account has no applications. |
+| 403 | `forbidden` | That `application_id` does not belong to the key's account. |
+| 503 | `no_widget_credentials` | The application was not created in the console. Use the client secret path below. |
+| 500 / 502 | `unseal_failed` / `mint_failed` | A server-side failure. Try again, then contact support. |
+
+**Applications created over the API** (`POST /v1/applications`): that call
+returns the `client_secret` once. Keep it on your server and exchange it with
+`POST /v1/tokens`:
+
+```js
+const res = await fetch("https://api.customdomain.ai/v1/tokens", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    application_id: process.env.CUSTOMDOMAIN_APPLICATION_ID,
+    client_secret: process.env.CUSTOMDOMAIN_CLIENT_SECRET, // server only
+    domain: "app.customer.com", // optional: bind to one host
+  }),
+});
+const { token } = await res.json(); // 201, expires_in 900, scope "connect"
+```
+
+Do not put an API key in `client_secret`: `/v1/tokens` only accepts the
+application's own secret and answers `401 unknown application or secret`.
+Do not rotate the client secret of a console-created application either: the
+console keeps its own copy and its widget preview and `/api/widget-token` stop
+working for that application.
+
+What runs where:
+
+| Runs on your server | Runs in the browser |
+| --- | --- |
+| Holds the API key or client secret. Mints the token (`/api/widget-token` or `/v1/tokens`). Exposes one route of your own, such as `/api/customdomain-token`. | Calls your route, never CustomDomain™'s mint endpoint. Passes the token to `open()`. `getToken` is a function that calls your route again for a fresh token. |
+
+See [Widget tokens](/docs/authentication/widget-tokens) for the full token
+lifecycle, scopes and both mint paths.
 
 ## 2. Install and open
 
-```bash
-npm install customdomain-js
-```
+Pick one way to load the SDK.
+
+| Way | How | Current version |
+| --- | --- | --- |
+| Hosted script (no build step) | `<script src="https://app.customdomain.ai/widget-assets/customdomain-sdk.js"></script>` attaches `window.customdomain` | Always the latest build |
+| npm | `npm install customdomain-js` | 0.5.1 |
+| React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.1 |
 
 <UsageStats />
 
+`getToken`, `wwwRedirect` and `onFallback` need `customdomain-js` 0.5.0 or
+newer. `removeDomain()`, `onRemoved` and the `customdomain:removed` event are
+in the hosted script but are not in the npm packages yet (0.5.1 has neither).
+
 ```js
 import { customdomain } from "customdomain-js";
-// (a browser <script> build also attaches window.customdomain)
+// (the hosted <script> build attaches window.customdomain instead)
+
+// Asks your server (step 1) for a fresh widget token.
+async function fetchToken() {
+  const res = await fetch("/api/customdomain-token", { method: "POST" });
+  if (!res.ok) throw new Error("Could not get a widget token");
+  return res.json(); // { application_id, token }
+}
 
 document.getElementById("connect").addEventListener("click", async () => {
-  const { application_id, token } = await fetch("/my-backend/mint-widget-token", {
-    method: "POST",
-  }).then((r) => r.json());
+  const { application_id, token } = await fetchToken();
 
-  window.customdomain.open({
+  customdomain.open({
     applicationId: application_id,
     token,
+    getToken: async () => (await fetchToken()).token, // refresh during long setups
     domain: "app.customer.com", // optional prefill
+    endUserRef: "user_42",      // your id for this customer
+    // wwwRedirect: true,       // root domains: also connect www
     onSuccess: (r) => console.log("live:", r.domain, r.jobId, r.setupType),
+    onFallback: (d) => console.log("manual:", d.reason),
     onClose: (d) => console.log("closed:", d.lastStatus),
-    onStepChange: (step) => console.log("step:", step),
+    onStepChange: (d) => console.log("step:", d.step),
     onError: (err) => console.error(err.code, err.message),
   });
 });
@@ -66,29 +128,47 @@ document.getElementById("connect").addEventListener("click", async () => {
 one modal is shown at a time. The default control-plane and widget hosts can be
 overridden with `apiBase` / `widgetBase` (e.g. for a staging environment).
 
-## React example
+## React
+
+`@customdomain/react` wraps the SDK in a hook. It turns the `customdomain:*`
+window events into callback props, removes its listeners and closes the modal
+when the component unmounts, and is safe to render on the server.
 
 ```jsx
-import { useCallback } from "react";
-import { customdomain } from "customdomain-js";
+import { useCustomdomain } from "@customdomain/react";
 
-export function ConnectDomainButton({ domain }) {
-  const onConnect = useCallback(async () => {
-    const { application_id, token } = await fetch("/api/widget-token", {
-      method: "POST",
-    }).then((r) => r.json());
+async function fetchToken() {
+  const res = await fetch("/api/customdomain-token", { method: "POST" });
+  if (!res.ok) throw new Error("Could not get a widget token");
+  return res.json(); // { application_id, token }
+}
 
-    customdomain.open({
-      applicationId: application_id,
-      token,
-      domain,
-      onSuccess: ({ domain }) => console.log(`${domain} is live`),
-    });
-  }, [domain]);
+export function ConnectDomainButton({ userId }) {
+  const { open, ready } = useCustomdomain({
+    applicationId: "app_...",
+    token: "", // open() below passes a fresh one
+    getToken: async () => (await fetchToken()).token,
+    endUserRef: userId,
+    onSuccess: ({ domain }) => console.log(`${domain} is live`),
+  });
 
-  return <button onClick={onConnect}>Connect your domain</button>;
+  return (
+    <button
+      disabled={!ready}
+      onClick={async () => open({ token: (await fetchToken()).token })}
+    >
+      Connect your domain
+    </button>
+  );
 }
 ```
+
+`useCustomdomain` returns `{ open, purchaseDomain, close, ready }`. The package
+also exports `<CustomdomainConnect>`, a component that opens the flow when it
+mounts. Callbacks: `onSuccess`, `onClose`, `onStep` (the bare step name),
+`onStepChange` (the full detail), `onDocClick`, `onRequestClose`, `onShared`
+and `onPurchase`; `onError`, `onFallback` and the other `open()` options are
+passed through to the SDK.
 
 ## Embedded mode
 
@@ -106,7 +186,7 @@ window.customdomain.open({
 ## White-label theming
 
 Pass a `whiteLabel` object. Quick keys map onto the token surface; `tokens`
-overrides any of the 85 raw design tokens; `screens.disable` hides optional
+overrides any of the 90 raw design tokens; `screens.disable` hides optional
 screens. Theme values are applied as CSS custom properties on the widget's
 Shadow-DOM host, so they never leak into your page.
 
@@ -155,7 +235,7 @@ See [Other ways to finish](/docs/widget-sdk/reference#other-ways-to-finish).
 ## Security note
 
 The widget JWT is the only credential in the browser. It is short-lived
-(15 minutes by default; pass `getToken` so the widget can refresh it), scoped to
+(15 minutes; pass `getToken` so the widget can refresh it), scoped to
 one application and to the connect flow, and, when you pass `domain` at mint
 time, may only act on that hostname. Mint it per session on your server;
 never embed a long-lived API key or `client_secret` in client code.

@@ -9,19 +9,24 @@ monitored domains drift.
 ## Register an endpoint
 
 ```bash
-curl -X POST http://localhost:8080/v1/webhooks \
-  -H "Authorization: Bearer <WIDGET_JWT>" \
+curl -X POST https://api.customdomain.ai/v1/webhooks \
+  -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"url":"https://api.acme.example/webhooks/cd","events":["connection.live","domain.record_missing"]}'
 # → { "id": "whk_…", "url": "...", "events": [...], "secret": "whsec_…", "created_at": "..." }
 ```
+
+Register from your server with an API key (or an app-scoped widget token). A
+widget token minted by `POST /v1/tokens` has `connect` scope and is rejected
+with 403. The `url` must be a public `https` URL; `localhost` and private or
+link-local addresses are refused.
 
 The `secret` (`whsec_…`) is returned **once**. Store it to verify signatures. An
 empty `events` array subscribes to all events; `"*"` also matches all.
 
 Manage endpoints: `GET /v1/webhooks` lists them (secrets omitted; tenant-wide
 with an API key, app-scoped with a widget JWT) and
-`DELETE /v1/webhooks/{id}` removes one.
+`DELETE /v1/webhooks/{id}` removes one (204).
 
 ## Event catalog
 
@@ -102,10 +107,16 @@ Additional conditional fields ride connection events:
 
 ## Delivery & retries
 
-- A delivery succeeds on any `2xx`. Each attempt is persisted.
-- Failures retry with exponential backoff, up to **3 attempts** total.
-- Inspect attempts: `GET /v1/webhook-deliveries` (`attempts`, `status_code`,
-  `delivered`, `error`; filter with `?app_id=` and `?type=`).
+- A delivery succeeds on any `2xx`. Respond within 15 seconds.
+- Network errors, `5xx` and `429` are retried with exponential backoff
+  (about 30 seconds, then doubling, capped at 6 hours between tries), up to 12
+  attempts in total. Any other `4xx` is treated as a permanent failure and is
+  not retried.
+- Inspect outcomes: `GET /v1/webhook-deliveries` returns the 100 most recent
+  settled deliveries (`attempts`, `status_code`, `delivered`, `error`; filter
+  with `?app_id=` and `?type=`). The log keeps the last 50 per application.
+  A delivery that is still being retried appears once it succeeds or is given
+  up on.
 
 Endpoints should be **idempotent**: the same event can arrive more than once on
 retry. Deduplicate on the envelope `id`, or on `domain` + `type`.

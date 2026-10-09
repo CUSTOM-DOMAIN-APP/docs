@@ -99,11 +99,30 @@ inviting your team.
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
 | **Analytics** | The widget funnel on its own tab, with a Traffic tab for what your domains receive at the edge (and the busiest domains) and a Providers tab for where customers drop off by DNS provider and by root versus subdomain. |
-| **Widget** | Embed code for your framework, the designer (the widget itself, every screen, light and dark, with a look for each application) and a live preview. |
-| **API & SDK** | Server-side API keys, with a Webhooks tab and a Guides tab for the first request and the SDK. |
+| **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
+| **API & SDK** | Server-side API keys (**Create key**), with a Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you. |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Team**, **Billing**, **Usage** and **Applications** open under it. |
+
+### API keys and widget tokens
+
+Open **API & SDK** and press **Create key**. Give it a name and pick an
+**Environment**: Production (`cd_live_…`), Development or Staging (both
+`cd_test_…`). The full key is shown once ("Copy your new key now"); only a hash
+is kept. Admins and owners can create keys. Creating the first one needs a card
+on file, which starts the 14 day free trial (nothing is charged until it ends).
+Your first domain is free without a card, but a key is not, so a new workspace
+that presses **Create key** sees "Start your free trial to create API keys" with
+an **Add a card** link, and the key is created once the card is in.
+
+The application the console made for you has a client secret, but the console
+keeps it sealed and never shows it. To mint widget tokens from your server, send
+one of these keys to the console's `POST https://app.customdomain.ai/api/widget-token`;
+the **Install** tab on **Widget** writes the code for you. Do not rotate that
+application's secret: the console's copy would go stale and the preview, **Try it
+live** and that endpoint would stop working. See
+[Widget tokens](/docs/authentication/widget-tokens).
 
 Optional surfaces (the activity log, DNS monitoring, domain sales, the MCP
 server and agent access) are off until you need them: switch them on under
@@ -136,8 +155,9 @@ it** and **Delete application**) are tabs. Deleting asks you to type the name, r
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
-can't be previewed here: its widget secret was issued to whoever created it
-and was never stored in the console.
+can't be previewed here: its client secret was issued to whoever created it
+and was never stored in the console, so mint its tokens with `POST /v1/tokens`
+and that secret.
 
 ## 3. Connect a domain
 
@@ -171,11 +191,14 @@ They appear in this order; the recommended one is marked.
 
 1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
    Netlify, Vercel (by installing the CustomDomain™ integration) and
-   WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup;
-   we add the records with a one-time token we never store. Fastest. Sign in
-   with Google Cloud, Sign in with Azure DNS (a Microsoft account), OVHcloud's
-   consent page and sign-in through a provider's MCP server are built but not
-   switched on yet; see
+   WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup
+   and we add the records. Fastest. **Keep this sign-in** starts ticked: we
+   keep it, encrypted, so we can put the records back and remove them with the
+   domain; untick it to use the sign-in once. Sign in with Google Cloud (only
+   for the app's test users until Google verifies it), Sign in with Azure DNS
+   (a Microsoft account) and Sign in with Dynadot or Unstoppable Domains
+   (through the provider's MCP server) are used once. OVHcloud's consent page
+   and the other MCP server sign-ins are built but not switched on yet; see
    [DNS providers](/docs/dns/providers#built-but-not-switched-on-yet).
 2. **One-click setup**: only where the provider serves our template
    (NameSilo, Glauca Digital, Domain Chief today). After you approve the change

@@ -32,6 +32,10 @@ curl -X PUT https://api.customdomain.ai/v1/connections/<ID>/records \
 `PUT /v1/connections/{id}/records` **replaces** the connection's desired
 set with yours. From then on the poller verifies *your* records, the widget's
 manual screen shows *your* records, and `live` means *your* records resolve.
+The poller compares values for `CNAME`, `A`, `AAAA`, `APEXCNAME` and `TXT`
+records (a `TXT` counts when it contains your value). `MX`, `SPFM` and `CAA`
+records are written, but they are not value-checked, so a set made only of
+those can go `live` without confirming them in DNS.
 See [Create a connection: supplying your own
 records](/docs/connect-flow/create-a-connection#supplying-your-own-records).
 
@@ -81,13 +85,19 @@ records to it).
   refused (`403`): a page in a browser must not choose the records we write.
 - **Replace, don't patch.** The whole set is replaced on each `PUT`.
 - **Before anything is written.** Once the connection's records have been
-  applied (or it is live), the set is frozen: a `PUT` returns `409` with
-  *disconnect and reconnect the domain to change them*. Changing a live
-  connection's target out from under DNS is what that refusal prevents.
-- **In the connection's zone.** Every record host must sit inside the
-  connection's zone (`mail.acme.com` for a connection on `mail.acme.com`; the
-  registrable domain for a root connection); at most 25 records; supported
-  types only.
+  applied (or it is live), the set is frozen: a `PUT` with a different set
+  returns `409` with *disconnect and reconnect the domain to change them*.
+  Changing a live connection's target out from under DNS is what that refusal
+  prevents. Re-sending the identical set is accepted and returns `200`
+  unchanged, so a retry is safe.
+- **In the connection's zone.** The zone is the registrable domain, so a
+  connection on `mail.acme.com` accepts any host at or under `acme.com`. A
+  relative host (`@`, `_dmarc`, `sel._domainkey`) is anchored to the
+  connection's own name (`_dmarc` becomes `_dmarc.mail.acme.com`). An absolute
+  host outside the zone is refused with `400 invalid_request`.
+- **Supported types.** `A`, `AAAA`, `CNAME`, `APEXCNAME`, `MX`, `TXT`, `CAA`
+  and `SPFM`. Anything else (`NS`, `SRV`, the forwarding pseudo-types) is
+  refused. Send between 1 and 25 records.
 - **Root records.** A `CNAME` at the zone root is rewritten to the engine's
   apex type and realized per provider (or refused where it can't be), under the
   same rules as [Root domains](/docs/dns/root-domains).

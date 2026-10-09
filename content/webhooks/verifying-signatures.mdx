@@ -3,12 +3,14 @@ title: Verifying signatures
 description: HMAC-SHA256 signature verification and replay protection.
 ---
 
-Each delivery carries two headers:
+Each delivery carries these headers:
 
 - `X-JE-Timestamp: <unix seconds>`: when the delivery was signed.
 - `X-JE-Signature: sha256=<hex>`: an HMAC-SHA256, keyed by your endpoint's
   signing secret (`whsec_…`), over the string `${timestamp}.${rawBody}` (the
   timestamp, a dot, then the **exact bytes** of the request body).
+- `X-JE-Event-Id: evt_…`: the event `id`, the same on every retry. Use it to
+  deduplicate.
 
 Binding the timestamp into the signature lets you reject **replays**: check that
 the timestamp is recent (a 5-minute window is recommended) before trusting the

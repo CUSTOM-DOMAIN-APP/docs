@@ -33,13 +33,19 @@ curl -X POST http://localhost:8080/v1/tenants:provision \
 # → { "tenant_id": "...", "application_id": "...", "api_key": "cd_live_...", "client_secret": "..." }
 ```
 
-`api_key` and `client_secret` are shown **once**. Store them. (You can also
+`api_key` (`cd_live_` plus 32 hex characters) and `client_secret` (`sk_` plus 32
+hex characters) are different credentials, and both are shown **once**. Store
+them. (You can also
 create tenants and applications individually via `POST /v1/tenants` and
 `POST /v1/applications` with the management key.)
 
 ## 2. Mint a widget token
 
-Trade the app's `client_secret` for a short-lived widget JWT (server-side only):
+Trade the app's `client_secret` for a short-lived widget JWT (server-side only).
+This works because step 1 created the application over the API, so you hold its
+secret. An account that signed up in the console never sees one; it mints with an
+API key through `POST https://app.customdomain.ai/api/widget-token` instead (see
+[Widget tokens](/docs/authentication/widget-tokens)).
 
 ```bash
 curl -X POST http://localhost:8080/v1/tokens \

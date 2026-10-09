@@ -27,7 +27,7 @@ runnable API examples that GitHub's MDX preview does not.
 
 ## What it covers
 
-Connecting a customer's domain means provider detection across more than 150 DNS hosts,
+Connecting a customer's domain means provider detection across more than 170 DNS hosts,
 registrars and domain platforms (all of the 100 largest registrars among them), one-click
 provider authorization (or a scoped API token, or a guided manual flow with automatic
 verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy
@@ -39,12 +39,12 @@ proven by the rail that writes the DNS, or by the records appearing in the domai
 authoritative DNS. Documenting that honestly takes room, which is why this runs to well over a
 hundred pages and not a single one.
 
-The honest limit, stated here as plainly as it is stated in the docs: **118 of the 154 providers
+The honest limit, stated here as plainly as it is stated in the docs: **116 of the 178 providers
 in the census are connected by hand**, because they ship no DNS write a third party can use,
 gate it, or ship one that replaces a whole zone. Those domains go through the guided manual path:
 the app shows the exact records and verifies them automatically, but a human still pastes them.
-Verified against the live census on 2026-09-29: 154 catalogued, 29 provider API, 6 OAuth,
-1 Domain Connect, 118 manual.
+Verified against the live census on 2026-10-09: 178 catalogued, 55 provider API, 6 OAuth,
+1 Domain Connect, 116 manual.
 
 Where to start, depending on why you are here:
 

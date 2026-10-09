@@ -9,10 +9,10 @@ The public catalog is returned by `GET /v1/plans` (along with a
 `billing: { configured, mode, trial_days }` block).
 
 Entitlements gate which products a tenant may use. **Enforced today:** `Power`
-(the `/v1/connections/{id}/power*` surface), `Secure` (the `/v1/ssl*` surface)
-and `WhiteLabel` (widget branding); an unentitled tenant gets
-`402 plan_upgrade_required`. `Connect` is included on every plan and needs no
-gate. `Monitor` is not gated per tenant yet; the deployment-level
+(the `/v1/connections/{id}/power*` surface) and `Secure` (the `/v1/ssl*`
+surface); an unentitled tenant gets `402 plan_upgrade_required`. `WhiteLabel`
+(widget branding) is enforced by dropping the branding, as described below.
+`Connect` is included on every plan and needs no gate. `Monitor` is not gated per tenant yet; the deployment-level
 `MONITOR_ALERTS_ENABLED` flag governs it for everyone.
 
 | Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
@@ -114,7 +114,7 @@ credentials that already exist keep working.
 ### Billing states
 
 `GET /v1/billing/status` (owners and admins) evaluates the workspace into one
-of eight states. Only the last three refuse new connections.
+of eight states. Only the last two refuse new connections.
 
 | State | Meaning | New connections |
 | --- | --- | --- |
@@ -318,13 +318,13 @@ no enforcement meaning at all. Read **`hard_cap`** for a plan's refusal policy.
 
 ```bash
 # Start a Stripe Checkout for a self-serve plan (a new workspace gets its 14 day trial)
-curl -X POST http://localhost:8080/v1/billing/checkout \
+curl -X POST https://api.customdomain.ai/v1/billing/checkout \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
   -d '{"plan":"starter","success_url":"https://app.acme.example/ok","cancel_url":"https://app.acme.example/cancel"}'
 # → { "id": "cs_...", "url": "https://checkout.stripe.com/...", "trial_days": 14, "first_charge_at": "..." }
 
 # Open the Stripe Billing Portal at the card update (requires a prior checkout)
-curl -X POST http://localhost:8080/v1/billing/portal \
+curl -X POST https://api.customdomain.ai/v1/billing/portal \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
   -d '{"return_url":"https://app.acme.example/billing","flow":"payment_method_update"}'
 ```
@@ -360,7 +360,7 @@ is a `400`. The same field works on `POST /v1/billing/setup` (save a card) and
 `POST /v1/registrar/checkout` (buy a domain).
 
 ```bash
-curl -X POST http://localhost:8080/v1/billing/checkout \
+curl -X POST https://api.customdomain.ai/v1/billing/checkout \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
   -d '{"plan":"starter","return_url":"https://app.acme.example/billing/return?session_id={CHECKOUT_SESSION_ID}","ui_mode":"elements"}'
 # → { "id": "cs_...", "client_secret": "cs_..._secret_...", "ui_mode": "elements", "trial_days": 14, "first_charge_at": "..." }

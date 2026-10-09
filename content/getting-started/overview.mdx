@@ -53,10 +53,15 @@ of them, that is a bug. Tell us.
 
 | You got it from | It is | Use it for |
 | --- | --- | --- |
-| The console → **Keys** | a `cd_live_…` / `cd_test_…` API key (tenant-scoped; keys created earlier start `sk_` and still work) | server-to-server API calls, the MCP server, minting widget tokens |
-| The console → **Embed** | the application's **client secret** (shown once; rotate there) | minting widget tokens from your server (`POST /v1/tokens`) |
-| `POST /v1/tokens` | a short-lived **widget JWT** (one application, optionally one domain, optionally one end user) | the browser: `customdomain-js` `open({ token })`, or direct `/v1` calls from the page |
+| The console → **API & SDK** → **Create key** | a `cd_live_…` / `cd_test_…` API key (tenant-scoped; keys created earlier start `sk_` and still work). Shown once. Needs a card on file (14 day free trial) | server-to-server API calls, the MCP server, and minting widget tokens through `POST https://app.customdomain.ai/api/widget-token` |
+| `POST /v1/applications` (an application created over the API) | the application's **client secret** (`sk_…`, shown once in that response). A console signup never shows one | minting widget tokens from your server with `POST /v1/tokens` |
+| A widget token endpoint (above) | a short-lived **widget JWT** (one application, optionally one domain, optionally one end user) | the browser: `customdomain-js` `open({ token })`, or direct `/v1` calls from the page |
 | An agent grant | a delegated **agent token** | the agent's scoped API calls |
+
+Most customers sign up in the console, so they hold an API key and mint widget
+tokens through `/api/widget-token`; the client secret path is for applications
+created over the API. An API key is not a client secret and the two are not
+interchangeable. See [Widget tokens](/docs/authentication/widget-tokens).
 
 A widget JWT can never mint another token, never read another application's
 data, and never choose the records we write. Anything that chooses records

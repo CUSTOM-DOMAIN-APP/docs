@@ -14,6 +14,22 @@ curl -X POST http://localhost:8080/v1/connections \
   -d '{"domain":"app.customer.com"}'
 ```
 
+Optional body fields:
+
+| Field | Meaning |
+| --- | --- |
+| `application_url` | The [Power](/docs/connect-flow/routing) origin the edge proxies this connection to. Validated before anything is written (absolute `http` or `https`, no private or loopback addresses). |
+| `www_redirect` | Also write the `www` record and redirect it. Defaults to `false`. |
+| `override_spf`, `validate_dmarc`, `validate_caa` | Record-handling flags, stored and echoed back. Default `false`. |
+| `monitor` | Drift [monitoring](/docs/connect-flow/monitoring). On unless you send `false`. |
+| `batch_id` | Groups the domains connected in one multi-domain session. |
+| `end_user_ref` | Your own id for the end user, shown as "Connected by" in the console. A widget token's end user must match. |
+| `application_id` | API key callers only: create on another application of the same workspace. A widget or agent token can only name its own. |
+
+Unknown fields are rejected with `400`. A workspace without an active or
+trialing subscription gets `402` `billing_required`, and a plan at its domain
+limit gets `402` `quota_exceeded`. A new workspace's first domain is free.
+
 ## Response
 
 The response is the connection plus its authoritative desired record set:

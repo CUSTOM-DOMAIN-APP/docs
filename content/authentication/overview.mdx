@@ -42,6 +42,11 @@ types share the surface, each with a different blast radius.
   `POST /v1/connections`, `POST /v1/domains:check` and
   `POST /v1/sharing/connect`.
 
+In the console, create and revoke keys on the **API & SDK** page. Creating a key
+needs `admin` or `owner` and a card on file (the 14 day free trial; nothing is
+charged until it ends): a workspace that has not started it gets
+`402 billing_required` and is sent to **Billing**.
+
 Manage keys under an application:
 
 ```
@@ -55,14 +60,21 @@ revokes its keys. It is refused for the tenant's default application, for the
 application the calling key belongs to, and while the application still has
 domains.
 
-Each application also has a `client_secret` (returned once at application
-creation, or from `tenants:provision`). The `client_secret` is **not** an API
-key: its only job is to mint [widget JWTs](/docs/authentication/widget-tokens).
+Each application also has a `client_secret` (`sk_` plus 32 hex characters),
+returned once at application creation over the API, or from `tenants:provision`.
+The `client_secret` is **not** an API key: its only job is to mint
+[widget JWTs](/docs/authentication/widget-tokens), and an API key placed in the
+`client_secret` field is refused with `401`. An application created in the
+console never shows its client secret; the console keeps it sealed and mints
+tokens for you when you call `POST https://app.customdomain.ai/api/widget-token`
+with an API key. See
+[Widget tokens](/docs/authentication/widget-tokens) for which path applies.
 
 ## Widget JWTs (browser)
 
-Short-lived JWTs minted server-side via `POST /v1/tokens`. Scoped to one
-application and, optionally, one domain. They authorize only the browser-facing
+Short-lived JWTs minted server-side, with an API key through the console's
+`/api/widget-token` or with the application's client secret through
+`POST /v1/tokens`. Scoped to one application and, optionally, one domain. They authorize only the browser-facing
 Connect endpoints. This is the only credential that ever reaches the browser;
 see [Widget tokens](/docs/authentication/widget-tokens).
 

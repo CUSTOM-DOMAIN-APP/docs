@@ -8,7 +8,9 @@ description: Opt a connection into managed mode so the control plane can re-appl
 > provider to onboard us (`OAUTH_DC_<PROVIDER>_CLIENT_ID`); no provider has
 > issued one to customdomain.ai yet. A **managed sign-in grant** needs the
 > deployment to list the provider in `OAUTH_MANAGED_PROVIDERS` and to set
-> `GRANT_ENCRYPTION_KEY`. Where neither applies, every connection is use-once,
+> `GRANT_ENCRYPTION_KEY`; the hosted service does both for Cloudflare,
+> DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel and WordPress.com,
+> so a sign-in there is kept by default. Where neither applies, every connection is use-once,
 > `managed` stays `false`, and `:reapply` and the MCP `reapply-connection` tool
 > return `409`: drift is reported, not healed. Removing a domain does not need a
 > grant, so `disconnect-domain` works on any connection (see
@@ -16,7 +18,7 @@ description: Opt a connection into managed mode so the control plane can re-appl
 
 Most connections are **use-once**: a [rail](/docs/connect-flow/overview#the-four-rails)
 writes the desired records a single time and the platform keeps no credential.
-**Managed mode** is the opt-in exception. When a connection is managed, the
+**Managed mode** is the exception. When a connection is managed, the
 control plane holds a durable, **encrypted** grant for the customer's DNS
 provider, so it can re-apply or revert the records **server side, without
 asking the customer to consent again**. The grant comes from one of two rails:
@@ -29,8 +31,8 @@ asking the customer to consent again**. The grant comes from one of two rails:
 
 ## What "managed" means
 
-- **Opt-in only.** A connection is never managed by default. It becomes managed
-  when the customer completes one of the two consents:
+- **Only through a consent.** A connection becomes managed only when the
+  customer completes one of the two consents:
   - the **async one-click** consent: start it with
     `POST /v1/connections/{id}/domainconnect:start` with `{"managed": true}`
     (equivalently `{"rail":"async"}`). When the provider supports the async
@@ -38,7 +40,10 @@ asking the customer to consent again**. The grant comes from one of two rails:
     through to the ordinary sync `apply_url` and the connection stays use-once;
   - a **sign-in** at a provider the deployment keeps grants for: start it with
     `POST /v1/connections/{id}/oauth:start`. Its response says `managed: true`
-    ahead of time, and so does the domain check's `rails.oauth`.
+    ahead of time, and so does the domain check's `rails.oauth`. This is the
+    default for those providers: the console's **Keep this sign-in** box starts
+    ticked (untick it, or send `"access": "one_time"`, to use the sign-in once),
+    and the widget keeps the sign-in and tells the customer so.
 - **Encrypted grant.** The async callback (`GET /v1/connect/dc/callback`)
   exchanges the code for a durable grant against the provider API base that
   was pinned into the signed `state` at start (never re-derived from fresh
@@ -68,7 +73,9 @@ connected but drop the grant with [disable managed](#disabling-managed-mode)
 ## Managed sign-in grants
 
 `OAUTH_MANAGED_PROVIDERS` is a comma list of provider ids (empty by default,
-which keeps every sign-in one-time). For a listed provider, the credential a
+which keeps every sign-in one-time). The hosted service lists Cloudflare,
+DigitalOcean, DNSimple, Linode, Netlify, OVHcloud, Porkbun, Vercel and
+WordPress.com (OVHcloud's consent is not switched on there yet). For a listed provider, the credential a
 [sign-in](/docs/dns/providers#one-click-nothing-to-paste) obtained is kept as
 the connection's encrypted grant, in the same grant store the async one-click
 rail uses, and the connection is marked `managed`. Without
@@ -87,11 +94,13 @@ What each provider hands over, and how it stays usable:
 | Vercel | `vercel_integration` | the integration's token and its team | nothing to rotate; keep the integration installed on that team |
 | Porkbun | `porkbun_handoff` | the approved API key pair | nothing to rotate; keep the key named CustomDomain™ |
 | OVHcloud | `ovh_consent` | the consumer key and its region (the application secret stays in the deployment's environment) | the validity chosen on OVHcloud's page, so choose **Unlimited** |
-| Hostinger, Unstoppable Domains, XServer Domain, Namecheap, Spaceship (only when listed in `MCP_SIGNIN_PROVIDERS`) | `mcp_oauth` | access and refresh token of the client the control plane registered with the provider, and which client that is | refresh token rotation through that client; Hostinger accepts a refresh only until about five and a half hours after the access token expires, so a kept Hostinger sign-in left idle longer needs a new sign-in. Namecheap publishes no revocation endpoint, so a disconnect removes the records but cannot revoke a kept Namecheap sign-in |
+| Dynadot, Hostinger, Unstoppable Domains, XServer Domain, Namecheap, Spaceship, Muumuu Domain (only when listed in `MCP_SIGNIN_PROVIDERS`) | `mcp_oauth` | access and refresh token of the client the control plane registered with the provider, and which client that is | refresh token rotation through that client; Hostinger accepts a refresh only until about five and a half hours after the access token expires, so a kept Hostinger sign-in left idle longer needs a new sign-in. Namecheap publishes no revocation endpoint, so a disconnect removes the records but cannot revoke a kept Namecheap sign-in |
 
-On the hosted service, Google Cloud DNS's and Azure DNS's sign-ins, OVHcloud's
-consent and the `mcp_oauth` sign-ins are built but not switched on yet; their
-rows describe what a deployment that switches them on keeps.
+On the hosted service, the Google Cloud DNS, Azure DNS, Dynadot and
+Unstoppable Domains sign-ins are on but are not in `OAUTH_MANAGED_PROVIDERS`,
+so they are used once; OVHcloud's consent and the other `mcp_oauth` sign-ins
+are not switched on. Their rows describe what a deployment that keeps them
+stores.
 
 - **Re-apply.** `POST /v1/connections/{id}:reapply` (and the fleet reconciler)
   rewrites the records through the provider's DNS API with the kept credential,

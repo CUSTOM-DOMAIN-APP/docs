@@ -43,13 +43,13 @@ This project has a documented history of overclaiming, and every number in these
 | Endpoint count | `site/openapi-v1.yaml`, counted, not remembered |
 | MCP tool count | `GET https://mcp.customdomain.ai/.well-known/agent/mcp.json`, the live server's tool list |
 
-Three provider numbers are true and mean different things. Keep them apart (all as of 2026-09-29):
+Three provider numbers are true and mean different things. Keep them apart (all as of 2026-10-09):
 
-- **154** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Counting the adapters the census does not list, "more than 150 providers are known" is the safe phrasing.
-- **36** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 29 scoped API key); the other 118 are connected by hand.
-- **50** built-in adapters ship in the Go registry (`GET /v1/providers`), a different quantity again: 39 of them belong to a catalogued provider and 11 cover providers the census does not list. Two of the 50 (Unstoppable Domains, XServer Domain) only sign in through the provider's MCP server and are switched off, and PowerDNS only reaches a server you run, so the hosted service writes records at 47.
+- **178** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Counting the adapters the census does not list, "more than 170 providers are known" is the safe phrasing.
+- **62** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 55 scoped API key); the other 116 are connected by hand.
+- **77** built-in adapters ship in the Go registry (`GET /v1/providers`), a different quantity again: 63 of them belong to a catalogued provider through the census adapter link, and 14 do not. Ten of those 14 cover providers the census does not list, PowerDNS only reaches a server you run, and three (Unstoppable Domains, XServer Domain, Muumuu Domain) only sign in through the provider's MCP server. The hosted service switches on the Unstoppable Domains sign-in but not the other two, so it writes records at 74.
 
-Never attach 154 to an automatic verb. "One-click across 154 providers" is false. "36 of 154 auto-configure" is true.
+Never attach 178 to an automatic verb. "One-click across 178 providers" is false. "62 of 178 auto-configure" is true.
 
 ## The product name
 

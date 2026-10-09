@@ -1,27 +1,103 @@
 ---
 title: Widget tokens
-description: Minting short-lived JWTs via POST /v1/tokens for the browser widget, their two scopes, and keeping a long session alive.
+description: Minting short-lived JWTs for the browser widget with an API key or an application client secret, their two scopes, and keeping a long session alive.
 ---
 
-The widget must never see an API key or `client_secret`. Instead your backend
-exchanges the application's `client_secret` for a short-lived JWT and hands only
-that to the browser:
+The widget must never see an API key or an application `client_secret`. Your
+backend mints a short-lived JWT and hands only that to the browser. There are
+two ways to mint it, and which one applies depends on how the application was
+created:
+
+| How the application was created | You have | Mint with |
+| --- | --- | --- |
+| **You signed up in the console** (most customers; every console signup gets an application) | An API key from **API & SDK**. The console never shows you the application's client secret. | [`POST https://app.customdomain.ai/api/widget-token`](#with-an-api-key-console-accounts) with `Authorization: Bearer <API key>` |
+| **The application was created over the API** (`POST /v1/applications`, or `tenants:provision`) | The `client_secret` in that creation response | [`POST /v1/tokens`](#with-the-client-secret-v1tokens) with the secret in the body |
+
+The **Install** tab on the console's **Widget** page generates code for both. Its
+**Authenticate with** switch defaults to **API key**.
+
+An API key and a client secret are different credentials. Do not swap them:
+
+| | API key | Application client secret |
+| --- | --- | --- |
+| Looks like | `cd_live_` or `cd_test_` plus 32 hex characters (older keys: `sk_live_` / `sk_test_`) | `sk_` plus 32 hex characters |
+| Where you get it | **API & SDK**, **Create key** (admins and owners). Shown once. | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
+| Sent as | `Authorization: Bearer …` | `client_secret` in the body of `POST /v1/tokens` |
+| What it does | Calls the API for your whole workspace | Mints widget tokens for one application, nothing else |
+
+Never put an API key in the `client_secret` field: `POST /v1/tokens` always
+answers `401` with `unknown application or secret`. See
+[Troubleshooting](/docs/troubleshooting#401-unknown-application-or-secret-when-minting-a-widget-token).
+
+## With an API key (console accounts)
+
+Create a key on the console's **API & SDK** page with **Create key**, keep it in
+an environment variable on your server, and call the console's token endpoint:
 
 ```bash
-curl -X POST http://localhost:8080/v1/tokens \
+curl -X POST https://app.customdomain.ai/api/widget-token \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "application_id": "app_...", "domain": "app.customer.com" }'
+# → 200 { "application_id": "app_...", "token": "eyJ…", "expires_in": 900, "token_type": "Bearer" }
+```
+
+- `application_id` is optional and defaults to your account's first application.
+  `domain` is optional; pass it to bind the token to one hostname.
+- The API key stays on your server. Only the 15 minute token reaches the browser.
+- This endpoint mints the default `connect` scope only. It takes no `scope` or
+  `end_user_ref`. For an `app` scope token, use `POST /v1/tokens` with a client
+  secret.
+- Creating a key needs a card on file (the workspace's 14 day free trial; nothing
+  is charged until it ends). Without one, **Create key** and
+  `POST /v1/applications/{id}/keys` answer `402 billing_required`: an owner or
+  admin starts the trial under **Billing**. Your first domain is free without a
+  card, but a key is not.
+
+| Status | `error` | Meaning |
+| --- | --- | --- |
+| `401` | `unauthorized` | The `Authorization: Bearer` key is missing, revoked or not accepted. |
+| `403` | `no_application` | The key's workspace has no applications. |
+| `403` | `forbidden` | `application_id` belongs to another workspace. |
+| `503` | `no_widget_credentials` | The application was not created in the console, so the console has no secret for it. Mint with `POST /v1/tokens` and that application's client secret instead. |
+| `500` | `unseal_failed` | The console could not open its stored copy of the secret. Try again, then contact support. |
+| `502` | `mint_failed` | The token service did not return a token. Try again shortly. |
+
+The console keeps each console-created application's client secret sealed and
+uses it for this endpoint, the widget preview and **Try it live**. **Do not
+rotate that secret** (`POST /v1/applications/{id}/client-secret:rotate`): the
+console's copy is not updated, so all three stop working for that application.
+
+## With the client secret (`/v1/tokens`)
+
+For an application you created over the API, exchange its `client_secret` for a
+token:
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/tokens \
   -H "Content-Type: application/json" \
   -d '{
     "application_id": "<APP_ID>",
     "client_secret": "<CLIENT_SECRET>",
     "domain": "app.customer.com"
   }'
-# → { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
+# → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
+On a self-hosted stack the base URL is your own control plane, for example
+`http://localhost:8080`.
+
 - `POST /v1/tokens` is **not** bearer-authenticated. It authenticates by the
-  `client_secret` in the body, which is why it must run server-side only.
-- The token is bound to the application and, if you pass `domain`, to a single
-  hostname: a domain-bound token may only act on that host.
+  `client_secret` in the body, which is why it must run server-side only. A
+  wrong or unknown secret is `401`.
+- `domain` binds the token to one hostname: a domain-bound token may only act on
+  that host. `domains` (a list) allows several hosts in one session.
+- Only the creation response shows a client secret. If you lost it, rotate it
+  (`POST /v1/applications/{id}/client-secret:rotate`, needs `keys:manage`),
+  except for a console-created application (see above).
+
+## Lifetime
+
 - The default lifetime is 15 minutes (`expires_in` is in seconds; self-hosted
   deployments change it with `JUSTEASY_TOKEN_TTL`). Adding DNS records by hand
   often takes longer than that, so give the widget a way to get a fresh token.
@@ -38,7 +114,8 @@ token you hand to an end user.
 | `app` | Your server, or an admin screen only your team can reach | Everything `connect` can, plus acting as the whole application: listing every connection, webhooks, SSL certificates, Power, billing usage, the audit log, registrar orders and direct purchases, and bulk creation. |
 
 A `connect` token that calls an application-wide endpoint gets `403`. Mint an
-`app` token, or use an API key, for those calls:
+`app` token (a `POST /v1/tokens` body, so it needs the client secret), or use an
+API key, for those calls:
 
 ```json
 { "application_id": "<APP_ID>", "client_secret": "<CLIENT_SECRET>", "scope": "app" }
@@ -67,7 +144,7 @@ never sees an error:
 
 ```js
 async function mintToken() {
-  // Your own endpoint, which calls POST /v1/tokens server-side.
+  // Your own endpoint, which mints the token server-side (see above).
   const res = await fetch("/api/customdomain-token", { method: "POST" });
   return (await res.json()).token;
 }

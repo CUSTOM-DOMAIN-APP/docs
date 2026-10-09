@@ -23,9 +23,9 @@ chosen from `POST /v1/domains:check`; the widget drives them automatically.
 
 | Rail | Endpoint | How it applies records |
 | --- | --- | --- |
-| **OAuth into provider** (flagship, "Mode C") | `POST /v1/connections/{id}/oauth:start` → `GET /v1/connect/oauth/callback` | Customer authorizes with their DNS provider in a popup; the callback writes records with a **one-time** token, never stored. |
+| **OAuth into provider** (flagship, "Mode C") | `POST /v1/connections/{id}/oauth:start` → `GET /v1/connect/oauth/callback` | Customer authorizes with their DNS provider in a popup; the callback writes records with the access token, used **once** unless the sign-in is kept as a [managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants). |
 | **One-click setup** (sync + async) | `POST /v1/connections/{id}/domainconnect:start` | Returns a provider-hosted apply URL; the provider applies a signed template. No server-to-server token. |
-| **API token** (BYO) | `POST /v1/connections/{id}/apply` | You pass a scoped provider token in the request; it writes the records **once** and is discarded afterwards, unless you opt in to [remembering it](/docs/dns/provider-setup#remembering-a-key-optional). |
+| **API token** (BYO) | `POST /v1/connections/{id}/apply` | You pass a scoped provider token in the request; it writes the records **once** and is discarded afterwards. To keep a key, connect it as a [provider account](/docs/connect-flow/provider-accounts) (the console's [remember box](/docs/dns/provider-setup#remembering-a-key-optional) does this). |
 | **Manual** | (none, just the record set) | Customer copies the records from `GET /v1/connections/{id}/records`; the poller waits for them to appear. |
 
 All four converge on the same outcome: the desired records land in DNS, the

@@ -5,15 +5,17 @@ description: Short answers to common questions about connecting domains.
 
 ### Which DNS providers auto-configure records?
 
-The hosted service writes the records for the customer at 47 DNS providers,
+The hosted service writes the records for the customer at 74 DNS providers,
 through a sign-in, an API key or an access role (Cloudflare, Route 53, Google
 Cloud DNS, Azure DNS, GoDaddy, Namecheap, and more). `GET /v1/providers` lists
-every built-in adapter; those with `automatic: true` can write, and one of
-them, PowerDNS, points at a server you run yourself. NameSilo, Glauca
+every built-in adapter (77 on 2026-10-09). Three of them do not write for the
+hosted service: PowerDNS points at a server you run yourself, and XServer
+Domain and Muumuu Domain sign in only through the provider's MCP server, which
+is built but switched off for them. NameSilo, Glauca
 Digital and Domain Chief add provider-hosted one-click setup, a redirect with
-no token at all. More than 150 providers, registrars and domain platforms are
+no token at all. More than 170 providers, registrars and domain platforms are
 known by name (`GET /v1/providers/census`). Any provider can be connected by
-adding the records by hand, and 125 providers and platforms have their own
+adding the records by hand, and 135 providers and platforms have their own
 steps for that. See
 [DNS providers](/docs/dns/providers) for which way each one connects and
 [Provider setup](/docs/dns/provider-setup) for per-provider credential steps
@@ -30,25 +32,27 @@ purchased domain shows up in Domains already connected. See
 ### How does a domain actually get configured?
 
 Through one of four [rails](/docs/connect-flow/overview#the-four-rails): the
-customer authorizes their DNS provider via OAuth (records written with a one-time
-token), a one-click setup redirect, a scoped API token you pass once, or the
+customer authorizes their DNS provider via OAuth (records written with the
+sign-in's token, which the hosted service keeps, encrypted, at some providers),
+a one-click setup redirect, a scoped API token you pass once, or the
 guided-manual copy-paste flow. `POST /v1/domains:check` tells you which are
 available for a given domain.
 
 ### Is my provider API key stored?
 
 Only if you keep **Remember this key** ticked when you connect in the console
-(through the API, only when the request sets `remember`). A kept key is
-encrypted at rest, scoped to your workspace and that provider, and reused for
-your other domains in one click; the plaintext never leaves the server, and you
-can revoke it any time under **Settings, Connected provider accounts**. Untick
-the box and the key is used once to write the records, then forgotten. Account
-passwords and tokens that expire within hours are never kept. See
-[Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
+(through the API, only when you connect it as a
+[provider account](/docs/connect-flow/provider-accounts)). A kept key is
+encrypted at rest, puts your records back and removes them with the domain, and
+connects your other domains in one click; the plaintext never leaves the
+server, and you can revoke it any time on the console's **Connected accounts**
+page. Untick the box and the key is used once to write the records, then
+forgotten. Account passwords and tokens that expire within hours are never
+kept. See [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
 ### Can I connect several domains on the same provider account at once?
 
-Yes, for **Cloudflare, GoDaddy, Route 53, and Namecheap**. After you apply a key
+Yes, at providers whose API can list an account's domains, among them **Cloudflare, GoDaddy, Route 53, and Namecheap**. After you apply a key
 to one domain, the console offers to list the account's other domains and connect
 them (all or a subset) in one step. See
 [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
@@ -57,9 +61,9 @@ them (all or a subset) in one step. See
 
 Yes. A connection's `host` is empty for the apex or the subdomain label
 otherwise. A root domain works at **every** provider: where the provider has a
-root-CNAME type (ALIAS/ANAME/flattened CNAME: Cloudflare, Route 53, DNSimple,
-DigitalOcean…) the record set uses it; everywhere else (GoDaddy, Namecheap,
-Name.com, OVH…) it uses `A` records pointing at our edge. `POST
+root-CNAME type (ALIAS/ANAME/flattened CNAME: Cloudflare, DNSimple, Namecheap,
+Vercel…) the record set uses it; everywhere else (GoDaddy, Route 53,
+DigitalOcean, Name.com, OVH…) it uses `A` records pointing at our edge. `POST
 /v1/domains:check` returns `apex_supported` (the provider fact) and
 `apex_message` (set only when *this* record set can't be realized) so you can
 steer the customer. See [Root domains](/docs/dns/root-domains).

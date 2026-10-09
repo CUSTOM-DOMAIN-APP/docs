@@ -16,20 +16,32 @@ curl -X POST http://localhost:8080/v1/connections/<ID>/oauth:start \
   -H "Content-Type: application/json" \
   -d '{"return_origin":"https://app.acme.example"}'
 # → { "authorize_url": "https://<provider>/authorize?...", "provider": "cloudflare",
-#      "flow": "oauth2", "callback_origin": "<this API's public origin>" }
+#      "flow": "oauth2", "managed": false, "access": "one_time",
+#      "callback_origin": "<this API's public origin>" }
 ```
+
+The body also takes `provider` and `region` where a provider needs them,
+`access` (`continuous` or `one_time`) and `purpose` (`"remove"` to sign in once
+more to take records off). `managed` and `access` in the response say whether
+the sign-in will be kept (`continuous`) or discarded after this use
+(`one_time`); a removal sign-in is never kept and echoes `purpose`. Without
+`access`, a sign-in is kept wherever the deployment keeps that provider's
+grants. The hosted service keeps them for Cloudflare, DigitalOcean, DNSimple,
+Linode, Netlify, Porkbun, Vercel and WordPress.com, so there the answer above
+reads `"managed": true, "access": "continuous"`; the example shows a
+deployment that keeps none.
 
 The widget opens `authorize_url` in a popup. The provider redirects the customer
 to `GET /v1/connect/oauth/callback`, which consumes the HMAC-signed single-use
-`state`, exchanges the code, writes the records with the **one-time** access
-token (discarded immediately, never stored, unless the deployment keeps
-[managed sign-in grants](/docs/connect-flow/managed-connections#managed-sign-in-grants)),
+`state`, exchanges the code, writes the records with the access token
+(discarded immediately unless the sign-in is kept as a
+[managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants)),
 and returns an HTML page that postMessages `{ type: "customdomain:oauth", payload }`
 to the vetted `return_origin`. The connection is now `propagating`. `flow` says
 which kind of sign-in the popup runs: `oauth2`, `vercel_integration` (the
 CustomDomain™ integration install), `porkbun_handoff` (Porkbun's key approval),
-`ovh_consent` or `mcp_oauth` (sign-in through the provider's MCP server, not
-switched on for any provider on the hosted service yet).
+`ovh_consent` or `mcp_oauth` (sign-in through the provider's MCP server,
+switched on for Dynadot and Unstoppable Domains on the hosted service).
 
 ## Rail A: provider-hosted one-click setup
 
@@ -58,10 +70,11 @@ taken as proof: only public DNS promotes the connection.
 
 ## Rail B: API token (BYO)
 
-The customer supplies a **scoped** provider credential; it writes the records,
-and through the API it is discarded afterwards unless the request asks to
-[remember it](/docs/dns/provider-setup#remembering-a-key-optional) (in the
-console the remember box starts ticked). In the console, multi-part credentials
+The customer supplies a **scoped** provider credential; it writes the records
+and is discarded afterwards. To keep a key, connect it as a
+[provider account](/docs/connect-flow/provider-accounts); in the console the
+[remember box](/docs/dns/provider-setup#remembering-a-key-optional) starts
+ticked and does that for you. In the console, multi-part credentials
 are collected as separate labeled fields (GoDaddy: one Personal Access Token;
 Namecheap: username and API key; Route 53: access key ID and secret access key,
 or an access role instead) and joined into `credential.token` for you; see
@@ -91,11 +104,11 @@ same account in a single step. In the console this is the **"Connect more
 domains"** panel: it lists the account's other zones and lets you **Select all**
 or pick a subset, then connects them without re-entering the key.
 
-Listing is supported for **Cloudflare, GoDaddy, Amazon Route 53, Namecheap,
-IONOS, united-domains, Epik, NameBright and cPanel hosts (including
-o2switch)**. Other providers can't enumerate an account's domains (or would
-need a broader key than the records do), so they degrade to connecting one
-domain at a time.
+Listing is supported for Cloudflare, GoDaddy, Amazon Route 53, Namecheap,
+IONOS and a growing list of other providers whose keys can read the whole
+account, including cPanel hosts. Providers that can't enumerate an account's
+domains (or would need a broader key than the records do) answer
+`list_not_supported` and degrade to connecting one domain at a time.
 
 Two control-plane endpoints back it:
 
@@ -107,6 +120,7 @@ curl -X POST http://localhost:8080/v1/providers/cloudflare/zones:list \
   -d '{"credential":{"token":"<scoped-provider-token>"}}'
 # → { "provider": "cloudflare", "zones": ["acme.com", "beta.com"] }
 # A provider that can't list returns 422 { "error": "list_not_supported", … }
+# Needs a widget JWT or an API key; an empty credential.token is a 400.
 
 # 2. Create connections for the selected domains (idempotent, up to 200)
 curl -X POST http://localhost:8080/v1/connections:bulk \
@@ -173,9 +187,11 @@ completes at NameSilo, Glauca Digital and Domain Chief (the providers measured
 to serve our template catalog); GoDaddy, IONOS, Cloudflare and Vercel have not
 onboarded it, so they are never offered one-click. Sign-in runs at Cloudflare,
 DigitalOcean, DNSimple, Linode, Netlify, Vercel (the integration install) and
-WordPress.com, and Porkbun's key approval runs too; each credential is used
-once and never stored. Google Cloud DNS's and Azure DNS's sign-ins, OVHcloud's
-consent and the sign-ins through a provider's MCP server are built but not
-switched on yet.
+WordPress.com, and Porkbun's key approval runs too; each of these is kept,
+encrypted, unless the person chooses one-time use. Sign in with Google Cloud
+(only for the app's test users until Google verifies it), Sign in with Azure
+DNS and the sign-ins through Dynadot's and Unstoppable Domains' MCP servers
+run as well, and each of those is used once. OVHcloud's consent and the other
+MCP server sign-ins are built but not switched on yet.
 Read `rails` on the pre-flight rather than memorizing this list; see
 [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

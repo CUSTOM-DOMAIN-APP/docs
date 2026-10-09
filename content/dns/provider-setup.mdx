@@ -48,7 +48,7 @@ list. A self-hosted deployment uses its own address (the control plane's
 | ClouDNS | `cloudns` | [API settings](https://www.cloudns.net/api-settings/): **API & Resellers**, **Add new user** (or an API sub-user limited to the zone), set a password; copy the auth-id (or the sub-user's ID or name). | API access comes with ClouDNS's paid plans. |
 | Combell | `combell` | [My Combell](https://my.combell.com/en): **Dashboard**, **Settings**, **API**, **Users**, the **API key** button next to your administrator, then activate it and copy the API key and API secret; add `34.192.32.132` under **Dashboard**, **Settings**, **API**, **IP restrictions**. | The API comes with Reseller Hosting. A combell.nl account uses the Netherlands site choice. Combell refuses calls from addresses that are not on the list, and DNS applies only on Combell's nameservers. |
 | Constellix | `constellix` | **Manage Profile**, **Generate API Keys**; copy the API Key and Secret Key (shown once). | |
-| cPanel hosts | `cpanel` | In cPanel, **Security**, **Manage API Tokens**, **Create**; copy the token, your cPanel username and the server's hostname. | We connect on port 2083. |
+| cPanel hosts | `cpanel` | In cPanel, **Security**, **Manage API Tokens**, **Create**; copy the token, your cPanel username and the server's hostname. | We connect on port 2083. O2switch uses the same steps, with the `o2switch` provider key. |
 | deSEC | `desec` | [Token management](https://desec.io/tokens): create a token and copy the secret (shown once). | |
 | DigitalOcean | `digitalocean` | [API tokens](https://cloud.digitalocean.com/account/api/tokens): **Generate New Token** with every domain scope under Custom Scopes. | Or sign in with DigitalOcean. |
 | DirectAdmin hosts | `directadmin` | In DirectAdmin, open **Login Keys**, make a key that allows only `CMD_API_SHOW_DOMAINS` and `CMD_API_DNS_CONTROL`, and copy it (shown once) with your username and the server's hostname. | You choose DirectAdmin yourself: nothing detects it from nameservers. The server must be reachable from `34.192.32.132` and use a certificate a browser trusts. We connect on port 2222 (or 443 when you add `:443` after the hostname). A key made with no command ticked allows every command, so tick only those two. |
@@ -129,15 +129,15 @@ project that holds the zone, signed in with the DNS Administrator role, run
 `gcloud auth print-access-token`, and paste the token with the project ID. The
 token expires within an hour, so it is used once and never kept.
 
-**Sign in with Google Cloud** is built, but the hosted service has not
-switched it on yet. Where a deployment has set it up, it skips all of the
-above: sign in with the Google account that can edit the zone, and we find the
-project that holds it among the projects that account can see. The zone must
-be a public Cloud DNS zone (a private zone is never used) in a project that
-account can edit, and there must be only one such zone for the domain;
-otherwise the sign-in says which account you used and what to change. Until
-Google verifies the app, only the test users listed in the deployment's Google
-Auth Platform can sign in.
+**Sign in with Google Cloud** skips all of the above: sign in with the Google
+account that can edit the zone, and we find the project that holds it among the
+projects that account can see. The zone must be a public Cloud DNS zone (a
+private zone is never used) in a project that account can edit, and there must
+be only one such zone for the domain; otherwise the sign-in says which account
+you used and what to change. Until Google verifies the app, only the test users
+listed in the app's Google Auth Platform can sign in, and Google refuses every
+other account at its consent screen. That is the case on the hosted service
+today, so most accounts should use the access token above.
 
 ### Azure DNS (`azuredns`)
 
@@ -186,21 +186,31 @@ hand are the ways in today. Root domains need A records: GoDaddy has no ALIAS.
 
 A provider key is used to write the records. In the console, **Remember this
 key for my *&lt;provider&gt;* account** starts ticked: untick it to use the key
-once and have it forgotten. Through the API nothing is kept unless the request
-sets `remember`.
+once and have it forgotten. Through the API, `POST /v1/connections/{id}/apply`
+never keeps a key; connect it as a
+[provider account](/docs/connect-flow/provider-accounts) to keep it.
 
-A remembered key is:
+A remembered key becomes a continuous
+[provider account](/docs/connect-flow/provider-accounts) for all of that
+account's domains, checked against the provider before it is kept. It is:
 
-- **sealed at rest**: encrypted with AES-256-GCM under the console's
-  `WEB_SECRET_KEY`, scoped to one **workspace and provider** (one saved key per
-  provider account, not per domain);
+- **sealed at rest**: encrypted with AES-256-GCM under the control plane's
+  `GRANT_ENCRYPTION_KEY`;
 - **server-side only**: the plaintext never leaves the server; the browser only
-  ever sees masked metadata (provider, a label, and last-used time);
+  ever sees the account's details (provider, a label, its domains and last use);
 - **one-click reusable**: the next time you connect a domain at that provider,
-  **Use saved key** applies the records without re-entering anything, and a
-  remembered key lets us put records back if they change;
-- **revocable any time**: **Settings**, **Connected provider accounts** lists
-  every saved key with a **Revoke** button; revoking deletes it outright.
+  **Use saved key** applies the records without re-entering anything, and the
+  key puts records back if they disappear (where automatic repair is on) and
+  removes them when the domain is removed;
+- **revocable any time**: open the account on the console's **Connected
+  accounts** page and choose **Revoke**; the key is deleted and its domains stay
+  connected.
+
+A deployment without `GRANT_ENCRYPTION_KEY` cannot keep provider accounts, so
+its console keeps the key itself (AES-256-GCM under `WEB_SECRET_KEY`, one per
+workspace and provider), only to connect more domains. Keys saved that way are
+listed under **Keys to move** on the Connected accounts page until you move
+them to an account.
 
 Credentials that are passwords or expire within hours are never kept, whatever
 the request asks: ALL-INKL.COM KAS logins, Arsys API passwords, INWX, Subreg,
@@ -212,9 +222,9 @@ and [Security](/docs/security/overview#provider-credentials).
 
 ## Connecting more domains on the same account
 
-For **Cloudflare, GoDaddy, Amazon Route 53, Namecheap, IONOS, united-domains,
-Epik, NameBright and cPanel hosts (including o2switch)**, one key can connect
-the *other* domains on that account in a single step. After the first apply, the
+For providers whose API can list an account's domains, among them **Cloudflare,
+GoDaddy, Amazon Route 53, Namecheap, IONOS, united-domains, Epik, NameBright and
+cPanel hosts (including o2switch)**, one key can connect the *other* domains on that account in a single step. After the first apply, the
 console offers **Connect more domains**, lists the account's other zones, and
 lets you **Select all** or pick a subset, with no need to re-enter the key. See
 [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
@@ -223,23 +233,24 @@ lets you **Select all** or pick a subset, with no need to re-enter the key. See
 
 Signing in with the provider needs an OAuth app **registered with that provider
 under your company's identity**, which is a business step, not code. The hosted
-service has one for Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Vercel
-(the CustomDomain™ integration) and WordPress.com, and offers Porkbun's
-**Approve access at Porkbun**, which needs no registration.
+service has one for Cloudflare, DigitalOcean, DNSimple, Google Cloud DNS
+(**Sign in with Google Cloud**, which only the app's test users can use until
+Google verifies it), Azure DNS (**Sign in with Azure DNS**; users in other
+organizations see an unverified publisher warning until the app has a verified
+publisher), Linode, Netlify, Vercel (the CustomDomain™ integration) and
+WordPress.com. It offers Porkbun's **Approve access at Porkbun**, which needs no
+registration, and the sign-in through Dynadot's and Unstoppable Domains' own
+MCP servers.
 
 Built, but not yet switched on for the hosted service:
 
-- **Sign in with Google Cloud** for Google Cloud DNS, once its Google client is
-  configured (only the test users listed in the Google Auth Platform until
-  Google verifies the app).
-- **Sign in with Azure DNS** for Azure DNS (users in other organizations see an
-  unverified publisher warning until the app has a verified publisher).
 - **Grant access at OVHcloud**, which needs an OVHcloud application for each
   region served.
 - **Sign in through the provider's MCP server** for Hostinger, Namecheap,
-  Spaceship, Unstoppable Domains and XServer Domain. A deployment switches each
-  one on by listing it in `MCP_SIGNIN_PROVIDERS`; the hosted service lists none
-  until the provider approves CustomDomain™ and a live test passes.
+  Spaceship, XServer Domain and Muumuu Domain. A deployment switches each one
+  on by listing it in `MCP_SIGNIN_PROVIDERS`; the hosted service lists only
+  Dynadot and Unstoppable Domains, and adds the others once the provider
+  approves CustomDomain™ and a live test passes.
 
 Until a sign-in is on, API keys, one-click setup and adding records by hand
 cover the same providers.
@@ -251,3 +262,10 @@ OVHcloud application key and secret per region, or an entry in
 `MCP_SIGNIN_PROVIDERS` for an MCP server sign-in. Porkbun's approval needs
 none of these. Every sign-in also needs `OAUTH_STATE_KEY` and the page origins
 allowed to receive its result, `OAUTH_ALLOWED_RETURN_ORIGINS`.
+
+A sign-in is used once and dropped unless the deployment lists the provider in
+`OAUTH_MANAGED_PROVIDERS` and sets `GRANT_ENCRYPTION_KEY`. The hosted service
+keeps sign-ins at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
+Vercel and WordPress.com by default, encrypted, and the console's **Keep this
+sign-in** box lets you use one once instead. See
+[Managed sign-in grants](/docs/connect-flow/managed-connections#managed-sign-in-grants).

@@ -30,9 +30,22 @@ request and no certificate on the origin side is required for the old hostname
 
 Forwarding is part of the Power feature set and is driven by the control plane:
 the redirect target (`redirect_to`) and the apex→www flag (`www_redirect`) are
-attributes of the connection. Set them on the connection and the edge picks up
-the intent within one ask-cache TTL, with no redeploy. When neither is set, the
-domain is proxied to its origin as usual.
+attributes of the connection. Set them with `POST /v1/connections/{id}/power`
+(or `POST /v1/connections/{id}/power:repower` to change a connection that is
+already powered; omitting `application_url` there keeps the current origin):
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/power:repower \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "redirect_to": "https://new.example.com" }'
+```
+
+Send `"redirect_to": ""` to clear a redirect. The edge picks up the intent
+within one ask-cache TTL, with no redeploy. When neither is set, the domain is
+proxied to its origin as usual. Power is included on Growth, Premium and
+Enterprise; on Starter and Startup these calls return `402` with the code
+`plan_upgrade_required`.
 
 ## The redirect template (provider-written)
 

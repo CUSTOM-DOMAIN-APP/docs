@@ -33,11 +33,13 @@ about once a day, while the current certificate keeps serving.
 ```
 
 `status` is `issued`, `renewing` (renewal keeps failing while the current
-certificate still serves; `last_error` says why), `failed`, `pending` or
-`not_reported` (the edge has not reported one yet). `attention` is set when a
-person should look: `failed`, `renewal_failing` (failing for 6 hours),
-`expiring` (14 days or less without a renewal) or `expired`. An apex that
-redirects www also returns `www_certificate`.
+certificate still serves; `last_error` says why), `failed`, `pending`,
+`revoked` or `not_reported` (the edge has not reported one yet). A failing
+certificate also carries `last_error`, `failing_since` and `failure_count`.
+`attention` is set when a person should look: `failed`, `renewal_failing` (a
+renewal is failing while the old certificate serves), `expiring` (14 days or
+less without a renewal) or `expired`. An apex that redirects www also returns
+`www_certificate`. Every plan can read this endpoint.
 
 ## Alerts
 
@@ -49,7 +51,9 @@ redirects www also returns `www_certificate`.
   edge finds in its cache after a restart is recorded without an event, so
   restarts send nothing. The older `secure_status` webhook is sent only where
   the deployment has Secure on (`SECURE_ENABLED`), once per status change.
-- **Email**: the workspace's owners and admins get one email per threshold.
+- **Email**: the workspace's owners and admins get one email per threshold
+  (14, 7 and 3 days, expired, and failed). A renewal that is still failing
+  after 6 hours gets a `renewal_failing` email.
 - **Console**: the domain page's Certificate tab shows the state, the dates,
   the last error and the history, and the page itself shows a banner that links
   there when it needs attention.

@@ -15,6 +15,21 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **More sign-ins, and sign-ins that are kept.** On the hosted service you can sign in with Google
+  Cloud (only the app's test users can finish it until Google verifies the app) and with Azure DNS,
+  and sign in to Dynadot and Unstoppable Domains through their MCP servers; those sign-ins are used
+  once. A sign-in at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel or
+  WordPress.com is now kept, encrypted, by default, so we can put records back and remove them with
+  the domain: untick **Keep this sign-in** in the console to use it once, or stop keeping it any time
+  in **Connected accounts**. A key you ask us to remember is kept as a
+  [provider account](/docs/connect-flow/provider-accounts). The docs no longer mention a `remember`
+  field on the API, which never had one: keep a key with `POST /v1/provider-accounts`. See
+  [DNS providers](/docs/dns/providers).
+- **Widget tokens for console accounts are now documented.** An application you made in the
+  console never shows its client secret, so a server cannot call `POST /v1/tokens` with it.
+  Mint the token with an API key instead: `POST https://app.customdomain.ai/api/widget-token`
+  with your API key as the bearer token, and keep the key on your server. [Widget tokens](/docs/authentication/widget-tokens)
+  now explains this, and the setup guides quote the current census (178 providers).
 - **Nine more API key rails.** Plesk, DirectAdmin, Websupport, Azion, Joker.com, Exoscale,
   webnames.ca, Binary Lane and Metaname: paste a key or a login and the records are written for you.
   Joker.com was by hand until now. Plesk, DirectAdmin and Exoscale are chosen by you, because
@@ -35,11 +50,20 @@ never change meaning or disappear without a new major version. See the
   way as everyone else on netcup, with the API key alone. Muumuu Domain (ムームードメイン) gets a
   sign in through its own MCP server, built and not switched on yet; until then its records are
   added by hand on ムームーDNS. See [Provider setup](/docs/dns/provider-setup).
+- **A live demo on the home page.** customdomain.ai/live-demo lets you type a domain you own and
+  watch CustomDomain™ read its real DNS, name the DNS provider, choose how it would connect and
+  walk through what your customer would see. It runs in your browser, needs no account and writes
+  nothing to your DNS. The home page links to it.
 - **Seven more API key rails.** Domeneshop, Scaleway, INWX, Gcore, Subreg, Loopia and hosting.de:
   paste a key or a login and the records are written for you. Scaleway, INWX and Subreg were by
   hand until now. The INWX, Subreg and Loopia logins are used once and never stored, and Subreg may
   ask you to allow `34.192.32.132` in its API settings. A root domain on any of them gets A records.
   See [Provider setup](/docs/dns/provider-setup).
+- **The Cookie Policy is shorter, and the sub-processor list is longer.** The Cookie Policy now
+  describes what we do and use in general terms, so it stays true when a tool or a lifetime
+  changes, and your cookie choice still applies across the website, the docs and the console. The
+  sub-processor list now names Resend, which delivers our own email, and the everjust.app
+  platform, which runs our marketing website and the mailbox we answer you from.
 - **The Privacy Policy now describes domain checks.** When you enter a domain, or sign up
   with an address at your company's own domain, we check from our own servers whether that
   domain responds on the public internet, to help you connect it: we read its public DNS
@@ -48,6 +72,11 @@ never change meaning or disappear without a new major version. See the
   the page size), never the page itself, cookies or credentials, and check each domain at most
   once a day. [What CustomDomainBot does](/docs/security/domain-checks), and how to ask us to
   stop.
+- **The website asks about cookies the way the console does.** customdomain.ai now shows the same
+  cookie bar as the console, with the same Settings, Reject and Accept and the same Essential,
+  Analytics and Marketing switches, and it says that analytics includes session recording. Because
+  the old bar's choices are not carried over, the website asks once more. Global Privacy Control
+  and Do Not Track still mean no prompt.
 - **Your first domain is free.** A new workspace connects its first domain without adding a card,
   so you can see it go live before deciding anything. Once it is live, the console offers the
   14 day free trial once (skip it and it stays skipped), and a card is needed to connect more
@@ -105,6 +134,10 @@ never change meaning or disappear without a new major version. See the
   ALIAS at the root and leaves records it steers with filters alone; netcup needs a
   customer number, an API key and the API password, works on its own nameservers and
   does not change domains on CloudDNS. See [Provider setup](/docs/dns/provider-setup).
+- **Four more provider logos and ten more setup guides.** cPanel, Infomaniak, Unstoppable Domains
+  and Tencent Cloud DNSPod now show their logo in the widget and the console instead of a letter.
+  Constellix, deSEC, DNS Made Easy, GleSYS, LuaDNS, Njalla, PowerDNS, Domain Chief, Glauca Digital
+  and Unstoppable Domains now have a step by step guide for the records you add by hand.
 - **Long console pages became short summaries with views.** A domain opens to its status,
   the one thing to do and five facts, with DNS, Certificate, Edge, Traffic and History as
   tabs. Settings, Analytics, API and SDK, an application, Billing, Team and Monitor work the

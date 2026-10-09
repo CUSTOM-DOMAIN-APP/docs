@@ -32,16 +32,16 @@ The completeness map: every user-facing flow and the surface that implements it.
 | # | As a developer, I want to… | Surface / path |
 | --- | --- | --- |
 | D1 | Create and manage applications | Console → Applications and each application's page (`POST`/`GET /v1/applications`, `GET`/`PATCH`/`DELETE /v1/applications/{id}`, its keys and connect target) |
-| D2 | Create, list, and revoke API keys | Console → API keys (`POST`/`GET`/`DELETE /v1/applications/{id}/keys`) |
-| D3 | Invite teammates and set roles | Console → Members (`POST /v1/members`, `PATCH /v1/members/{id}`, `:accept`) |
+| D2 | Create, list, and revoke API keys | Console → **API & SDK** → API keys (`POST`/`GET`/`DELETE /v1/applications/{id}/keys`) |
+| D3 | Invite teammates and set roles | Console → Team (`POST /v1/members`, `PATCH /v1/members/{id}`, `:accept`) |
 | D4 | Connect a domain from the console | Console → Domains (`POST /v1/connections`) |
 | D5 | Inspect a connection and drive it | Console → Domain detail, for a domain of any application (`GET /v1/connections/{id}`, `/records`, the apply rails, all with the tenant API key) |
-| D6 | See which providers auto-configure | Console → Providers (`GET /v1/providers`, `/v1/providers/census`) |
-| D7 | Receive events and inspect deliveries | Console → **Activity**: register/rotate/delete endpoints and filter deliveries by event type, all on that page (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`). There is no separate "Webhooks" page. |
+| D6 | See which providers auto-configure | [DNS providers](/docs/dns/providers) in these docs, or the public `GET /v1/providers` and `/v1/providers/census` (the console has no providers page; each domain's detected provider shows on Domains) |
+| D7 | Receive events and inspect deliveries | Console → **API & SDK** → Webhooks to register and delete endpoints, and **Activity** for the timeline of deliveries (`POST`/`GET`/`DELETE /v1/webhooks`, `GET /v1/webhook-deliveries`) |
 | D8 | Track usage against quota | Console → Usage (`GET /v1/billing/usage`) |
 | D9 | View and change plan | Console → Billing (`GET /v1/plans`, `POST /v1/billing/checkout`, `/portal`) |
-| D10 | Embed the widget safely | `POST /v1/tokens` server-side; the widget JWT is app- (and optionally domain-) scoped |
-| D11 | Buy a new domain, [money-safe](/docs/sell/buying-a-domain) | Console → Sell (`/app/sell`: search → in-page checkout authorizes → registration → capture; auto-connected) |
+| D10 | Embed the widget safely | Console → **Widget** (Install, Design, Try it live). Your server mints the token: `POST /api/widget-token` with an API key (console applications) or `POST /v1/tokens` with the client secret (applications created over the API). The widget JWT is app- (and optionally domain-) scoped |
+| D11 | Buy a new domain, [money-safe](/docs/sell/buying-a-domain) | Console → More → Buy a domain (`/app/sell`: search → in-page checkout authorizes → registration → capture; auto-connected) |
 | D12 | Resume an abandoned setup | Console → Domains → **Finish setup** (reopens the guided flow at the right step) |
 | D13 | Point an agent at the MCP server | Console → More → MCP server (`/app/mcp`: endpoint, client setup for Claude Code, Claude Desktop, Cursor, VS Code, ChatGPT and others, a connection test). Switch it on under Settings → Features |
 | D14 | Review and revoke what agents may do | Console → More → Agents (`/app/settings/agents`: each grant's agent, application, last use and scopes, with Revoke). It switches on after your first approval on the consent page (`/agent/consent`) |
@@ -78,7 +78,7 @@ A person approves what the agent may do first: see
 | O2 | Serve HTTPS for live domains automatically | Edge on-demand TLS gated by `ask` |
 | O3 | Provision tenants for signups | `POST /v1/tenants:provision` (provision secret) |
 | O4 | Keep tenants isolated | Tenant-scoped handlers; cross-tenant → 404 |
-| O5 | Keep secrets safe | Hashed keys, one-time provider tokens, sealed console key, no key material in logs |
+| O5 | Keep secrets safe | Hashed keys, provider credentials used once or kept encrypted, sealed console key, no key material in logs |
 
 ## Coverage note
 

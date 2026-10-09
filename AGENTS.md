@@ -4,7 +4,7 @@ Instructions for AI coding agents working with this repository or implementing c
 
 ## What this is
 
-CustomDomain™ (customdomain.ai) is managed infrastructure that lets a platform's users connect their own domain in one click: automatic DNS configuration and automatic SSL/TLS issuance and renewal. 154 DNS hosts, registrars and domain platforms are catalogued in the census (2026-09-29): 36 are auto-configured (6 provider OAuth, 1 Domain Connect, 29 scoped API key) and the remaining 118 use a guided flow with automatic verification. The live split is served at `https://api.customdomain.ai/v1/providers/census`; read it rather than repeating a number from here.
+CustomDomain™ (customdomain.ai) is managed infrastructure that lets a platform's users connect their own domain in one click: automatic DNS configuration and automatic SSL/TLS issuance and renewal. 178 DNS hosts, registrars and domain platforms are catalogued in the census (2026-10-09): 62 are auto-configured (6 provider OAuth, 1 Domain Connect, 55 scoped API key) and the remaining 116 use a guided flow with automatic verification. The live split is served at `https://api.customdomain.ai/v1/providers/census`; read it rather than repeating a number from here.
 
 There is **no separate ownership-challenge step and no verification TXT record to add** on the guided path. Control is proven by the rail itself: an OAuth authorization, a one-click provider apply, a scoped API token, or the records appearing in the domain's own authoritative DNS. See https://docs.customdomain.ai/docs/concepts/ownership-and-setup-types.
 
