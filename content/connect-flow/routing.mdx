@@ -14,7 +14,7 @@ always the ones that will work.
 | Root record | `ALIAS`/`ANAME`/flattened `CNAME` to the edge, or `A` records to the edge's addresses | `ALIAS`-style record to your hostname, or `A` records to the addresses you list |
 | TLS certificates | Issued and renewed by the edge on first request | Yours to issue (your load balancer, TLS proxy or CDN) |
 | Root to `www` redirect | Served by the edge | Yours to serve |
-| Plans | Power (Growth and up) | Every plan, including Free |
+| Plans | Power (Growth and up) | Every plan |
 
 In the console both live under **Domain routing**.
 
@@ -32,9 +32,27 @@ curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/power:default \
 ```
 
 A connection can override it with its own origin
-(`POST /v1/connections/{id}/power`). The edge uses the connection's origin
-first, then the application default; with neither it answers `421`, so set the
-default before your first customer connects.
+(`POST /v1/connections/{id}/power` with `{ "application_url": "https://..." }`).
+The edge uses the connection's origin first, then the application default; with
+neither it answers `421`, so set the default before your first customer
+connects. Send `"default_origin": ""` to clear the default.
+
+Reverse-proxy hosting is part of the Power add-on, which the Growth, Premium
+and Enterprise plans include. On Starter and Startup, the `power:default` and
+`/power` calls are refused with `402` and the code `plan_upgrade_required`.
+Pointing at [your own infrastructure](#your-own-infrastructure) below is not
+plan gated.
+
+**Domain routing** in the console checks the default origin for you: one request
+to `/` from our server when you save it, and again when you choose **Check
+again**. It says whether the origin answered, could not be reached, showed a
+certificate we do not accept, took too long, or points at a private address. A
+`404` or `401` for a bare request to `/` counts as up, since an origin that serves
+by `X-Forwarded-Host` often answers that way; a `5xx` is reported as an error. The
+check is advice and never stops you saving. It only reaches ports 80 and 443 on
+public addresses, and it comes from our network, so an origin that accepts only
+some source addresses can read as unreachable. See
+[What the origin check sends](/docs/security/domain-checks#when-you-save-an-origin).
 
 ## Your own infrastructure
 

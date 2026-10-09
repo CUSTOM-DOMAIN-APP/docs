@@ -156,6 +156,11 @@ instead of guess at.
 
 ## Connecting a domain with the API
 
+Take the workspace's default key from the **API & SDK** page of the console (or
+create another there), keep it on your server, and send it as a bearer token.
+The first ten domains in a new workspace connect without a card; after that the API answers `402 billing_required`
+until the workspace starts its trial.
+
 ```bash
 curl -X POST https://api.customdomain.ai/v1/connections \
   -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
@@ -164,9 +169,9 @@ curl -X POST https://api.customdomain.ai/v1/connections \
 ```
 
 The response carries the records to create and a connection id. Poll it, or
-subscribe to the webhook, until the status reaches `live`, which is asserted
-only when resolution, routing and the certificate are all true, not when the
-record was merely accepted.
+subscribe to the webhook, until the status reaches `live`. That is set when the
+desired records resolve in public DNS, not when the record was merely accepted;
+the certificate is then issued on the first HTTPS request to the domain.
 
 ```bash
 curl https://api.customdomain.ai/v1/connections/$CONNECTION_ID \

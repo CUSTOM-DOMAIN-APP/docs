@@ -12,8 +12,10 @@ own.
 The hosted endpoint is live at **`https://mcp.customdomain.ai/mcp`** (Streamable
 HTTP). The console's **MCP server** page (under **More**, once you switch it on
 in **Settings → Features**) has the endpoint, a connection test and copy and
-paste setup for Claude Code, Claude Desktop, Cursor, VS Code, ChatGPT and any
-other client. The [agent skill](/docs/agents/skills) teaches an agent the safe
+paste setup for Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT and any
+other client. The welcome has an optional step that does the same for the agent
+you pick, and says when it has signed in (see
+[MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)). The [agent skill](/docs/agents/skills) teaches an agent the safe
 way to use the tools below.
 
 The server reports itself as `customdomain-mcp` (protocol revision
@@ -116,7 +118,8 @@ The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
 - **`stdio`** (default): line delimited JSON-RPC on stdin and stdout, one message
   per line. This is what a locally launched host (or `mcp-remote`) uses when it
   runs the server as a subprocess. It authenticates with a single static
-  control plane credential (`-bearer` / `JUSTEASY_API_TOKEN`).
+  control plane credential (`-bearer`, or the `CUSTOMDOMAIN_API_TOKEN` environment
+  variable, with the older `JUSTEASY_API_TOKEN` as a fallback).
 - **`http`**: a Streamable HTTP style endpoint. These are all of its routes:
 
   | Route | Purpose |

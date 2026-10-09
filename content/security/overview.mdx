@@ -1,6 +1,6 @@
 ---
 title: Overview
-description: Tenancy, credential model, value-checked DNS, one-time provider tokens, and the unauthenticated surfaces.
+description: Tenancy, credential model, value-checked DNS, how provider credentials are used once or kept encrypted, and the unauthenticated surfaces.
 ---
 
 ## Tenancy & isolation
@@ -18,8 +18,11 @@ Three credential types with escalating authority (see
 - **Widget JWTs** are short-lived, scoped to one application (and optionally one
   domain), and accepted only on the browser-facing Connect endpoints. This is the
   only credential that reaches the browser.
-- **API keys** are stored as hashes and shown once at creation, and revocation
-  takes effect on the next request. Their **authority depends on how the key was
+- **API keys** (`cd_live_` or `cd_test_` plus 32 hex characters) are stored as
+  SHA-256 hashes and shown once at creation (the workspace's default key is the
+  exception: the console keeps a sealed copy that an owner or admin can view, see
+  [API keys](/docs/authentication/overview)), and revocation takes effect on the
+  next request. Their **authority depends on how the key was
   minted**: a plain tenant key (the one issued at provisioning, or minted by an
   operator) acts with **owner** authority, while a key minted for an invited
   **member** is bound to that member and resolves to **their current role** on
@@ -56,15 +59,18 @@ as static reference) at `GET /v1/rbac`:
 | `org:delete` | | | | ✅ | Delete / transfer the org |
 
 `app:write` is the permission behind the **whole mutating connection family**,
-not just application settings. It gates 21 routes:
+not just application settings. It gates these routes:
 
 - **Connections:** `POST /v1/connections`, `POST /v1/connections:bulk`,
   `POST /v1/connections/{id}/apply`, `POST /v1/connections/{id}:reapply`,
-  `POST /v1/connections/{id}:recheck`, `DELETE /v1/connections/{id}`,
+  `POST /v1/connections/{id}:recheck`, `POST /v1/connections/{id}:disconnect`,
+  `PUT /v1/connections/{id}/records`, `DELETE /v1/connections/{id}`,
   `DELETE /v1/connections/{id}/grant`.
 - **Provider rails:** `POST /v1/connections/{id}/oauth:start`,
   `POST /v1/connections/{id}/domainconnect:start`,
   `POST /v1/connections/{id}/route53-role:start` and `:complete`.
+- **Managed DNS:** `POST /v1/connections/{id}/managed-dns` and the record
+  add and delete routes under it.
 - **Share links:** `POST /v1/sharing/connect`.
 - **SSL:** `ssl:provision`, `ssl:renew`, `ssl:import`, and
   `DELETE /v1/connections/{id}/ssl`.
@@ -95,7 +101,7 @@ particular:
   application's keys.
 - **Approving, listing or revoking a delegated-agent grant** requires `admin` or
   `owner` (`agent:manage`).
-- **Billing** (checkout, portal) requires `owner`. A widget token is refused
+- **Billing** (checkout, portal) requires `admin` or `owner` (`billing:manage`). A widget token is refused
   outright on tenant-level mutations like these: it ships in every embed, so it
   is never treated as tenant authority.
 - **Mutating a connection, its SSL, its Power config, or a webhook** requires
@@ -116,46 +122,64 @@ controlled by whoever is being verified.
 
 ## Provider credentials
 
-By default the automatic rails use a customer's DNS-provider credential exactly
-**once** and discard it:
+The automatic rails use a customer's DNS-provider credential **once** and
+discard it, unless it is kept as a provider account or a managed sign-in grant
+(see [Kept keys and sign-ins](#kept-keys-and-sign-ins)):
 
-- **OAuth (Rail C)** exchanges a code for a one-time access token, writes the
-  records, and drops the token; it is never stored. The flow uses **PKCE (S256)**
+- **OAuth (Rail C)** exchanges a code for an access token, writes the records,
+  and drops the token unless the sign-in is kept. The flow uses **PKCE (S256)**
   and an **HMAC-signed, single-use `state`**; the callback only postMessages its
   outcome to a **return origin on the server's allowlist**
   (`OAUTH_ALLOWED_RETURN_ORIGINS`).
 - **API token (Rail B)** uses the scoped credential you pass on a single write.
-  Through the API it is **discarded after that write** unless the request asks
-  to remember it; in the console the remember box starts ticked and can be
-  unticked (see below). The console collects multi-part credentials as separate
+  `POST /v1/connections/{id}/apply` **discards it after that write**; the
+  console's remember box, which starts ticked, keeps it as a provider account
+  instead (see below). The console collects multi-part credentials as separate
   labeled fields and joins them only for that request.
 - **One-click setup (Rail A)** uses no server-to-server credential; its apply
   URLs are RS256-signed from `DC_SIGNING_KEY_FILE`.
 
-### Optionally remembered API keys
+### Kept keys and sign-ins
 
-A Rail B provider key can be saved for reuse. Through the API that is opt-in per
-request (`remember`); in the console the **Remember this key** box starts ticked
-and the user can untick it. Account passwords and tokens that expire within
-hours are never saved. When saved:
+A Rail B key is kept as a continuous
+[provider account](/docs/connect-flow/provider-accounts) when you connect it
+with `POST /v1/provider-accounts`, or when the console's **Remember this key for
+my ... account** box stays ticked (it starts ticked and the user can untick it).
+A sign-in is kept as a
+[managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants)
+only at a provider the deployment lists in `OAUTH_MANAGED_PROVIDERS`. The hosted
+service lists Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
+Vercel and WordPress.com, and keeps a sign-in there unless the user unticks
+**Keep this sign-in** or the call sends `"access": "one_time"`; the widget tells
+the customer the permission is kept. Account passwords and tokens that expire
+within hours are never kept. Whatever is kept:
 
-- it is **sealed at rest** with **AES-256-GCM** under the console's
-  `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key), scoped to one **tenant + provider**
-  pair;
-- its **plaintext never leaves the server**: it is opened server-side only to
-  drive an apply; the browser sees only masked metadata (provider, label,
-  last-used time);
-- it is **revocable at any time** under **Settings → Connected provider
-  accounts**, which deletes the row.
+- is **sealed at rest** with **AES-256-GCM** under the control plane's
+  `GRANT_ENCRYPTION_KEY`;
+- **never leaves the server**: the control plane uses it itself and never
+  returns it; the browser sees only details such as the provider, a label, the
+  domains and the last use;
+- is used only to write, put back and remove the records of the domains it
+  covers;
+- is **revocable at any time** on the console's **Connected accounts** page
+  (**Revoke** on an account, **Stop keeping** on a kept sign-in), which deletes
+  it and leaves the domains connected.
 
-OAuth one-time tokens and one-click setup (which uses no server token) are
-unaffected; nothing there is ever stored. See
+A deployment without `GRANT_ENCRYPTION_KEY` keeps no provider accounts or
+sign-ins. Its console keeps a remembered key itself instead, sealed with
+AES-256-GCM under `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key) for one workspace
+and provider, and only to connect more domains. A sign-in that is not kept and
+one-click setup (which uses no server token) store nothing. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
 ## Secrets handling
 
-- API keys and application `client_secret`s are stored only as hashes; the
-  plaintext is shown once and never returned again.
+- API keys and application `client_secret`s are stored by the control plane only
+  as SHA-256 hashes; the plaintext is shown once and never returned again. The
+  workspace's default key is one exception: the console keeps a sealed copy that
+  an owner or admin can view. An application created in the console is the other: the console keeps its
+  `client_secret` sealed (AES-256-GCM) so it can mint widget tokens for you, and
+  never displays it. An application created over the API returns the secret once.
 - Widget JWTs are signed per application, using a dedicated server-side signing
   key (`HMAC-SHA256` over the application's id), never the application's own
   secret hash, so a token is only valid for its own application and a leaked
@@ -174,6 +198,16 @@ unaffected; nothing there is ever stored. See
   edge. It answers only `{ approved }` and never reveals the tenant.
 - `GET /v1/connect/oauth/callback`: authenticated by its signed single-use
   `state`, not a bearer token.
+
+## Rate limits
+
+Requests are limited per client IP address: about 10 requests per second
+steady, with a burst of 30. Over the limit the API returns `429` with the code
+`rate_limited`; wait and retry. The credential-minting routes
+(`POST /v1/tokens` and the agent OAuth token and registration routes) fail
+closed if the limiter store is unavailable, rather than letting requests through
+unthrottled. The edge host-authorization gate (`/internal/ask`) is exempt. Agent
+client registration also has its own hourly budget per IP.
 
 ## CORS
 

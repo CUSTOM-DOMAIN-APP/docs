@@ -30,6 +30,12 @@ Sign-ins get the same choice: `oauth:start` takes `"access": "continuous"` or
 `"one_time"`; continuous is offered where the deployment can keep that
 provider's sign-in.
 
+## Defaults and limits
+
+When you leave them out, `access` is `continuous`, and `scope` is `selected`
+if you send `domains` and `all` if you do not. `POST /v1/provider-accounts/{id}/connect`
+takes at most 200 domains per call (`400` beyond that).
+
 ## Scope
 
 All of the account's domains (`"scope": "all"`, including ones added later), or

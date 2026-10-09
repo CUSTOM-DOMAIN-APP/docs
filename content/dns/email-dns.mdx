@@ -28,7 +28,8 @@ SPFM add:  include:_spf.google.com
 ```
 
 If nothing is published yet, the `SPFM` record is materialized into a fresh
-`v=spf1 … ~all` TXT. This append-never-clobber behavior is applied for both
+`v=spf1 … ~all` TXT. The merge is refused (error `spf_merge_failed`) when the
+result would exceed 10 DNS-lookup mechanisms or 255 characters. This append-never-clobber behavior is applied for both
 Rail B (API-token apply) and the automatic rails.
 
 ## Provider records (reference)
@@ -47,8 +48,9 @@ is honored for `MX` and `SRV` and ignored for other types. Most providers publis
 a single MX (e.g. Google's `smtp.google.com` at priority `1`); a few publish a
 ranked set (Zoho's `mx.zoho.com` / `mx2` / `mx3` at `10` / `20` / `50`).
 
-Mark the MX records `essential: true` so the engine treats a missing MX as a hard
-failure rather than ordinary drift, since mail is down without them:
+Mark the MX records `essential: true` to flag them as required for the
+connection, since mail is down without them. The flag is stored on the record;
+the poller does not treat it differently from other records today:
 
 ```json
 { "type": "MX", "host": "@", "value": "smtp.google.com", "priority": 1, "essential": true }
@@ -84,9 +86,12 @@ as-is:
 
 The same set can also be applied by the automatic rails (OAuth / one-click
 setup), which carry an `email-full` template that emits these records grouped
-for the widget's email screen. The one-click catalog also ships the records
-split across single-purpose templates (`email-mx`, `email-spf`, `email-dkim`,
-and `email-dmarc`) so a provider can apply just one piece. Either way the `SPFM`
+for the widget's email screen (`MX`, an `SPFM` merge, a DKIM `CNAME` and a
+DMARC `TXT`). The one-click catalog also ships the records split across
+single-purpose templates (`email-mx`, `email-spf`, `email-dkim`, and
+`email-dmarc`) so a provider can apply just one piece. The `email-dkim` template
+writes a `CNAME` (`<selector>._domainkey` pointing at the target your mail
+provider hosts), not a `TXT`. Either way the `SPFM`
 merge and MX `priority` behave identically.
 
 > Pre-flight: `POST /v1/domains:check` reports `spf_override_support` and returns

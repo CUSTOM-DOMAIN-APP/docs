@@ -14,16 +14,19 @@ widget to the smoothest available [rail](/docs/connect-flow/overview#the-four-ra
   knows which is on offer.
 - **manual**: no automatic path; the customer copies the exact records into
   their DNS provider and the poller watches for them.
-- **async**: a one-click setup flow that completes out-of-band (the provider
-  applies the template after a redirect). This is also the rail that powers
-  [managed connections](/docs/connect-flow/managed-connections): start it with
+
+`setup_type` is always `automatic` or `manual`. The async flow below is not a
+setup type but a way to start the one-click rail:
+
+- **async one-click setup**: a one-click flow that completes out-of-band (the
+  provider applies the template after a redirect). This is also the rail that
+  powers [managed connections](/docs/connect-flow/managed-connections): start it with
   `POST /v1/connections/{id}/domainconnect:start` and `{"managed": true}` (or
   `{"rail":"async"}`) to get an async consent URL, and the callback
   (`GET /v1/connect/dc/callback`) exchanges the code for a **durable, encrypted
   grant** so the platform can re-apply and revert the template server-side later.
   When the provider does not support the async variant, the call falls back to
   the sync `apply_url` and the connection stays use-once.
-- **mcp**: reserved for agent-driven setup.
 
 The engine also returns capability flags (`ns_support`, `wildcard_support`,
 `cname_flattening`, `spf_override_support`, `caa_support`) and any
@@ -53,8 +56,9 @@ instead:
   When false, **`reason`** is one machine code: `provider_has_no_oauth`,
   `oauth_client_not_registered` (the provider has a sign-in but this
   deployment has not switched it on: an operator task; on the hosted service
-  this is the answer for Google Cloud DNS, OVHcloud and the sign-ins through a
-  provider's MCP server for now), `not_discovered`, `template_not_onboarded`
+  this is the answer for OVHcloud and for every sign-in through a provider's
+  MCP server except Dynadot's and Unstoppable Domains' for now),
+  `not_discovered`, `template_not_onboarded`
   (the provider speaks Domain Connect but hasn't onboarded our template:
   GoDaddy, IONOS, Cloudflare, Vercel), `redirect_unavailable` (the provider
   needs our return link for one-click setup, and this deployment cannot send
@@ -83,15 +87,20 @@ can also allowlist providers with `DC_SYNC_PROVIDERS`.
 
 ## Control is proven by the rail
 
-There is **no** separate ownership-TXT challenge. Each rail is itself proof that
+On the hosted service there is **no** separate ownership-TXT challenge (a
+deployment can switch an ownership challenge on with `DOMAIN_AUTHORITY_ENABLED`;
+it is off by default). Separately, a domain that another account already serves
+is never promoted to `live` for a second account (`domain_already_connected`).
+Each rail is itself proof that
 the customer controls the zone:
 
-- an **OAuth** authorization grants a one-time token to that customer's DNS
-  account;
+- an **OAuth** authorization grants a token for that customer's DNS account
+  (used once, or kept as a
+  [managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants));
 - a **one-click setup** apply happens inside the customer's provider session; its
   async ([managed](/docs/connect-flow/managed-connections)) variant additionally
-  leaves a durable, encrypted grant (the one credential the platform keeps, and
-  only to re-apply or revert that same template);
+  leaves a durable, encrypted grant, used only to re-apply or revert that same
+  template;
 - an **API token** is a scoped credential only the zone owner can mint;
 - the **manual** flow requires the records to actually appear in the domain's
   authoritative DNS, value-checked.
@@ -106,17 +115,20 @@ the ownership proof.
 ## Optional credential reuse
 
 Through the API, an API-token credential is used for the apply and then
-discarded unless the request sets `remember`. In the console, **Remember this
-key** starts ticked, so the key is saved for reuse unless the user unticks it.
+discarded; connect it as a
+[provider account](/docs/connect-flow/provider-accounts) to keep it. In the
+console, **Remember this key for my *&lt;provider&gt;* account** starts ticked,
+so the key is kept as a provider account unless the user unticks it.
 Account passwords and tokens that expire within hours are never saved.
 
-A remembered key is encrypted at rest (AES-256-GCM, scoped to one tenant +
-provider) and its plaintext never leaves the server. On the next connect at that
+A remembered key is encrypted at rest (AES-256-GCM) and its plaintext never
+leaves the server. On the next connect at that
 provider, **"Use saved key"** applies records in one click without re-entering
 anything, and for Cloudflare, GoDaddy, Route 53, Namecheap, IONOS,
-united-domains, Epik, NameBright and cPanel hosts the same key can
+united-domains, Epik, NameBright, cPanel hosts and other API key providers that
+can list the zones a key covers, the same key can
 [bulk-connect the account's other domains](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
-Revoke a saved key any time under **Settings → Connected provider accounts**. See
+Revoke a saved key any time under **Connected accounts** in the console sidebar. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional) and
 [Security](/docs/security/overview#provider-credentials).
 
@@ -124,7 +136,9 @@ Revoke a saved key any time under **Settings → Connected provider accounts**. 
 
 Before the edge serves TLS for a hostname, it calls `POST /internal/ask`. The
 control-plane approves the host **iff a connection for it is `live` or
-`propagating`**. It is a status-based gate, answered from a single indexed lookup so
-the TLS handshake never blocks on business logic. A domain the platform has never
-connected is refused, so the edge will never obtain a certificate for an
-unauthorized host.
+`propagating`**, it has not been removed, and its record set includes an edge
+`CNAME`/`ALIAS` or the platform's `A` records (otherwise the answer carries
+`reason: no_edge_record`). It is a status-based gate, answered from a lookup of
+the connection so the TLS handshake never blocks on business logic. A domain the
+platform has never connected is refused, so the edge will never obtain a
+certificate for an unauthorized host.

@@ -63,6 +63,17 @@ their state, the ones needing attention first, a page at a time: `limit`
 domain, and `auto_repair` says whether the deployment puts missing records
 back.
 
+To check a domain right now instead of waiting for the hourly sweep, call
+`POST /v1/monitor:check` with `{ "domain": "app.customer.com" }`. Without a
+`baseline` it compares live DNS with the connection's own records; send a
+`baseline` array of `{ subdomain, type, values }` to compare against records of
+your choosing. It answers `{ domain, drift, records }`, where each record has
+`subdomain`, `type`, `verdict`, `drift`, `expected` and `observed`. It reads DNS
+and changes nothing.
+
+Monitoring is on for every connection unless you create it with
+`"monitor": false` ([Create a connection](/docs/connect-flow/create-a-connection)).
+
 ## Alerts
 
 `domain.record_missing` and `domain.record_restored` carry a `drift` object

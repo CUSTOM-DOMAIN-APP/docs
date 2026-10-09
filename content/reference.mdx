@@ -17,13 +17,14 @@ description: Enums, environment variables, error codes, and other lookup tables.
 
 **Environment**: `production`, `staging`, `development`.
 
-**DNS record types**: `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `TXT`, plus the
-meta-types `SPFM` (SPF-merge) and `REDIR301`.
+**DNS record types**: `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `SRV`, `TXT`, plus the
+meta-types `SPFM` (SPF-merge), `APEXCNAME` (a CNAME at the zone root, realized
+per provider) and `REDIR301`.
 
 **One-click setup template shapes** (the provider-hosted one-click protocol;
 customdomain.ai catalog shipped in prod):
 web: `apex-a`, `apex-aaaa`, `apex-cname`, `apex-www`, `subdomain`, `www`,
-`wildcard`; ownership: `verify`, `connect-verified` (apex A + ownership TXT
+`wildcard`, `customdomain`, `website`, `clickfunnels`; ownership: `verify`, `connect-verified` (apex A + ownership TXT
 applied together); `caa`; email: `email-spf`, `email-dkim`, `email-dmarc`,
 `email-mx`, `email-full`; and `redirect` (301 forward).
 
@@ -34,7 +35,8 @@ applied together); `caa`; email: `email-spf`, `email-dkim`, `email-dmarc`,
 `connection.records_outdated`, `connection.disconnected`,
 `domain.record_missing`, `domain.record_restored`, `domain.purchased`,
 `purchase.error`, `purchase.confirmation.expired`, `secure_status`,
-`power_status`.
+`power_status`, `certificate.issued`, `certificate.renewed`,
+`certificate.failed`, `certificate.expiring`.
 
 ## Error envelope & codes
 
@@ -45,10 +47,17 @@ string:
 | --- | --- | --- |
 | `invalid_request` | 400 | Malformed or missing input. |
 | `unauthorized` | 401 | Missing/invalid credential. |
+| `forbidden` | 403 | The credential is valid but may not do this (a role or scope too low). |
 | `not_found` | 404 | Object doesn't exist or isn't in your tenant. |
-| `billing_required` | 402 | The workspace has no active subscription or trial, so new connections and new credentials (API keys, applications, rotated secrets) are refused (existing ones keep working). A new workspace's first domain is the exception: it connects without a card, and the next one is refused. `details` says why and where an owner or admin can fix it. See [Plans & quotas](/docs/billing/plans-and-quotas#what-a-refusal-looks-like). |
+| `conflict` | 409 | The request conflicts with the resource's current state. |
+| `rate_limited` | 429 | Too many requests; slow down and retry shortly. |
+| `billing_required` | 402 | The workspace has no active subscription or trial, so new connections and new credentials (API keys, applications, rotated secrets) are refused (existing ones keep working). A new workspace's first ten domains (its free domains) are the exception: they connect without a card, and the next one is refused. `details` says why and where an owner or admin can fix it. See [Plans & quotas](/docs/billing/plans-and-quotas#what-a-refusal-looks-like). |
 | `connections_unavailable` | 402 | The same refusal as the tenant's end users see it, with a neutral message that says nothing about the tenant's billing. |
 | `quota_exceeded` | 402 | A Starter workspace connected its monthly allowance (only where the deployment enforces quotas). |
+| `sandbox_not_allowed` | 403 | A [test mode](/docs/guides/test-mode) application's key or widget token, or a test mode domain, was used on something outside the test flow (SSL, Power, sign in, bulk, agents, purchases and the rest). `details` names what was refused. |
+| `sandbox_domain_required` | 400 | A test mode application was given a name that does not end in `.test`. |
+| `sandbox_domain_reserved` | 400 | A live application was given a `.test` name. Those are for test mode. |
+| `sandbox_limit` | 409 | The test mode allowance is used up: 3 test mode applications per workspace, 100 test domains per application. |
 | `service_unavailable` | 503 | An optional engine (Sell, templates, billing, webhooks) isn't configured. |
 | `internal_error` | 500 | Server error (generic `title` + a logged request id). |
 

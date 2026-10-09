@@ -27,8 +27,8 @@ The status machine is deliberately small:
 | --- | --- |
 | `pending` | Created; records not yet seen. Checked every five seconds at first, backing off to every 15 minutes; after 72 hours it stays `pending` with `error_code: setup_incomplete` and is re-checked every six hours. **Never fails on its own.** |
 | `propagating` | Records were written (by a rail) and are being checked against public DNS. |
-| `live` | Every desired record resolves to its intended value. The edge serves TLS for the host (only when the record set includes an edge record; an email-only set is verified but never served). |
-| `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`), or a rail rejected the write. **Not terminal.** See Retrying. |
+| `live` | Every desired record resolves to its intended value (see the note under Propagation to live on which types are value-checked). Re-applying records to a live connection moves it back to `propagating`. The edge serves TLS for the host (only when the record set includes an edge record; an email-only set is verified but never served). |
+| `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`). Only the poller sets it. **Not terminal.** See Retrying. |
 
 There is no separate ownership-challenge step. Control is proven **by the rail
 itself**: an OAuth authorization, a one-click setup apply, or a scoped API token
@@ -59,7 +59,9 @@ target). Once a rail writes records, the stored set is returned instead.
 
 A background poller drains `propagating` and `pending` connections, resolving
 each desired record against public DNS with **value checking** (a CNAME must
-resolve to the expected target; an A/AAAA must contain the exact address). It
+resolve to the expected target; an A/AAAA must contain the exact address; a
+TXT must contain the expected value). `MX`, `SPFM`, `SRV` and `CAA` records are
+written but not value-checked, so they count as satisfied. It
 looks for due connections every five seconds. A young connection is due every
 5 seconds for its first 5 minutes, then every 30 seconds until 15 minutes,
 every 2 minutes until an hour, and every 15 minutes after that; a rail's write
@@ -70,6 +72,23 @@ value, so a fresh write is usually verified within seconds.
 When all records resolve, the connection flips to `live` and `connection.live`
 fires exactly once, guarded by a compare-and-swap so the API and the worker
 can't double-fire.
+
+## Error codes
+
+A connection that hits a problem keeps its status and records the cause in
+`error_code` / `error_message`, which also ride the webhook events. A rail that
+refuses or fails a write does not mark the connection `failed`. Codes you can
+see on a connection:
+
+| `error_code` | Meaning |
+| --- | --- |
+| `setup_incomplete` | Still `pending` after 72 hours; re-checked every six hours |
+| `propagation_timeout` | `propagating` for over 24 hours with records unseen (status `failed`) |
+| `dns_write_failed` | The provider rejected the write of the records |
+| `apex_not_supported` | The provider cannot serve a root domain for this connection |
+| `forwarding_not_supported` | The provider cannot realize the requested forwarding |
+| `spf_merge_failed` | An `SPFM` merge would exceed 10 lookup mechanisms or 255 characters |
+| `domain_already_connected` | Another account already serves this domain; the connection is not promoted to `live` |
 
 ## Idempotency & tenancy
 

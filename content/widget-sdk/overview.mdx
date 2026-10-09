@@ -10,10 +10,13 @@ is `window.customdomain`.
 
 ## How it fits together
 
-1. Your backend mints a short-lived [widget JWT](/docs/authentication/widget-tokens)
-   with your application's `client_secret` (never expose the secret or an API
-   key to the browser).
-2. The browser loads `customdomain-js` and calls `window.customdomain.open({ applicationId, token })`.
+1. Your backend mints a short-lived [widget JWT](/docs/authentication/widget-tokens).
+   For an application created in the console it sends an API key to
+   `POST /api/widget-token`; for one created over the API it sends the
+   application's `client_secret` to `POST /v1/tokens`. The key or secret stays
+   on your server; only the token reaches the browser.
+2. The browser loads `customdomain-js` (npm, `@customdomain/react`, or the
+   hosted script) and calls `window.customdomain.open({ applicationId, token })`.
 3. The widget drives the [connect flow](/docs/connect-flow/overview): it detects
    the customer's DNS provider and applies records through whichever
    [rail](/docs/connect-flow/overview#the-four-rails) fits (OAuth into the
@@ -21,7 +24,7 @@ is `window.customdomain`.
    then watches propagation to `live`.
 
 The SDK bridges the widget's `postMessage` protocol onto **both** callback props
-(`onSuccess`, `onClose`, `onStepChange`, `onError`) and native `customdomain:*`
+(`onSuccess`, `onClose`, `onStepChange`, `onError`, `onFallback`) and native `customdomain:*`
 window `CustomEvent`s, so you can integrate imperatively or declaratively.
 
 ## The flow (screens)

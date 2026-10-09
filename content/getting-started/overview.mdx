@@ -15,6 +15,7 @@ and proxies the domain to the application's origin.**
 | A product that provisions domains for customers **server-to-server** | the **API** (`/v1`, `cd_` API key) | [API](/docs/getting-started/api) |
 | A product whose customers connect **their** domains inside **your** UI | the **widget** (`customdomain-js`) | [Widget](/docs/getting-started/widget) |
 | An AI agent or MCP client | the **MCP server** (`mcp.customdomain.ai`) | [MCP](/docs/getting-started/mcp) |
+| Building one of the above before you have a customer's domain | **test mode**, made up `.test` names, no card | [Test mode](/docs/guides/test-mode) |
 | Running the stack yourself | Docker Compose | [Self-hosted quickstart](/docs/getting-started/quickstart) |
 
 ## Shared truths
@@ -38,6 +39,10 @@ of them, that is a bug. Tell us.
   the same domain revives it (`200`); real traffic at the edge revives it.
 - **The diagnosis is on the connection**: `error_code` and `error_message` on
   `GET /v1/connections/{id}`, on every list, and on the webhook events.
+- **Test mode runs all of this on made up names.** A [test mode](/docs/guides/test-mode)
+  application connects `.test` names, goes `live`, stays `pending` or `failed` on a short
+  simulated clock chosen by the name, sends the same webhooks marked `"sandbox": true`,
+  and counts for nothing: no free domain, no allowance, no bill.
 - **HTTPS only after `live`.** The certificate issues on the first request
   once the connection is live; a domain pointed at us before that gets a
   clear "not active yet" page, never a raw error.
@@ -53,10 +58,15 @@ of them, that is a bug. Tell us.
 
 | You got it from | It is | Use it for |
 | --- | --- | --- |
-| The console → **Keys** | a `cd_live_…` / `cd_test_…` API key (tenant-scoped; keys created earlier start `sk_` and still work) | server-to-server API calls, the MCP server, minting widget tokens |
-| The console → **Embed** | the application's **client secret** (shown once; rotate there) | minting widget tokens from your server (`POST /v1/tokens`) |
-| `POST /v1/tokens` | a short-lived **widget JWT** (one application, optionally one domain, optionally one end user) | the browser: `customdomain-js` `open({ token })`, or direct `/v1` calls from the page |
+| The console → **API & SDK** | a `cd_live_…` / `cd_test_…` API key (tenant-scoped; keys created earlier start `sk_` and still work). Every workspace has a **default key** from the start, which owners and admins can view at the top of the page at any time. Another key from **Create key** is shown once and needs a card on file (14 day free trial) | server-to-server API calls, the MCP server, and minting widget tokens through `POST https://app.customdomain.ai/api/widget-token` |
+| `POST /v1/applications` (an application created over the API) | the application's **client secret** (`sk_…`, shown once in that response). A console signup never shows one | minting widget tokens from your server with `POST /v1/tokens` |
+| A widget token endpoint (above) | a short-lived **widget JWT** (one application, optionally one domain, optionally one end user) | the browser: `customdomain-js` `open({ token })`, or direct `/v1` calls from the page |
 | An agent grant | a delegated **agent token** | the agent's scoped API calls |
+
+Most customers sign up in the console, so they hold an API key and mint widget
+tokens through `/api/widget-token`; the client secret path is for applications
+created over the API. An API key is not a client secret and the two are not
+interchangeable. See [Widget tokens](/docs/authentication/widget-tokens).
 
 A widget JWT can never mint another token, never read another application's
 data, and never choose the records we write. Anything that chooses records

@@ -17,8 +17,8 @@ with a drop-in widget and a REST API.
   watches propagation.
 - **Secure**: the edge issues a TLS certificate **on demand during the
   handshake**, but only for hostnames a live/propagating connection has authorized.
-  (Certificates come from Let's Encrypt **staging** and are not browser-trusted until
-  the edge is run with `EDGE_ACME_PROD=1`.)
+  (A self-hosted edge uses Let's Encrypt **staging**, whose certificates browsers do not
+  trust, until it is run with `EDGE_ACME_PROD` set to any non-empty value.)
 - **Serve**: the edge reverse-proxies the custom domain to your origin.
 - **Monitor**: webhooks, a developer console, usage metering, and DNS-drift
   detection keep you informed after go-live.

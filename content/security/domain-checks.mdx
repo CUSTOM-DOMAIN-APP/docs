@@ -40,6 +40,32 @@ HTML page and keep nothing from it but the title. We keep no cookies, no other
 headers and no page content, and the result is a fact about the domain, not about any
 person or account.
 
+## When you save an origin
+
+There is one more request that carries the same name. A customer of CustomDomain™
+who sends their visitors through our edge saves an **origin**, the server that
+answers for those domains, under **Domain routing** in the console. When they save
+it, and when they choose **Check again**, our server makes one request to that origin
+so the console can say whether it answers. If CustomDomainBot visited a server you
+run and the address was typed into a workspace, this is the likeliest reason.
+
+- **One web request.** `GET /` to the origin that workspace saved, with a 6 second
+  limit. It reads the status line and drops the connection; it never reads the page.
+  It follows no redirect (a `3xx` is an answer), sends no cookies, credentials or
+  referrer, and never asks for another path.
+- **Only ordinary ports.** Ports 80 and 443, on public addresses. An origin on any
+  other port is not requested, and a private, internal or reserved address is
+  refused when the connection is made.
+- **Rarely.** Only when someone saves that origin or asks for the check, and not
+  more often than once every 15 seconds for the same origin.
+- **What we keep.** The origin that was checked, whether it answered and with what
+  status (or why it did not), and when. No page content and no headers. The result
+  belongs to that workspace and is shown only for the origin it was run against.
+- **Advice only.** The result never stops anyone saving, and nothing breaks if the
+  check is refused: you can block CustomDomainBot at your server or firewall. If a
+  workspace saved the address of a server that is not theirs, write to
+  [privacy@customdomain.ai](mailto:privacy@customdomain.ai) with the address.
+
 ## Ask us to stop
 
 Write to [privacy@customdomain.ai](mailto:privacy@customdomain.ai) with the domain.

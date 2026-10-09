@@ -29,14 +29,21 @@ you already get keep coming. Security and account email is always sent.
 | A payment fails, choose a plan reminders, adding domains is paused, billing is back in good standing, your trial is ending | The billing moments that already send an email. | On | On |
 | A domain you bought is registered, or the purchase failed | A purchase through your workspace finished or could not be completed. | On | On |
 | An agent spent money, or a new agent was connected | An AI agent bought a domain, or someone gave one access to the workspace. | On | On |
+| An agent's access ended | A person or the agent revoked the agent's access to the workspace. | On | On |
+| An agent hit its spend cap | An agent tried to buy a domain past the monthly cap you set. The purchase is refused and no money moves. | On | On |
+| An agent's credential was reused | An old agent credential was used again after it was replaced. The agent's access is revoked. | On | On |
 | A DNS provider needs reconnecting | A provider stopped accepting a saved key, so automatic repair is paused. | On | On |
 | Routine agent actions | What an agent does, such as connecting a domain, once an hour. | On | Off |
-| A customer connects through your widget | One of your customers connected a domain with the widget. | On | Off |
+| A customer connects through your widget | One of your customers connected a domain with the widget. A domain you connected yourself with the widget, from the welcome, is told here too, as that domain being live. | On | Off |
 | Someone joins your team | A person you invited accepted. | On | Off |
 
 These go to the **owners and admins** of the workspace. A member or a viewer
 does not get them. The last three are quiet by default because they can be
-frequent; turn push on for them if you want it.
+frequent; turn push on for them if you want it. The exception is a workspace for
+your own product's customers (you chose **My customers** at the start): the first
+browser you turn push on in also pushes for **A customer connects through your
+widget**, because that is the moment you are waiting for. It is an ordinary choice
+under **Settings → Notifications**: turn it off there and it stays off.
 
 If you belong to more than one workspace, the bell holds them all, each
 notification starts with its workspace's name, and opening one switches the
@@ -47,6 +54,16 @@ for DNS, its page offers **Get a ping when it is live**, so you can close the ta
 and be told the moment it is connected. It turns push on for that one thing; you
 choose the rest under **Settings → Notifications**. A domain a customer connected
 with the widget has no card, because those stay in the bell.
+
+The welcome asks the same thing on its last screen, while a domain you just added
+waits for its DNS records: **Get a ping when acme.com is live**, or "when your
+domains go live" after you pasted a list, with **Notify me** and **Not now**.
+**Notify me** is the click that makes your browser ask, and it turns push on for a
+domain going live and for nothing else. Either answer is remembered for that
+browser, so the offer on **Overview** does not ask a second time; signing out of a
+browser that had push on takes the answer back, so you are offered it again the next
+time you sign in there. Where the browser cannot do push or has blocked it, the
+screen says nothing about it.
 
 ## Turn push on
 

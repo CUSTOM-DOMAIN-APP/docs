@@ -48,49 +48,105 @@ offers once to add Google or GitHub as another way to sign in: **Add Google**,
 email address as yours, and either answer is remembered on every device. You can
 do the same any time under **Settings, Security**.
 
-## 2. Tell us what you're building
+## 2. Tell us who the domains are for
 
-The first time you sign in, the welcome asks one question first: what do you
-want to use your domain for? Pick any of: publish a website, set up email, run
-an AI agent, white label (let your customers use your brand), allow subdomains,
-let customers connect their own domains in your product, manage domains for
-yourself or your clients, or "not sure yet". Each answer gets only the steps it
-needs:
+The first time you sign in, the welcome asks one question: who are the domains
+for? It is one click, and it sets up the steps that suit you. There is no skip:
+the question is short, and every step after it has **Not now**, which moves on and
+leaves that item on the checklist on **Overview** for later.
 
 | You pick | The steps after the question |
 | --- | --- |
-| Publish a website | About you, your domain, where your site lives |
-| Set up email | About you, your domain (the email DNS records are asked for in the same connection), your mail provider. CustomDomain™ sets up the DNS for email (MX, SPF, DKIM, DMARC); it does not host mailboxes |
-| Run an AI agent | About you, agent access (MCP and API key), so your agent can search for and connect domains |
-| White label | About you, your brand with a live preview |
-| Allow subdomains | About you, your domain, where subdomains point |
-| Let customers connect their own domains | About you, your brand with a live preview, where domains point, your frontend and backend |
-| Manage domains | Your domain, connected here or by a registrar sign in |
-| Not sure yet | A short list of things to try, then the path of the one you pick |
+| **My customers** (you run a product and want your users to bring their own domains) | About you, your brand with a live preview on the real widget, how you will add it to your product (optional), then the widget code |
+| **My clients, or many of my own** | A box to paste your domains into, with a client's name beside each (or one domain, if that is all you have). See [Many domains, and whose they are](#many-domains-and-whose-they-are) |
+| **Just me** (a domain you own) | Your domain, with an option to set up email on it in the same step |
+| **Not sure yet** | A short list of things to try (connect a domain of your own, preview the widget with your brand, let an AI agent connect domains), then the path of the one you pick |
 
-Several answers share steps, so nothing is asked twice. Everything that can be
-worked out is filled in for you to confirm: your company name and website come
-from your sign-up email (not from free mail such as Gmail, where it asks for the
-website instead), and your logo, name and brand color are read from your
-website. Change anything that is off.
+Under the cards, **Also let an AI agent connect and manage domains for me** adds
+one more step, **Give your agent access**, to any of them. Pick the agent you use
+(Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT or another), add
+CustomDomain™ to it with a command or a few fields, and paste in the prompt the step
+gives you, which says what to do first for what you told the welcome. Most agents sign
+in with your account, so there is no key to paste, and the step says **connected**
+only once the agent signed in and you approved what it may do. It is optional: **Not
+now** moves on. See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)
+and [Agents](/docs/agents/overview).
+
+Pointing a domain at a website needs the Growth plan: CustomDomain™ does not host
+websites, it serves your domain through its edge to a site hosted elsewhere
+(see [Domain routing](/docs/connect-flow/routing)). The **Just me** card says so
+before you choose it. Connecting the domain does not need it.
+
+Everything that can be worked out is filled in for you to confirm. Your company
+name and website come from your sign-up email (not from free mail such as Gmail,
+where it asks for the website instead), your logo, name and brand color are read
+from your website, and for your own domain it offers the one your work email is
+at. Change anything that is off.
 
 The domain step finds where the domain is registered and hosted as soon as you
 type it, says whether we can set it up automatically or will show you the
 records, and opens the same connect widget your customers use. If it is not
-registered yet, it lists names close to it that you can buy, with the first year price, and links to the console's domain search to buy one. When something is left, it says
-what and who can do it: anyone with access to your DNS host can finish it.
+registered yet, it lists names close to it that you can buy, with the first year
+price, and links to the console's domain search to buy one. If you have no domain
+yet, **I don't have a domain yet** offers that search, or carrying on to connect
+one when you have it. When something is left, it says what and who can do it:
+anyone with access to your DNS host can finish it.
 
 Your place and answers are saved on every step, so closing the tab and coming
-back resumes where you left off. The last screen shows what you have (your site,
-your records, your agent, your branded widget) and the one next action. Open the
-welcome again any time from the first row of the checklist on **Overview** to
-change what you are doing.
+back resumes where you left off, and a domain you already connected shows as
+connected. The last screen shows what you have and the one next action, with a
+few more to start with. While a domain waits for its DNS records it also offers to
+ping you when it is live, with **Notify me** and **Not now**: your browser asks only
+when you click, and it turns push on for a domain going live and nothing else (see
+[Notifications](/docs/guides/notifications)). Open the welcome again any time to change who the domains
+are for: from the first row of the checklist on **Overview**, or from **Change my
+answers** under the go-live list if you picked **My customers**.
 
 A short tour of the console follows. Replay it any time from the setup
-checklist on **Overview**. The checklist follows what you picked: for a website,
-connecting your domain and pointing it at your site; for an embedded widget,
-your brand, the widget and where domains point; and so on, always ending with
-inviting your team.
+checklist on **Overview**. The checklist follows what you picked: for your own
+domain, connecting it (and setting up email, or pointing it at your site, if you
+chose those); for a few clients, connecting the first domain; always ending with
+inviting your team. If you asked for an agent, an optional **Connect your agent** row
+is done when an agent has signed in and been approved, and says so by name; an agent
+that uses a key leaves nothing to see, so the row says that too. If you picked **My customers**, the checklist is the go-live
+list below.
+
+### Your go-live list (My customers)
+
+If you run a product and want your users to bring their own domains, **Overview**
+shows a go-live list. A row is done when something has happened that proves it,
+not when you visited a page, and each row says what was checked:
+
+| Row | Done when |
+| --- | --- |
+| **Start your free trial** (owners and admins) | Billing is set up and a trial or a plan is running. A card starts the 14 day trial and nothing is charged until it ends. Creating API keys needs it |
+| **Try the widget with your own domain** | A domain connected through the widget is live. It is a real domain and counts as one of your domains, which is why this row says so. With no domain of your own to try it on, **Try test mode** opens the same widget on made up `.test` names; they use nothing, and the row stays open until a real domain is live |
+| **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count |
+| **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Growth plan) |
+| **Get told when a domain goes live** | A webhook delivery was answered with a success status |
+| **Make the widget yours** (optional) | A look was saved, for the workspace or for an application |
+| **Connect your first customer** | A real customer connected a domain through your widget, which is a connection that carries the customer id your server passed when it minted the token |
+
+Test mode is a separate application you switch to from the application switcher, marked
+**Test mode** wherever it appears. It needs no card, it is not counted or billed, and
+its domains show on **Domains** and **Activity** only while you are switched to it. See
+[Test mode](/docs/guides/test-mode) for what each ending does and what it leaves out.
+
+A row can be done and still warn: a default origin that failed its check, or a
+webhook whose newest delivery failed, each with a link to fix it. The list stays
+on **Overview** while any row warns, even when every required row is done, and it
+reads again when you come back to the tab, because most of these steps are
+finished somewhere else. A customer who connects makes the earlier rows done as
+well, since they cannot have connected without the widget opening and your server
+minting a token. A token minted straight at the API with your client secret is
+not seen by the console; your first customer proves it instead.
+
+The list follows what the workspace's owner or an admin said: a teammate you invite
+sees the same go-live list (without the trial row, which is for owners and admins).
+In a workspace for clients or for your own domain, a teammate sees the usual
+checklist until they answer the welcome too. Your customers' domains are on
+**Domains**, on the **From your product (widget)** tab, which is the tab it opens
+on.
 
 ## The console at a glance
 
@@ -99,16 +155,63 @@ inviting your team.
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
 | **Analytics** | The widget funnel on its own tab, with a Traffic tab for what your domains receive at the edge (and the busiest domains) and a Providers tab for where customers drop off by DNS provider and by root versus subdomain. |
-| **Widget** | Embed code for your framework, the designer (the widget itself, every screen, light and dark, with a look for each application) and a live preview. |
-| **API & SDK** | Server-side API keys, with a Webhooks tab and a Guides tab for the first request and the SDK. |
+| **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
+| **API & SDK** | Server-side API keys (the workspace's default key at the top, **Create key** for more), with a Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you. |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Team**, **Billing**, **Usage** and **Applications** open under it. |
+
+### API keys and widget tokens
+
+Open **API & SDK**. Every workspace has a **default key** at the top of the page,
+made with the workspace and needing no card: owners and admins can view it at any
+time (see [API keys](/docs/authentication/overview)). For another key, press
+**Create key**, give it a name and pick an **Environment**: Production
+(`cd_live_…`), Development or Staging (both `cd_test_…`). The full key is shown
+once ("Copy your new key now"); only a hash is kept. Admins and owners can create
+keys. Creating one needs a card on file, which starts the 14 day free trial
+(nothing is charged until it ends). Your first ten domains are free without a
+card, but another key is not, so a workspace without a card that presses **Create
+key** sees "Start your free trial to create API keys" with an **Add a card**
+link, and the key is created once the card is in.
+
+The application the console made for you has a client secret, but the console
+keeps it sealed and never shows it. To mint widget tokens from your server, send
+one of these keys to the console's `POST https://app.customdomain.ai/api/widget-token`;
+the **Install** tab on **Widget** writes the code for you. Do not rotate that
+application's secret: the console's copy would go stale and the preview, **Try it
+live** and that endpoint would stop working. See
+[Widget tokens](/docs/authentication/widget-tokens).
 
 Optional surfaces (the activity log, DNS monitoring, domain sales, the MCP
 server and agent access) are off until you need them: switch them on under
 **Settings → Features**. A workspace that already used one keeps it on, and
 agent access switches on by itself when you approve an agent.
+
+### The console follows who the domains are for
+
+The answer to the welcome's first question is kept for the whole workspace, and the
+console lays itself out by it. Nothing is hidden or removed: every page is still one
+click away. The answer changes the order of the menu, what the main button does, and
+what **Overview** and **Domains** lead with.
+
+| | My customers | My clients, or many of my own | Just me |
+| --- | --- | --- | --- |
+| **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Domain routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Domain routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Domain routing and Connected accounts. Widget and API & SDK are under **Integrate** |
+| **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
+| **Overview** | The go-live list, then your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts |
+| **Domains** | Opens on **From your product (widget)**, or on **All** until a customer has connected one | Opens on **All** | Opens on **All** |
+| **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Connect your first domain" | "Connect your domain" |
+
+The counts on **Overview** include every domain, so when they link to **Domains** in a
+workspace for your customers they open the **All** tab, and what you click is what you
+see. The first-run tour follows the same layout. A workspace that has not said who its
+domains are for, or picked **Not sure yet**, gets the console as it has always been.
+
+Change it any time under **Settings → What this workspace is for**. Owners and admins
+can change it; it changes the console for everyone in the workspace, and everyone else
+sees it read only. A teammate you invite sees the same console you do, whatever they
+answer in the welcome.
 
 The **bell** at the top right holds your latest notifications: a domain going
 live, a domain that needs attention, a failed payment, and more. Turn on push
@@ -136,8 +239,9 @@ it** and **Delete application**) are tabs. Deleting asks you to type the name, r
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
-can't be previewed here: its widget secret was issued to whoever created it
-and was never stored in the console.
+can't be previewed here: its client secret was issued to whoever created it
+and was never stored in the console, so mint its tokens with `POST /v1/tokens`
+and that secret.
 
 ## 3. Connect a domain
 
@@ -171,11 +275,14 @@ They appear in this order; the recommended one is marked.
 
 1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
    Netlify, Vercel (by installing the CustomDomain™ integration) and
-   WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup;
-   we add the records with a one-time token we never store. Fastest. Sign in
-   with Google Cloud, Sign in with Azure DNS (a Microsoft account), OVHcloud's
-   consent page and sign-in through a provider's MCP server are built but not
-   switched on yet; see
+   WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup
+   and we add the records. Fastest. **Keep this sign-in** starts ticked: we
+   keep it, encrypted, so we can put the records back and remove them with the
+   domain; untick it to use the sign-in once. Sign in with Google Cloud (only
+   for the app's test users until Google verifies it), Sign in with Azure DNS
+   (a Microsoft account) and Sign in with Dynadot or Unstoppable Domains
+   (through the provider's MCP server) are used once. OVHcloud's consent page
+   and the other MCP server sign-ins are built but not switched on yet; see
    [DNS providers](/docs/dns/providers#built-but-not-switched-on-yet).
 2. **One-click setup**: only where the provider serves our template
    (NameSilo, Glauca Digital, Domain Chief today). After you approve the change
@@ -183,7 +290,9 @@ They appear in this order; the recommended one is marked.
    Squarespace, Cloudflare and Vercel are *not* offered this, on purpose: they
    have not onboarded our templates.
 3. **API key**: paste a scoped provider credential, one labeled field per part,
-   with a link to where it is created and the steps. We keep it encrypted when
+   with a link to where it is created, the steps and the one requirement that
+   matters; anything else, and the provider's notes, sit under a closed
+   **Details**. We keep it encrypted when
    **Remember this key** stays ticked (untick it to use the key once). Any
    GoDaddy account that holds a domain can create a Personal Access Token;
    Namecheap's API needs an eligible account and our server's IP on its
@@ -201,6 +310,11 @@ teammate** emails them to whoever is. Replies go to you.
 - A **member** can send the records but not invite: the email links a
   single-use guided setup that needs no account.
 - **Viewers** can't send email from the console.
+
+Someone outside your team, such as a client who has the DNS? Use **Copy a link
+for someone outside your team** instead. It makes a setup link for this one
+domain that works with no account and invites nobody; see
+[A link for the client](#a-link-for-the-client).
 
 ## 5. Verify
 
@@ -258,6 +372,64 @@ stored: visitors are estimated from a sketch of keyed hashes, and someone who
 visits on two days counts once on each. Hourly detail is kept 14 days and
 daily totals 400 days. The API has the same figures:
 `GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
+
+## Many domains, and whose they are
+
+If you manage domains for clients, or have a lot of your own, you don't have to
+connect them one at a time. The welcome's first screen for **My clients, or many
+of my own** is a box: paste a column from a spreadsheet, a line of addresses or
+a list of links, in any mix. The same box is on **Domains** under **Add
+several**, up to 200 at a time.
+
+- **What it reads.** An address gives its host, a repeat is added once and
+  counted, and anything that is not a domain is listed and left out. Nothing you
+  typed is thrown away: what could not be added stays in the box.
+- **Whose it is.** A name typed above the box is shown next to every domain
+  below it. A name after a comma or a tab on a line (`beta.org, Beta Bakery`) is
+  used for that domain instead. A domain already in your workspace is left as it
+  was. The name is set when the domain is added and cannot be changed afterwards,
+  so to rename a client or give a domain to another, remove the domain and add it
+  again.
+- **The first ten domains are free.** A new workspace connects its first ten
+  domains without a card, and the rest once the free trial has started. The box
+  says so before you paste, with **Start free trial** beside it (nothing is
+  charged for 14 days). It adds what it can now and keeps the rest in the box,
+  and after the trial starts you land back on the same page with the rest still
+  there. A teammate who is not an owner or an admin is told to ask one of them.
+- **Adding is not connecting.** A list puts the domains in your workspace, each
+  waiting for its DNS records. Finish each the way you would finish one, from its
+  row on **Domains**, or send the step to the person who has the DNS (below).
+
+On **Domains**, a workspace for clients says **client** where the others say
+**customer**:
+
+- **Client** narrows the list to one client's domains, or to those with no
+  client.
+- **Order** shows newest first (the default), oldest first, domain, client, or
+  what needs attention first.
+- **Export CSV** saves exactly the rows shown, in the order shown: domain,
+  status, client, DNS host, when it was added and from where, the application,
+  and what is left to do. It opens in a spreadsheet. A client name that starts
+  with `=`, `+`, `-` or `@` is saved as text, so a spreadsheet never runs it.
+
+A domain's own page says "For Acme Dental" in a workspace for clients, where it
+would say who connected it elsewhere.
+
+### A link for the client
+
+**Send these records to a teammate** also invites its recipient to the workspace
+when an owner or an admin sends it, which is wrong for a client who has the DNS.
+**Copy a link for the client** (in the ⋯ menu of a row on **Domains**, and beside
+the email option on the connect step; it reads **Copy a setup link** in other
+workspaces) makes a link for that one domain instead:
+
+- Whoever opens it finishes that domain with no account, and nobody is invited.
+  The page carries your workspace's name and nothing about its billing.
+- It works once and lasts 30 days. It cannot be listed or cancelled afterwards,
+  so make it when you are ready to send it. The console shows it on the page as
+  well as copying it.
+- It is for a domain that is not live yet, and it needs the member role or
+  above. A workspace can make 30 an hour.
 
 ## Where each domain came from
 

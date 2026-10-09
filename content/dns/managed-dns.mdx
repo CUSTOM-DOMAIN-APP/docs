@@ -204,6 +204,20 @@ be changed with an API key or an app-scoped token.
 | Zone file size | 256 KB |
 | Records per request | 500 |
 | Zones per account | 100 by default (`MANAGED_DNS_MAX_ZONES_PER_TENANT`) |
+| TTL | Default 3600 seconds; values outside 60 to 604800 are clamped |
+
+### Errors
+
+| Status | Code | When |
+| --- | --- | --- |
+| `400` | `invalid_request` | Both or neither of `zone_file` and `records` were sent, or more than 500 `records` in one request |
+| `409` | `conflict` | The zone belongs to another account, a hand-added record would override a `customdomain` record, a `customdomain` record was deleted, or another change to the zone is in progress |
+| `413` | `payload_too_large` | The zone file is over 256 KB |
+| `422` | `managed_dns_unavailable` | Managed DNS isn't available for this domain (see the availability `reason`) |
+| `422` | `managed_dns_limit` | The account already holds its maximum number of zones |
+| `422` | `too_many_records` | The change would take the zone past 500 records |
+| `422` | `invalid_zone_file` | The zone file has no records that can be hosted |
+| `503` | `service_unavailable` | Managed DNS is switched off on this deployment |
 
 ## Delegation states
 

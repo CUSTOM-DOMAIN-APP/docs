@@ -13,7 +13,8 @@ _openapi:
       - content: >-
           Starts a subscription Checkout for the caller's workspace. Requires
           `billing:manage` (owners and admins); a widget token is refused. The
-          session allows promotion codes and collects the card up front. A new
+          session collects the card up front, and carries the customer's
+          `promotion_code` as its discount when one is sent (below). A new
           workspace's first subscription starts with a 14 day trial; a workspace
           inside its grace period (the retired Free plan) gets a trial that ends
           when its grace ends, so subscribing early never costs a day; anyone
@@ -27,13 +28,30 @@ _openapi:
           Checkout, the response carries `url`).
 
 
+          `promotion_code` is optional: the text a customer typed, at most 64
+          characters (never a Stripe `promo_` id). It is checked here, before
+          Stripe is asked for a session, and only CustomDomain's own codes are
+          taken (made through the operator console, or limited to this
+          deployment's Stripe products), because a Stripe account can be shared
+          with other products. A code that is not CustomDomain's, does not exist
+          or is no longer active is a `404`, the same for all three, and no
+          session is created; a CustomDomain code that Stripe will not give this
+          order (a first order only code, a minimum amount) is a `400`. The code
+          becomes the session's one discount, and Stripe's own code field on its
+          checkout page is never switched on, so a code of another product
+          cannot be typed there either. A Checkout Session cannot be given a
+          discount after it is created: to add, change or remove a code, start a
+          new checkout (with the new code, or without one) and mount its
+          `client_secret` in place of the old one.
+
+
           `ui_mode` is optional and picks how the session is shown. Leave it out
           (a `null` or an empty string counts as leaving it out), or send
           `embedded`, for the behavior from before it existed: Stripe Embedded
           Checkout when `return_url` is set, and the hosted redirect when only
           `success_url` and `cancel_url` are. `elements` is Elements with the
           Checkout Sessions API: the caller renders the whole page (the plan,
-          the price, the trial, the promotion code field, the totals) and mounts
+          the price, the trial, the promotion code box, the totals) and mounts
           only Stripe's Payment Element with the returned `client_secret`, so
           the page can wear its own theme. It needs `return_url`, which is where
           redirect based payment methods and the finished payment land, and the

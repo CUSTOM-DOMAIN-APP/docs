@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: The two independent planes that share one database and talk over HTTP.
+description: The connect plane and the edge plane, how they talk over HTTP, and the other processes that run in production.
 ---
 
 ## Tenants and applications
@@ -16,20 +16,33 @@ against an application, and its `client_secret` is what your server exchanges fo
 - **Connect plane** (the control-plane): the `/v1` REST API, the four DNS
   [connect rails](/docs/connect-flow/overview#the-four-rails), the propagation
   poller, quotas/metering, webhooks, and the OAuth and one-click setup machinery.
-- **Edge plane**: on-demand TLS termination + reverse proxy, gated by a single
+- **Edge plane**: on-demand TLS termination + reverse proxy, gated by an
   internal `ask` call to the control-plane.
 
-Both planes share one Postgres database but scale independently and talk only
-over HTTP.
+Only the control-plane talks to the Postgres database. The edge has no database
+access: it scales independently and talks to the control-plane only over HTTP.
+
+A production deployment also runs the console (the web app), this
+documentation site, the MCP server for AI agents, a Caddy reverse proxy in front
+of the public hostnames, and a status monitor. The domain-connection logic
+(connect, templates, sell, monitor, webhooks, billing) runs as libraries inside
+the control-plane process, not as separate services.
 
 ## The edge hot path
 
 `POST /internal/ask` (shared-secret auth via `X-Edge-Auth` / `EDGE_ASK_SECRET`)
-is the only call the edge makes into the control-plane. It answers
-`{ approved }` from a single indexed lookup (no joins, no billing), so the TLS
+is the call that gates certificate issuance. It answers `{ approved }` from a
+lookup of the connection for the host, with no billing logic, so the TLS
 handshake never blocks on business logic. A host is approved iff a connection for
-it exists and is `live` or `propagating`; the edge then issues the certificate on
-demand during the handshake. Quota and metering are enforced only on the
-control-plane write path, never here.
+it exists and is `live` or `propagating`, it has not been removed, and its record
+set includes an edge `CNAME`/`ALIAS` or the platform's `A` records (otherwise the
+reason is `no_edge_record`). The edge then issues the certificate on demand
+during the handshake. Quota and metering are enforced only on the control-plane
+write path, never here.
+
+The edge makes three other internal calls with the same shared secret:
+`POST /internal/cert-status` (certificate state), `GET /internal/removed-hosts`
+(hosts to stop serving and stop renewing) and `POST /internal/traffic` (request
+counts).
 
 See [Connections](/docs/concepts/connections) for the lifecycle.

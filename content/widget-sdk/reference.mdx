@@ -5,13 +5,16 @@ description: The eight methods, the window events and callbacks, full config, st
 
 ## Methods
 
-`window.customdomain` exposes eight methods:
+`window.customdomain` exposes eight methods. The hosted script
+(`https://app.customdomain.ai/widget-assets/customdomain-sdk.js`) has all eight.
+The npm packages (`customdomain-js` and `@customdomain/react`, both 0.5.1 today)
+have seven: `removeDomain()` is not in them yet.
 
 | Method | Purpose |
 | --- | --- |
 | `open(config)` | Open the connect modal (or embedded panel). Returns `{ close }`. |
 | `purchaseDomain(config)` | Open the in-widget domain **purchase** flow (Sell). Returns `{ close }`. |
-| `removeDomain(config)` | Open the **removal** flow for a connected domain: the DNS records that were added, the choice to remove or keep them, one more sign-in when needed, and a summary. Pass `connectionId`, or the domain as `prefilledDomain`. Returns `{ close }`. See [Removing a domain](/docs/connect-flow/offboarding). |
+| `removeDomain(config)` | Hosted script only. Open the **removal** flow for a connected domain: the DNS records that were added, the choice to remove or keep them, one more sign-in when needed, and a summary. Pass `connectionId`, or the domain as `prefilledDomain`. Returns `{ close }`. See [Removing a domain](/docs/connect-flow/offboarding). |
 | `loadSharedFlow(url, config?)` | Open a shared/delegated setup link in the modal. Returns `{ close }`. |
 | `checkDomain(domain, { token, apiBase? })` | Pre-flight feature detection. Resolves a `CheckDomainResult`. |
 | `checkRecords(domain, { token, dnsRecords, apiBase? })` | Verify a desired record set against live public DNS. Resolves a `CheckRecordsResult`. |
@@ -22,7 +25,9 @@ description: The eight methods, the window events and callbacks, full config, st
 `provider`, `setupType`, `supportsAutomatic`, `oauthAvailable`, `domainConnect`,
 `registered`, `NSSupport`, `wildcardSupport`, `cnameFlattening`,
 `spfOverrideSupport`, `caaSupport`, `supportsSocialLogin`, `recordConflicts`,
-plus the rail truth: `rails` (`{ oauth, domainConnect, apiKey, manual }`, each
+`conflictTolerance`, `willFallbackToManual`, `apexSupported`, `apexMessage`, the
+Public Suffix List split of the domain (`subdomain`, `registrableDomain`,
+`publicSuffix`), `authoritativeDnsProvider`, plus the rail truth: `rails` (`{ oauth, domainConnect, apiKey, manual }`, each
 `{ available, reason?, caveat? }`), `recommendedRail`, `endUserAutomatic`,
 `blockedReason`, `dashboardUrl`, `nameservers`. Branch on `rails` and
 `recommendedRail`, not on `supportsAutomatic`, which only means an adapter
@@ -30,7 +35,9 @@ exists. See [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-wha
 For a root domain the raw check response also says how the root can be pointed
 (`apex_strategy`, `apex_record_type`, `apex_targets`); see
 [Root domains](/docs/dns/root-domains).
-`checkRecords` rides `POST /v1/monitor:check` and returns `{ inSync, records[] }`.
+`checkRecords` rides `POST /v1/monitor:check` and returns
+`{ domain, inSync, records[] }`, where each record is
+`{ host, type, ok, observed[] }`.
 
 ## Events & callbacks
 
@@ -39,21 +46,30 @@ Every meaningful transition fires **both** a `window` `CustomEvent` (read
 
 | Window event | Callback | Fires | `detail` / arg |
 | --- | --- | --- | --- |
-| `customdomain:step` | `onStepChange(step)` | on every screen change | `{ step, error? }`. `error` is the last error shown (`{ code, title, details }`), present only after an error screen |
-| `customdomain:success` | `onSuccess(result)` | when the domain reaches `live` | `{ jobId, domain, setupType }` |
-| `customdomain:close` | `onClose(detail)` | when the modal closes | `{ lastStatus, error? }` |
+| `customdomain:step` | `onStepChange(detail)` | on every screen change | `{ step, domain?, provider?, user?, error? }`. `user` is your `userId`. `error` is the last error shown (`{ code, title, details }`), present only after an error screen. With several domains queued it also carries `pendingDomains` and `processedDomains` |
+| `customdomain:success` | `onSuccess(result)` | when the domain reaches `live` | `{ jobId, domain, setupType, provider, success: true }`. `setupType` is `automatic` or `manual`. `alreadyConnected: true` is added when the domain was already live and this was a resume. With several domains queued it also carries `processedDomains` and `pendingDomains` |
+| `customdomain:close` | `onClose(detail)` | when the modal closes | `{ lastStatus, error?, shared?, manualScreenDisabled? }`. `shared` is set when the user forwarded the setup to a colleague before closing |
 | `customdomain:error` | `onError(err)` | when the widget shows an error | `{ code, message, title?, details? }` |
 | `customdomain:fallback` | `onFallback(detail)` | once per analysis, when the user is routed to a non-automatic screen | `{ reason, provider?, screen, message? }`. `reason` is one of `no_end_user_rail` (no sign-in or one-click at this provider), `conflicts_exceed_tolerance`, `provider_unsupported`, `unknown_provider`; `message` is the human explanation shown |
 | `customdomain:purchase` | none | the buy flow created a checkout session | `{ domain, sessionId?, clientSecret?, url? }`: mount Stripe Embedded Checkout with `clientSecret` |
-| `customdomain:removed` | `onRemoved(result)` | a removal finished | `{ domain, connectionId, records, removed, restored, leftInPlace, user? }`. `records` is `removed`, `partly_removed`, `kept`, `manual` (the user deletes them; the widget listed how), `in_use` or `not_needed` |
+| `customdomain:removed` | `onRemoved(result)` | a removal finished (hosted script only; not in the npm packages yet) | `{ domain, connectionId, records, removed, restored, leftInPlace, user? }`. `records` is `removed`, `partly_removed`, `kept`, `manual` (the user deletes them; the widget listed how), `in_use` or `not_needed` |
 | `customdomain:request-close` | none | host-delegated dismissal (`whiteLabel.delegateClose`) | provider payload; you call `close()` |
 | `customdomain:doc-click` | none | user clicked a documentation link | link payload |
 | `customdomain:shared` | none | a setup link was handed over: the instructions were emailed, the user chose *Copy link instead*, or your `forwardLink` page took it | `{ domain, link?, jobId? }` |
 
 `onError(err)` receives a `CustomDomainError` (`{ code, message, details? }`).
-Error codes are an open, stable union (for example `SessionError`,
-`AccessDeniedError`, `PopupBlockedError`, `DomainConnectError`, `ProviderError`,
-`TimeoutError`, `RateLimitError`, `NetworkError`, `GenericError`).
+The hosted script also fires a `customdomain:ready` window event once
+`window.customdomain` is attached.
+Error codes are an open union, so branch on the ones you handle and treat the
+rest as a generic failure. The ones the widget raises include `SessionError`
+(the token expired or was refused, including a domain-bound token used for
+another host), `InvalidDomainError`, `DomainAlreadyConnectedError`,
+`UnregisteredDomainError`, `PlatformSubdomainError`, `InvalidNameservers`,
+`ProviderAuthenticationError`, `AccessDeniedError`, `PopupBlockedError`,
+`DomainConnectError`, `ProviderError`, `TimeoutError`, `RateLimitError`,
+`NetworkError`, `PlanLimitError` (the account's plan or allowance does not
+allow another connection; the end user only sees a neutral message) and
+`GenericError`.
 
 > A **failed** connection is not a dead end in the widget: it shows the manual
 > screen with the records and the control plane's reason, and *Check now*
@@ -69,8 +85,8 @@ Error codes are an open, stable union (for example `SessionError`,
 | Field | Type | Notes |
 | --- | --- | --- |
 | `applicationId` *(required)* | `string` | Public application id. |
-| `token` *(required)* | `string` | Widget JWT from `POST /v1/tokens` (scope `connect`). |
-| `getToken` | `() => string \| Promise<string>` | Returns a fresh widget token. Called when the current one expires mid-setup, so long manual setups never stop. See [Keeping a session alive](/docs/authentication/widget-tokens#keeping-a-session-alive). |
+| `token` *(required)* | `string` | Widget JWT (scope `connect`), minted on your server: `POST /api/widget-token` with an API key for applications created in the console, or `POST /v1/tokens` with the client secret for applications created over the API. See [Installation & embed](/docs/widget-sdk/installation-and-embed#1-mint-a-token-on-your-server). |
+| `getToken` | `() => string \| Promise<string>` | Returns a fresh widget token; have it call your own server route, never the mint endpoint directly. Called when the current one expires mid-setup, so long manual setups never stop. See [Keeping a session alive](/docs/authentication/widget-tokens#keeping-a-session-alive). |
 | `domain` | `string` | Pre-filled domain. |
 | `prefilledDomain` | `string \| string[]` | Alias accepted for the pre-fill. |
 | `wwwRedirect` | `boolean` | Root domains only. `true` connects the root and `www` and redirects the root to `www`; `false` connects the root alone; unset lets the user choose (root and www is the recommended default). |
@@ -83,13 +99,17 @@ Error codes are an open, stable union (for example `SessionError`,
 | `supportForSubdomains` / `defaultSubdomain` / `hostRequired` | | Subdomain-entry behavior. |
 | `manualSetupDocumentation` | `string` | Deep-link to your own manual-setup guide. |
 | `enableDkim` | `boolean` | Offer the DKIM screen. |
+| `enableEmail` | `boolean` | Show the email setup screen (the email record template) before the domain records. |
+| `managed` | `boolean` | Opt the one-click (Domain Connect) flow into the durable managed rail. The control plane falls back to the standard redirect when the provider or deployment cannot do it. Default `false`. See [Managed connections](/docs/connect-flow/managed-connections). |
 | `endUserRef` | `string` | Your id for this customer. Stored on the connection as `end_user_ref`, shown in the console, and sent with every webhook as `user_id`. |
 | `userId` | `string` | An id echoed back on the widget's step events. |
 | `container` | `string` | CSS selector for embedded mode (implies `whiteLabel.embedded`). |
-| `apiBase` / `widgetBase` | `string` | Override the default control-plane / widget hosts (for example a staging environment). |
-| `mode` | `"connect" \| "remove"` | `"remove"` opens the removal flow (what `removeDomain` sets). |
-| `connectionId` | `string` | The connection to remove, when you kept its id. Otherwise the prefilled domain is looked up. Either way, mint the token for that domain and end user (`POST /v1/tokens` with `domain` and `end_user_ref`). |
-| `onSuccess` / `onClose` / `onStepChange` / `onError` / `onFallback` / `onRemoved` | fn | Callbacks (mirror the events above). |
+| `apiBase` / `widgetBase` | `string` | Override the default control-plane (`https://api.customdomain.ai`) / widget (`https://app.customdomain.ai`) hosts (for example a staging environment). |
+| `iframeSandbox` | `string` | Advanced. Replaces the iframe's `sandbox` attribute. The default allows scripts, forms and popups that escape the sandbox so provider sign-in windows can open. |
+| `searchType` | `string` | Search mode for the buy-a-domain screen, such as `standard` or `ai`. |
+| `mode` | `"connect" \| "remove"` | Hosted script only. `"remove"` opens the removal flow (what `removeDomain` sets). |
+| `connectionId` | `string` | Hosted script only. The connection to remove, when you kept its id. Otherwise the prefilled domain is looked up. Either way, mint the token for that domain and end user (`POST /v1/tokens` with `domain` and `end_user_ref`). |
+| `onSuccess` / `onClose` / `onStepChange` / `onError` / `onFallback` / `onRemoved` | fn | Callbacks (mirror the events above). `onRemoved` is in the hosted script only. |
 
 A `DNSRecord` is `{ type, host, value, ttl?, priority?, purpose? }`. Supported
 types include `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `TXT`, plus the meta-types
@@ -194,6 +214,8 @@ and two layout behaviors:
 | `colors` | `primary`, `primaryHover`, `background`, `text`, `success`, `error`, … mapped onto tokens. A `primary` brings readable text on it, a hover shade, a link color that reads on the page and a focus ring; in dark mode a dark brand color is lifted until it stands out from the surface. A `background` or `text` brings the surfaces, borders, inputs and quiet text with it, so a custom page color never leaves white inputs on it. A value that is not a hex color is used as given, with none of this. |
 | `font` / `borderRadius` / `logo` | Font family, corner radius, header logo (an `https:` URL or a base64 image). Every corner of the widget follows `borderRadius` in proportion, so `0px` is square throughout. A logo uploaded in the console's widget designer is hosted for you at a permanent `https:` URL, and the install code the console shows already uses it. |
 | `logoDark` / `logoPlate` | In dark mode `logoDark` replaces the logo. With no `logoDark`, `logoPlate: true` puts `logo` on a small light plate, for a logo drawn for light pages. |
+| `fontUrl` / `googleFont` | `fontUrl` is an `https:` stylesheet URL (your own `@font-face`) loaded into the widget; `googleFont` is `{ family, weights?, display? }` and loads that Google Font. Both still use `font` or the family you name, and your page's content security policy must allow the font host. |
+| `customCopy` / `icons` | `customCopy` overrides screen text, keyed by locale (or `"*"` for all) and then by copy key. `icons` replaces icon slots with an `https:` or `data:image` URL or inline SVG. |
 | `hideLogo` | Hide the powered-by footer. |
 | `hideConfetti` | Disable the success confetti. |
 | `tokens` | Override any of the ~90 raw design tokens (`modal-width`, `color-primary`, `radius-md`, `shadow-modal`, …). |
