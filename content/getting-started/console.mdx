@@ -30,7 +30,10 @@ automatically. (Self-hosters: this strict mode is the
 enforced; unset it only if you deliberately want immediate activation.) Google
 and GitHub follow the same rule: if the provider has not confirmed your email
 address, you land on *Check your email* and the link we send finishes the sign
-in.
+in. A provider that has not confirmed the address also cannot sign in as an
+existing account that has it: sign in with your password, then add Google or
+GitHub under **Settings, Security** (the provider must have confirmed the
+address for that too).
 
 Tick the box under the heading to agree to the Terms of Service and Privacy
 Policy. Email, Google and GitHub all wait for it. If you already had an account
@@ -201,7 +204,7 @@ what **Overview** and **Domains** lead with.
 | **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
 | **Overview** | The go-live list, then your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts |
 | **Domains** | Opens on **From your product (widget)**, or on **All** until a customer has connected one | Opens on **All** | Opens on **All** |
-| **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Connect your first domain" | "Connect your domain" |
+| **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Add your domains", with a button to paste a list | "Connect your domain" |
 
 The counts on **Overview** include every domain, so when they link to **Domains** in a
 workspace for your customers they open the **All** tab, and what you click is what you
@@ -226,6 +229,10 @@ application** and **Manage applications**. Use more than one to keep surfaces
 apart: Production and Staging, or one per product. Each application has its
 own widget credentials, API keys and domains, and the console shows the
 active one; switching is remembered in your browser.
+
+Viewers see applications and their domains but cannot create one or use its
+widget, and the console says so. Buying a domain, bulk connect and the widget's
+token need the `member` role or above.
 
 **New application** asks for a name (with one-tap suggestions such as
 *Staging*) and an environment (Production, Staging or Development). Once it
@@ -465,7 +472,7 @@ phone, and in any language it speaks.
 
 | Group | What you set |
 | --- | --- |
-| **Brand** | The name in the first heading ("Connect your domain to …"), the logo, a separate logo for dark mode (or a light plate behind a logo drawn for light pages, which the designer offers in one click when a logo would be hard to see on the dark surface), the logo's size, and whether "Powered by CustomDomain™" shows. |
+| **Brand** | The name in the first heading ("Connect your domain to …"), the logo, a separate logo for dark mode (or a light plate behind a logo drawn for light pages, which the designer offers in one click when a logo would be hard to see on the dark surface), the logo's size (16 to 48 pixels, 32 by default), and whether "Powered by CustomDomain™" shows. |
 | **Colors** | The brand color for buttons, links and focus rings. Text on it is chosen to be readable, and it is lifted in dark mode when it would vanish. An optional background and text color, used in both light and dark. |
 | **Shape and type** | One corner radius (buttons, fields, cards and the pop-up follow it in proportion), a system font, the pop-up's width on a computer, and its shadow. |
 | **Behavior** | Light, dark or match the device; the confetti; the close button; the progress steps. |
@@ -477,7 +484,8 @@ chosen in the sidebar. **Save** gives that application a look of its own.
 application without its own uses, and **Use the workspace default for this
 application** drops the application's own look. Saving needs an owner or admin.
 The install code and **Try it live** use the saved look; the preview shows what
-you have not saved yet.
+you have not saved yet. The install code carries only what differs from the
+widget's own look, so an untouched color or corner radius is not written into it.
 
 For the logo, **Upload** (or drop a file on it). PNG, JPEG, WebP, GIF (its
 first frame), AVIF and SVG are accepted. Your browser prepares every upload the
