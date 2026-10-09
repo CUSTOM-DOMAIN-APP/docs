@@ -69,6 +69,12 @@ In the console, create and revoke keys on the **API & SDK** page. Creating a key
 charged until it ends): a workspace that has not started it gets
 `402 billing_required` and is sent to **Billing**.
 
+The key the console itself uses to reach your workspace is marked **This console**
+in the list and has no **Revoke** button; revoking it would cut the console off
+from the workspace, so the console refuses it (`409 console_key`). A teammate's
+key carries a **Team member** badge, and its revoke dialog warns that their
+console may lose access.
+
 Manage keys under an application:
 
 ```
@@ -152,7 +158,7 @@ Roles are **enforced at the control-plane**, not just the console: each sensitiv
 mutation resolves the acting member from the presented credential and re-checks
 their role server-side; no client-supplied role is trusted. Managing members,
 minting/revoking API keys and approving/revoking delegated-agent grants
-(`agent:manage`) require `admin` or `owner`; billing requires `owner`; and only
+(`agent:manage`) require `admin` or `owner`; billing requires `admin` or `owner`; and only
 an owner can create or demote an owner.
 
 Mutating a **connection** (creating, applying, re-applying, re-checking or

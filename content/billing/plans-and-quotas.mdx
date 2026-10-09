@@ -138,6 +138,16 @@ of eight states. Only the last two refuse new connections.
 | `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** (except a new workspace's first ten domains) |
 | `canceled` | The subscription ended. | **refused** |
 
+`GET /v1/billing/status` also returns `payment_method`, what the workspace is
+charged on, or `null` when there is none. `type` is `card`, `link` or `cashapp`.
+A card has `brand`, `last4`, `exp_month` and `exp_year`, and `wallet`
+(`apple_pay` or `google_pay`) when it was paid through a wallet. A Link account
+has the `email` of the account (the card behind it is never shown), and Cash App
+Pay has only its type. Any of them counts as a payment method on file, so a
+workspace that paid with Link is not shown "No card on file" and is not refused
+by the card check on agent purchases. Checkout opens with the owner's email
+already filled in.
+
 ### What a refusal looks like
 
 The control plane refuses at one place, before a connection is created, for
@@ -435,6 +445,17 @@ expired or unpaid session leaves the tenant exactly where it was.
 > `customer.subscription.deleted`, `customer.subscription.trial_will_end`,
 > `invoice.paid` and `invoice.payment_failed`. Without them renewals, payment
 > failures and cancellations never reach the workspace's state.
+
+> **Operators: set `STRIPE_PRODUCT_IDS`** (comma separated `prod_...` ids) on
+> every deployment that makes promotion codes, including a self-hosted one with
+> its own Stripe account. The Stripe account may be shared with other products,
+> and a coupon without a product list would discount all of them, so with it
+> empty, making a promotion code in the operator console is refused (`503`) and
+> creates nothing. The same ids decide which hand-made Stripe codes customers can redeem. To turn
+> the in-page checkout off, set `CHECKOUT_UI_MODE=embedded` on the console and
+> recreate its container (no rebuild); the console then asks for Stripe's own
+> embedded checkout. Deploy the control plane before a console that sends
+> `ui_mode`.
 
 `customer.subscription.*` events apply Stripe's subscription (its status, trial
 end, period end, price and cancellation) to the workspace, and the state above

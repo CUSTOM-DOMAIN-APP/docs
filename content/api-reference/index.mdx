@@ -44,10 +44,13 @@ Every error is the same shape:
 { "code": "invalid_request", "title": "The request was invalid.", "details": "domain is required" }
 ```
 
-`code` is a stable machine string. The generic codes are `invalid_request`,
-`unauthorized`, `not_found`, `service_unavailable`, and `internal_error`. A few
-connect-flow failures carry a distinct, branchable code instead of a generic one
-so an integration can react specifically:
+`code` is a stable machine string. The generic codes are `invalid_request`
+(400), `unauthorized` (401), `forbidden` (403, the credential is valid but may
+not do this), `not_found` (404), `conflict` (409, the request conflicts with the
+resource's current state), `rate_limited` (429, slow down and retry shortly),
+`internal_error` (500), and `service_unavailable` (503). A few connect-flow
+failures carry a distinct, branchable code instead of a generic one so an
+integration can react specifically:
 
 | `code` | HTTP | Meaning |
 | --- | --- | --- |

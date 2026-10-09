@@ -121,7 +121,7 @@ the credential is created, and lists the steps; see
 | cPanel hosts | cPanel username, API token and server hostname | For hosts that run cPanel; we connect on port 2083. |
 | deSEC | API token | |
 | DigitalOcean | Personal access token with the domain scopes | Or sign in with DigitalOcean. |
-| DirectAdmin hosts | DirectAdmin username, Login Key and server hostname | For hosts that run DirectAdmin; we connect on port 2222. The server must be reachable from `34.192.32.132` and use a certificate a browser trusts. You choose it yourself, since nothing detects DirectAdmin from nameservers. |
+| DirectAdmin hosts | DirectAdmin username, Login Key and server hostname | For hosts that run DirectAdmin; we connect on port 2222 (or 443 when you add `:443` after the hostname). The server must be reachable from `34.192.32.132` and use a certificate a browser trusts. You choose it yourself, since nothing detects DirectAdmin from nameservers. |
 | DNSimple | Account API access token | Or sign in with DNSimple. |
 | DNS Made Easy | API key and secret key | |
 | Domeneshop | API token and its secret | The domain must use Domeneshop's DNS service (ns1 to ns3.hyp.net). |
@@ -158,7 +158,7 @@ the credential is created, and lists the steps; see
 | NS1 | API key secret with the DNS permission Manage zones | The domain must be a primary zone of the account. If the account or the key has an IP allow list, include `34.192.32.132`. |
 | Openprovider | API token from `/v1beta/auth/login` | API access must be enabled for the user; tokens last 48 hours, so they are used once. |
 | OVHcloud | Application key, application secret and consumer key (Europe, Canada or United States) | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
-| Plesk hosts | Plesk username, password and server hostname | For hosts that run Plesk; we connect on port 8443. The server must be reachable from `34.192.32.132` and serve a trusted certificate. Used once and never stored. You choose it yourself, since nothing detects Plesk from nameservers. |
+| Plesk hosts | Plesk username, password and server hostname | For hosts that run Plesk; we connect on port 8443 (or 443 when you add `:443` after the hostname). The server must be reachable from `34.192.32.132` and serve a trusted certificate. Used once and never stored. You choose it yourself, since nothing detects Plesk from nameservers. |
 | Porkbun | API key and secret key | Turn on API Access for the domain. Or approve access at Porkbun. |
 | Scaleway | Secret key of an IAM API key | Needs the permission set `DomainsDNSFullAccess` on the Project that holds the domain. |
 | Simply.com | API key and account number | |
