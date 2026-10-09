@@ -122,11 +122,12 @@ curl -X POST http://localhost:8080/v1/providers/cloudflare/zones:list \
 # A provider that can't list returns 422 { "error": "list_not_supported", … }
 # Needs a widget JWT or an API key; an empty credential.token is a 400.
 
-# 2. Create connections for the selected domains (idempotent, up to 200)
+# 2. Create connections for the selected domains (idempotent, up to 200),
+#    optionally under a client's name
 curl -X POST http://localhost:8080/v1/connections:bulk \
   -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"domains":["beta.com","gamma.com"]}'
+  -d '{"domains":["beta.com","gamma.com"],"end_user_ref":"Acme Co"}'
 # → { "results": [
 #      { "domain": "beta.com",  "connection_id": "con_…", "status": "connected" },
 #      { "domain": "gamma.com", "connection_id": "con_…", "status": "already" }
@@ -138,6 +139,21 @@ Each result carries a **per-domain `status`**: `connected` (a new connection),
 or `failed` (that domain errored; the batch continues and reports its `message`).
 Each new connection then applies records and goes live on its own rail exactly
 like a single connect.
+
+The call takes a widget token with the `app` scope or your workspace's API key.
+With a key, the connections are created on the key's application, or on
+`application_id` when that names another application of the same workspace.
+
+`end_user_ref` is your own label for the whole list, up to 256 characters: a
+client's name if you connect domains for clients, or your id for the customer
+they belong to. It is stored on every connection the call creates, and the
+Domains page shows it, filters by it and includes it in an export. It is set when
+a connection is created and is not changed afterwards, so a domain that already
+exists keeps the label it has and comes back as `already`.
+
+A workspace that has not subscribed yet connects its first ten domains, or the
+number an operator set, without a card; the rest of a list come back `failed`
+with the reason, one by one, until its trial starts.
 
 ## Manual
 

@@ -43,6 +43,17 @@ and Enterprise plans include. On Starter and Startup, the `power:default` and
 Pointing at [your own infrastructure](#your-own-infrastructure) below is not
 plan gated.
 
+**Domain routing** in the console checks the default origin for you: one request
+to `/` from our server when you save it, and again when you choose **Check
+again**. It says whether the origin answered, could not be reached, showed a
+certificate we do not accept, took too long, or points at a private address. A
+`404` or `401` for a bare request to `/` counts as up, since an origin that serves
+by `X-Forwarded-Host` often answers that way; a `5xx` is reported as an error. The
+check is advice and never stops you saving. It only reaches ports 80 and 443 on
+public addresses, and it comes from our network, so an origin that accepts only
+some source addresses can read as unreachable. See
+[What the origin check sends](/docs/security/domain-checks#when-you-save-an-origin).
+
 ## Your own infrastructure
 
 Name your own destination with a connection target. Customer subdomains get a

@@ -85,25 +85,36 @@ unbranded styling. See
 Every workspace needs an active subscription (or a free trial of one) to
 connect **new** domains and to hold **new credentials**: creating an API key,
 creating an application and rotating an application's secret. The one exception
-is a new workspace's **first domain**, which is free (see
-[The first domain is free](#the-first-domain-is-free)). Domains that are
+is a new workspace's **first ten domains**, which are free (see
+[The first ten domains are free](#the-first-ten-domains-are-free)). Domains that are
 already connected are never touched by billing: live traffic, certificate
 renewals, rechecks and monitoring carry on whatever the billing state, and
 credentials that already exist keep working.
 
 - **A new workspace** can look around first. Signing up does not require a card:
   you can check domains, design and preview your widget and read the docs without
-  one, and your first domain connects without one. The setup flow is offered
-  once, after that domain is live, and skipping it sticks. The card is asked for
-  where it is needed, when you create an API key, create an application or
-  connect a second domain, and that starts a **14 day free trial** in a checkout
+  one, and your first ten domains connect without one. The setup flow is offered
+  once, after all ten are connected and the tenth is live, and skipping it sticks.
+  The card is asked for where it is needed, when you create an API key, create an
+  application or connect an eleventh domain, and that starts a **14 day free trial** in a checkout
   on the page itself, not a pop-up. The order summary, the total and the buttons
   are the console's own, in light or dark; only the card fields are Stripe's.
   The first charge happens when the trial ends; canceling before then costs
   nothing. Until the trial starts, new credentials are refused, and so is every
   connection after the first.
-- **Promotion codes** are entered in the checkout's order summary, or applied to
-  a running subscription with `POST /v1/billing/promotion-code`.
+- **Promotion codes** are typed into the order summary of the checkout, or sent
+  as `promotion_code` when you start one yourself
+  (`POST /v1/billing/checkout`), or applied to a running subscription with
+  `POST /v1/billing/promotion-code`. Both accept only codes that belong to this
+  deployment (made through the operator console, or limited to its products in
+  Stripe) and answer `404` for any other code on a shared Stripe account, the
+  same as for a code that does not exist, so a code cannot be told apart from a
+  stranger's. Stripe's own code field is never shown on the checkout. A
+  checkout started with a code carries it as its one discount, and a Checkout
+  Session cannot be given a discount after it is created, so adding or taking
+  off a code in the order summary starts a new checkout in its place: the card
+  fields of the old one are empty again, and nothing is charged by either until
+  the payment is confirmed.
 - **Changing plans** on a running subscription is
   `POST /v1/billing/change-plan`; Stripe prorates the difference. During a
   trial, the new price applies from the trial's end.
@@ -124,7 +135,7 @@ of eight states. Only the last two refuse new connections.
 | `comped` | Complimentary access granted by CustomDomain™ (until `comped_until`, or with no end). | allowed |
 | `grace` | A workspace that was on Free, inside its 14 day grace period. | allowed |
 | `legacy_free` | A Free workspace whose grace has not started yet. | allowed |
-| `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** (except a new workspace's first domain) |
+| `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** (except a new workspace's first ten domains) |
 | `canceled` | The subscription ended. | **refused** |
 
 ### What a refusal looks like
@@ -150,26 +161,47 @@ The switch is `BILLING_REQUIRE_SUBSCRIPTION` (default `1`). With it set to `0`,
 or on a deployment where no Starter price is configured (so nobody could
 subscribe), nothing is refused. The check fails open on a lookup error.
 
-### The first domain is free
+### The first ten domains are free
 
 A brand new workspace, one that has never had a subscription or a trial,
-connects its **first** domain without a card, whether it connects from the
-console, the API, the MCP server or the embedded widget, so you can see a
-domain work before you are asked for one. While the workspace has no pending,
-propagating or live connection, a new connection (and the start of a domain
-purchase) goes through. A connection that failed does not count, and posting the
-same domain again returns it with `200`, as it always did. The next domain is
-refused with `402 billing_required`, whose `title` says a card is needed to
-connect more domains. Creating an API key or an application still needs the
-trial.
+connects its **first ten** domains without a card, whether it connects from the
+console, the API, the MCP server or the embedded widget, so you can see your
+domains work before you are asked for one. While the workspace has fewer than ten
+pending, propagating or live connections, a new connection (and the start of a
+domain purchase) goes through. A connection that failed does not count, posting
+the same domain again returns it with `200`, as it always did, and removing a
+domain frees its place at once. The eleventh domain is refused with
+`402 billing_required`, whose `title` says a card is needed to connect more
+domains. Creating an API key or an application still needs the trial.
 
 `GET /v1/billing/notice` and `GET /v1/billing/status` carry
-`first_domain_free: true` for such a workspace (owners and admins only). While
-the free domain is unused `restricted` is `false`; once it is connected
-`restricted` is `true` and the notice says a card is for more domains. The
-console offers the setup flow once, after the first domain is live.
+`first_domain_free: true` for such a workspace (owners and admins only), with
+`free_domains`, how many domains it may connect before a card (ten). While a
+free domain is left `restricted` is `false` and the console says "Your first 10
+domains are free"; once all of them are connected `restricted` is `true` and the
+notice says a card is for more domains.
 
-The free domain stays for as long as the workspace has no subscription, because
+The console asks owners and admins for a card only once every free place is used.
+With one to nine of the ten connected nobody is sent to the setup flow and no
+card prompt appears; you keep connecting. Once the tenth is connected, the live
+card and the domain page say a card is for more domains, and the setup flow is
+offered once, the next time the console loads after the tenth is live (not while it is still
+connecting). Skipping it sticks, invited teammates are never sent there, and a
+billing read that fails never keeps anyone out of the console. With an allowance
+of one, all of this happens after that one domain, as before.
+`GET /v1/billing/standing` says the same to an agent or a server holding an API key.
+
+A domain that was a typo holds a free place until it is removed: remove it from
+Domains, which frees its place at once. (When a workspace's allowance is one, the
+Connect page also offers to remove the one domain still waiting for its records
+and connect the new one in the same step.)
+
+Support can set a different number of free domains for a workspace, from 1 to 50,
+and the same reads then say how many ("Your first 3 domains are free"); setting
+it back to `0` returns the workspace to the default of ten. It changes nothing for
+a workspace the rule does not cover.
+
+The free domains stay for as long as the workspace has no subscription, because
 billing never touches a live domain. The rule never applies to a workspace that
 had a trial, a subscription, a comp or the Free plan. Its switch is
 `BILLING_FIRST_DOMAIN_FREE` (default `1`); with it set to `0`, or switched off
@@ -339,12 +371,30 @@ refused a second checkout with `409`. Enforcement is on the control plane's
 write path only, never on the edge `ask` hot path, so serving traffic never
 blocks on billing.
 
+`promotion_code` is optional: the code as a customer types it (at most 64
+characters, never a Stripe `promo_` id). The control plane checks it before
+Stripe is asked for a session, takes it only when it is one of this
+deployment's own (see Promotion codes above), and makes it the session's one
+discount. A code that does not exist, ran out, or belongs to another product on
+the same Stripe account is a `404`, and no session is created; a code of this
+deployment that Stripe will not give this order (a first order only code, a
+minimum amount) is a `400`. Stripe's own code field is never switched on, and a
+session cannot be given a discount after it is created, so to change the code,
+start the checkout again with the new one (or none) and mount the new
+`client_secret`.
+
+```bash
+curl -X POST http://localhost:8080/v1/billing/checkout \
+  -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
+  -d '{"plan":"starter","return_url":"https://app.acme.example/done","promotion_code":"LAUNCH50"}'
+```
+
 `ui_mode` is optional and picks how the session is shown. Leave it out (or send
 `embedded`; `null` and an empty string count as leaving it out) and nothing
 changes: Stripe Embedded Checkout, an iframe Stripe styles itself, when
 `return_url` is set, and the hosted redirect when only `success_url` and
 `cancel_url` are. `elements` is Elements with the Checkout Sessions API: you
-render the whole page (the plan, the price, the trial, the promotion code field,
+render the whole page (the plan, the price, the trial, the promotion code box,
 the totals) and mount only Stripe's Payment Element with the returned
 `client_secret`, so the page can wear your own theme. It needs `return_url`. An
 `elements` session is created on Stripe API version `2026-08-26.dahlia`, pinned

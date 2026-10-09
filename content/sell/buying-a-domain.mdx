@@ -83,9 +83,9 @@ both endpoints.
 
 Starting a purchase (`POST /v1/registrar/checkout`) ends in a new connection, so
 it follows the same billing rules as connecting a domain. A workspace without a
-trial or subscription gets `402 billing_required` before anyone pays, except for
-its [first domain](/docs/billing/plans-and-quotas#the-first-domain-is-free),
-which goes through without a card. Search and pricing are reads and stay open.
+trial or subscription gets `402 billing_required` before anyone pays, except
+while it still has [free domains](/docs/billing/plans-and-quotas#the-first-ten-domains-are-free) (the first
+ten), which go through without a card. Search and pricing are reads and stay open.
 
 ## Availability
 

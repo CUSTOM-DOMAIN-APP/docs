@@ -21,7 +21,7 @@ An API key and a client secret are different credentials. Do not swap them:
 | | API key | Application client secret |
 | --- | --- | --- |
 | Looks like | `cd_live_` or `cd_test_` plus 32 hex characters (older keys: `sk_live_` / `sk_test_`) | `sk_` plus 32 hex characters |
-| Where you get it | **API & SDK**, **Create key** (admins and owners). Shown once. | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
+| Where you get it | **API & SDK**: the workspace's default key at the top (owners and admins can view it any time), or **Create key** (admins and owners; shown once). | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
 | Sent as | `Authorization: Bearer …` | `client_secret` in the body of `POST /v1/tokens` |
 | What it does | Calls the API for your whole workspace | Mints widget tokens for one application, nothing else |
 
@@ -51,8 +51,8 @@ curl -X POST https://app.customdomain.ai/api/widget-token \
 - Creating a key needs a card on file (the workspace's 14 day free trial; nothing
   is charged until it ends). Without one, **Create key** and
   `POST /v1/applications/{id}/keys` answer `402 billing_required`: an owner or
-  admin starts the trial under **Billing**. Your first domain is free without a
-  card, but a key is not.
+  admin starts the trial under **Billing**. The workspace's default key needs no
+  card, and neither do your first ten domains.
 
 | Status | `error` | Meaning |
 | --- | --- | --- |
@@ -135,6 +135,16 @@ registrar search, quote and checkout endpoints. With scope `app` it also reaches
 the application-wide endpoints listed above. No widget token can create
 applications, manage keys, or manage members: those need an API key or the
 management key.
+
+## Tokens for a test mode application
+
+A token minted with the `client_secret` of a [test mode](/docs/guides/test-mode)
+application carries a signed `sandbox: true` claim, which is how the widget knows to
+say so and to ask for a `.test` name. Nothing else about minting changes. The claim is
+never what grants or refuses anything: the control plane decides from the application
+on every call, and a test mode token can run the connect flow for its own `.test`
+names and read its own webhooks, and nothing else (`403 sandbox_not_allowed`). A token
+of a live application has no such claim.
 
 ## Keeping a session alive
 

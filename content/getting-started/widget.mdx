@@ -7,6 +7,11 @@ Use the widget when **your customers** own the domains and should connect
 them **inside your product**. You never touch their DNS; the modal detects the
 provider, offers the best rail it can actually complete, and reports back.
 
+No customer domain to try it with yet? Make a [test mode](/docs/guides/test-mode)
+application and follow the steps below with its `client_secret` and a name such as
+`www.acme.test`. The widget runs end to end on a simulated DNS, with no card, no free
+domain used and nothing billed.
+
 ## 1. Mint a widget token on your server
 
 Your server trades a credential for a short-lived widget token, and only that
@@ -32,6 +37,15 @@ between the two credentials are on [Widget tokens](/docs/authentication/widget-t
 minutes, so mint one per open and pass `getToken` (step 2) so a long manual
 setup refreshes instead of stopping. The default scope, `connect`, runs the
 connect flow and nothing else.
+
+Mint it with the domain and your customer's `end_user_ref` too
+(`"end_user_ref":"user_42"` beside `domain`) where you can. Some providers can be
+signed in through a secure sign in, a temporary browser where your customer signs
+in to the provider (offered to selected workspaces for now), and it runs only
+for a token bound to the domain and the end user. If your platform asks the
+customer for the domain first, mint the token after that. A token minted before
+the domain is known still runs the whole flow; the widget then shows the manual
+setup for those providers instead.
 
 ## 2. Open the modal
 

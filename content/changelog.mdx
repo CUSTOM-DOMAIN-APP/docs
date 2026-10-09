@@ -30,6 +30,103 @@ never change meaning or disappear without a new major version. See the
   Mint the token with an API key instead: `POST https://app.customdomain.ai/api/widget-token`
   with your API key as the bearer token, and keep the key on your server. [Widget tokens](/docs/authentication/widget-tokens)
   now explains this, and the setup guides quote the current census (178 providers).
+- **Test mode: run the widget, the API and your webhooks before a customer has a domain.** A test mode application runs the
+  whole connect flow on made up names that end in `.test`, such as `www.acme.test`, and decides how each one ends from the
+  name: any name goes live after about 15 seconds, `conflict.acme.test` stays pending as if another account had it, and
+  `timeout.acme.test` fails after a minute. It needs no card, it does not use up your free domains or your plan's allowance, it is
+  never billed, and nothing is looked up or served. Webhooks from it are signed and delivered like any other and carry
+  `"sandbox": true`. Make one with **Try test mode** in the console's application switcher, or with `"sandbox": true` on
+  `POST /v1/applications`. The widget says **Test mode** across the top and asks for a `.test` name. A test mode key can run the
+  connect flow and read its own webhooks, and nothing else, so one left in a repository is worth nothing. A `cd_test_` key is not
+  a test mode key: keys made for a staging or development environment start with it too and work on real domains, so read the
+  application's `sandbox` field. See [Test mode](/docs/guides/test-mode).
+- **Connect your AI agent from the welcome, and get a ping when a domain is live.** The welcome has an optional step for the
+  agent you use: pick Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT or another, and it shows the one command or the few
+  fields that add CustomDomain™ to it, then a prompt to paste that tells the agent what to do first (your domain, your list or your
+  product, depending on what you chose). Most agents sign in with your account, so there is no key to copy, and you approve what each
+  one may do; Cursor still uses a key for now. The step says an agent is connected only once it has signed in and you approved it, and
+  **Connect your agent** on **Overview** follows the same rule instead of counting a switch. You can end an agent's access any time
+  under **More**, **Agents**. On the welcome's last screen, while a domain waits for its DNS records, you can ask for a ping when it is
+  live: your browser asks once, and it turns on pings for a domain going live and nothing else. If you are setting up for your own
+  product's customers, the first browser you turn notifications on in also pings you when a customer connects a domain; turn that off
+  under **Settings → Notifications** if you would rather not. See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)
+  and [Notifications](/docs/guides/notifications).
+- **Paste a list of domains, say whose each one is, and hand the DNS step to a client without inviting them.** If you told
+  the welcome that the domains are for your clients or that you have many of your own, its first screen is now a box: paste a
+  column from a spreadsheet, a line of addresses or a list of links, with a client's name beside each if you like, and the
+  domains are in your workspace, each waiting for its DNS records. The first ten domains are free, so the box says before you
+  paste that the rest wait for the free trial, adds what it can, keeps the rest for you, and is open again when the trial has
+  started. **Domains** has the same box under **Add several**, a **Client** filter, an order menu and **Export CSV**, and a
+  row's menu has **Copy a link for the client**: a link for that one domain that works once, for 30 days, with no account. It
+  invites nobody, unlike the email to a teammate, which still invites its recipient. A client's name is set when a domain is
+  added and cannot be changed afterwards. For the API, `POST /v1/connections:bulk` now takes `end_user_ref` and
+  `application_id` with a workspace API key. See [Many domains, and whose they are](/docs/getting-started/console#many-domains-and-whose-they-are)
+  and [Verify and go live](/docs/connect-flow/verify-and-go-live).
+- **Shorter screens when your customers connect a domain.** The secure sign in popup now shows the provider, one line
+  saying CustomDomain™ never sees the password, the steps and the buttons; the exact DNS changes are still shown in full
+  and approved before anything changes. The widget's screens say less in every language: one line under each heading,
+  errors in two short sentences.
+- **Your workspace has a default key you can view any time. Rotate it when you need a new one.** It sits at the top
+  of **API & SDK**, masked: owners and admins press the eye to see it for 30 seconds, or Copy to copy it without showing it,
+  and teammates see only its prefix. Rotate makes a new one and the old one stops working at once; your other keys are
+  untouched. Every view is recorded in your audit log, and replacing a default key that is still active always asks
+  first. See [API keys](/docs/authentication/overview).
+- **No card prompt until your ten free domains are used.** The console now asks owners and admins for a card only once
+  all ten free domains are connected: before that, a live domain no longer shows "Add a card to connect more domains",
+  and the setup flow waits until the tenth is live. See [Plans and quotas](/docs/billing/plans-and-quotas#the-first-ten-domains-are-free).
+- **Your first ten domains are free again.** A new workspace can connect up to ten domains without adding a card, from
+  the console, the API, the MCP server or the widget; the eleventh asks for a card to start the 14 day free trial, and
+  nothing is charged until it ends. A domain that failed does not count, and removing a domain frees its place at once. The
+  banner says "Your first 10 domains are free", and the billing reads carry `free_domains: 10`. Creating an API key or an
+  application still needs the trial. See [Plans and quotas](/docs/billing/plans-and-quotas#the-first-ten-domains-are-free).
+- **Shorter, clearer text on the connect screens.** The API key card now shows the steps, the one requirement that
+  matters and the fields; provider notes and anything else sit under a closed **Details**.
+- **Promotion codes at checkout are checked by CustomDomain™, and only CustomDomain™'s codes work.** The code box in the
+  checkout's order summary now sends the code to CustomDomain™, which accepts it only when it is one of its own and then
+  puts it on your order; the code field on Stripe's own checkout page is gone, because Stripe takes any active code on an
+  account shared with other products. A code that does not exist, ran out, or is not CustomDomain™'s says "That code doesn't
+  exist or is no longer active." Adding or taking off a code starts a fresh checkout with the new total, so the card number
+  you had typed is empty again; nothing is charged until you pay. If you start checkouts through the API, send
+  `promotion_code` to `POST /v1/billing/checkout`. See [Plans and quotas](/docs/billing/plans-and-quotas#checkout--portal).
+- **Fix a mistyped first domain in one click, and a bigger free allowance when a product needs it.** If the first domain
+  you connected was a typo, it used to hold your free place until you removed it on **Domains**, so the right one was
+  refused until you did. Now, when that happens on **Connect**, the page names the unfinished domain and offers to remove it
+  and connect the new one in the same step. It only offers this for one unfinished domain you connected from the console,
+  never for a live domain or one your customers or an agent connected. Separately, support can now give a workspace more than
+  one free domain, for example for a platform that needs a few customer domains connected before adding a card, and the
+  banner and billing page say how many ("Your first 3 domains are free"). Someone you invite as an admin is no longer sent to
+  the billing setup of the workspace that invited them. See [Plans and quotas](/docs/billing/plans-and-quotas#the-first-ten-domains-are-free).
+- **The console now follows who your domains are for.** Your answer to the welcome's first question is kept for the
+  whole workspace, so a teammate you invite sees the console you chose. If the domains are for your customers, the menu
+  puts the widget second, the main button opens it, **Domains** opens on the customers' tab, and **Overview** talks
+  about your customers' connections. For clients or many domains, **Domains** and **Connected accounts** lead, and
+  **Overview** shows the domains that need attention first and which DNS providers they are with. For your own domain,
+  **Overview** shows that domain and the next step. Nothing is hidden: pages a mode does not lead with are under
+  **Integrate**, and every page is still one click away. Owners and admins can change the answer under **Settings, What
+  this workspace is for**. See [Getting started with the console](/docs/getting-started/console#the-console-follows-who-the-domains-are-for).
+- **A go-live list for products that embed the widget, and a check of your origin.** If you told the welcome that the
+  domains are for your customers, **Overview** now shows a go-live list where every row is proved by something that
+  happened: your trial has started, a domain connected through the widget is live, your server asked for a widget token
+  with an API key, a place for customers' domains to point is set, a webhook was answered, and a real customer
+  connected. A row that is done can still warn, for example when your default origin cannot be reached or your newest
+  webhook failed, and the list stays on Overview while one does. **Domain routing** checks the default origin when you
+  save it, and again with **Check again**, and says whether it answered; it is advice and never stops you saving. The
+  **Install** tab now opens on the stack you chose in the welcome and has an Angular tab. Smaller fixes: the Connect page
+  pointed at a Settings section that does not exist, and creating an API key before the trial started showed a plain
+  error on one page. See [Getting started with the console](/docs/getting-started/console#your-go-live-list-my-customers),
+  [Where domains point](/docs/connect-flow/routing) and [What the origin check sends](/docs/security/domain-checks#when-you-save-an-origin).
+- **The welcome asks who the domains are for, and no longer lets you skip it.** The first question is one click:
+  my customers (you run a product and want your users to bring their own domains), my clients or many of my own, or
+  just me. It sets up a short path for each, and an AI agent is an add-on to any of them. Every step after it has
+  Not now, which keeps the item on your checklist, and if you have no domain yet it offers the domain search. The
+  Just me card says before you choose it that pointing a domain at a website needs the Growth plan; connecting it
+  does not. If you finish with a domain and the intake cannot save, you stay on the page with the reason instead of
+  being sent back to the start. See [Getting started with the console](/docs/getting-started/console).
+- **Cookies are on until you change them.** Analytics and marketing cookies, and the session
+  recording that is part of analytics, are now on for visitors who have not chosen, and the cookie
+  bar asks you to Confirm that or Change it. Your browser's Global Privacy Control or Do Not Track
+  still turns them off, and a no you gave before still stands. Change your choice at any time in
+  Cookie settings, on the website and in the console.
 - **Nine more API key rails.** Plesk, DirectAdmin, Websupport, Azion, Joker.com, Exoscale,
   webnames.ca, Binary Lane and Metaname: paste a key or a login and the records are written for you.
   Joker.com was by hand until now. Plesk, DirectAdmin and Exoscale are chosen by you, because

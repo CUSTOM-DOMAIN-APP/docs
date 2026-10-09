@@ -15,7 +15,24 @@ types share the surface, each with a different blast radius.
   `sk_test_`, and they keep working everywhere** with the same tenant scope
   and role as before. There is no need to replace them; every new key is issued
   as `cd_live_` or `cd_test_`.
+- **The prefix is not the mode.** A `cd_test_` key is made for a staging or
+  development environment and works on real domains. A key is a
+  [test mode](/docs/guides/test-mode) key only when its application was made with
+  `"sandbox": true`; read that field from `GET /v1/applications`.
 - Stored only as a hash; the full key is shown **once**, at creation.
+- **The default key is the exception you can view any time.** Every workspace has one, labelled
+  `Default key`, made with the workspace (or the first time an owner or admin opens the **API & SDK**
+  page in a workspace that is older than it), with no card needed. It is an ordinary key with full workspace access. An owner or
+  admin sees it at the top of **API & SDK** as `CUSTOMDOMAIN_API_KEY=cd_live_…`, masked; the eye
+  shows it for 30 seconds and **Copy** copies it without showing it. Other members see only its
+  prefix. The control plane still keeps only its hash: the console keeps a copy sealed with its own
+  secret (AES-256-GCM), and every view is recorded in the audit log, without the key; a view the
+  audit log cannot record is refused.
+  **Rotate** makes a new default key and the old one stops working at once; your other keys are
+  untouched. If someone revokes it in the list, the page says **Default key revoked** and offers
+  **Make a new default key**. When a default key is still active but this page holds no copy of it,
+  **Make a new default key** asks first, because the old key stops working at once.
+  In the key list of an application it is flagged `is_default: true`.
 - **Tenant-scoped**: an API key only ever reaches its own tenant's applications,
   connections, webhooks, and billing. Anything outside that tenant is a `404`.
 - **How much authority it carries inside the tenant depends on the key.** There
@@ -41,9 +58,14 @@ types share the surface, each with a different blast radius.
   `application_id` of the key's tenant, defaulting to the key's own:
   `POST /v1/connections`, `POST /v1/domains:check` and
   `POST /v1/sharing/connect`.
+- **A test mode key is the exception.** A key of a [test mode](/docs/guides/test-mode)
+  application is pinned to that application. It runs the connect flow for it and reads
+  its webhooks, and every other route, and every other application of the tenant, is
+  refused or answers as if it were someone else's. `403 sandbox_not_allowed` names what
+  it cannot do.
 
 In the console, create and revoke keys on the **API & SDK** page. Creating a key
-needs `admin` or `owner` and a card on file (the 14 day free trial; nothing is
+(any key besides the default key) needs `admin` or `owner` and a card on file (the 14 day free trial; nothing is
 charged until it ends): a workspace that has not started it gets
 `402 billing_required` and is sent to **Billing**.
 
@@ -110,9 +132,14 @@ working within one token lifetime. See
 - The **management key** gates operator provisioning (`POST /v1/tenants`,
   `GET /v1/tenants/{id}`) and cross-tenant reads (e.g. the full audit log). In
   production the control-plane refuses to start these routes open.
-- The **provision secret** gates only `POST /v1/tenants:provision` (one-call
-  signup), sent as `X-Provision-Secret` (or a Bearer token). The customer
-  console's server holds this narrow secret instead of the management key.
+- The **provision secret** gates `POST /v1/tenants:provision` (one-call
+  signup) and the workspace default key routes
+  (`POST /v1/tenants/{tenant_id}/default-key` and its `:rotate` verb), sent as
+  `X-Provision-Secret` (or a Bearer token). The customer console's server holds
+  this narrow secret instead of the management key. A missing and a wrong secret
+  get the same `401`. The console reaches the default key routes on the internal
+  network only: the public API refuses them, and they refuse every caller when no
+  provision secret is configured.
 
 ## Member roles
 

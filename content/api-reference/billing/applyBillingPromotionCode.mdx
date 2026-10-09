@@ -12,8 +12,12 @@ _openapi:
     contents:
       - content: >-
           Applies a promotion code, as a customer types it, to the workspace's
-          running subscription (a new subscription takes codes on the Checkout
-          page itself). An unknown or inactive code is a `404`. Requires
+          running subscription (a new subscription takes a code as
+          `promotion_code` on `POST /billing/checkout`). A code is accepted only
+          when it belongs to this deployment, because a Stripe account can be
+          shared with other products: it was created through the operator
+          console, or its coupon is limited to this deployment's Stripe
+          products. An unknown, inactive or foreign code is a `404`. Requires
           `billing:manage`.
 ---
 

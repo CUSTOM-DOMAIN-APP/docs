@@ -19,7 +19,9 @@ Three credential types with escalating authority (see
   domain), and accepted only on the browser-facing Connect endpoints. This is the
   only credential that reaches the browser.
 - **API keys** (`cd_live_` or `cd_test_` plus 32 hex characters) are stored as
-  SHA-256 hashes and shown once at creation, and revocation takes effect on the
+  SHA-256 hashes and shown once at creation (the workspace's default key is the
+  exception: the console keeps a sealed copy that an owner or admin can view, see
+  [API keys](/docs/authentication/overview)), and revocation takes effect on the
   next request. Their **authority depends on how the key was
   minted**: a plain tenant key (the one issued at provisioning, or minted by an
   operator) acts with **owner** authority, while a key minted for an invited
@@ -173,8 +175,9 @@ one-click setup (which uses no server token) store nothing. See
 ## Secrets handling
 
 - API keys and application `client_secret`s are stored by the control plane only
-  as SHA-256 hashes; the plaintext is shown once and never returned again. An
-  application created in the console is the one exception: the console keeps its
+  as SHA-256 hashes; the plaintext is shown once and never returned again. The
+  workspace's default key is one exception: the console keeps a sealed copy that
+  an owner or admin can view. An application created in the console is the other: the console keeps its
   `client_secret` sealed (AES-256-GCM) so it can mint widget tokens for you, and
   never displays it. An application created over the API returns the secret once.
 - Widget JWTs are signed per application, using a dedicated server-side signing

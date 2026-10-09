@@ -127,8 +127,10 @@ Point the hosts at PostHog Cloud or at your own self-hosted PostHog instance. Wh
 the key is unset, no analytics are sent and the console makes no call to PostHog.
 
 The browser SDK is wired in. Events go through the console's own origin at
-`/ingest`, and only after a visitor accepts analytics cookies in the consent
-banner; withdrawing the choice stops them at once. What is sent is narrow on
+`/ingest`. They are sent while analytics is on, which is the default for a
+visitor who has not chosen (the consent banner offers Confirm and Change), and
+never when the browser sends Global Privacy Control or Do Not Track; turning
+analytics off stops them at once. What is sent is narrow on
 purpose: the product events the console emits, clicks on buttons and links (no
 text and no attributes) and page views, plus session recording for signed in
 people (described below). Every URL is cut to its path before it is sent,
@@ -140,12 +142,26 @@ The key and the two hosts are baked into the app image, so rebuild it after
 changing them, and take all three from the same PostHog project and region: a
 mismatch drops events without an error.
 
+Opt out, not opt in. Until the visitor chooses, analytics and marketing are on,
+and the banner at the bottom of the page asks them to Confirm that or Change it.
+Nothing is stored until they do. A stored choice always wins, and so does a
+browser that sends Global Privacy Control or Do Not Track (those visitors are
+never asked and nothing optional runs). A "no" given under an earlier version of
+the choice is kept. In a new browser the default waits until the console has
+asked the signed in account (a saved "no" is read first), or for a couple of
+seconds if it cannot. If you self host with an analytics key set and want visitors
+to be asked before anything runs, this build has no switch for that: the default
+lives in `assumedChoice()` in `apps/app/src/lib/consent.ts`, and the banner's
+words in `apps/app/src/components/legal/replay-copy.ts`. Earlier releases sent
+nothing until a visitor accepted the banner, so check this against your own
+privacy notice before you upgrade.
+
 #### Session recording
 
 With the key set, the console also records how people use it, as a replay of
-the screen: clicks, scrolling and page views. It records only for a visitor who
-has allowed analytics (a current choice, and no Global Privacy Control or Do Not
-Track signal).
+the screen: clicks, scrolling and page views. It records only while analytics
+is allowed: on for a visitor who has not chosen, off once they turn it off, and
+never when the browser sends Global Privacy Control or Do Not Track.
 
 - The public pages a visitor sees before they have an account (the home page,
   the docs, the free tools and the sign up form) are recorded without anyone
@@ -186,8 +202,8 @@ its compression worker when the key is set; nothing else changes.
 A visitor turns recording off in Cookie settings (Settings, then Privacy) by
 switching Analytics off, or by sending Global Privacy Control or Do Not Track.
 Recording became part of the Analytics choice in version 2 of the cookie choice,
-so everyone who answered before is asked again, once, the first time they open
-the console after an upgrade to this release.
+so a "yes" given before is asked again, once, the first time they open the
+console after an upgrade to this release; a "no" is kept.
 
 ## Running the Grafana Alloy overlay
 

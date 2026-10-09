@@ -80,6 +80,13 @@ tags:
     description: >-
       DNS provider and registrar keys a workspace connects once, with one time
       or continuous access, for some or all of the account's domains.
+  - name: Cloud browser
+    description: >-
+      Sign in to a DNS provider that offers no sign in of its own, inside a temporary
+      browser, with the customer present. The customer types their own password into
+      the provider's real page; CustomDomain™ never receives it. Our software then
+      reads the provider's DNS page for one domain, shows the exact changes, and makes
+      them only after the customer approves. Off unless the deployment turns it on.
   - name: Agents
     description: >-
       AI assistants acting for a workspace. An agent registers, a person approves
@@ -174,6 +181,10 @@ paths:
         returned ONCE. Guarded by the dedicated provision secret (the
         `X-Provision-Secret` header or a Bearer token) so the customer console's
         server can hold this narrow secret instead of the operator management key.
+        It also mints the workspace default key (see
+        `POST /tenants/{tenant_id}/default-key`) and returns it ONCE as
+        `default_api_key` with its id; both fields are absent if it could not be
+        made, and the default key route makes it later.
       security:
         - provisionSecret: []
       requestBody:
@@ -201,8 +212,71 @@ paths:
                   application_id: { type: string }
                   api_key: { type: string, description: 'cd_live_… or cd_test_…; shown once' }
                   client_secret: { type: string, description: mints widget JWTs; shown once }
+                  default_api_key: { type: string, description: 'The workspace default key, cd_live_… or cd_test_…; shown once. Absent when it could not be made.' }
+                  default_api_key_id: { type: string, description: 'The default key''s id; present with default_api_key.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /tenants/{tenant_id}/default-key:
+    post:
+      operationId: ensureDefaultApiKey
+      summary: Ensure the workspace default key exists (secret returned only when created)
+      tags: [Tenancy]
+      description: >-
+        The workspace default key is an ordinary API key (full workspace access,
+        `cd_live_…` in production) flagged `is_default`, at most one active per
+        workspace, whose secret the customer console keeps sealed so the
+        workspace's owner or an admin can view it more than once. Server to
+        server, guarded by the provision secret like `tenants:provision`; a
+        missing and a wrong secret get the same `401`. With no active default key
+        this creates one and answers `201` with the full secret ONCE in
+        `api_key`. With one, it answers `200` with its id and prefix and no
+        secret (a caller that lost its copy rotates instead). Not subject to the
+        billing activation gate: the key adds no capability the workspace's
+        console key does not already hold.
+      security:
+        - provisionSecret: []
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: An active default key exists; no secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefaultApiKey' }
+        '201':
+          description: Created; api_key is the full secret, shown once
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefaultApiKey' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /tenants/{tenant_id}/default-key:rotate:
+    post:
+      operationId: rotateDefaultApiKey
+      summary: Rotate the workspace default key (new secret returned once)
+      tags: [Tenancy]
+      description: >-
+        Mints a new default key and revokes the old active one in one
+        transaction: the old key stops authenticating at once, and there is never
+        a moment with two active default keys or none. The workspace's other keys
+        are untouched. With no active default key it simply creates one. Same
+        provision secret guard as `POST /tenants/{tenant_id}/default-key`.
+      security:
+        - provisionSecret: []
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Rotated; api_key is the new full secret, shown once
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefaultApiKey' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------- Applications
@@ -215,6 +289,22 @@ paths:
         Accepts the management key (the body `tenant_id` selects the tenant) or a
         tenant-scoped API key (the app is always created in the key's own
         tenant; any body `tenant_id` is ignored).
+
+
+        Send `"sandbox": true` to make a **test mode** application: a place to
+        run the widget, the API and webhooks end to end before you have a real
+        customer domain. It connects only reserved `.test` names (the first
+        label picks the outcome: `conflict.acme.test` stays pending with
+        `domain_already_connected`, `timeout.acme.test` fails after about a
+        minute with `propagation_timeout`, any other name goes live after
+        about 15 seconds), uses the manual rail only, and counts for nothing:
+        no free domain, no quota, no billing, no metering and no reporting.
+        Webhook events from it carry `"sandbox": true`. A workspace can hold up
+        to 3 test mode applications, each up to 100 connections (`sandbox_limit`).
+        A test mode application is always a development application, so leave
+        `environment` out. A live application never connects a `.test` name
+        (`sandbox_domain_reserved`), and a test mode one never connects a real
+        name (`sandbox_domain_required`).
       security:
         - managementKey: []
         - apiKey: []
@@ -229,6 +319,11 @@ paths:
                 tenant_id: { type: string }
                 name: { type: string }
                 environment: { $ref: '#/components/schemas/Environment' }
+                sandbox:
+                  type: boolean
+                  description: >-
+                    Create a test mode application (see above). Fixed for the
+                    life of the application.
       responses:
         '201':
           description: Created (client_secret present only here)
@@ -248,8 +343,10 @@ paths:
       summary: List applications
       tags: [Applications]
       description: >-
-        With an API key: the caller's own tenant's apps. With the
-        management key: `?tenant_id=` selects the tenant.
+        With an API key: the caller's own tenant's apps. A **test mode** key
+        lists only its own application, which is how a server learns which
+        application a key belongs to. With the management key: `?tenant_id=`
+        selects the tenant.
       security:
         - apiKey: []
         - managementKey: []
@@ -858,10 +955,13 @@ paths:
         connection on its own application.
 
 
-        A workspace with no subscription yet connects its first domain without
-        one (`first_domain_free` on the billing reads): a retry of that domain
-        is still replayed with `200`, and the next domain is refused with
-        `402 billing_required` until the workspace starts its trial.
+        A workspace with no subscription yet connects its first ten domains, or
+        the number an operator set, without one (`first_domain_free` and
+        `free_domains` on the billing reads): a retry of the last of them is
+        still replayed with `200`, and the next domain is refused with
+        `402 billing_required` until the workspace starts its trial. A domain
+        that is still waiting for its records can be removed with
+        `DELETE /connections/{id}`, which frees its place at once.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2187,6 +2287,354 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/browser:start:
+    post:
+      operationId: startConnectionBrowser
+      summary: Begin the cloud browser sign in for a connection
+      tags: [Cloud browser]
+      description: >-
+        **Customer present only.** For a DNS provider with no sign in of its
+        own, the customer signs in to the provider inside a temporary browser
+        that a browser hosting company runs for a few minutes. They type their
+        own username, password and any verification code into the provider's
+        real sign in page, so CustomDomain™ never receives them, and nothing is
+        stored. Our software then reads the provider's DNS page for this one
+        domain, shows the customer the exact changes, and makes them only after
+        the customer approves. It never creates an API key at the provider, and
+        a session never runs without the customer present.
+
+
+        Returns the address of the popup page that shows the browser. Its
+        fragment carries a single use bootstrap code, which no server sees; the
+        popup trades it at `POST /browser-sessions:redeem`. Only an end user's
+        widget token (bound to the domain and to the end user) or the console
+        may start one: an agent, the MCP server and a plain API key are refused
+        with `browser_customer_present_only`. The request must carry an `Origin`
+        header on the server's return origin allowlist. A browser sends one (the
+        widget and the popup do), and the console's server must add it to the
+        call it makes for a customer. A request with no `Origin` at all, such as
+        a server to server call, is refused with `browser_customer_present_only`
+        and a message that says the header is missing; an `Origin` that is not
+        on the list is refused the same way.
+
+
+        A record set an integrator supplied, and any type or value the
+        provider's page cannot write, is refused before the customer signs in
+        (`browser_unsupported_records`, with the types named). The rail is
+        offered only for a provider that has no sign in of its own, and only
+        while the deployment has it on (`rails.cloud_browser` on the domain
+        check).
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, return_origin, consent_version]
+              properties:
+                provider: { type: string, description: "DNS provider id; defaults to the detected provider." }
+                return_origin:
+                  type: string
+                  description: Web origin the popup posts its result to; must be on the server's allowlist.
+                consent_version:
+                  type: string
+                  description: The id of the consent text the customer was shown, stored with the session.
+                locale:
+                  type: string
+                  description: The language the popup reads in, a plain code such as `en`. Defaults to `en`.
+      responses:
+        '200':
+          description: The session was created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, open_url, vendor, expires_at]
+                properties:
+                  session_id: { type: string, description: 'The session id, `bs_` and 32 hex characters.' }
+                  open_url:
+                    type: string
+                    format: uri
+                    description: The popup page, with `#c=<bootstrap code>&l=<locale>` in its fragment.
+                  vendor: { type: string, description: "The browser hosting company, shown to the customer." }
+                  expires_at: { type: string, format: date-time, description: "The latest the session can end." }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `browser_customer_present_only` (an agent, the MCP server, a plain API
+            key, a request with no `Origin` header, or an `Origin` that is not on
+            the return origin allowlist) or
+            `browser_provider_not_allowed` (the rail is not offered for this
+            provider or workspace, or the provider has a sign in of its own).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `browser_session_active`: a secure sign in is already running for
+            this domain.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `browser_unsupported_records`: the record set cannot be written
+            through the provider's page. `types` names what is in the way.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: object
+                    properties:
+                      types: { type: array, items: { type: string } }
+        '429':
+          description: >-
+            `browser_rate_limited`: too many starts for this domain or
+            workspace. `Retry-After` says when the window turns.
+          headers:
+            Retry-After: { schema: { type: integer }, description: "Seconds until a new start is allowed." }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: >-
+            `browser_unavailable` (not configured, switched off or paused),
+            `browser_busy` (the browser vendor answered that it is busy right
+            now; try again after `Retry-After`) or `browser_capacity` (the
+            vendor is not answering, or a limit of sessions or monthly minutes
+            is reached). Offer the manual steps.
+          headers:
+            Retry-After: { schema: { type: integer }, description: "Seconds to wait; present for `browser_busy` and for a vendor that is not answering." }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions:redeem:
+    post:
+      operationId: redeemBrowserSession
+      summary: Trade the bootstrap code for the session token
+      tags: [Cloud browser]
+      description: >-
+        The popup page calls this once, with the code from its address fragment.
+        The code lives two minutes and works once; a second redemption answers
+        `410 browser_link_used`. The `Origin` header must be on the server's
+        return origin allowlist (a browser sends it; a request with none is
+        refused with `browser_customer_present_only`). The token it returns
+        lives in the popup's memory only.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '200':
+          description: The session token and the first view.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, token, view]
+                properties:
+                  session_id: { type: string }
+                  token: { type: string, description: "The session token. A bearer: never log it or store it." }
+                  view: { $ref: '#/components/schemas/BrowserSessionView' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '410':
+          description: '`browser_link_used` (already redeemed) or `browser_expired` (the code ran out, or the session ended).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:
+    get:
+      operationId: getBrowserSession
+      summary: Read a cloud browser session
+      tags: [Cloud browser]
+      description: >-
+        The session view. Every call is the popup's heartbeat: a session that is
+        not polled for 90 seconds before approval is ended and its browser
+        released. The response is `Cache-Control: no-store`, because the view
+        can carry the live view address, which anyone holding can drive.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '200':
+          description: The session as the popup may see it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrowserSessionView' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:signed-in:
+    post:
+      operationId: signedInBrowserSession
+      summary: The customer says they are signed in
+      tags: [Cloud browser]
+      description: >-
+        Allowed only in `awaiting_sign_in`. The control plane attaches to the
+        browser, opens the provider's DNS page, reads it (read only) and builds
+        the plan. If the browser is still on the sign in page the state returns
+        to `awaiting_sign_in` with the notice `not_signed_in`. Poll the view for
+        the outcome.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '202':
+          description: Checking.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [checking] }
+        '401': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the session is not awaiting sign in.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the sign in window ran out.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:approve:
+    post:
+      operationId: approveBrowserSession
+      summary: Approve the exact plan
+      tags: [Cloud browser]
+      description: >-
+        Works once, only in `plan_ready`, only within the approval window (180
+        seconds), and only with the exact current plan hash. A wrong hash
+        writes nothing. If the records changed after the plan was made, the
+        session returns to `checking` with a fresh plan and a new hash.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan_hash]
+              properties:
+                plan_hash: { type: string, description: 'All 64 hex characters of the plan hash on screen.' }
+      responses:
+        '202':
+          description: Applying.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [applying] }
+        '401': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `browser_plan_mismatch` (not the current plan) or
+            `browser_wrong_state` (not in `plan_ready`, or already approved).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the approval window ran out.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:cancel:
+    post:
+      operationId: cancelBrowserSession
+      summary: End the session and release the browser
+      tags: [Cloud browser]
+      description: >-
+        Idempotent: a session that is already over answers its own state. During
+        `applying` it stops at the next change boundary, never inside a change.
+        A `navigator.sendBeacon` cannot set headers, so this route (and only
+        this one) also accepts the token in the body, as `{"token": "..."}`
+        with a content type of `text/plain` or JSON.
+      security:
+        - browserSession: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string, description: "The session token, when it cannot be sent as a header." }
+          text/plain:
+            schema: { type: string }
+      responses:
+        '200':
+          description: The state the session is in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:finish-manual:
+    post:
+      operationId: finishManualBrowserSession
+      summary: The customer finished by hand
+      tags: [Cloud browser]
+      description: >-
+        Allowed only in `manual_assist`, where the script stopped and the
+        customer adds the records themselves. The session ends and its browser
+        is released; the connection stays `pending` and the propagation poller
+        finishes it when the records appear.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '200':
+          description: Done by hand.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [done_manual] }
+        '401': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the session is not in manual assist.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /connect/oauth/callback:
     get:
       operationId: oauthCallback
@@ -3384,11 +3832,19 @@ paths:
       summary: List webhook endpoints
       tags: [Webhooks]
       description: >-
-        With an API key: endpoints across all the tenant's apps. With a
-        widget JWT: the calling app's endpoints. Secrets are omitted.
+        With an API key: endpoints across all the tenant's live apps (a test
+        mode application's endpoints are left out unless `?app_id=` names it).
+        With a test mode API key: that application's endpoints. With a widget
+        JWT: the calling app's endpoints. Secrets are omitted.
       security:
         - apiKey: []
         - widgetJWT: []
+      parameters:
+        - name: app_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: Narrow to one application, which is how a live key reaches a test mode application's endpoints.
       responses:
         '200':
           description: Endpoints
@@ -3503,7 +3959,8 @@ paths:
       description: >-
         Starts a subscription Checkout for the caller's workspace. Requires
         `billing:manage` (owners and admins); a widget token is refused. The
-        session allows promotion codes and collects the card up front. A new
+        session collects the card up front, and carries the customer's
+        `promotion_code` as its discount when one is sent (below). A new
         workspace's first subscription starts with a 14 day trial; a workspace
         inside its grace period (the retired Free plan) gets a trial that ends
         when its grace ends, so subscribing early never costs a day; anyone else
@@ -3517,13 +3974,30 @@ paths:
         Checkout, the response carries `url`).
 
 
+        `promotion_code` is optional: the text a customer typed, at most 64
+        characters (never a Stripe `promo_` id). It is checked here, before
+        Stripe is asked for a session, and only CustomDomain's own codes are
+        taken (made through the operator console, or limited to this
+        deployment's Stripe products), because a Stripe account can be shared
+        with other products. A code that is not CustomDomain's, does not exist
+        or is no longer active is a `404`, the same for all three, and no
+        session is created; a CustomDomain code that Stripe will not give this
+        order (a first order only code, a minimum amount) is a `400`. The code
+        becomes the session's one discount, and Stripe's own code field on its
+        checkout page is never switched on, so a code of another product cannot
+        be typed there either. A Checkout Session cannot be given a discount
+        after it is created: to add, change or remove a code, start a new
+        checkout (with the new code, or without one) and mount its
+        `client_secret` in place of the old one.
+
+
         `ui_mode` is optional and picks how the session is shown. Leave it out
         (a `null` or an empty string counts as leaving it out), or send
         `embedded`, for the behavior from before it existed: Stripe Embedded
         Checkout when `return_url` is set, and the hosted redirect when only
         `success_url` and `cancel_url` are. `elements` is Elements with the
         Checkout Sessions API: the caller renders the whole page (the plan, the
-        price, the trial, the promotion code field, the totals) and mounts only
+        price, the trial, the promotion code box, the totals) and mounts only
         Stripe's Payment Element with the returned `client_secret`, so the page
         can wear its own theme. It needs `return_url`, which is where redirect
         based payment methods and the finished payment land, and the session is
@@ -3552,6 +4026,7 @@ paths:
                 cancel_url: { type: string, format: uri }
                 return_url: { type: string, format: uri, description: 'Selects embedded Checkout, or the elements checkout with ui_mode elements.' }
                 ui_mode: { type: string, enum: [embedded, elements], description: 'How the session is shown. Leave it out (or send null or an empty string) for Stripe Embedded Checkout when `return_url` is set and the hosted redirect when only `success_url` and `cancel_url` are. `elements` requires `return_url`. Never send `hosted`: it is only an answer.' }
+                promotion_code: { type: string, maxLength: 64, description: 'A promotion code as a customer types it (never a Stripe `promo_` id). Taken only when it is one of CustomDomain''s own, and then the session''s one discount. Not found, not CustomDomain''s, or no longer active is a `404`.' }
       responses:
         '200':
           description: Checkout session
@@ -3570,6 +4045,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '404': { description: 'The `promotion_code` does not exist, is no longer active, or is not one of CustomDomain''s own.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /billing/portal:
@@ -3620,8 +4096,9 @@ paths:
         tenant API key. Members and viewers get only `role`, `can_manage`,
         `configured`, `attention` and `restricted`: never the plan, dates or
         amounts. Owners and admins also get the billing state, and
-        `first_domain_free` while a new workspace is on the first domain free
-        rule.
+        `first_domain_free` with `free_domains` (how many domains it may
+        connect before a card) while a new workspace is on the first domain
+        free rule.
       security:
         - apiKey: []
       responses:
@@ -3809,9 +4286,12 @@ paths:
       tags: [Billing]
       description: >-
         Applies a promotion code, as a customer types it, to the workspace's
-        running subscription (a new subscription takes codes on the Checkout
-        page itself). An unknown or inactive code is a `404`. Requires
-        `billing:manage`.
+        running subscription (a new subscription takes a code as
+        `promotion_code` on `POST /billing/checkout`). A code is accepted only when it belongs to this
+        deployment, because a Stripe account can be shared with other products:
+        it was created through the operator console, or its coupon is limited
+        to this deployment's Stripe products. An unknown, inactive or foreign
+        code is a `404`. Requires `billing:manage`.
       security:
         - apiKey: []
       requestBody:
@@ -4317,8 +4797,28 @@ paths:
         is independent: a bad domain is reported `failed` and the batch
         continues; a domain already connected under this app returns `already`.
         Max 200 domains per call.
+
+
+        Callable with an app scoped widget token or straight from your server
+        with an API key, in which case the connections are created on the key's
+        application, or on `application_id` when that names another
+        application of the same tenant. A viewer's key is refused.
+
+
+        `end_user_ref` labels every connection the call creates, the way it does
+        on a single create: an agency adds a client's domains together under the
+        client's name, and the Domains page shows, filters and exports the
+        label. It is set once, when the connection is created. A domain that
+        already exists keeps the label it has and is reported `already`.
+
+
+        A workspace with no subscription yet connects its first ten domains, or
+        the number an operator set, without one; the rest of a list are
+        reported `failed` with the reason, one by one, until it starts its
+        trial.
       security:
         - widgetJWT: []
+        - apiKey: []
       requestBody:
         required: true
         content:
@@ -4326,12 +4826,29 @@ paths:
             schema:
               type: object
               required: [domains]
+              description: >-
+                The body is decoded with unknown fields REJECTED, so the
+                properties below are exactly the accepted set.
               properties:
                 domains:
                   type: array
                   items: { type: string }
                   maxItems: 200
                 batch_id: { type: string, description: correlates every domain connected in one session. }
+                end_user_ref:
+                  type: string
+                  maxLength: 256
+                  description: >-
+                    Your own label for these domains, such as a client's name or
+                    your id for the customer they belong to. Stored on each
+                    connection this call creates and echoed back by the
+                    connection reads.
+                application_id:
+                  type: string
+                  description: >-
+                    API key callers only: create the connections on this
+                    application of the key's tenant instead of the key's own.
+                    A widget token may only name its own application.
       responses:
         '200':
           description: Per-domain results
@@ -5247,6 +5764,14 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Short-lived widget JWT minted server-side via POST /v1/tokens. Scoped to one application (and optionally one domain).
+    browserSession:
+      type: http
+      scheme: bearer
+      description: >-
+        The session token of one cloud browser sign in, returned by
+        `POST /browser-sessions:redeem`. It binds one session, one connection and
+        one workspace, lives at most as long as the session, and stops working the
+        moment the session ends. It lives in the popup's memory only.
     agentToken:
       type: oauth2
       description: >-
@@ -5274,6 +5799,12 @@ components:
       in: path
       required: true
       schema: { type: string }
+    BrowserSessionId:
+      name: sid
+      in: path
+      required: true
+      description: The cloud browser session id, `bs_` and 32 hex characters.
+      schema: { type: string }
     ActorEmail:
       name: X-Actor-Email
       in: header
@@ -5300,8 +5831,9 @@ components:
         credential (an application, an API key or a rotated client secret).
         Domains already connected keep working, and an owner or admin sets up
         billing in the console; `details` says where. A new workspace's first
-        domain is the exception: while it has no pending, propagating or live
-        connection, a connect and the start of a purchase go through
+        domain is the exception: while it has fewer pending, propagating or live
+        connections than its free domains (ten, unless an operator set another number:
+        `free_domains`), a connect and the start of a purchase go through
         (`first_domain_free`), and the next one is refused with a `title` saying
         a card is needed to connect more domains. Credentials still need the
         trial. `quota_exceeded`
@@ -5390,6 +5922,12 @@ components:
             without a subscription, so `restricted` is false until that domain
             is connected and true after, and the next one needs the trial.
             Credentials (an API key, an application) always need it.
+        free_domains:
+          type: integer
+          description: >-
+            Owners and admins only, present with `first_domain_free`: how many
+            domains the workspace may connect before it has a subscription. One,
+            unless the operator granted more.
         state: { $ref: '#/components/schemas/BillingState' }
         reason: { type: string, description: 'Why a restricted workspace is restricted: setup_required, grace_ended, unpaid, comp_ended or canceled.' }
         plan_id: { type: string }
@@ -5410,8 +5948,14 @@ components:
           type: boolean
           description: >-
             Present only when true: this is a new workspace on the first domain
-            free rule. `restricted` is false until its first domain is
+            free rule. `restricted` is false until its free domains are
             connected, and true, with the refusal's words, after.
+        free_domains:
+          type: integer
+          description: >-
+            Present with `first_domain_free`: how many domains the workspace may
+            connect before it has a subscription. One, unless the operator
+            granted more.
         attention: { type: boolean, description: 'Billing needs an owner or admin: a trial or grace to act on, a failed payment, or a block.' }
         code: { type: string, description: 'Set when `restricted`: `billing_required`.' }
         title: { type: string, description: 'Set when `restricted`: what the refusal says.' }
@@ -5437,6 +5981,7 @@ components:
         reason: { type: string }
         restricted: { type: boolean }
         first_domain_free: { type: boolean, description: 'Present only when true: a new workspace on the first domain free rule (see `GET /billing/notice`).' }
+        free_domains: { type: integer, description: 'Present with `first_domain_free`: how many domains the workspace may connect before it has a subscription.' }
         attention: { type: boolean }
         setup_required: { type: boolean }
         days_left: { type: integer }
@@ -5575,6 +6120,16 @@ components:
         grace_started_at: { type: [string, 'null'], format: date-time }
         days_left: { type: integer }
         updated_at: { type: [string, 'null'], format: date-time }
+        first_domain_free:
+          type: boolean
+          description: >-
+            The first domain free rule covers this workspace (brand new: no
+            subscription and no trial yet, enforcement on). `restricted` is the
+            billing state; a workspace can be `restricted` and still connect its
+            free domain, which is what `can_connect_now` answers.
+        free_domains: { type: integer, description: 'How many domains the workspace may connect before it has a subscription (one, unless set by `set-free-domains`); 0 when the rule does not cover it.' }
+        free_domains_used: { type: integer, description: 'How many it has open now (pending, propagating or live); counted only when the rule covers it.' }
+        can_connect_now: { type: boolean, description: 'Billing lets the workspace connect another domain now: the answer the connection gate gives, not a reading of `status`. The plan quota is separate (see `usage`).' }
     AdminBillingTenantDetail:
       allOf:
         - { $ref: '#/components/schemas/AdminBillingTenant' }
@@ -5665,6 +6220,15 @@ components:
         environment: { $ref: '#/components/schemas/Environment' }
         default_origin: { type: string }
         connect_target: { $ref: '#/components/schemas/ConnectTarget' }
+        sandbox:
+          type: boolean
+          description: >-
+            `true` for a **test mode** application, made with `"sandbox": true`
+            on `POST /applications`. It runs the whole connect flow end to end
+            (the widget, the API, webhooks) against simulated DNS, on
+            reserved `.test` names only, and never touches a real domain, the
+            free domain, the quota or billing. Fixed when the application is
+            created. Omitted (treated as `false`) on a live application.
         created_at: { type: string, format: date-time }
     ConnectTarget:
       type: object
@@ -5944,8 +6508,17 @@ components:
         name: { type: string }
         last4: { type: string }
         environment: { $ref: '#/components/schemas/Environment' }
+        is_default: { type: boolean, description: 'true on the workspace default key (at most one active per workspace).' }
         created_at: { type: string, format: date-time }
         revoked_at: { type: [string, 'null'], format: date-time }
+    DefaultApiKey:
+      type: object
+      required: [key_id, prefix, created]
+      properties:
+        key_id: { type: string }
+        prefix: { type: string, description: 'The stored, non-secret prefix, for example cd_live_ab12cd34.' }
+        created: { type: boolean, description: 'true when this call minted the key; api_key is present only then.' }
+        api_key: { type: string, description: 'The full secret, cd_live_… or cd_test_…; shown once.' }
     Member:
       type: object
       required: [id, tenant_id, email, role, status, created_at]
@@ -6421,6 +6994,14 @@ components:
             re-consent. Omitted (treated as `false`) for the default use-once
             connection.
         created_at: { type: string, format: date-time }
+        sandbox:
+          type: boolean
+          description: >-
+            `true` when the connection belongs to a test mode application. Its
+            DNS is simulated, nothing real is read, written or served, and it
+            counts for nothing (no free domain, quota, billing or metering).
+            Copied from the application at create and never changed. Omitted
+            (treated as `false`) on a real connection.
         last_checked_at:
           type: string
           format: date-time
@@ -6670,6 +7251,83 @@ components:
           items: { $ref: '#/components/schemas/DnsRecord' }
         role_arn: { type: string, description: 'The verified role, now stored so an empty call re-applies with it.' }
         zone: { type: string, description: The Route 53 hosted zone the records were written into. }
+    BrowserSessionView:
+      type: object
+      required: [id, state, provider, domain]
+      description: >-
+        One cloud browser session as the popup may see it. `live_view_url` and
+        `live_view_origin` are present only in `awaiting_sign_in` and
+        `manual_assist` (`interactive` true) and, read only, in `checking`,
+        `plan_ready`, `applying` and `verifying`; never in a terminal state. The
+        address is a bearer: anyone holding it can drive the browser.
+      properties:
+        id: { type: string }
+        state:
+          type: string
+          enum: [created, awaiting_sign_in, checking, plan_ready, applying, verifying, manual_assist, done, done_manual, cancelled, expired, abandoned, failed]
+        provider: { type: string }
+        provider_name: { type: string }
+        vendor: { type: string, description: "The browser hosting company." }
+        domain: { type: string }
+        interactive: { type: boolean, description: "True when the customer may type in the live view." }
+        live_view_url: { type: string, format: uri }
+        live_view_origin: { type: string }
+        deadline:
+          type: string
+          format: date-time
+          description: >-
+            The next timer that matters: the sign in window in `awaiting_sign_in`,
+            the approval window in `plan_ready`, the apply window in `applying`,
+            the hard cap otherwise.
+        plan: { $ref: '#/components/schemas/BrowserPlan' }
+        manual:
+          type: object
+          description: "Present in `manual_assist`: the records the customer adds by hand."
+          properties:
+            records:
+              type: array
+              items:
+                type: object
+                properties:
+                  type: { type: string }
+                  name: { type: string }
+                  value: { type: string }
+                  ttl: { type: integer }
+                  present: { type: boolean, description: "The live tick from public DNS, refreshed about every 8 seconds." }
+            guide_url: { type: string }
+        notice:
+          type: string
+          enum: [not_signed_in]
+          description: Present after a `:signed-in` that landed on the sign in page, until the customer presses the button again.
+        error:
+          type: object
+          description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan.
+          properties:
+            code: { type: string }
+            message: { type: string }
+    BrowserPlan:
+      type: object
+      required: [hash, base_hash, changes, unchanged, approve_by]
+      properties:
+        hash: { type: string, description: 'The sha256 of the plan, 64 hex characters. `:approve` sends all of it.' }
+        base_hash: { type: string, description: "The hash of the page the plan was made from." }
+        changes:
+          type: array
+          description: Removes, then changes, then adds. Values are shown in full.
+          items:
+            type: object
+            required: [op, type, name]
+            properties:
+              op: { type: string, enum: [add, replace, remove] }
+              type: { type: string }
+              name: { type: string, description: "The name as the provider's page shows it, `@` for the root." }
+              old: { type: string }
+              new: { type: string }
+              ttl: { type: integer, description: "The rounded value that will be written." }
+              priority: { type: integer }
+              reason: { type: string, description: "Why a record that is not ours goes." }
+        unchanged: { type: integer, description: "How many records on the page stay as they are." }
+        approve_by: { type: string, format: date-time }
     RailInfo:
       type: object
       required: [available]
@@ -6677,7 +7335,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, no_adapter, unregistered, platform_subdomain]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -6690,7 +7348,15 @@ components:
             template cannot carry it yet. `rail_disabled`: the sync rail is
             off in this deployment. `no_adapter`: no write adapter for the
             API-key rail. `unregistered` / `platform_subdomain`: the domain is
-            blocked (see `blocked_reason`).
+            blocked (see `blocked_reason`). For `rails.cloud_browser` only:
+            `provider_not_listed` (no script for this provider, or the
+            deployment does not offer it), `not_enabled_for_workspace` (the
+            workspace is not on the pilot list), `oauth_available` (the provider
+            has a sign in of its own, which wins), `script_unhealthy` (its script
+            failed in recent sessions and the rail is paused), `vendor_unavailable`
+            (the browser vendor failed to create sessions and the rail is paused),
+            `monthly_cap` (the monthly browser minutes are used) and
+            `sign_in_not_wired` (the sign in token cannot be signed).
         caveat:
           type: string
           description: >-
@@ -6720,6 +7386,12 @@ components:
       required: [domain, setup_type]
       properties:
         domain: { type: string }
+        sandbox:
+          type: boolean
+          description: >-
+            `true` when the check ran for a test mode application: nothing was
+            looked up, the answer is always the manual rail, and the domain
+            must be a reserved `.test` name. Omitted on a real check.
         subdomain:
           type: string
           description: >-
@@ -6814,13 +7486,20 @@ components:
             domain_connect: { $ref: '#/components/schemas/RailInfo' }
             api_key: { $ref: '#/components/schemas/RailInfo' }
             manual: { $ref: '#/components/schemas/RailInfo' }
+            cloud_browser:
+              $ref: '#/components/schemas/RailInfo'
+              description: >-
+                The cloud browser sign in (see `POST /connections/{id}/browser:start`).
+                Present only while the deployment has it on; absent otherwise.
         recommended_rail:
           type: string
-          enum: [oauth, domain_connect, api_key, manual]
+          enum: [oauth, domain_connect, cloud_browser, api_key, manual]
           description: >-
             The rail the server recommends, by precedence oauth →
-            domain_connect → api_key → manual (least typing for the end user
-            first). Absent when `blocked_reason` is set. The console and the
+            domain_connect → cloud_browser → api_key → manual (least typing for
+            the end user first). `cloud_browser` is recommended only when it is
+            available and the API key rail is unavailable or carries a caveat.
+            Absent when `blocked_reason` is set. The console and the
             widget follow this field so the surfaces never disagree.
         end_user_automatic:
           type: boolean

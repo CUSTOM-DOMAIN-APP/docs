@@ -21,7 +21,31 @@ behalf. It is the same control plane behind a tool interface.
 - **Purchases through MCP are off on the hosted service.** Buy a domain in the
   console instead.
 - The console's **MCP server** page (switch it on in **Settings → Features**)
-  has ready made setup for each client and a connection test.
+  has ready made setup for each client (with a key) and a connection test.
+
+## Set up an agent from the welcome
+
+On the welcome's first question, tick **Also let an AI agent connect and manage
+domains for me** and it has one more step, **Give your agent access**. It is
+optional, and **Not now** always works. Pick your agent (Claude Code, Claude
+Desktop, Codex, Cursor, VS Code, ChatGPT or Other) and the step shows what to add
+to it: a command, or a few fields to fill in.
+
+- **Most agents sign in, so there is no key.** A browser opens, you approve what
+  the agent may do, and the step says **connected**, with the agent's name, only
+  once it signed in and you approved it. A grant you revoked or that expired does
+  not count. The same grant is what **Overview** shows on its **Connect your
+  agent** row, and you can end it under **Agents** (in the sidebar under **More**).
+- **Cursor cannot sign in to a new server by itself yet**, so it gets the key
+  setup, with your default key from **API & SDK** (every workspace has one from the start).
+- **An agent that connects with a key leaves nothing to see**, so the step says it
+  cannot watch for it and the checklist does not claim it. Carry on once you have
+  added it.
+- **A prompt to paste** into the agent tells it to read the
+  [agent skill](/docs/agents/skills), to show you what it plans before anything
+  changes, and what to do first for what you told the welcome: connect your
+  domain, add the widget to your product, or list the domains you added. It never
+  holds a key.
 
 ## The flow an agent should follow
 

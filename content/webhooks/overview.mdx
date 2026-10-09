@@ -25,8 +25,10 @@ The `secret` (`whsec_…`) is returned **once**. Store it to verify signatures. 
 empty `events` array subscribes to all events; `"*"` also matches all.
 
 Manage endpoints: `GET /v1/webhooks` lists them (secrets omitted; tenant-wide
-with an API key, app-scoped with a widget JWT) and
-`DELETE /v1/webhooks/{id}` removes one (204).
+with an API key, app-scoped with a widget JWT; `?app_id=` narrows to one
+application) and `DELETE /v1/webhooks/{id}` removes one (204). The tenant-wide list
+leaves out a [test mode](/docs/guides/test-mode) application's endpoints unless
+`?app_id=` names it, so a test endpoint is never mistaken for a live one.
 
 ## Event catalog
 
@@ -104,6 +106,11 @@ Additional conditional fields ride connection events:
   redirect, and present only on connections created with `www_redirect: true`.
 - `connection_id`: the connection the event is about, on connection,
   certificate and drift events.
+- `sandbox`: `true` on an event from a [test mode](/docs/guides/test-mode)
+  application, whose domain is a simulated `.test` name. Real events carry no
+  `sandbox` field. Test mode events are signed and delivered like any other, so
+  you can test your receiver end to end, and a receiver that writes to a real
+  customer's account should check the field and skip them.
 
 ## Delivery & retries
 
