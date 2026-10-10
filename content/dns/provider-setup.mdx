@@ -129,15 +129,18 @@ project that holds the zone, signed in with the DNS Administrator role, run
 `gcloud auth print-access-token`, and paste the token with the project ID. The
 token expires within an hour, so it is used once and never kept.
 
-**Sign in with Google Cloud** skips all of the above: sign in with the Google
+On the hosted service, use the project ID and access token above. The Google
+Cloud DNS sign-in is not offered to anyone there until Google verifies the app.
+
+A self-hosted deployment that registers its own Google client gets **Sign in
+with Google Cloud**, which skips all of the above: sign in with the Google
 account that can edit the zone, and we find the project that holds it among the
 projects that account can see. The zone must be a public Cloud DNS zone (a
 private zone is never used) in a project that account can edit, and there must
 be only one such zone for the domain; otherwise the sign-in says which account
-you used and what to change. Until Google verifies the app, only the test users
-listed in the app's Google Auth Platform can sign in, and Google refuses every
-other account at its consent screen. That is the case on the hosted service
-today, so most accounts should use the access token above.
+you used and what to change. While that client is in Google's Testing status,
+only the test users listed in its Google Auth Platform can sign in, and its
+refresh tokens expire after seven days.
 
 ### Azure DNS (`azuredns`)
 
@@ -233,17 +236,17 @@ lets you **Select all** or pick a subset, with no need to re-enter the key. See
 
 Signing in with the provider needs an OAuth app **registered with that provider
 under your company's identity**, which is a business step, not code. The hosted
-service has one for Cloudflare, DigitalOcean, DNSimple, Google Cloud DNS
-(**Sign in with Google Cloud**, which only the app's test users can use until
-Google verifies it), Azure DNS (**Sign in with Azure DNS**; users in other
-organizations see an unverified publisher warning until the app has a verified
-publisher), Linode, Netlify, Vercel (the CustomDomain™ integration) and
-WordPress.com. It offers Porkbun's **Approve access at Porkbun**, which needs no
+service has one for Cloudflare, DigitalOcean, DNSimple, Azure DNS
+(**Sign in with Azure DNS**; users in other organizations see an unverified
+publisher warning until the app has a verified publisher), Linode, Netlify,
+Vercel (the CustomDomain™ integration) and WordPress.com. It offers Porkbun's **Approve access at Porkbun**, which needs no
 registration, and the sign-in through Dynadot's and Unstoppable Domains' own
 MCP servers.
 
 Built, but not yet switched on for the hosted service:
 
+- **Sign in with Google Cloud**, held until Google verifies the app. Connect
+  Google Cloud DNS with a project ID and an access token meanwhile.
 - **Grant access at OVHcloud**, which needs an OVHcloud application for each
   region served.
 - **Sign in through the provider's MCP server** for Hostinger, Namecheap,

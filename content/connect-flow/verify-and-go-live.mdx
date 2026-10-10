@@ -104,11 +104,12 @@ same account in a single step. In the console this is the **"Connect more
 domains"** panel: it lists the account's other zones and lets you **Select all**
 or pick a subset, then connects them without re-entering the key.
 
-Listing is supported for Cloudflare, GoDaddy, Amazon Route 53, Namecheap,
-IONOS and a growing list of other providers whose keys can read the whole
-account, including cPanel hosts. Providers that can't enumerate an account's
-domains (or would need a broader key than the records do) answer
-`list_not_supported` and degrade to connecting one domain at a time.
+Listing is supported for providers whose keys can read the whole account,
+including Cloudflare, GoDaddy, Amazon Route 53, Namecheap, IONOS, NS1,
+Scaleway and cPanel hosts, and for many other API providers. A provider that
+can't enumerate an account's domains (or would need a broader key than the
+records do) answers `list_not_supported` and degrades to connecting one domain
+at a time.
 
 Two control-plane endpoints back it:
 
@@ -204,10 +205,10 @@ to serve our template catalog); GoDaddy, IONOS, Cloudflare and Vercel have not
 onboarded it, so they are never offered one-click. Sign-in runs at Cloudflare,
 DigitalOcean, DNSimple, Linode, Netlify, Vercel (the integration install) and
 WordPress.com, and Porkbun's key approval runs too; each of these is kept,
-encrypted, unless the person chooses one-time use. Sign in with Google Cloud
-(only for the app's test users until Google verifies it), Sign in with Azure
+encrypted, unless the person chooses one-time use. Sign in with Azure
 DNS and the sign-ins through Dynadot's and Unstoppable Domains' MCP servers
 run as well, and each of those is used once. OVHcloud's consent and the other
-MCP server sign-ins are built but not switched on yet.
+MCP server sign-ins are built but not switched on yet, and the Google Cloud
+sign-in is held until Google verifies the app.
 Read `rails` on the pre-flight rather than memorizing this list; see
 [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

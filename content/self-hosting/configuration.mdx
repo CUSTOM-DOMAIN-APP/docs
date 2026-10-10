@@ -228,6 +228,18 @@ The collector never stores an IP address or user agent. Events from another
 origin keep only the page path, the referrer (origin and path), UTM tags and a
 short list of allowed properties.
 
+## Sign-in holds (`OAUTH_HOLD_PROVIDERS`)
+
+A DNS provider sign-in is offered once its app credentials are set; see
+[Signing in with the provider](/docs/dns/provider-setup#signing-in-with-the-provider).
+This variable withholds a sign-in that is otherwise configured.
+
+| Variable | When unset | What it does |
+|----------|------------|--------------|
+| `OAUTH_HOLD_PROVIDERS` | nothing is held | Comma-separated provider ids (for example `gcpdns`) whose sign-in is not offered to anyone, even when the provider's `OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` are set. Empty or `none` also holds nothing. The provider still connects with an API key or access token. |
+
+The hosted service holds `gcpdns` until Google verifies the app.
+
 ## Push notifications
 
 The console's bell (the in-app inbox) needs no configuration. Push, a
