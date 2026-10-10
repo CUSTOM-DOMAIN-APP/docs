@@ -2,8 +2,9 @@ name: Sync docs to product repo
 # This repo is the SOURCE OF TRUTH for the product documentation.
 # On every push to main that touches content/, this workflow pushes the
 # content into the product repo (CUSTOM-DOMAIN-APP/custom-domains) on a
-# dedicated `docs-sync` branch. It NEVER touches the product repo's main:
-# a human (or bot) reviews and merges the sync branch via PR.
+# dedicated `docs-sync` branch. It NEVER touches the product repo's main.
+# A deploy key cannot open a PR, so a maintainer runs scripts/docs-sync-pr.sh in the
+# product repo after this finishes; it checks the branch and opens the PR.
 on:
   push:
     branches: [main]
@@ -37,6 +38,139 @@ jobs:
         run: |
           rsync -a --delete content/ product/apps/app/src/content/docs/
 
+      - name: "Guard: synced content may only use components the product app registers"
+        # A component registered only in this repo's site (site/src/components/mdx.tsx) and not in the
+        # product's apps/app/src/components/mdx.tsx breaks the product `next build` ("Expected component
+        # X to be defined"). Fail here, before docs-sync is published. The two awk programs are copies of
+        # the ones in scripts/docs-sync-pr.sh in the product repo; keep them identical.
+        run: |
+          set -euo pipefail
+          T="$(mktemp -d)"
+          MDX=product/apps/app/src/components/mdx.tsx
+          DOCS=product/apps/app/src/content/docs
+          # fumadocs-ui/mdx defaults, plus the ones the product docs page passes in.
+          BUILTIN="CodeBlockTab CodeBlockTabs CodeBlockTabsList CodeBlockTabsTrigger Card Cards Callout CalloutContainer CalloutTitle CalloutDescription OpenAPIPage APIPage"
+          cat >"$T/tags.awk" <<'AWK'
+          function isword(c) { return c ~ /[A-Za-z0-9_$]/ }
+          function declare(s,   n, a, i, t) {
+            n = split(s, a, /[^A-Za-z0-9_$]+/)
+            for (i = 1; i <= n; i++) if (a[i] != "") local[a[i]] = 1
+          }
+          BEGIN { fence = ""; fm = 0; inimport = 0 }
+          NR == 1 && $0 ~ /^---[ \t]*$/ { fm = 1; next }
+          fm { if ($0 ~ /^---[ \t]*$/) fm = 0; next }
+          {
+            line = $0
+            if (match(line, /^[ \t>]*(```|~~~)/)) {
+              run = line
+              sub(/^[ \t>]*/, "", run)
+              ch = substr(run, 1, 1)
+              n = 0
+              while (substr(run, n + 1, 1) == ch) n++
+              if (fence == "") { fence = ch; flen = n; next }
+              rest = substr(run, n + 1)
+              if (ch == fence && n >= flen && rest ~ /^[ \t]*$/) fence = ""
+              next
+            }
+            if (fence != "") next
+            # Declarations (ESM blocks): imports, const/let/var/function/class names, destructuring.
+            if (inimport || line ~ /^[ \t]*import[ \t{*]/) {
+              declare(line)
+              inimport = (line !~ /from[ \t]*["'][^"']*["']/ && line !~ /^[ \t]*import[ \t]*["']/)
+            }
+            tmp = line
+            while (match(tmp, /(const|let|var)[ \t]*\{[^}]*\}/)) {
+              declare(substr(tmp, RSTART, RLENGTH))
+              tmp = substr(tmp, RSTART + RLENGTH)
+            }
+            tmp = line
+            while (match(tmp, /(const|let|var|function|class)[ \t]+[A-Za-z_$][A-Za-z0-9_$]*/)) {
+              declare(substr(tmp, RSTART, RLENGTH))
+              tmp = substr(tmp, RSTART + RLENGTH)
+            }
+            gsub(/`+[^`]*`+/, "", line)
+            gsub(/\{\/\*[^*]*\*\/\}/, "", line)
+            gsub(/<!--[^>]*-->/, "", line)
+            while (match(line, /<[A-Z][A-Za-z0-9_]*/)) {
+              pre = (RSTART > 1) ? substr(line, RSTART - 1, 1) : ""
+              name = substr(line, RSTART + 1, RLENGTH - 1)
+              nxt = substr(line, RSTART + RLENGTH, 1)
+              ok = (pre == "" || !(isword(pre) || pre == "\\" || pre == "<"))
+              if (ok && (nxt == "" || nxt ~ /[ \t\/>.]/)) used[name] = 1
+              line = substr(line, RSTART + RLENGTH)
+            }
+          }
+          END { for (k in used) if (!(k in local)) print k "\t" f }
+          AWK
+          cat >"$T/registered.awk" <<'AWK'
+          function strip(s) {
+            gsub(/\/\*[^*]*\*\//, "", s)
+            sub(/\/\/.*$/, "", s)
+            return s
+          }
+          function count(s, c,   n, t) { t = s; n = gsub(c, "", t); return n }
+          BEGIN { depth = 0; cur = "" }
+          {
+            line = strip($0)
+            if (match(line, /^[ \t]*import[ \t]+[A-Za-z_$][A-Za-z0-9_$]*[ \t]+from[ \t]*["']fumadocs-ui\/mdx["']/)) {
+              d = line
+              sub(/^[ \t]*import[ \t]+/, "", d)
+              sub(/[ \t].*$/, "", d)
+              defname = d
+            }
+            while (match(line, /\.\.\.[A-Za-z_$][A-Za-z0-9_$]*/)) {
+              spread[substr(line, RSTART + 3, RLENGTH - 3)] = 1
+              line = substr(line, RSTART + RLENGTH)
+            }
+            line = strip($0)
+            before = depth
+            if (cur == "") {
+              if (match(line, /(const|let|var)[ \t]+[A-Za-z_$][A-Za-z0-9_$]*[^=]*=[ \t]*\{[ \t]*$/)) {
+                name = line
+                sub(/^.*(const|let|var)[ \t]+/, "", name)
+                sub(/[^A-Za-z0-9_$].*$/, "", name)
+                cur = name; base = before
+              } else if (line ~ /(return|=>)[ \t]*\(?\{[ \t]*$/) {
+                cur = "__return"; base = before
+              }
+            } else if (before == base + 1) {
+              if (match(line, /^[ \t]*["']?[A-Z][A-Za-z0-9_]*["']?[ \t]*(:|,|$)/)) {
+                k = line
+                sub(/^[ \t]*["']?/, "", k)
+                sub(/[^A-Za-z0-9_].*$/, "", k)
+                keys[cur] = keys[cur] " " k
+              }
+            }
+            depth += count(line, "[{]") - count(line, "[}]")
+            if (cur != "" && depth <= base) cur = ""
+          }
+          END {
+            out = ""
+            for (c in keys) if (c == "__return" || (c in spread)) out = out keys[c]
+            if (defname != "" && (defname in spread)) out = out " " builtin
+            print out
+          }
+          AWK
+          test -f "$MDX" || { echo "::error::$MDX is missing in the product repo"; exit 1; }
+          reg="$(awk -v builtin="$BUILTIN" -f "$T/registered.awk" "$MDX")"
+          printf '%s\n' $reg | sort -u >"$T/registered.txt"
+          : >"$T/used.txt"
+          find "$DOCS" -name '*.mdx' | sort | while IFS= read -r f; do
+            awk -v f="${f#"$DOCS"/}" -f "$T/tags.awk" "$f" >>"$T/used.txt"
+          done
+          echo "Registered in the product app: $(tr '\n' ' ' <"$T/registered.txt")"
+          cut -f1 "$T/used.txt" | sort -u | grep -vxFf "$T/registered.txt" >"$T/missing.txt" || true
+          if [ -s "$T/missing.txt" ]; then
+            while IFS= read -r n; do
+              file="$(awk -F'\t' -v n="$n" '$1 == n { print $2; exit }' "$T/used.txt")"
+              echo "::error::<$n> is used in content/$file but is not registered in apps/app/src/components/mdx.tsx of the product repo"
+            done <"$T/missing.txt"
+            echo "docs-sync was NOT published. Fix: in the product repo register a no-op for each name above through"
+            echo "docsSiteOnly in apps/app/src/components/mdx.tsx (for example: Name: () => null), merge that, then re-run this workflow."
+            exit 1
+          fi
+          echo "Guard passed: every component used by the synced content is registered in the product app."
+
       - name: Push docs-sync branch
         run: |
           cd product
@@ -49,4 +183,4 @@ jobs:
           fi
           git commit -m "docs: sync from CUSTOM-DOMAIN-APP/docs@${GITHUB_SHA::7}"
           git push -f origin docs-sync
-          echo "Pushed docs-sync. Open/refresh the PR: https://github.com/CUSTOM-DOMAIN-APP/custom-domains/compare/main...docs-sync"
+          echo "Pushed docs-sync. Next: run scripts/docs-sync-pr.sh in the product repo to open or refresh the PR (compare: https://github.com/CUSTOM-DOMAIN-APP/custom-domains/compare/main...docs-sync)"

@@ -63,6 +63,10 @@ Never rename a machine-readable identifier to match: Domain Connect `providerId`
 
 `site/openapi-v1.yaml` is a vendored copy of the product repo's spec, and `content/api-reference/**` (every page except `index.mdx`) is generated from that spec in the product repo. Both are copied here by hand when the API changes. Do not edit either here to change API behavior; they follow the product.
 
+## Syncing to the product repo
+
+You do not copy anything by hand. After a content change merges, a workflow pushes it to the `docs-sync` branch of the private product repo, and a maintainer there runs `scripts/docs-sync-pr.sh` to open the PR. If your page uses a component that exists only in this site (`site/src/components/mdx.tsx`), the workflow fails and names it until the product app registers a no-op for it, so mention that in your PR.
+
 ## Scope
 
 Customer-facing content only. Internal engineering docs (architecture write-ups, security audits, operations runbooks, ADRs) belong in the private `custom-domains` repo. The test: would this page make sense to someone who will never see the source code?

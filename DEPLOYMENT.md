@@ -88,9 +88,14 @@ Each is a deliberate decision for a human, and none blocks a docs change.
 
 1. **`sync-to-product.yml`.** On every push to `main` that touches `content/`,
    this repo's workflow copies `content/` over the product repo's docs mirror and
-   force-pushes the result to a `docs-sync` branch there (never to its `main`), for
-   a person to review and merge. Nothing renders that mirror, because the redirect
-   fires first. Whether to keep or retire the workflow is a separate call.
+   force-pushes the result to a `docs-sync` branch there (never to its `main`). The
+   workflow cannot open the PR (a deploy key has no API access), so after docs merge
+   a maintainer with product repo access runs `scripts/docs-sync-pr.sh` there, which
+   checks the branch and opens the PR for a person to review and merge. Before it
+   pushes, the workflow fails the run, naming the component, if the content uses one
+   that the product app does not register (that would break the product build).
+   Nothing renders that mirror, because the redirect fires first. Whether to keep or
+   retire the workflow is a separate call.
 2. **Old in-app links.** A few links inside the product app still point at the
    in-app `/docs` path. They keep working through the redirect, with one extra
    hop. Pointing them straight at `https://docs.customdomain.ai` is cosmetic.
