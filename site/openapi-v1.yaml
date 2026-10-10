@@ -774,6 +774,15 @@ paths:
                 domain:
                   type: string
                   description: Optional. Binds the token to a single hostname.
+                domains:
+                  type: array
+                  items: { type: string }
+                  description: >-
+                    Optional. A list of hostnames the token may act on, so a
+                    multi-domain flow needs one token instead of one per domain.
+                    Each entry is normalized and duplicates and blanks are
+                    dropped. Additive to `domain`; omit both for a token that
+                    is not bound to a hostname.
                 end_user_ref:
                   type: string
                   maxLength: 256
@@ -813,6 +822,13 @@ paths:
                   scope: { type: string, enum: [connect, app], description: the scope the token was minted with }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '429':
+          description: >-
+            `rate_limited`: too many token requests, either from this address
+            or for this `application_id`. Retry shortly.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   # ------------------------------------------------------------------ Domains
   /public/domain-connect-check:
@@ -989,15 +1005,29 @@ paths:
                     cloud-metadata targets are rejected with a `400`. Omit to
                     leave the edge on its own router.
                 www_redirect: { type: boolean, default: false, description: Serve an apex↔www redirect for this connection. }
-                override_spf: { type: boolean, default: false, description: Replace rather than merge an existing SPF record. }
-                validate_dmarc: { type: boolean, default: false, description: Check DMARC as part of verification. }
+                override_spf:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Replace an existing SPF record instead of merging into it.
+                    Honoured only for providers whose connection check reports
+                    `spf_override_support` as true; for every other provider
+                    the existing record is merged, as when this is false.
+                validate_dmarc:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Accepted, stored with the connection and echoed back. It is
+                    not acted on yet: DMARC is not checked during verification
+                    today.
                 validate_caa:
                   type: boolean
                   default: false
                   description: >-
-                    Check CAA before issuing certificates; also adds the two
-                    Let's Encrypt-authorizing apex CAA records to the
-                    connection's desired record set.
+                    Adds the two apex CAA records that authorize Let's Encrypt
+                    (`issue` and `issuewild`) to the connection's desired
+                    record set, skipping any already present. No separate CAA
+                    check is run against the domain's existing records.
                 monitor:
                   type: boolean
                   default: true
@@ -1013,7 +1043,10 @@ paths:
                     flag was honoured is monitored, and every existing
                     integrator omits the field. Send `false` to opt a connection
                     out; the value is echoed on the connection and is the only
-                    thing that decides whether the watch is registered.
+                    thing that decides whether the watch is registered. The
+                    plan's Monitor entitlement is not enforced today:
+                    monitoring is registered for every connection that has this
+                    on, regardless of plan.
                 batch_id:
                   type: string
                   description: >-
@@ -4339,6 +4372,62 @@ paths:
           description: Events
         '401': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: recordAuditEvent
+      summary: Record an audit event for a change made in the console
+      tags: [Enterprise]
+      description: >-
+        Ingest for the few mutations that happen in the customer console's own
+        database, so the control plane never sees them. Everything the control
+        plane changes itself is recorded by its own handler and is not accepted
+        here. The organization, actor, address and time are derived on the
+        server; the body names only the action, an optional target and a small
+        before and after summary. Requires an API key whose role may manage
+        identity settings (admin or owner); a widget JWT is refused with `403`,
+        and a `503` means the audit log is not configured on the deployment.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [whitelabel.configured, api_key.default_revealed]
+                  description: >-
+                    The console-recordable verb. Any other value is refused with `400`.
+                target:
+                  type: string
+                  description: >-
+                    What the event is about. Defaults to the caller's own
+                    organization when empty.
+                before:
+                  type: object
+                  additionalProperties: true
+                  description: A small summary of the state before the change; at most 24 keys.
+                after:
+                  type: object
+                  additionalProperties: true
+                  description: A small summary of the state after the change; at most 24 keys.
+      responses:
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recorded, action]
+                properties:
+                  recorded: { type: boolean }
+                  action: { type: string, description: The verb that was recorded. }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Secure (SSL)
   # The whole /ssl surface is gated by SECURE_ENABLED on the deployment; when
@@ -6502,15 +6591,18 @@ components:
         retention: { $ref: '#/components/schemas/TrafficRetention' }
     ApiKey:
       type: object
-      required: [id, last4]
+      required: [id, application_id, name, prefix, environment, is_default, created_at]
       properties:
         id: { type: string }
+        application_id: { type: string, description: The application the key belongs to. }
         name: { type: string }
-        last4: { type: string }
+        prefix: { type: string, description: 'The stored, non-secret prefix that identifies the key, for example cd_live_ab12cd34.' }
         environment: { $ref: '#/components/schemas/Environment' }
+        scopes: { type: array, items: { type: string } }
         is_default: { type: boolean, description: 'true on the workspace default key (at most one active per workspace).' }
+        last_used_at: { type: string, format: date-time, description: When the key last authenticated a request. Absent until it has been used. }
         created_at: { type: string, format: date-time }
-        revoked_at: { type: [string, 'null'], format: date-time }
+        revoked_at: { type: string, format: date-time, description: When the key was revoked. Absent while the key is active. }
     DefaultApiKey:
       type: object
       required: [key_id, prefix, created]
@@ -7012,9 +7104,9 @@ components:
         # These five carry no omitempty on the wire, so they are on EVERY
         # connection response, `false` included.
         www_redirect: { type: boolean, description: Serve an apex↔www redirect. Echoed from create. }
-        override_spf: { type: boolean, description: Replace rather than merge an existing SPF record. Echoed from create. }
-        validate_dmarc: { type: boolean, description: Check DMARC as part of verification. Echoed from create. }
-        validate_caa: { type: boolean, description: Check CAA before issuing certificates. Echoed from create. }
+        override_spf: { type: boolean, description: 'Replace an existing SPF record instead of merging into it, where the provider supports it. Echoed from create.' }
+        validate_dmarc: { type: boolean, description: Stored and echoed from create; not acted on yet. }
+        validate_caa: { type: boolean, description: 'Whether the Let''s Encrypt CAA records are part of the desired record set. Echoed from create.' }
         monitor:
           type: boolean
           default: true
