@@ -15,10 +15,16 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-- **More sign-ins, and sign-ins that are kept.** On the hosted service you can sign in with Google
-  Cloud (only the app's test users can finish it until Google verifies the app) and with Azure DNS,
+- **SPF override is honoured, and the Google Cloud sign-in is held.** `override_spf` on a connection now
+  replaces the existing SPF record at the providers whose `spf_override_support` capability is `true`;
+  everywhere else the record is merged into, as before. Sign in with Google Cloud is not offered on the
+  hosted service until Google verifies the app, and the console shows the project ID and access token form
+  instead. See [Create a connection](/docs/connect-flow/create-a-connection) and
+  [DNS providers](/docs/dns/providers).
+- **More sign-ins, and sign-ins that are kept.** On the hosted service you can sign in with Azure DNS,
   and sign in to Dynadot and Unstoppable Domains through their MCP servers; those sign-ins are used
-  once. A sign-in at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel or
+  once. Sign in with Google Cloud is built but held until Google verifies the app, so the console does
+  not offer it yet: connect Google Cloud DNS with a project ID and an access token meanwhile. A sign-in at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel or
   WordPress.com is now kept, encrypted, by default, so we can put records back and remove them with
   the domain: untick **Keep this sign-in** in the console to use it once, or stop keeping it any time
   in **Connected accounts**. A key you ask us to remember is kept as a
