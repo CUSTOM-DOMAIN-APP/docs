@@ -8,12 +8,23 @@ import {
   DocsTitle,
 } from "fumadocs-ui/layouts/docs/page";
 import { source } from "@/lib/source";
+import { metaDescription } from "@/lib/docs-description";
 import { getMDXComponents } from "@/components/mdx";
 import { openapi } from "@/lib/openapi";
 import { OpenAPIPage } from "@/lib/openapi-page";
 import type { GeneratedPageProps } from "fumadocs-openapi";
 
 type Params = { slug?: string[] };
+
+// The generated API reference pages carry no authored description. They get a fitted one, used for the
+// meta tag, the structured data and the visible line alike. Other pages keep their own text.
+function pageDescription(
+  slug: string[] | undefined,
+  page: { data: { title: string; description?: string } },
+): string | undefined {
+  if (slug?.[0] !== "api-reference") return page.data.description;
+  return metaDescription(page.data.description, { title: page.data.title, slug });
+}
 
 export default async function Page({
   params,
@@ -25,6 +36,7 @@ export default async function Page({
   if (!page) notFound();
 
   const MDX = page.data.body;
+  const description = pageDescription(slug, page);
 
   // schema.org structured data for every docs page: TechArticle (this is
   // technical reference/guide content) plus a BreadcrumbList mirroring the
@@ -43,7 +55,7 @@ export default async function Page({
       "@context": "https://schema.org",
       "@type": "TechArticle",
       headline: page.data.title,
-      description: page.data.description ?? undefined,
+      description: description ?? undefined,
       url: pageUrl,
       mainEntityOfPage: pageUrl,
       author: { "@type": "Organization", name: "CustomDomain™", url: "https://customdomain.ai" },
@@ -66,7 +78,7 @@ export default async function Page({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsDescription>{description}</DocsDescription>
       <DocsBody>
         <MDX
           components={getMDXComponents({
@@ -96,7 +108,7 @@ export async function generateMetadata({
 
   return {
     title: page.data.title,
-    description: page.data.description,
+    description: pageDescription(slug, page),
     alternates: { canonical: `/docs/${(slug ?? []).join("/")}` },
   };
 }
