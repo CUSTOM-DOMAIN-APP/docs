@@ -12,15 +12,16 @@ Entitlements gate which products a tenant may use. **Enforced today:** `Power`
 (the `/v1/connections/{id}/power*` surface) and `Secure` (the `/v1/ssl*`
 surface); an unentitled tenant gets `402 plan_upgrade_required`. `WhiteLabel`
 (widget branding) is enforced by dropping the branding, as described below.
-`Connect` is included on every plan and needs no gate. `Monitor` is not gated per tenant yet; the deployment-level
-`MONITOR_ALERTS_ENABLED` flag governs it for everyone.
+`Connect` is included on every plan and needs no gate. `Monitor` is listed as an entitlement on Premium and Enterprise, but nothing
+enforces it: every connection that has `monitor` on (the default) is monitored, on every plan. The deployment-level
+`MONITOR_ALERTS_ENABLED` flag governs alert delivery for everyone.
 
 | Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
 | --- | --- | --- | --- | --- | --- | --- |
 | `starter` | $10/mo | 10 | 1 | **yes** | Connect | self-serve, 14 day free trial |
 | `startup` | $149/mo | 600 | 50 | no | Connect | self-serve, 14 day free trial |
 | `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
-| `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (preview) | contact sales |
+| `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (listed, not enforced) | contact sales |
 | `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
 
 Prices and both domain columns above are transcribed from `GET /v1/plans`

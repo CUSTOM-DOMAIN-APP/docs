@@ -20,7 +20,9 @@ Optional body fields:
 | --- | --- |
 | `application_url` | The [Power](/docs/connect-flow/routing) origin the edge proxies this connection to. Validated before anything is written (absolute `http` or `https`, no private or loopback addresses). |
 | `www_redirect` | Also write the `www` record and redirect it. Defaults to `false`. |
-| `override_spf`, `validate_dmarc`, `validate_caa` | Record-handling flags, stored and echoed back. Default `false`. |
+| `override_spf` | Replace an existing SPF record instead of merging into it. Honoured only when the provider's `spf_override_support` capability is `true`; otherwise the existing record is merged. Defaults to `false`. |
+| `validate_dmarc` | Accepted and echoed back, not acted on yet. Defaults to `false`. |
+| `validate_caa` | Adds two apex CAA records that authorize Let's Encrypt (`issue` and `issuewild`) to the records the connection manages, next to any CAA records already there. Defaults to `false`. |
 | `monitor` | Drift [monitoring](/docs/connect-flow/monitoring). On unless you send `false`. |
 | `batch_id` | Groups the domains connected in one multi-domain session. |
 | `end_user_ref` | Your own id for the end user, shown as "Connected by" in the console. A widget token's end user must match. |

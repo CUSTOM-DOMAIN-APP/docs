@@ -47,7 +47,6 @@ records only you know (SES DKIM, a verification `TXT`), see
 | --- | --- | --- |
 | Cloudflare | **Sign in with Cloudflare** | A root CNAME is fine: Cloudflare flattens it. |
 | DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Sign in with the provider** | Netlify writes need the domain on Netlify DNS. |
-| Google Cloud DNS | **Sign in with Google Cloud** | Use the Google account that can edit the domain's public Cloud DNS zone; we find the Google Cloud project that holds it. Until Google verifies the app, Google lets only the app's listed test users sign in and refuses other accounts, so connect with a project ID and an access token instead (see [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns)). |
 | Azure DNS | **Sign in with Azure DNS** | Use a Microsoft account that can edit the domain's public zone; we find the subscription and resource group that hold it. Users in other organizations see an unverified publisher warning, and an organization that limits user consent needs an admin to approve the app. A subscription ID, a resource group and an access token work too. |
 | Vercel | **Install CustomDomain™ on Vercel** | The sign-in is our Vercel integration: install it on the Vercel team that owns the domain. |
 | Porkbun | **Approve access at Porkbun** | Porkbun adds an API key named for CustomDomain™ to the account. Porkbun only lets the API change domains that have API Access turned on. |
@@ -60,7 +59,7 @@ DNSimple, Linode, Netlify, Porkbun, Vercel or WordPress.com is kept by default
 as an encrypted grant, so we can put the records back later and remove them
 when the domain is disconnected, without asking again. In the console, untick
 **Keep this sign-in** to use it once instead; the widget tells the customer the
-permission is kept. Every other sign-in (Google Cloud DNS, Azure DNS, Dynadot
+permission is kept. Every other sign-in (Azure DNS, Dynadot
 and Unstoppable Domains) is used once to write the records and then dropped,
 which means we cannot repair those records later without asking again. See
 [Managed connections](/docs/connect-flow/managed-connections#managed-sign-in-grants).
@@ -85,6 +84,11 @@ today, so none of them appears in the console or the widget:
   passes. Until then Hostinger, Namecheap and Spaceship connect with an API key
   (Namecheap only for accounts that qualify), and XServer Domain and Muumuu
   Domain take the records by hand.
+- **Sign in with Google Cloud**: held on the hosted service until Google
+  verifies the app, so it is not offered to anyone there. Google Cloud DNS
+  connects with a project ID and an access token (see
+  [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns)). A
+  self-hosted deployment that registers its own Google client gets the sign-in.
 
 ### Speaks one-click setup, but has not onboarded our templates
 
@@ -133,7 +137,7 @@ the credential is created, and lists the steps; see
 | Gandi | Personal access token with "Manage domain name technical configurations" | |
 | Gcore | Permanent API token | The token can change every zone in your account. The domain must use Gcore's nameservers. |
 | GleSYS | API key with Domain access, and the project ID | |
-| Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. Or sign in with Google Cloud. |
+| Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. The Google Cloud sign-in is not offered on the hosted service until Google verifies the app. |
 | Hetzner | Hetzner Console project API token (Read & Write) | Tokens from the old DNS Console no longer work. |
 | hosting.de | API key with Display and Edit under DNS Service, Zones | The domain's DNS zone must be at hosting.de. |
 | Hostinger | hPanel API token | |
