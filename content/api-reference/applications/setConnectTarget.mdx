@@ -20,9 +20,11 @@ _openapi:
           unsupported`.
 
 
-          Applies to new connections only. Each connection keeps the routing it
-          connected with (its `routing` field); move an existing domain with
-          `POST /v1/connections/{id}:retarget`.
+          Applies to new connections and to domains still waiting for DNS
+          (pending or failed, with no records supplied or written for them).
+          Connected domains keep the routing they connected with (their
+          `routing` field); move one with `POST /v1/connections/{id}:retarget`.
+          `existing_domains` in the response counts both.
 
 
           Refused (400) when `cname_target` resolves to the platform edge (a

@@ -15,14 +15,16 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-- **Each domain keeps where it points.** Changing where an application's domains point
-  (`PUT /v1/applications/{id}/connect-target`) now applies to domains connected from then on.
-  Before, it changed the records every hand-configured domain was checked against, so live domains on
-  the edge could stop being served while their DNS still pointed there. Every connection has a
-  `routing` field, and `POST /v1/connections/{id}:retarget` moves one domain to the application's
-  current routing. A target that is the edge under another name is refused, and the save warns when
-  the hostname does not resolve yet or no root addresses are given. Domain Connect and Let's Encrypt
-  CAA records are for the edge only. See [Where domains point](/docs/connect-flow/routing).
+- **Connected domains keep where they point.** Changing where an application's domains point
+  (`PUT /v1/applications/{id}/connect-target`) now reaches new domains and domains still waiting
+  for DNS, and leaves connected domains where they are. Before, it changed the records every
+  hand-configured domain was checked against, so live domains on the edge could stop being served
+  while their DNS still pointed there. Every connection has a `routing` field, and
+  `POST /v1/connections/{id}:retarget` moves one domain to the application's current routing (or
+  back to the edge with `{"to": "edge"}`) and checks it again. A target that is the edge under
+  another name is refused, and the save warns when the hostname does not resolve yet or no root
+  addresses are given. Domain Connect and Let's Encrypt CAA records are for the edge only. See
+  [Where domains point](/docs/connect-flow/routing).
 - **SPF override is honoured, and the Google Cloud sign-in is held.** `override_spf` on a connection now
   replaces the existing SPF record at the providers whose `spf_override_support` capability is `true`;
   everywhere else the record is merged into, as before. Sign in with Google Cloud is not offered on the

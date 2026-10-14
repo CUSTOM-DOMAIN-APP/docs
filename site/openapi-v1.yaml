@@ -2192,29 +2192,48 @@ paths:
   /connections/{id}:retarget:
     post:
       operationId: retargetConnection
-      summary: Move a domain to its application's current routing
+      summary: Move a domain to its application's current routing, or back to the edge
       tags: [Connections]
       description: >-
-        A connection keeps the routing it connected with, so changing an
-        application's routing moves no existing domain. This moves one: the
-        domain's expected records become those of the application's current
-        routing. The customer's DNS is not changed, so the domain needs its
-        records updated (returned in `records`) before it serves on the new
-        routing. Moving a live domain off the edge stops edge serving at once
-        (`stops_edge_serving`).
+        A connected domain keeps the routing it connected with when its
+        application's routing changes (domains still waiting for DNS follow the
+        change). This moves one: the domain's expected records become those of
+        the application's current routing, or with `{"to": "edge"}` those of the
+        CustomDomain™ edge whatever the application's routing (the way back for a
+        domain moved off the edge by mistake). The body is optional.
 
 
-        A no-op (`moved: false`) when the domain already has the application's
-        routing. Refused (409) when the domain's records are stored: records
-        your backend supplied (change them with `PUT /connections/{id}/records`)
-        or records written into the customer's DNS during setup (disconnect and
-        reconnect to move it). Recorded in the audit log as
+        The customer's DNS is not changed. A moved domain goes back to
+        `pending` with a fresh verification clock, is checked at once (a domain
+        whose DNS already names the new place is `live` again in the response's
+        `status`), and otherwise waits for its records (returned in `records`);
+        drift is not reported while it waits. Moving a live domain off the edge
+        stops edge serving at once (`stops_edge_serving`).
+
+
+        A no-op (`moved: false`) when the domain already points there. Refused
+        (409) when the domain's records are stored: records your backend
+        supplied (change them with `PUT /connections/{id}/records`) or records
+        written into the customer's DNS during setup (disconnect and reconnect
+        to move it). A server-side API key or an agent token only: a widget
+        token is refused (403). Recorded in the audit log as
         `connection.retargeted`.
       security:
-        - widgetJWT: []
         - apiKey: []
         - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  enum: [application, edge]
+                  default: application
+                  description: Where to move the domain.
       responses:
         '200':
           description: The domain's routing after the move, and its records from now on.
@@ -2233,6 +2252,10 @@ paths:
                     items: { $ref: '#/components/schemas/DnsRecord' }
                   customer_action_required: { type: boolean }
                   stops_edge_serving: { type: boolean }
+                  status:
+                    $ref: '#/components/schemas/ConnectionStatus'
+                    description: The domain's status after the move.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -4833,9 +4856,11 @@ paths:
         hostname and `POST /domains:check` reports `apex_strategy: unsupported`.
 
 
-        Applies to new connections only. Each connection keeps the routing it
-        connected with (its `routing` field); move an existing domain with
-        `POST /v1/connections/{id}:retarget`.
+        Applies to new connections and to domains still waiting for DNS
+        (pending or failed, with no records supplied or written for them).
+        Connected domains keep the routing they connected with (their
+        `routing` field); move one with `POST /v1/connections/{id}:retarget`.
+        `existing_domains` in the response counts both.
 
 
         Refused (400) when `cname_target` resolves to the platform edge (a
@@ -6433,6 +6458,21 @@ components:
             Advisory notes on a target just saved (PUT only): that
             `cname_target` does not resolve yet, or that with no `apex_ipv4`
             root domains at providers with no ALIAS-style record cannot connect.
+        existing_domains:
+          type: object
+          required: [moved, kept]
+          description: >-
+            What a PUT did to the application's existing domains (PUT only).
+            Domains already on the new routing are in neither count.
+          properties:
+            moved:
+              type: integer
+              description: Domains still waiting for DNS that took the new routing.
+            kept:
+              type: integer
+              description: >-
+                Connected domains (and domains whose records were supplied or
+                written) that keep pointing where they do.
     ConnectionDiagnosis:
       type: object
       required: [connection_id, domain, zone, status, all_found, records, issues]
@@ -7230,8 +7270,9 @@ components:
             - $ref: '#/components/schemas/ConnectionRouting'
           description: >-
             Where this domain points: its application's routing when the
-            connection was created. A later change to the application's routing
-            does not move it; `POST /v1/connections/{id}:retarget` does. Omitted
+            connection was created. A change to the application's routing moves
+            it only while it is still waiting for DNS; once connected it keeps
+            this until `POST /v1/connections/{id}:retarget` moves it. Omitted
             only for a connection created before this was recorded, which
             follows its application's current routing.
         records_source:

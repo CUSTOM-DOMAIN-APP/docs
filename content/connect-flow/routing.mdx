@@ -4,11 +4,10 @@ description: "Send customer domains through the CustomDomain™ edge with automa
 ---
 
 Every connection's records point somewhere. An application sets where its
-domains point, and each domain keeps the routing it connected with: its
-`routing` field says which. The default record set, verification and the live
-DNS diagnosis follow the domain's own routing, so the records your customers
-see are always the ones that will work, even after you change the
-application's.
+domains point, and each connection's `routing` field says where that domain
+points. The default record set, verification and the live DNS diagnosis follow
+the domain's own routing, so the records your customers see are always the
+ones that will work, even after you change the application's.
 
 | | Through the edge (default) | Your own infrastructure |
 | --- | --- | --- |
@@ -95,25 +94,45 @@ curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/connect-target 
 
 ## Changing where domains point
 
-A change applies to domains connected from then on. Domains already connected
-keep pointing where they do, so the edge keeps serving the ones on the edge and
-nothing changes for a customer until you move their domain. Each connection's
-`routing` says where it points:
+A change reaches two kinds of domain differently:
+
+- **Domains still waiting for DNS** (pending or failed, with no records
+  supplied or written for them) take the new routing. Nothing serves them yet,
+  so their customers are simply shown the new records.
+- **Connected domains** keep pointing where they do, so the edge keeps serving
+  the ones on the edge and nothing changes for those customers until you move
+  their domain.
+
+The response says how many of each it reached:
+
+```json
+"existing_domains": { "moved": 3, "kept": 12 }
+```
+
+Each connection's `routing` says where it points:
 
 ```json
 "routing": { "mode": "custom", "cname_target": "customers.example.com", "apex_ipv4": ["203.0.113.10"], "set_at": "2026-10-14T18:00:00Z" }
 ```
 
-Move one domain to the application's current routing with
+Move one connected domain to the application's current routing with
 `POST /v1/connections/{id}:retarget`, or **Move this domain** on its DNS page in
-the console. The response lists the records the domain needs from now on. It
-does not change the customer's DNS:
+the console. It needs a server-side API key; a widget token is refused. The
+response lists the records the domain needs from now on. It does not change
+the customer's DNS:
 
+- The domain goes back to `pending` and is checked straight away. If its DNS
+  already names the new place, `status` is `live` again; otherwise it waits
+  for the customer's new records, and no drift is reported meanwhile.
 - `customer_action_required: true`: the customer has to replace the old records
   with the new ones before the domain works on the new routing.
 - `stops_edge_serving: true`: the domain was live on the edge and the edge
   stops serving it now, so have the new records ready first.
 - `moved: false`: the domain already pointed there.
+
+Moved a domain off the edge by mistake? Send `{"to": "edge"}` to move it back to
+the edge whatever the application's routing (**Undo: back to the edge** in the
+console). If its DNS still names the edge it is live again at once.
 
 A domain whose records your backend supplied (`PUT /v1/connections/{id}/records`)
 is refused with `409`: send it new records instead. So is a domain whose records
