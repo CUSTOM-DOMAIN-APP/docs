@@ -23,7 +23,11 @@ never change meaning or disappear without a new major version. See the
   `POST /v1/connections/{id}:retarget` moves one domain to the application's current routing (or
   back to the edge with `{"to": "edge"}`) and checks it again. A target that is the edge under
   another name is refused, and the save warns when the hostname does not resolve yet or no root
-  addresses are given. Domain Connect and Let's Encrypt CAA records are for the edge only. See
+  addresses are given. Domain Connect and Let's Encrypt CAA records are for the edge only. A root
+  domain on your own infrastructure that its DNS provider cannot point at a hostname is refused at
+  create (`422 apex_not_supported`) when the application has no root addresses, and a root on an
+  `ALIAS`-style record is found when it answers with one of them. The SDK's `dnsRecords` option
+  carries DKIM records only, and now says so in the console when it is given others. See
   [Where domains point](/docs/connect-flow/routing).
 - **SPF override is honoured, and the Google Cloud sign-in is held.** `override_spf` on a connection now
   replaces the existing SPF record at the providers whose `spf_override_support` capability is `true`;

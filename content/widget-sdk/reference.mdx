@@ -90,7 +90,7 @@ allow another connection; the end user only sees a neutral message) and
 | `domain` | `string` | Pre-filled domain. |
 | `prefilledDomain` | `string \| string[]` | Alias accepted for the pre-fill. |
 | `wwwRedirect` | `boolean` | Root domains only. `true` connects the root and `www` and redirects the root to `www`; `false` connects the root alone; unset lets the user choose (root and www is the recommended default). |
-| `dnsRecords` | `DNSRecord[] \| Record<string, DNSRecord[]>` | Records to apply. Array, or per-domain object mode `{ "acme.com": [...] }`. Omit to use the control-plane's authoritative per-connection set. |
+| `dnsRecords` | `DNSRecord[] \| Record<string, DNSRecord[]>` | DKIM records for the widget's DKIM screen (a `purpose: "dkim"` record, or a host under `_domainkey`). Array, or per-domain object mode `{ "acme.com": [...] }`. Every other record is ignored, and the SDK says so once in the console: customers are shown the records of your application's [routing](/docs/connect-flow/routing), or the set your backend supplies with `PUT /v1/connections/{id}/records`. |
 | `applicationName` / `applicationUrl` | `string` | Branding shown in the flow. |
 | `locale` | `string` | UI locale. |
 | `whiteLabel` | `WhiteLabel` | Theming + behavior (below). |

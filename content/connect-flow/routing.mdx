@@ -79,8 +79,13 @@ curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/connect-target 
   before your first customer connects.
 - Without `apex_ipv4`, a root domain at a provider with no `ALIAS`-style record
   cannot be pointed at you. The pre-flight says so up front
-  (`apex_strategy: "unsupported"`) and the widget steers that customer to `www`
-  or a subdomain.
+  (`apex_strategy: "unsupported"`), the widget steers that customer to `www`
+  or a subdomain, and `POST /v1/connections` refuses the root with
+  `422 apex_not_supported` instead of creating a connection that could never
+  go live.
+- A root on an `ALIAS`-style record answers with addresses, not with your
+  hostname. It is found (at setup, on a recheck and by the drift monitor) when
+  those addresses are your hostname's, or include one of `apex_ipv4`.
 - Traffic never passes through the edge in this mode, so certificates and the
   root to `www` redirect are yours to serve. `www_redirect: true` still adds the
   `www` record. `validate_caa` adds no Let's Encrypt CAA records, and the

@@ -1084,6 +1084,16 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            `apex_not_supported`: the domain is a root domain, the application routes
+            to its own infrastructure, the domain's DNS provider has no ALIAS-style
+            record, and the application has no `apex_ipv4` to use instead. Connect a
+            subdomain such as `www`, or add root addresses to the application's
+            routing (`PUT /applications/{id}/connect-target`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     get:
       operationId: listConnections
       summary: List connections

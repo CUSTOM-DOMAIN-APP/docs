@@ -81,8 +81,10 @@ curl -X PUT http://localhost:8080/v1/connections/con_…/records \
 The supplied set then behaves exactly like ours everywhere: the OAuth rail writes
 it with the customer's provider credential, the widget renders it for manual
 setup, and the propagation poller verifies it before the connection goes live.
-Omit `dnsRecords` in the SDK when you use this: the connection's set is
-authoritative, so the browser never has to be trusted with the record list.
+This is the way to give one customer records of their own. The SDK's
+`dnsRecords` option cannot do it: it only carries DKIM records for the widget's
+DKIM screen and ignores the rest, so the browser is never trusted with the
+record list.
 
 Three constraints follow from that trust boundary:
 
