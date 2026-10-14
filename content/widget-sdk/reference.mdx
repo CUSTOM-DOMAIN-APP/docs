@@ -204,6 +204,16 @@ To turn one off, set `customProperties.aiHandoff.hide`,
 `customProperties.forwardLink.hide` (the email row) or
 `customProperties.managedDns.hide`.
 
+**A floating checklist while the user is at their provider.** On the manual screen,
+pressing *Open panel* opens the provider's DNS page in a new tab, as always. On
+desktop Chrome and Edge (version 116 or later) it also opens a small window that
+stays on top and shows the same live record tracker, repainted on every poll, so
+the user can see what they are copying and whether a record has landed without
+switching back to your page. Every other browser is unchanged: the provider opens
+in a new tab and nothing floats. The window only displays what the widget already
+shows; it reads nothing from the provider's page and collects nothing. Set
+`customProperties.floatingChecklist.hide` to turn it off.
+
 ## White-label configuration
 
 `whiteLabel` accepts quick keys, a full raw-token override, per-screen disables,
@@ -223,7 +233,7 @@ and two layout behaviors:
 | `delegateClose` | The widget never tears itself down; it posts `customdomain:request-close` and you call `close()`. |
 | `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
 | `darkMode` / `darkTokens` | `"disabled"` (default), `"enabled"` or `"auto"` (follows the OS); `darkTokens` fine-tunes the dark palette. |
-| `customProperties` | Granular toggles: `hideCloseButton`, `hideProgressIndicator`, `providerLogin.changeProvider.hide`, `recordsPreview.hide`, `forwardLink` (`hide`, `url`, `label`), `gotoManualLink.hide`, `useCustomExitConfirmation`, `aiHandoff.hide`, `managedDns.hide`. |
+| `customProperties` | Granular toggles: `hideCloseButton`, `hideProgressIndicator`, `providerLogin.changeProvider.hide`, `recordsPreview.hide`, `forwardLink` (`hide`, `url`, `label`), `gotoManualLink.hide`, `useCustomExitConfirmation`, `aiHandoff.hide`, `managedDns.hide`, `floatingChecklist.hide`. |
 
 Tokens are emitted as CSS custom properties (`--je-<token>`) on the widget's
 shadow host, so they cannot affect your page. Every value must be a plain CSS

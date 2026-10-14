@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **A floating checklist while you set up DNS by hand.** On desktop Chrome and Edge, **Open panel** now also opens a
+  small window that stays on top with the live record tracker, so you can see what you are copying and whether a
+  record has landed while you are on your DNS provider's site. Other browsers behave as before. Embedders can turn it
+  off with `customProperties.floatingChecklist.hide`. The guides for Namecheap, Squarespace and NameBright now link
+  straight to the DNS settings page instead of the account home.
 - **SPF override is honoured, and the Google Cloud sign-in is held.** `override_spf` on a connection now
   replaces the existing SPF record at the providers whose `spf_override_support` capability is `true`;
   everywhere else the record is merged into, as before. Sign in with Google Cloud is not offered on the
