@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: repoRoot,
   poweredByHeader: false,
+  // Nothing on this site uses next/image, so the image optimizer endpoint (/_next/image)
+  // has no job. Turning it off removes the endpoint.
+  images: { unoptimized: true },
   turbopack: {
     root: repoRoot,
   },
