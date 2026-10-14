@@ -72,10 +72,12 @@ There are three legitimate ways around it:
 
 - **`ALIAS` / `ANAME` / flattened `CNAME`.** A provider-specific record type
   that behaves like a `CNAME` but resolves to addresses at query time.
-  Cloudflare, Route 53, DNSimple and others support it under different names.
+  Cloudflare, DNSimple, Namecheap and others support it under different names
+  (a Route 53 alias can only point at AWS resources, so it cannot hold a
+  hostname elsewhere).
   This is the best option when you have it.
 - **`A` records to published addresses.** Legal at a root, and what you use when
-  your provider has no `ALIAS` type (GoDaddy and Namecheap, among others). The
+  your provider has no `ALIAS` type (GoDaddy, among others). The
   tradeoff is that the addresses are pinned: if the platform's addresses change
   and yours are hard-coded, the domain breaks.
 - **Connect `www` instead and redirect the root to it.** The least elegant and
