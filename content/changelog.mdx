@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
+  that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
+  in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's
+  `checkDomain` returns it as `advisories`. If you read `record_conflicts` for that kind, read `advisories`
+  too. See [Root domains](/docs/dns/root-domains).
 - **The welcome ends on your build screen.** The widget code or the AI prompt is the last step. **Try it now**
   opens **Run your first connection**, and **MCP and agents** opens the AI setup.
 - **Let your AI add CustomDomain™ for you.** Pick the agent you use and the welcome shows how to add CustomDomain™ to

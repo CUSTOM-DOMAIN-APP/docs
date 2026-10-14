@@ -7650,10 +7650,22 @@ components:
                 description: Human-readable, with the available alternatives named.
         record_conflicts:
           type: array
+          description: 'Existing DNS records the automatic write would REPLACE (value-mismatch / cname-collision / spf-merge). Counts toward will_fallback_to_manual.'
           items:
             type: object
             properties:
               kind: { type: string, description: 'value-mismatch | cname-collision | spf-merge' }
+              host: { type: string }
+              type: { type: string }
+              existing: { type: string }
+              desired: { type: string }
+        advisories:
+          type: array
+          description: 'Non-destructive advisories (e.g. a CAA record that blocks Let''s Encrypt, or an SPF to merge). Kept SEPARATE from record_conflicts so they never count toward will_fallback_to_manual and can be rendered as authorize/merge rather than "will be replaced".'
+          items:
+            type: object
+            properties:
+              kind: { type: string, description: 'caa-blocks-letsencrypt | spf-merge' }
               host: { type: string }
               type: { type: string }
               existing: { type: string }
