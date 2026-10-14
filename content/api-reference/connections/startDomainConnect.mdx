@@ -29,7 +29,9 @@ _openapi:
           against the provider's API first (remembered for a few minutes), and a
           provider that has not onboarded it is refused with a `503` that names
           it. A root domain uses `apex-a` (an `A` record to the edge address,
-          which needs `APEX_A_TARGETS`). The sync `apply_url` carries a signed
+          which needs `APEX_A_TARGETS`). Our templates point domains at the
+          edge, so a domain routed to your own infrastructure is refused with
+          `422 custom_routing`. The sync `apply_url` carries a signed
           `redirect_uri` back to `/connect/dc/return/{state}` whenever the
           template allows it; pass `return_origin` on a sync start to have that
           return page post the outcome to your page.

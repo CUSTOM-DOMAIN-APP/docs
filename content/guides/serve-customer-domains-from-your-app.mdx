@@ -131,8 +131,10 @@ A hostname that passes validation and is later repointed at a private address is
 refused at connection time.
 
 > If your origin genuinely is inside a private network, edge serving cannot
-> reach it. Put a public hostname in front of it, or keep DNS pointing at your
-> own infrastructure and use us for connection and certificates only.
+> reach it. Put a public hostname in front of it, or point domains at
+> [your own infrastructure](/docs/connect-flow/routing#your-own-infrastructure):
+> we connect and verify the domains, and your servers serve them and provide
+> their certificates.
 
 ## Turning it off
 

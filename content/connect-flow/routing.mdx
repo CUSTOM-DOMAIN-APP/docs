@@ -3,10 +3,12 @@ title: Where domains point
 description: "Send customer domains through the CustomDomain™ edge with automatic SSL, or point them straight at your own infrastructure, and see how the DNS records differ."
 ---
 
-Every connection's records point somewhere, and an application chooses where
-once. The default record set, the pre-flight check, verification and the live
-DNS diagnosis all follow that choice, so the records your customers see are
-always the ones that will work.
+Every connection's records point somewhere. An application sets where its
+domains point, and each domain keeps the routing it connected with: its
+`routing` field says which. The default record set, verification and the live
+DNS diagnosis follow the domain's own routing, so the records your customers
+see are always the ones that will work, even after you change the
+application's.
 
 | | Through the edge (default) | Your own infrastructure |
 | --- | --- | --- |
@@ -69,19 +71,54 @@ curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/connect-target 
 ```
 
 - `cname_target` must be a hostname, not an IP address and not the edge itself.
-  Send `""` to point the application back at the edge.
+  A hostname that is a `CNAME` to the edge, or resolves to one of its addresses,
+  is refused too, and so is an edge address in `apex_ipv4`: domains pointed
+  there would verify but never be served. Send `""` to point the application
+  back at the edge.
+- The response carries `warnings` when the hostname does not resolve yet, or
+  when you sent no `apex_ipv4`. Both are saved anyway; create the hostname
+  before your first customer connects.
 - Without `apex_ipv4`, a root domain at a provider with no `ALIAS`-style record
   cannot be pointed at you. The pre-flight says so up front
   (`apex_strategy: "unsupported"`) and the widget steers that customer to `www`
   or a subdomain.
 - Traffic never passes through the edge in this mode, so certificates and the
   root to `www` redirect are yours to serve. `www_redirect: true` still adds the
-  `www` record.
-- Pick the target before customers connect. Changing it changes the records
-  new connections get and are checked against; records already written to a
-  provider stay as written until you reapply the connection
-  (`POST /v1/connections/{id}:reapply`), and customers who added records by
-  hand need to update them.
+  `www` record. `validate_caa` adds no Let's Encrypt CAA records, and the
+  pre-flight raises no CAA warning, because the certificate authority is yours
+  to choose.
+- One-click Domain Connect setup is not offered: its templates point domains
+  at the edge. `POST /v1/domains:check` reports `rails.domain_connect` as
+  unavailable with the reason `custom_routing`, and
+  `POST /v1/connections/{id}/domainconnect:start` answers `422 custom_routing`.
+  Provider sign-in, a provider API key and manual records all work.
+
+## Changing where domains point
+
+A change applies to domains connected from then on. Domains already connected
+keep pointing where they do, so the edge keeps serving the ones on the edge and
+nothing changes for a customer until you move their domain. Each connection's
+`routing` says where it points:
+
+```json
+"routing": { "mode": "custom", "cname_target": "customers.example.com", "apex_ipv4": ["203.0.113.10"], "set_at": "2026-10-14T18:00:00Z" }
+```
+
+Move one domain to the application's current routing with
+`POST /v1/connections/{id}:retarget`, or **Move this domain** on its DNS page in
+the console. The response lists the records the domain needs from now on. It
+does not change the customer's DNS:
+
+- `customer_action_required: true`: the customer has to replace the old records
+  with the new ones before the domain works on the new routing.
+- `stops_edge_serving: true`: the domain was live on the edge and the edge
+  stops serving it now, so have the new records ready first.
+- `moved: false`: the domain already pointed there.
+
+A domain whose records your backend supplied (`PUT /v1/connections/{id}/records`)
+is refused with `409`: send it new records instead. So is a domain whose records
+were written into the customer's DNS during setup: disconnect and connect it
+again to move it.
 
 `GET /v1/applications/{id}/connect-target` returns the current mode
 (`edge` or `custom`), the target, and what the edge mode would point at, so a
