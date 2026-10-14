@@ -8,7 +8,7 @@ A connection is created against an **application** and authorized by a
 server-side use). The only required field is the domain:
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections \
+curl -X POST https://api.customdomain.ai/v1/connections \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{"domain":"app.customer.com"}'
@@ -18,7 +18,7 @@ Optional body fields:
 
 | Field | Meaning |
 | --- | --- |
-| `application_url` | The [Power](/docs/connect-flow/routing) origin the edge proxies this connection to. Validated before anything is written (absolute `http` or `https`, no private or loopback addresses). |
+| `application_url` | The [Power](/docs/connect-flow/routing) origin the edge proxies this connection to. Validated before anything is written (absolute `http` or `https`, no private or loopback addresses). Power is part of the Growth plan and up: on a plan without it the create is refused with `402 plan_upgrade_required` and nothing is stored. |
 | `www_redirect` | Also write the `www` record and redirect it. Defaults to `false`. |
 | `override_spf` | Replace an existing SPF record instead of merging into it. Honoured only when the provider's `spf_override_support` capability is `true`; otherwise the existing record is merged. Defaults to `false`. |
 | `validate_dmarc` | Accepted and echoed back, not acted on yet. Defaults to `false`. |
@@ -68,7 +68,7 @@ so no template can know them. Replace the connection's desired set with your own
 before the widget opens:
 
 ```bash
-curl -X PUT http://localhost:8080/v1/connections/con_…/records \
+curl -X PUT https://api.customdomain.ai/v1/connections/con_…/records \
   -H "Authorization: Bearer cd_live_…" \
   -H "Content-Type: application/json" \
   -d '{"records":[

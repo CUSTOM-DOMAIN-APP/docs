@@ -15,6 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Edge serving is on Growth, bought domains follow routing, and the docs cover the hosted service only.**
+  `POST /v1/connections` with an `application_url` now needs the Growth plan or above (`402
+  plan_upgrade_required` otherwise), like the application's default origin and a connection's own origin. A
+  domain bought through CustomDomain™ is registered pointing where its application sends domains, the edge or
+  your own infrastructure. Running the platform yourself is no longer documented: the self-hosted quickstart
+  and the self-hosting pages are gone, and the examples use `https://api.customdomain.ai`. See
+  [Plans and quotas](/docs/billing/plans-and-quotas) and [Buying a domain](/docs/sell/buying-a-domain).
 - **Connected domains keep where they point.** Changing where an application's domains point
   (`PUT /v1/applications/{id}/connect-target`) now reaches new domains and domains still waiting
   for DNS, and leaves connected domains where they are. Before, it changed the records every

@@ -11,7 +11,7 @@ connection `pending → propagating → live`.
 ## Rail C: OAuth into the provider (flagship)
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections/<ID>/oauth:start \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/oauth:start \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{"return_origin":"https://app.acme.example"}'
@@ -46,7 +46,7 @@ switched on for Dynadot and Unstoppable Domains on the hosted service).
 ## Rail A: provider-hosted one-click setup
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections/<ID>/domainconnect:start \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/domainconnect:start \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{"return_origin":"https://app.acme.example"}'
@@ -82,7 +82,7 @@ or an access role instead) and joined into `credential.token` for you; see
 Calling the API directly:
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/apply \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -115,7 +115,7 @@ Two control-plane endpoints back it:
 
 ```bash
 # 1. List the other zones on the account (credential passed once, not persisted)
-curl -X POST http://localhost:8080/v1/providers/cloudflare/zones:list \
+curl -X POST https://api.customdomain.ai/v1/providers/cloudflare/zones:list \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{"credential":{"token":"<scoped-provider-token>"}}'
@@ -125,7 +125,7 @@ curl -X POST http://localhost:8080/v1/providers/cloudflare/zones:list \
 
 # 2. Create connections for the selected domains (idempotent, up to 200),
 #    optionally under a client's name
-curl -X POST http://localhost:8080/v1/connections:bulk \
+curl -X POST https://api.customdomain.ai/v1/connections:bulk \
   -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"domains":["beta.com","gamma.com"],"end_user_ref":"Acme Co"}'

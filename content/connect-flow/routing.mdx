@@ -33,7 +33,11 @@ curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/power:default \
 ```
 
 A connection can override it with its own origin
-(`POST /v1/connections/{id}/power` with `{ "application_url": "https://..." }`).
+(`POST /v1/connections/{id}/power` with `{ "application_url": "https://..." }`,
+or `application_url` when it is created). Serving through the edge is part of
+the Growth plan and up: on a plan without it, the default origin, a
+connection's origin and an `application_url` at create are all refused with
+`402 plan_upgrade_required`.
 The edge uses the connection's origin first, then the application default; with
 neither it answers `421`, so set the default before your first customer
 connects. Send `"default_origin": ""` to clear the default.

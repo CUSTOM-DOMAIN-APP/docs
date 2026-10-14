@@ -138,7 +138,7 @@ of the async one-click consent.
 ## Re-apply on demand
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections/<ID>:reapply \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>:reapply \
   -H "Authorization: Bearer <WIDGET_JWT>"
 # → 200 { "connection_id": "<ID>", "reapplied": true, "records": [ … ] }
 #   (records re-written at the provider; connection re-verified)
@@ -176,7 +176,7 @@ managed lifecycle:
 To stop managing a connection **without disconnecting it**, drop the stored grant:
 
 ```bash
-curl -X DELETE http://localhost:8080/v1/connections/<ID>/grant \
+curl -X DELETE https://api.customdomain.ai/v1/connections/<ID>/grant \
   -H "Authorization: Bearer <WIDGET_JWT>"
 # → 200 { "connection_id": "<ID>", "managed": false }
 ```
