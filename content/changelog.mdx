@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
+  that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
+  in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's
+  `checkDomain` returns it as `advisories`. If you read `record_conflicts` for that kind, read `advisories`
+  too. See [Root domains](/docs/dns/root-domains).
 - **A floating checklist while you set up DNS by hand.** On desktop Chrome and Edge, **Open panel** now also opens a
   small window that stays on top with the live record tracker, so you can see what you are copying and whether a
   record has landed while you are on your DNS provider's site. Other browsers behave as before. Embedders can turn it
