@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
+  that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
+  in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's
+  `checkDomain` returns it as `advisories`. If you read `record_conflicts` for that kind, read `advisories`
+  too. See [Root domains](/docs/dns/root-domains).
 - **SPF override is honoured, and the Google Cloud sign-in is held.** `override_spf` on a connection now
   replaces the existing SPF record at the providers whose `spf_override_support` capability is `true`;
   everywhere else the record is merged into, as before. Sign in with Google Cloud is not offered on the
