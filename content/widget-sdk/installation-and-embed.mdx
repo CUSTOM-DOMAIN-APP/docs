@@ -85,14 +85,15 @@ Pick one way to load the SDK.
 | Way | How | Current version |
 | --- | --- | --- |
 | Hosted script (no build step) | `<script src="https://app.customdomain.ai/widget-assets/customdomain-sdk.js"></script>` attaches `window.customdomain` | Always the latest build |
-| npm | `npm install customdomain-js` | 0.5.1 |
-| React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.1 |
+| npm | `npm install customdomain-js` | 0.5.4 |
+| React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.4 |
 
 <UsageStats />
 
 `getToken`, `wwwRedirect` and `onFallback` need `customdomain-js` 0.5.0 or
-newer. `removeDomain()`, `onRemoved` and the `customdomain:removed` event are
-in the hosted script but are not in the npm packages yet (0.5.1 has neither).
+newer; `removeDomain()`, `onRemoved` and the `customdomain:removed` event need
+0.5.2 or newer; `CustomDomainError.status` and the full `checkDomain` result
+need 0.5.4. The hosted script always has all of them.
 
 ```js
 import { customdomain } from "customdomain-js";
@@ -127,6 +128,13 @@ document.getElementById("connect").addEventListener("click", async () => {
 `open()` returns `{ close }` so you can dismiss the modal programmatically. Only
 one modal is shown at a time. The default control-plane and widget hosts can be
 overridden with `apiBase` / `widgetBase` (e.g. for a staging environment).
+
+`onError` receives a `CustomDomainError`: `{ code, message, details?, status? }`.
+`status` is the HTTP status of the control plane response the error came from,
+and it is unset when the widget itself raised the error. A `status` of 429 or
+any 5xx is safe to retry after a moment; any other 4xx gives the same answer
+until the token, domain or records change. `checkDomain` and `checkRecords`
+throw the same class.
 
 ## React
 
@@ -163,11 +171,11 @@ export function ConnectDomainButton({ userId }) {
 }
 ```
 
-`useCustomdomain` returns `{ open, purchaseDomain, close, ready }`. The package
+`useCustomdomain` returns `{ open, purchaseDomain, removeDomain, close, ready }`. The package
 also exports `<CustomdomainConnect>`, a component that opens the flow when it
 mounts. Callbacks: `onSuccess`, `onClose`, `onStep` (the bare step name),
-`onStepChange` (the full detail), `onDocClick`, `onRequestClose`, `onShared`
-and `onPurchase`; `onError`, `onFallback` and the other `open()` options are
+`onStepChange` (the full detail), `onDocClick`, `onRequestClose`, `onShared`,
+`onPurchase` and `onRemoved`; `onError`, `onFallback` and the other `open()` options are
 passed through to the SDK.
 
 ## Embedded mode
