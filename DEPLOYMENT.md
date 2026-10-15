@@ -86,22 +86,22 @@ permanent `308` (`permanent: true` in `apps/app/next.config.ts`). Check it with
 
 Each is a deliberate decision for a human, and none blocks a docs change.
 
-1. **`sync-to-product.yml`.** On every push to `main` that touches `content/`,
-   this repo's workflow copies `content/` over the product repo's docs mirror and
-   force-pushes the result to a `docs-sync` branch there (never to its `main`). The
-   workflow cannot open the PR (a deploy key has no API access), so after docs merge
-   a maintainer with product repo access runs `scripts/docs-sync-pr.sh` there, which
-   checks the branch and opens the PR for a person to review and merge. Before it
-   pushes, the workflow fails the run, naming the component, if the content uses one
-   that the product app does not register (that would break the product build).
-   Nothing renders that mirror, because the redirect fires first. Whether to keep or
-   retire the workflow is a separate call.
+1. **Product export.** The product repo no longer mirrors `content/`. It keeps only
+   `apps/app/src/content/llms/pages.json`, a slim text export that its `/llms/<slug>`
+   route serves to agents. After docs merge, a maintainer runs `scripts/docs-sync-pr.sh`
+   in the product repo; it clones this repo, rebuilds the export and opens a PR for a
+   person to review and merge. The old `sync-to-product.yml` workflow and its deploy key
+   were retired on 15 October 2026; the `SYNC_SSH_KEY` secret and the deploy key on the
+   product repo can be deleted.
 2. **Old in-app links.** A few links inside the product app still point at the
    in-app `/docs` path. They keep working through the redirect, with one extra
    hop. Pointing them straight at `https://docs.customdomain.ai` is cosmetic.
 3. **The vendored API spec and reference.** `site/openapi-v1.yaml` is a
    hand-vendored copy of the product repo's `apps/app/openapi-v1.yaml`, and
-   `content/api-reference/**` (every page except `index.mdx`) is generated from
-   that spec in the product repo. Both are copied here by hand, together, when the
+   `content/api-reference/**` (every page except `index.mdx`) was generated from
+   that spec by `gen:api` in the product repo. That script was removed on 15 October
+   2026 with the product's docs tree, so the reference pages are now edited here by
+   hand, or regenerated with `fumadocs-openapi`'s `generateFiles` (already a site
+   dependency) if a generator is added to `site/`. Both change together when the
    API changes. No check compares them with the product today, so a missed copy
    shows up only as a stale reference page.

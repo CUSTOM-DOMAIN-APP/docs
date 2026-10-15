@@ -9,9 +9,8 @@ restarting `next dev` (or shipping a new container) is the whole update loop.
 ## Why this exists
 
 Docs used to be rendered only inside `apps/app` (the main product) in the
-`custom-domains` repo, synced in one direction from this repo's `content/` via
-`.github/workflows/sync-to-product.yml`. That workflow still exists and still
-runs, but nothing renders its output any more: this app is what serves
+`custom-domains` repo, synced in one direction from this repo's `content/` by a workflow that was
+retired on 15 October 2026, together with the product's copy of the docs. This app serves
 `docs.customdomain.ai` today, straight from this repo, and `apps/app/docs*`
 permanently redirects here. See `../DEPLOYMENT.md` for the production
 deployment and the follow-ups still open.
@@ -70,6 +69,5 @@ and the `.next/standalone` server serves `/docs`, `/docs/<slug>`,
   the existing content with basic nav/search, not a redesign.
 - No CMS, no MDX authoring UI: content is still hand-edited MDX in
   `../content`, same as before.
-- No changes to `sync-to-product.yml`: that workflow still runs, but nothing
-  renders what it produces; retiring it is a separate call (see
-  `../DEPLOYMENT.md`).
+- The old `sync-to-product.yml` workflow is retired; the product repo keeps only a
+  slim agent export (see `../DEPLOYMENT.md`).
