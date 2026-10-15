@@ -64,10 +64,6 @@ and Unstoppable Domains) is used once to write the records and then dropped,
 which means we cannot repair those records later without asking again. See
 [Managed connections](/docs/connect-flow/managed-connections#managed-sign-in-grants).
 
-A self-hosted deployment offers each sign-in once it has registered an app with
-that provider, and keeps none of them unless it lists the provider in
-`OAUTH_MANAGED_PROVIDERS`; see
-[Signing in with the provider](/docs/dns/provider-setup#signing-in-with-the-provider).
 
 ### Built, but not switched on yet
 
@@ -87,8 +83,7 @@ today, so none of them appears in the console or the widget:
 - **Sign in with Google Cloud**: held on the hosted service until Google
   verifies the app, so it is not offered to anyone there. Google Cloud DNS
   connects with a project ID and an access token (see
-  [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns)). A
-  self-hosted deployment that registers its own Google client gets the sign-in.
+  [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns)).
 
 ### Speaks one-click setup, but has not onboarded our templates
 
@@ -180,7 +175,7 @@ the credential is created, and lists the steps; see
 | Zone.ee | ZoneID username and API key | The key can change every zone in the account, so make one just for this. |
 
 `34.192.32.132` is the address the hosted service's DNS writes come from
-(the control plane's `CONNECT_CLIENT_IP`); a self-hosted deployment uses its own.
+(the control plane's `CONNECT_CLIENT_IP`).
 
 Plesk, DirectAdmin and Exoscale are chosen by the customer, and nothing detects
 them from a domain's nameservers. Plesk and DirectAdmin run on a hosting company's
@@ -202,7 +197,7 @@ The BYO-token rail writes a connection's records with the customer's own
 credential:
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections/<ID>/apply \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/apply \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{

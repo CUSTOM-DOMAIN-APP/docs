@@ -29,8 +29,7 @@ GleSYS, Openprovider, NS1, Scaleway or Exoscale (an IAM policy with an IP condit
 last two). A Plesk or DirectAdmin server must accept calls from it too, since a host can
 limit its API to listed addresses and a firewall may block the rest. Moniker takes
 the address once, when its support team issues the key, rather than through a self-serve
-list. A self-hosted deployment uses its own address (the control plane's
-`CONNECT_CLIENT_IP`).
+list.
 
 ## Registrars and DNS hosts
 
@@ -129,18 +128,8 @@ project that holds the zone, signed in with the DNS Administrator role, run
 `gcloud auth print-access-token`, and paste the token with the project ID. The
 token expires within an hour, so it is used once and never kept.
 
-On the hosted service, use the project ID and access token above. The Google
-Cloud DNS sign-in is not offered to anyone there until Google verifies the app.
-
-A self-hosted deployment that registers its own Google client gets **Sign in
-with Google Cloud**, which skips all of the above: sign in with the Google
-account that can edit the zone, and we find the project that holds it among the
-projects that account can see. The zone must be a public Cloud DNS zone (a
-private zone is never used) in a project that account can edit, and there must
-be only one such zone for the domain; otherwise the sign-in says which account
-you used and what to change. While that client is in Google's Testing status,
-only the test users listed in its Google Auth Platform can sign in, and its
-refresh tokens expire after seven days.
+Use the project ID and access token above. The Google Cloud DNS sign-in is not
+offered until Google verifies the app.
 
 ### Azure DNS (`azuredns`)
 
@@ -258,16 +247,7 @@ Built, but not yet switched on for the hosted service:
 Until a sign-in is on, API keys, one-click setup and adding records by hand
 cover the same providers.
 
-A self-hosted deployment switches a sign-in on with the app's credentials:
-`OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` (for Google
-Cloud DNS, `OAUTH_GCPDNS_CLIENT_ID` and `OAUTH_GCPDNS_CLIENT_SECRET`), an
-OVHcloud application key and secret per region, or an entry in
-`MCP_SIGNIN_PROVIDERS` for an MCP server sign-in. Porkbun's approval needs
-none of these. Every sign-in also needs `OAUTH_STATE_KEY` and the page origins
-allowed to receive its result, `OAUTH_ALLOWED_RETURN_ORIGINS`.
-
-A sign-in is used once and dropped unless the deployment lists the provider in
-`OAUTH_MANAGED_PROVIDERS` and sets `GRANT_ENCRYPTION_KEY`. The hosted service
+A sign-in is used once and dropped unless it is kept. CustomDomain™
 keeps sign-ins at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
 Vercel and WordPress.com by default, encrypted, and the console's **Keep this
 sign-in** box lets you use one once instead. See

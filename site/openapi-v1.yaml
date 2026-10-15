@@ -1027,7 +1027,10 @@ paths:
                     Adds the two apex CAA records that authorize Let's Encrypt
                     (`issue` and `issuewild`) to the connection's desired
                     record set, skipping any already present. No separate CAA
-                    check is run against the domain's existing records.
+                    check is run against the domain's existing records. Edge
+                    routing only: a domain routed to your own infrastructure
+                    (a connect target) gets its certificate there, so no CAA
+                    records are added for it.
                 monitor:
                   type: boolean
                   default: true
@@ -1081,6 +1084,16 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            `apex_not_supported`: the domain is a root domain, the application routes
+            to its own infrastructure, the domain's DNS provider has no ALIAS-style
+            record, and the application has no `apex_ipv4` to use instead. Connect a
+            subdomain such as `www`, or add root addresses to the application's
+            routing (`PUT /applications/{id}/connect-target`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     get:
       operationId: listConnections
       summary: List connections
@@ -2186,6 +2199,77 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "A failed connection cannot be retried because the same application already has another active connection for this domain; retry that one instead" }
+  /connections/{id}:retarget:
+    post:
+      operationId: retargetConnection
+      summary: Move a domain to its application's current routing, or back to the edge
+      tags: [Connections]
+      description: >-
+        A connected domain keeps the routing it connected with when its
+        application's routing changes (domains still waiting for DNS follow the
+        change). This moves one: the domain's expected records become those of
+        the application's current routing, or with `{"to": "edge"}` those of the
+        CustomDomain™ edge whatever the application's routing (the way back for a
+        domain moved off the edge by mistake). The body is optional.
+
+
+        The customer's DNS is not changed. A moved domain goes back to
+        `pending` with a fresh verification clock, is checked at once (a domain
+        whose DNS already names the new place is `live` again in the response's
+        `status`), and otherwise waits for its records (returned in `records`);
+        drift is not reported while it waits. Moving a live domain off the edge
+        stops edge serving at once (`stops_edge_serving`).
+
+
+        A no-op (`moved: false`) when the domain already points there. Refused
+        (409) when the domain's records are stored: records your backend
+        supplied (change them with `PUT /connections/{id}/records`) or records
+        written into the customer's DNS during setup (disconnect and reconnect
+        to move it). A server-side API key or an agent token only: a widget
+        token is refused (403). Recorded in the audit log as
+        `connection.retargeted`.
+      security:
+        - apiKey: []
+        - agentToken: ['domains:connect']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  enum: [application, edge]
+                  default: application
+                  description: Where to move the domain.
+      responses:
+        '200':
+          description: The domain's routing after the move, and its records from now on.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connection_id, moved, routing, records, customer_action_required, stops_edge_serving]
+                properties:
+                  connection_id: { type: string }
+                  moved: { type: boolean }
+                  routing: { $ref: '#/components/schemas/ConnectionRouting' }
+                  previous_routing: { $ref: '#/components/schemas/ConnectionRouting' }
+                  records:
+                    type: array
+                    items: { $ref: '#/components/schemas/DnsRecord' }
+                  customer_action_required: { type: boolean }
+                  stops_edge_serving: { type: boolean }
+                  status:
+                    $ref: '#/components/schemas/ConnectionStatus'
+                    description: The domain's status after the move.
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /connections/{id}/oauth:start:
     post:
       operationId: startConnectionOAuth
@@ -2821,7 +2905,9 @@ paths:
         against the provider's API first (remembered for a few minutes), and a
         provider that has not onboarded it is refused with a `503` that names it.
         A root domain uses `apex-a` (an `A` record to the edge address, which needs
-        `APEX_A_TARGETS`). The sync `apply_url`
+        `APEX_A_TARGETS`). Our templates point domains at the edge, so a domain
+        routed to your own infrastructure is refused with `422 custom_routing`.
+        The sync `apply_url`
         carries a signed `redirect_uri` back to `/connect/dc/return/{state}`
         whenever the template allows it; pass `return_origin` on a sync start to
         have that return page post the outcome to your page.
@@ -2901,7 +2987,10 @@ paths:
             template is `hostRequired` (or no apex-capable template is loaded):
             retry without `service_id`, or pass a `host` to set up a subdomain
             instead. `InvalidNameservers` means the domain has no usable NS
-            delegation.
+            delegation. `custom_routing` means the domain is routed to your own
+            infrastructure (its `routing.mode` is `custom`) and the templates
+            point domains at the CustomDomain™ edge: add the records manually or
+            with a provider API key.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -4747,7 +4836,8 @@ paths:
       tags: [Applications]
       description: >-
         `mode: edge` (the default) points customer domains at the platform edge,
-        which proxies their traffic (Power). `mode: custom` points them at your
+        which proxies their traffic to your origin (Power, Growth plan and up,
+        once a default origin is set; without one the edge answers 421). `mode: custom` points them at your
         own infrastructure: subdomains get a CNAME to `cname_target`; a root
         domain gets an ALIAS, ANAME or flattened CNAME to it on providers that
         have one, and A records to `apex_ipv4` elsewhere. `edge` echoes what edge
@@ -4774,8 +4864,21 @@ paths:
         public IPv4 addresses) is what root domains get on DNS providers with no
         ALIAS-style record; without it such roots cannot be pointed at a
         hostname and `POST /domains:check` reports `apex_strategy: unsupported`.
-        Existing connections pick up the new target for any record set that
-        has not been written yet.
+
+
+        Applies to new connections and to domains still waiting for DNS
+        (pending or failed, with no records supplied or written for them).
+        Connected domains keep the routing they connected with (their
+        `routing` field); move one with `POST /v1/connections/{id}:retarget`.
+        `existing_domains` in the response counts both.
+
+
+        Refused (400) when `cname_target` resolves to the platform edge (a
+        CNAME to it, or one of its addresses), or when `apex_ipv4` lists an
+        edge address: such domains would verify but never be served. A
+        `cname_target` that does not resolve yet, or a target with no
+        `apex_ipv4`, is accepted with a `warnings` entry. Every change is recorded in the audit log
+        (`app.routing_set`, `app.routing_cleared`).
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6319,6 +6422,20 @@ components:
             free domain, the quota or billing. Fixed when the application is
             created. Omitted (treated as `false`) on a live application.
         created_at: { type: string, format: date-time }
+    ConnectionRouting:
+      type: object
+      required: [mode, set_at]
+      properties:
+        mode:
+          type: string
+          enum: [edge, custom]
+          description: '`edge`: records point at the CustomDomain™ edge. `custom`: at your own infrastructure.'
+        cname_target: { type: string, description: 'For `custom`: the hostname subdomains and ALIAS-capable roots point at.' }
+        apex_ipv4:
+          type: array
+          items: { type: string }
+          description: 'For `custom`: the addresses roots get on DNS providers with no ALIAS-style record.'
+        set_at: { type: string, format: date-time, description: When this routing was recorded for the domain. }
     ConnectTarget:
       type: object
       required: [cname_target]
@@ -6344,6 +6461,28 @@ components:
             apex_ipv4:
               type: array
               items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+          description: >-
+            Advisory notes on a target just saved (PUT only): that
+            `cname_target` does not resolve yet, or that with no `apex_ipv4`
+            root domains at providers with no ALIAS-style record cannot connect.
+        existing_domains:
+          type: object
+          required: [moved, kept]
+          description: >-
+            What a PUT did to the application's existing domains (PUT only).
+            Domains already on the new routing are in neither count.
+          properties:
+            moved:
+              type: integer
+              description: Domains still waiting for DNS that took the new routing.
+            kept:
+              type: integer
+              description: >-
+                Connected domains (and domains whose records were supplied or
+                written) that keep pointing where they do.
     ConnectionDiagnosis:
       type: object
       required: [connection_id, domain, zone, status, all_found, records, issues]
@@ -7136,6 +7275,16 @@ components:
             max(created_at, retried_at): a revived connection gets a fresh
             window from here, not from its original creation. Absent when it
             was never retried.
+        routing:
+          allOf:
+            - $ref: '#/components/schemas/ConnectionRouting'
+          description: >-
+            Where this domain points: its application's routing when the
+            connection was created. A change to the application's routing moves
+            it only while it is still waiting for DNS; once connected it keeps
+            this until `POST /v1/connections/{id}:retarget` moves it. Omitted
+            only for a connection created before this was recorded, which
+            follows its application's current routing.
         records_source:
           type: string
           enum: [integrator]
@@ -7427,7 +7576,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -7438,7 +7587,10 @@ components:
             has not onboarded our template. `redirect_unavailable`: the
             provider requires our return link on a one-click apply and the
             template cannot carry it yet. `rail_disabled`: the sync rail is
-            off in this deployment. `no_adapter`: no write adapter for the
+            off in this deployment. `custom_routing`: the application routes
+            domains to its own infrastructure (a connect target) and the
+            one-click templates point domains at the CustomDomain™ edge.
+            `no_adapter`: no write adapter for the
             API-key rail. `unregistered` / `platform_subdomain`: the domain is
             blocked (see `blocked_reason`). For `rails.cloud_browser` only:
             `provider_not_listed` (no script for this provider, or the
@@ -7650,10 +7802,22 @@ components:
                 description: Human-readable, with the available alternatives named.
         record_conflicts:
           type: array
+          description: 'Existing DNS records the automatic write would REPLACE (value-mismatch / cname-collision / spf-merge). Counts toward will_fallback_to_manual.'
           items:
             type: object
             properties:
               kind: { type: string, description: 'value-mismatch | cname-collision | spf-merge' }
+              host: { type: string }
+              type: { type: string }
+              existing: { type: string }
+              desired: { type: string }
+        advisories:
+          type: array
+          description: 'Non-destructive advisories (e.g. a CAA record that blocks Let''s Encrypt, or an SPF to merge). Kept SEPARATE from record_conflicts so they never count toward will_fallback_to_manual and can be rendered as authorize/merge rather than "will be replaced".'
+          items:
+            type: object
+            properties:
+              kind: { type: string, description: 'caa-blocks-letsencrypt | spf-merge' }
               host: { type: string }
               type: { type: string }
               existing: { type: string }

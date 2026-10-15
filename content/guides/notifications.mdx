@@ -119,12 +119,3 @@ workspace. Your browser's user agent is read to make that name and is not
 kept. **Remove** deletes them. The bell's notifications are kept for about four
 months. See the [privacy policy](https://app.customdomain.ai/privacy) for the
 rest.
-
-## Self hosting
-
-The bell works with no setup. Push needs a VAPID key pair: run
-`scripts/generate-vapid-keys`, store `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY` and
-`VAPID_SUBJECT` as described in
-[configuration](/docs/self-hosting/configuration), and rebuild the console image,
-because the public key is baked into the build. With no keys the push controls
-stay hidden and the bell still works.

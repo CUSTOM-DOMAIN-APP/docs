@@ -17,8 +17,6 @@ with a drop-in widget and a REST API.
   watches propagation.
 - **Secure**: the edge issues a TLS certificate **on demand during the
   handshake**, but only for hostnames a live/propagating connection has authorized.
-  (A self-hosted edge uses Let's Encrypt **staging**, whose certificates browsers do not
-  trust, until it is run with `EDGE_ACME_PROD` set to any non-empty value.)
 - **Serve**: the edge reverse-proxies the custom domain to your origin.
 - **Monitor**: webhooks, a developer console, usage metering, and DNS-drift
   detection keep you informed after go-live.
@@ -43,7 +41,6 @@ See [Concepts](/docs/concepts/architecture) for the full model.
 | Provision domains from your server | [API](/docs/getting-started/api) |
 | Let your customers connect their domains in your UI | [Widget](/docs/getting-started/widget) |
 | Drive it from an agent | [MCP](/docs/getting-started/mcp) |
-| Run the stack yourself | [Self-hosted quickstart](/docs/getting-started/quickstart) |
 | Understand connections, rails, and status | [Concepts](/docs/concepts/architecture) |
 | Authenticate API calls and the widget | [Authentication](/docs/authentication/overview) |
 | Embed the connect modal | [The widget SDK](/docs/widget-sdk/overview) |

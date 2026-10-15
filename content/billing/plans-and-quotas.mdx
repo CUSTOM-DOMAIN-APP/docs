@@ -9,8 +9,10 @@ The public catalog is returned by `GET /v1/plans` (along with a
 `billing: { configured, mode, trial_days }` block).
 
 Entitlements gate which products a tenant may use. **Enforced today:** `Power`
-(the `/v1/connections/{id}/power*` surface) and `Secure` (the `/v1/ssl*`
-surface); an unentitled tenant gets `402 plan_upgrade_required`. `WhiteLabel`
+(serving domains through the CustomDomain™ edge: the `/v1/connections/{id}/power*`
+surface, the application's default origin, and an `application_url` sent with
+`POST /v1/connections`) and `Secure` (the `/v1/ssl*` surface); an unentitled
+tenant gets `402 plan_upgrade_required`. `WhiteLabel`
 (widget branding) is enforced by dropping the branding, as described below.
 `Connect` is included on every plan and needs no gate. `Monitor` is listed as an entitlement on Premium and Enterprise, but nothing
 enforces it: every connection that has `monitor` on (the default) is monitored, on every plan. The deployment-level
@@ -395,7 +397,7 @@ start the checkout again with the new one (or none) and mount the new
 `client_secret`.
 
 ```bash
-curl -X POST http://localhost:8080/v1/billing/checkout \
+curl -X POST https://api.customdomain.ai/v1/billing/checkout \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
   -d '{"plan":"starter","return_url":"https://app.acme.example/done","promotion_code":"LAUNCH50"}'
 ```
@@ -448,8 +450,7 @@ expired or unpaid session leaves the tenant exactly where it was.
 > failures and cancellations never reach the workspace's state.
 
 > **Operators: set `STRIPE_PRODUCT_IDS`** (comma separated `prod_...` ids) on
-> every deployment that makes promotion codes, including a self-hosted one with
-> its own Stripe account. The Stripe account may be shared with other products,
+> every deployment that makes promotion codes. The Stripe account may be shared with other products,
 > and a coupon without a product list would discount all of them, so with it
 > empty, making a promotion code in the operator console is refused (`503`) and
 > creates nothing. The same ids decide which hand-made Stripe codes customers can redeem. To turn

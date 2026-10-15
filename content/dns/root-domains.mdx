@@ -22,9 +22,7 @@ things, and which one depends entirely on the DNS provider:
   GoDaddy, IONOS, OVH, DigitalOcean, Name.com, deSEC (no root `CNAME` and no
   `ALIAS`), Route 53 (whose alias records only reach AWS resources), and most
   registrar panels. The console, the widget and the API show the exact `A`
-  records to add. (A self-hosted deployment publishes its addresses with
-  `APEX_A_TARGETS`; without them, these providers can only connect `www` or a
-  subdomain.)
+  records to add.
 
 ## What the widget does with a root domain
 
@@ -80,6 +78,13 @@ at GoDaddy gets `A` records, at Cloudflare gets a flattened `CNAME`.
   it.
 - **Manual** shows whichever records the provider can hold.
 
+A domain on [your own infrastructure](/docs/connect-flow/routing#your-own-infrastructure)
+follows the same provider rules with your hostname and `apex_ipv4` in place of
+the edge's: an `ALIAS`-style record to your hostname where the provider has
+one, otherwise `A` records to `apex_ipv4`. Without `apex_ipv4`, a root at a
+provider with neither is refused when the connection is created
+(`422 apex_not_supported`); connect `www` instead.
+
 ## `www` and the root together
 
 Most products want both `acme.com` and `www.acme.com` to work. Create the
@@ -99,9 +104,11 @@ bare root then does nothing until a root record exists.
 TLS issues the same way for a root as for a subdomain: once the records
 resolve to the edge, issuance happens on first request. A `CAA` record at the
 root that doesn't authorize Let's Encrypt blocks issuance for the whole zone;
-the check reports this as a `record_conflicts` entry of kind
+the check reports this in `advisories`, as an entry of kind
 `caa-blocks-letsencrypt`, and the fix is to **add** a `CAA` record for
-`letsencrypt.org` alongside the existing ones, never to remove them.
+`letsencrypt.org` alongside the existing ones, never to remove them. It is an
+advisory and not a `record_conflicts` entry because nothing is replaced: it
+never counts toward `will_fallback_to_manual`.
 
 ## Common mistakes
 

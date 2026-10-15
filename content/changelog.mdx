@@ -22,6 +22,51 @@ never change meaning or disappear without a new major version. See the
   The tool call limit (5 a second, bursts of 20) is counted per credential for API keys and per workspace for agent
   tokens, and the `confirm` check on `disconnect-domain` currently compares the domain only for agent tokens. The page
   also lists every fallback error code.
+- **Edge serving is on Growth, bought domains follow routing, and the docs cover the hosted service only.**
+  `POST /v1/connections` with an `application_url` now needs the Growth plan or above (`402
+  plan_upgrade_required` otherwise), like the application's default origin and a connection's own origin. A
+  domain bought through CustomDomain™ is registered pointing where its application sends domains, the edge or
+  your own infrastructure. Running the platform yourself is no longer documented: the self-hosted quickstart
+  and the self-hosting pages are gone, and the examples use `https://api.customdomain.ai`. See
+  [Plans and quotas](/docs/billing/plans-and-quotas) and [Buying a domain](/docs/sell/buying-a-domain).
+- **Connected domains keep where they point.** Changing where an application's domains point
+  (`PUT /v1/applications/{id}/connect-target`) now reaches new domains and domains still waiting
+  for DNS, and leaves connected domains where they are. Before, it changed the records every
+  hand-configured domain was checked against, so live domains on the edge could stop being served
+  while their DNS still pointed there. Every connection has a `routing` field, and
+  `POST /v1/connections/{id}:retarget` moves one domain to the application's current routing (or
+  back to the edge with `{"to": "edge"}`) and checks it again. A target that is the edge under
+  another name is refused, and the save warns when the hostname does not resolve yet or no root
+  addresses are given. Domain Connect and Let's Encrypt CAA records are for the edge only. A root
+  domain on your own infrastructure that its DNS provider cannot point at a hostname is refused at
+  create (`422 apex_not_supported`) when the application has no root addresses, and a root on an
+  `ALIAS`-style record is found when it answers with one of them. The SDK's `dnsRecords` option
+  carries DKIM records only, and now says so in the console when it is given others. See
+  [Where domains point](/docs/connect-flow/routing).
+- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
+  that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
+  in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's
+  `checkDomain` returns it as `advisories`. If you read `record_conflicts` for that kind, read `advisories`
+  too. See [Root domains](/docs/dns/root-domains).
+- **The welcome ends on your build screen.** The widget code or the AI prompt is the last step. **Try it now**
+  opens **Run your first connection**, and **MCP and agents** opens the AI setup.
+- **Let your AI add CustomDomain™ for you.** Pick the agent you use and the welcome shows how to add CustomDomain™ to
+  it. Say in one sentence what your customers should be able to do, or take ours, then copy one prompt. It has your
+  application ID and the docs your agent needs, and never your API key.
+- **The widget code, step by step, in the welcome.** Choose **I am writing the code** and the welcome walks you through
+  four steps, each with a copy button: your key, a token route on your server (Node.js, Python or cURL), the widget for
+  your framework (React, Next.js, Vue 3, Svelte, Angular or HTML) with your application ID filled in, and handling the
+  result. Your API key never goes into the code you copy: the server code reads it from your environment. Then pick
+  where to keep building, or **Try it now**.
+- **Run your first connection.** The Overview's go-live list now starts with one choice of four: see the widget as
+  your customers do, connect a domain you own (your first 10 domains are free), try the whole flow in test mode, or
+  copy a prompt that lets your AI agent connect a domain. It also opens once by itself after the welcome.
+
+- **A quicker start for products that embed the widget.** After your brand, the welcome asks one thing: are you
+  writing the code, or is your AI? Each choice shows about how long it takes and the tools it works with, and the same
+  screen has your application ID and your default key to copy if you just want to start. Every step after the first
+  question now has **Skip to dashboard**, every step has its own address (a refresh stays on it), and the browser's
+  Back goes where the **Back** button does.
 - **SPF override is honoured, and the Google Cloud sign-in is held.** `override_spf` on a connection now
   replaces the existing SPF record at the providers whose `spf_override_support` capability is `true`;
   everywhere else the record is merged into, as before. Sign in with Google Cloud is not offered on the

@@ -56,10 +56,12 @@ A completed purchase fires the `domain.purchased`
 A purchased domain behaves exactly like a domain you brought yourself:
 
 - it **appears in the Domains console** automatically;
-- it is **auto-connected**: the fresh zone gets an apex record pointing at the
-  edge (an `ALIAS` or `A` records, whichever the registrar accepts at the apex),
-  so the connection starts moving `pending → propagating → live` immediately,
-  with no setup step;
+- it is **auto-connected**: the fresh zone gets an apex record pointing
+  [where your application sends its domains](/docs/connect-flow/routing): the
+  edge, or your own infrastructure's hostname (an `ALIAS` or `A` records,
+  whichever the registrar accepts at the apex; on your own infrastructure the
+  `A` records go to your `apex_ipv4`), so the connection starts moving
+  `pending → propagating → live` immediately, with no setup step;
 - it is **manageable via the same connections API**: records, status,
   webhooks, and [offboarding](/docs/connect-flow/offboarding) are identical.
 

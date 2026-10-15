@@ -84,9 +84,6 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
 # → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
-On a self-hosted stack the base URL is your own control plane, for example
-`http://localhost:8080`.
-
 - `POST /v1/tokens` is **not** bearer-authenticated. It authenticates by the
   `client_secret` in the body, which is why it must run server-side only. A
   wrong or unknown secret is `401`.
@@ -98,8 +95,7 @@ On a self-hosted stack the base URL is your own control plane, for example
 
 ## Lifetime
 
-- The default lifetime is 15 minutes (`expires_in` is in seconds; self-hosted
-  deployments change it with `JUSTEASY_TOKEN_TTL`). Adding DNS records by hand
+- The default lifetime is 15 minutes (`expires_in` is in seconds). Adding DNS records by hand
   often takes longer than that, so give the widget a way to get a fresh token.
   See [Keeping a session alive](#keeping-a-session-alive).
 

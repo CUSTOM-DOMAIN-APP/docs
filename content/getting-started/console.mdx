@@ -25,9 +25,7 @@ verification email is sent and its link (valid for **one hour**) must be
 clicked before you can reach the console: unverified accounts can't sign in
 or create API keys. You'll see a *Check your email* screen with **Resend the
 link**, and if your link expired, signing in re-sends a fresh one
-automatically. (Self-hosters: this strict mode is the
-`REQUIRE_EMAIL_VERIFICATION` policy. The production deployment defaults it to
-enforced; unset it only if you deliberately want immediate activation.) Google
+automatically. Google
 and GitHub follow the same rule: if the provider has not confirmed your email
 address, you land on *Check your email* and the link we send finishes the sign
 in. A provider that has not confirmed the address also cannot sign in as an
@@ -54,16 +52,20 @@ do the same any time under **Settings, Security**.
 ## 2. Tell us who the domains are for
 
 The first time you sign in, the welcome asks one question: who are the domains
-for? It is one click, and it sets up the steps that suit you. There is no skip:
-the question is short, and every step after it has **Not now**, which moves on and
-leaves that item on the checklist on **Overview** for later.
+for? It is one click, and it sets up the steps that suit you. The question needs
+an answer. Every step after it has **Skip to dashboard** at the bottom right,
+which takes you to the console; what is left stays on the checklist on
+**Overview**, and **Change my answers** there opens the welcome again. A step
+whose own button does the work also has **Not now**, which moves on to the next step.
 
 | You pick | The steps after the question |
 | --- | --- |
-| **My customers** (you run a product and want your users to bring their own domains) | About you, your brand with a live preview on the real widget, how you will add it to your product (optional), then the widget code |
+| **My customers** (you run a product and want your users to bring their own domains) | About you, your brand with a live preview on the real widget, then who writes the code: **I am writing the code** or **My AI writes the code**. The same screen shows your application ID and your default key to copy. Then the widget code, or for your AI, the setup for the agent you use and one prompt to copy (it has your application ID, never your key). That is the last step |
 | **My clients, or many of my own** | A box to paste your domains into, with a client's name beside each (or one domain, if that is all you have). See [Many domains, and whose they are](#many-domains-and-whose-they-are) |
 | **Just me** (a domain you own) | Your domain, with an option to set up email on it in the same step |
 | **Not sure yet** | A short list of things to try (connect a domain of your own, preview the widget with your brand, let an AI agent connect domains), then the path of the one you pick |
+
+**I am writing the code** shows the widget code in four steps, each with a copy button: your key, a token route on your server, the widget for your framework with your application ID filled in, and the result. Then pick where to keep building, or **Try it now**.
 
 Under the cards, **Also let an AI agent connect and manage domains for me** adds
 one more step, **Give your agent access**, to any of them. Pick the agent you use
@@ -96,7 +98,9 @@ one when you have it. When something is left, it says what and who can do it:
 anyone with access to your DNS host can finish it.
 
 Your place and answers are saved on every step, so closing the tab and coming
-back resumes where you left off, and a domain you already connected shows as
+back resumes where you left off. Each step has its own address
+(`/welcome?step=brand`), so a refresh stays on it and the browser's Back goes
+where the **Back** button does, and a domain you already connected shows as
 connected. The last screen shows what you have and the one next action, with a
 few more to start with. While a domain waits for its DNS records it also offers to
 ping you when it is live, with **Notify me** and **Not now**: your browser asks only
@@ -123,7 +127,7 @@ not when you visited a page, and each row says what was checked:
 | Row | Done when |
 | --- | --- |
 | **Start your free trial** (owners and admins) | Billing is set up and a trial or a plan is running. A card starts the 14 day trial and nothing is charged until it ends. Creating API keys needs it |
-| **Try the widget with your own domain** | A domain connected through the widget is live. It is a real domain and counts as one of your domains, which is why this row says so. With no domain of your own to try it on, **Try test mode** opens the same widget on made up `.test` names; they use nothing, and the row stays open until a real domain is live |
+| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live. A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in test mode on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
 | **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count |
 | **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Growth plan) |
 | **Get told when a domain goes live** | A webhook delivery was answered with a success status |
