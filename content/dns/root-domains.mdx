@@ -22,9 +22,7 @@ things, and which one depends entirely on the DNS provider:
   GoDaddy, IONOS, OVH, DigitalOcean, Name.com, deSEC (no root `CNAME` and no
   `ALIAS`), Route 53 (whose alias records only reach AWS resources), and most
   registrar panels. The console, the widget and the API show the exact `A`
-  records to add. (A self-hosted deployment publishes its addresses with
-  `APEX_A_TARGETS`; without them, these providers can only connect `www` or a
-  subdomain.)
+  records to add.
 
 ## What the widget does with a root domain
 
@@ -79,6 +77,13 @@ at GoDaddy gets `A` records, at Cloudflare gets a flattened `CNAME`.
   template: the Domain Connect linter refuses one, so no provider would serve
   it.
 - **Manual** shows whichever records the provider can hold.
+
+A domain on [your own infrastructure](/docs/connect-flow/routing#your-own-infrastructure)
+follows the same provider rules with your hostname and `apex_ipv4` in place of
+the edge's: an `ALIAS`-style record to your hostname where the provider has
+one, otherwise `A` records to `apex_ipv4`. Without `apex_ipv4`, a root at a
+provider with neither is refused when the connection is created
+(`422 apex_not_supported`); connect `www` instead.
 
 ## `www` and the root together
 

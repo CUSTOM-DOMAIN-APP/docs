@@ -1,6 +1,6 @@
 ---
 title: Managed DNS
-description: "Point a domain's nameservers at CustomDomain™ once and every later record is written for you. How DNS hosting works, the API, the limits and self-hosting it."
+description: "Point a domain's nameservers at CustomDomain™ once and every later record is written for you. How DNS hosting works, the API and the limits."
 ---
 
 When a domain's DNS provider offers no sign-in, one-click or API rail, the
@@ -10,8 +10,7 @@ typing with one change the domain's owner makes once: set the domain's
 nameservers to CustomDomain™'s. From then on CustomDomain™ hosts the whole
 zone, and every record, now and later, is written automatically.
 
-On the hosted service, managed DNS is rolling out gradually; self-hosted
-deployments turn it on with `MANAGED_DNS_ENABLED`. Either way,
+Managed DNS is rolling out gradually, so
 `POST /v1/domains:check` tells you whether it is available for a domain, and
 the widget offers it only when it is.
 
@@ -238,54 +237,3 @@ A hosted zone can't alias a hostname outside it, so a root domain
 published apex addresses (`APEX_A_TARGETS`). A deployment without them can't
 host a root connection's records, and the zone says so in `warnings`; connect
 `www` instead. See [Root domains](/docs/dns/root-domains).
-
-## Running it yourself
-
-Managed DNS hosts zones in **Amazon Route 53**, one public hosted zone per
-domain.
-
-| Variable | |
-| --- | --- |
-| `MANAGED_DNS_ENABLED` | `1` to turn it on. Off by default. |
-| `MANAGED_DNS_AWS_ACCESS_KEY_ID` / `MANAGED_DNS_AWS_SECRET_ACCESS_KEY` | A dedicated IAM principal. Without it, production refuses and stays off; development hosts zones in memory (nothing is served). |
-| `MANAGED_DNS_DELEGATION_SET_ID` | Optional reusable delegation set: every zone gets the same four nameservers (the basis for branded nameservers). |
-| `MANAGED_DNS_MAX_ZONES_PER_TENANT` | Optional per-account zone cap (default 100). |
-
-Use a **dedicated AWS account**: IAM cannot scope `route53:*` to "zones this
-service created", so in a shared account the key could also change the
-platform's own zones. The minimal policy:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "CreateAndFindZones",
-      "Effect": "Allow",
-      "Action": ["route53:CreateHostedZone", "route53:ListHostedZonesByName"],
-      "Resource": "*"
-    },
-    {
-      "Sid": "ManageTheZones",
-      "Effect": "Allow",
-      "Action": [
-        "route53:GetHostedZone",
-        "route53:ListResourceRecordSets",
-        "route53:ChangeResourceRecordSets",
-        "route53:DeleteHostedZone"
-      ],
-      "Resource": "arn:aws:route53:::hostedzone/*"
-    }
-  ]
-}
-```
-
-With a reusable delegation set, also allow `route53:GetReusableDelegationSet`
-on `arn:aws:route53:::delegationset/*`.
-
-Apply migration `0044_managed_dns.sql` before turning the flag on. Route 53
-bills each hosted zone monthly (the first 25 zones cost more per zone than the
-rest) plus queries; an AWS account holds 500 hosted zones by default, which
-the per-account cap keeps you under. Zones are never deleted automatically:
-deleting a zone a domain still points at would take that domain offline, mail
-included.

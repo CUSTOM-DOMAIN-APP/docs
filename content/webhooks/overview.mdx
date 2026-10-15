@@ -103,7 +103,10 @@ Additional conditional fields ride connection events:
   `connection.applied` and `connection.records.updated` only; the events that just
   observe a connection never claim to have written anything.
 - `redirection_status`: `pending`, `success` or `failed` for the apex↔www
-  redirect, and present only on connections created with `www_redirect: true`.
+  redirect, and present only on connections created with `www_redirect: true`
+  whose domain is on the CustomDomain™ edge. A domain on
+  [your own infrastructure](/docs/connect-flow/routing#your-own-infrastructure)
+  omits it: the edge serves no redirect there, so the redirect is yours to serve.
 - `connection_id`: the connection the event is about, on connection,
   certificate and drift events.
 - `sandbox`: `true` on an event from a [test mode](/docs/guides/test-mode)

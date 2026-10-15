@@ -39,6 +39,10 @@ curl -X POST https://api.customdomain.ai/v1/connections \
   -d '{"domain":"shop.acme.com","application_url":"https://tenant-42.yourapp.com"}'
 ```
 
+`application_url` makes the CustomDomain™ edge serve the domain from that
+origin, which needs the Growth plan or above (`402 plan_upgrade_required`
+otherwise). Leave it out when your own servers serve the domain.
+
 `201` with the connection and its desired `records`. Re-posting the same
 domain returns the existing connection with `200`; if the only existing one is
 `failed`, it is revived and returned. Idempotent by design: call it on every

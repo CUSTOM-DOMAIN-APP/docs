@@ -15,6 +15,27 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **Edge serving is on Growth, bought domains follow routing, and the docs cover the hosted service only.**
+  `POST /v1/connections` with an `application_url` now needs the Growth plan or above (`402
+  plan_upgrade_required` otherwise), like the application's default origin and a connection's own origin. A
+  domain bought through CustomDomain™ is registered pointing where its application sends domains, the edge or
+  your own infrastructure. Running the platform yourself is no longer documented: the self-hosted quickstart
+  and the self-hosting pages are gone, and the examples use `https://api.customdomain.ai`. See
+  [Plans and quotas](/docs/billing/plans-and-quotas) and [Buying a domain](/docs/sell/buying-a-domain).
+- **Connected domains keep where they point.** Changing where an application's domains point
+  (`PUT /v1/applications/{id}/connect-target`) now reaches new domains and domains still waiting
+  for DNS, and leaves connected domains where they are. Before, it changed the records every
+  hand-configured domain was checked against, so live domains on the edge could stop being served
+  while their DNS still pointed there. Every connection has a `routing` field, and
+  `POST /v1/connections/{id}:retarget` moves one domain to the application's current routing (or
+  back to the edge with `{"to": "edge"}`) and checks it again. A target that is the edge under
+  another name is refused, and the save warns when the hostname does not resolve yet or no root
+  addresses are given. Domain Connect and Let's Encrypt CAA records are for the edge only. A root
+  domain on your own infrastructure that its DNS provider cannot point at a hostname is refused at
+  create (`422 apex_not_supported`) when the application has no root addresses, and a root on an
+  `ALIAS`-style record is found when it answers with one of them. The SDK's `dnsRecords` option
+  carries DKIM records only, and now says so in the console when it is given others. See
+  [Where domains point](/docs/connect-flow/routing).
 - **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
   that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
   in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's

@@ -83,7 +83,7 @@ records, but naming the `redirect` template and passing the destination as a
 variable:
 
 ```bash
-curl -X POST http://localhost:8080/v1/connections/<ID>/domainconnect:start \
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/domainconnect:start \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -d '{"service_id":"redirect","vars":{"redirectTarget":"https://new.example.com"}}'
 # → 200 { apply_url, service_id: "redirect", dc_provider }

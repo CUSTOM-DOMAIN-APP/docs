@@ -15,7 +15,7 @@ the product you are on, and they fail for different reasons.
   [connecting domains you do not control](#connecting-domains-you-do-not-control).
 
 If you only want the API, go to the
-[quickstart](/docs/getting-started/quickstart). If you want the deeper
+[quickstart](/docs/getting-started/overview). If you want the deeper
 treatment of why this is hard, the
 [setup guide](/docs/guides/set-up-a-custom-domain) covers the mechanics in
 detail and this page covers the connection itself.
@@ -72,10 +72,12 @@ There are three legitimate ways around it:
 
 - **`ALIAS` / `ANAME` / flattened `CNAME`.** A provider-specific record type
   that behaves like a `CNAME` but resolves to addresses at query time.
-  Cloudflare, Route 53, DNSimple and others support it under different names.
+  Cloudflare, DNSimple, Namecheap and others support it under different names
+  (a Route 53 alias can only point at AWS resources, so it cannot hold a
+  hostname elsewhere).
   This is the best option when you have it.
 - **`A` records to published addresses.** Legal at a root, and what you use when
-  your provider has no `ALIAS` type (GoDaddy and Namecheap, among others). The
+  your provider has no `ALIAS` type (GoDaddy, among others). The
   tradeoff is that the addresses are pinned: if the platform's addresses change
   and yours are hard-coded, the domain breaks.
 - **Connect `www` instead and redirect the root to it.** The least elegant and
@@ -149,7 +151,7 @@ or an OAuth flow, the records can be written for them rather than described to
 them, which removes the entire class of typo failures. That coverage varies by
 provider and is worth checking against your own customer base.
 
-This is the problem [CustomDomain™](/docs/getting-started/quickstart) exists to
+This is the problem [CustomDomain™](/docs/getting-started/overview) exists to
 solve: provider detection, per-provider instructions, automatic record writing
 where the provider allows it, certificate issuance, and a status you can poll
 instead of guess at.
@@ -195,5 +197,5 @@ curl https://api.customdomain.ai/v1/connections/$CONNECTION_ID \
   full mechanics, including provider-by-provider differences.
 - [Choosing a custom-domain solution](/docs/guides/choosing-a-custom-domain-solution):
   build versus buy, and what to ask a vendor.
-- [Quickstart](/docs/getting-started/quickstart): connect your first domain
+- [Quickstart](/docs/getting-started/overview): connect your first domain
   through the API.
