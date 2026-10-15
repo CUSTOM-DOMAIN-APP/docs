@@ -16,8 +16,10 @@ _openapi:
           OAuth-into-provider and one-click setup rails are available,
           capability flags (`ns_support`, `wildcard_support`,
           `cname_flattening`, `spf_override_support`, `caa_support`),
-          social-login support, and any `record_conflicts` observed in public
-          DNS. Unknown providers degrade to `setup_type: manual`.
+          social-login support, any `record_conflicts` observed in public
+          DNS (records the automatic write would replace), and any
+          `advisories` (warnings that replace nothing, such as a CAA record
+          that blocks Let's Encrypt). Unknown providers degrade to `setup_type: manual`.
 
 
           Apex pre-flight: `apex_supported` reports whether the provider can

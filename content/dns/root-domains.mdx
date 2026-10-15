@@ -104,9 +104,11 @@ bare root then does nothing until a root record exists.
 TLS issues the same way for a root as for a subdomain: once the records
 resolve to the edge, issuance happens on first request. A `CAA` record at the
 root that doesn't authorize Let's Encrypt blocks issuance for the whole zone;
-the check reports this as a `record_conflicts` entry of kind
+the check reports this in `advisories`, as an entry of kind
 `caa-blocks-letsencrypt`, and the fix is to **add** a `CAA` record for
-`letsencrypt.org` alongside the existing ones, never to remove them.
+`letsencrypt.org` alongside the existing ones, never to remove them. It is an
+advisory and not a `record_conflicts` entry because nothing is replaced: it
+never counts toward `will_fallback_to_manual`.
 
 ## Common mistakes
 
