@@ -1,8 +1,8 @@
 # CustomDomain™ public API contract (/v1).
 #
-# This vendored spec is the SINGLE SOURCE OF TRUTH for the Fumadocs API
-# reference: every page under src/content/docs/api-reference/** is generated
-# from THIS file by `npm run gen:api` (scripts/gen-api-docs.ts). It mirrors the
+# This vendored spec is the SINGLE SOURCE OF TRUTH for the public API
+# contract. The API reference at docs.customdomain.ai is built from a copy of
+# it in the docs repo (CUSTOM-DOMAIN-APP/docs). It mirrors the
 # routes the control-plane actually registers (services/control-plane/internal/
 # api/api.go) and the machine-readable document served at GET /v1/openapi.json.
 #
@@ -280,6 +280,33 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------- Applications
+  /stats:
+    get:
+      operationId: getStats
+      summary: Aggregate counts across all tenants (operator)
+      tags: [Tenancy]
+      description: >-
+        How many tenants, accepted members and pending invites the control plane
+        holds. An operator surface for the owner dashboard, gated by the
+        management key: no tenant API key can reach it, and it carries no tenant
+        data. `members` counts accepted members only (owners and teammates who
+        signed up); an invite that was sent and never accepted counts under
+        `pending_invites`, so the two add up to the members table.
+      security:
+        - managementKey: []
+      responses:
+        '200':
+          description: Counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tenants, members, pending_invites]
+                properties:
+                  tenants: { type: integer }
+                  members: { type: integer, description: Accepted members only. }
+                  pending_invites: { type: integer, description: Invites sent and not yet accepted. }
+        '401': { $ref: '#/components/responses/Error' }
   /applications:
     post:
       operationId: createApplication
@@ -751,6 +778,86 @@ paths:
         '409': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------- Tokens
+  /notifications:test:
+    post:
+      operationId: sendTestNotification
+      summary: Send a test push to the signed in person's devices (console server)
+      tags: [Members]
+      description: >-
+        Pushes one test notification to every browser in which `user_id` turned
+        push notifications on. The console's server calls this behind its "Send
+        a test notification" button, guarded by the provision secret exactly
+        like `POST /members:email-changed`: the console has already checked the
+        session and passes the signed in person's id, and the route takes no
+        account, so a secret for one workspace cannot name another. The control
+        plane holds the VAPID keys; without them it answers 503
+        `push_not_configured`. More than five tests a minute for one person
+        answer 429 `rate_limited` with `Retry-After: 60`.
+      security:
+        - provisionSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string, maxLength: 128, description: The signed in person's id in the console. }
+      responses:
+        '200':
+          description: What the test did
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices, sent, removed, failed]
+                properties:
+                  devices: { type: integer, description: Browsers the person has turned push on in. }
+                  sent: { type: integer, description: Push services that accepted the message. }
+                  removed: { type: integer, description: Devices found gone and removed. }
+                  failed: { type: integer, description: Pushes that did not go through. }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /members:email-changed:
+    post:
+      operationId: memberEmailChanged
+      summary: A member's email change was confirmed (console server)
+      tags: [Members]
+      description: >-
+        The console's server calls this once a person's email change is
+        confirmed, guarded by the provision secret like `POST /tenants:provision`.
+        By then the console has already corrected the member row it shares with
+        the control plane, so `email` is the member's new, saved address. The
+        control plane's one job here is to mirror the change to the CRM contact
+        for that member (owner or teammate), best effort and never blocking the
+        console: it answers `ok: true` as soon as the mirror is queued.
+      security:
+        - provisionSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, email]
+              properties:
+                tenant_id: { type: string }
+                email: { type: string, description: The member's new address. Lower cased by the control plane. }
+      responses:
+        '200':
+          description: Mirror queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
   /tokens:
     post:
       operationId: createWidgetToken
@@ -794,6 +901,17 @@ paths:
                     its monitoring, services and timeline, only when it is
                     bound to the domain and minted with the connection's own
                     `end_user_ref`.
+                end_user_email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                  description: >-
+                    Optional. The email address of the end user this token is
+                    for. It is never put in the token: it is kept on our side
+                    and a connection created with this token takes it, so that
+                    after a Move the person gets the new DNS records by email
+                    on your behalf. An `end_user_email` on the connection
+                    create wins over it.
                 scope:
                   type: string
                   enum: [connect, app]
@@ -961,6 +1079,12 @@ paths:
         connection is replayed with `200`.
 
 
+        A domain another application already serves live is refused with
+        `409 domain_already_connected` before anything is written: move it by
+        disconnecting it there first. When the ownership TXT flow is on the
+        claim is accepted instead, and the ownership challenge decides it.
+
+
         Callable from the widget (a widget JWT) or straight from your server
         with an API key, in which case the connection is created on the
         key's application, or on `application_id` when that names another
@@ -1002,8 +1126,10 @@ paths:
                     Origin the edge reverse-proxies this connection's traffic to
                     (Power). Validated on the way in: it must be an absolute
                     `http(s)` URL with a public host; private, loopback and
-                    cloud-metadata targets are rejected with a `400`. Omit to
-                    leave the edge on its own router.
+                    cloud-metadata targets are rejected with a `400`. Power is
+                    part of the Growth plan and up: on a plan without it the
+                    create is refused with `402 plan_upgrade_required` and
+                    nothing is stored. Omit to leave the edge on its own router.
                 www_redirect: { type: boolean, default: false, description: Serve an apex↔www redirect for this connection. }
                 override_spf:
                   type: boolean
@@ -1063,6 +1189,19 @@ paths:
                     is attributed to, so the console can render "Connected by …"
                     and search by customer. Empty ⇒ a console/direct connect.
                     Set once at create and never mutated.
+                end_user_email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                  description: >-
+                    Optional. The email address of the end user this domain is
+                    connected for. After a Move they get one email with the new
+                    DNS records, sent on your behalf and naming your
+                    application (at most 3 per connection in 30 days). It wins
+                    over an address given when the token was minted, is stored
+                    only on the connection, and is shown back only in this
+                    call's response and on `GET /connections/{id}` with an API
+                    key.
                 application_id:
                   type: string
                   description: >-
@@ -1084,6 +1223,13 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `domain_already_connected`: another application already serves this
+            domain live. Disconnect it there first, then connect it here.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: >-
             `apex_not_supported`: the domain is a root domain, the application routes
@@ -1839,6 +1985,49 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+  /connections/{id}/end-user-email:
+    put:
+      operationId: setConnectionEndUserEmail
+      summary: Leave the end user's email address on a connection
+      tags: [Connections]
+      description: >-
+        The widget's optional "Get DNS updates by email" field. After a domain
+        is set up, the end user can leave an address so they hear if its
+        records ever need to change (one email, with the new records, sent on
+        the platform's behalf).
+
+
+        A widget token for the connection's own application can set an address
+        only while the connection has none: when one is already there (the
+        platform's, or an earlier one) the answer is `409`, so a browser can
+        never overwrite what the platform gave. An API key replaces any earlier
+        address. The address is never echoed back and never logged.
+
+
+        Test domains refuse the call.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+      responses:
+        '204': { description: Stored (or dropped while the feature is off) }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /connections/{id}/managed-dns:
     post:
       operationId: startManagedDNS
@@ -2221,12 +2410,21 @@ paths:
         stops edge serving at once (`stops_edge_serving`).
 
 
+        A domain whose records were written through a connected provider
+        account that holds a usable key is moved by rewriting them, when the
+        `move_rewrite` flag is on: the response carries `rewriting: true` and
+        `customer_action_required: false`, the new records are written in the
+        background and the domain is verified on them (`propagating`); if the
+        write fails twice the customer is told as for any other move.
+
+
         A no-op (`moved: false`) when the domain already points there. Refused
-        (409) when the domain's records are stored: records your backend
-        supplied (change them with `PUT /connections/{id}/records`) or records
-        written into the customer's DNS during setup (disconnect and reconnect
-        to move it). A server-side API key or an agent token only: a widget
-        token is refused (403). Recorded in the audit log as
+        (409) when the domain's records are stored and no rewrite is possible:
+        records your backend supplied (change them with
+        `PUT /connections/{id}/records`) or records written into the customer's
+        DNS during setup by a rail that cannot rewrite them (disconnect and
+        reconnect to move it). A server-side API key or an agent token only: a
+        widget token is refused (403). Recorded in the audit log as
         `connection.retargeted`.
       security:
         - apiKey: []
@@ -2261,6 +2459,12 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DnsRecord' }
                   customer_action_required: { type: boolean }
+                  rewriting:
+                    type: boolean
+                    description: >-
+                      CustomDomain™ is writing the new records itself, through
+                      the rail that wrote the old ones. Present only when true;
+                      `customer_action_required` is then false.
                   stops_edge_serving: { type: boolean }
                   status:
                     $ref: '#/components/schemas/ConnectionStatus'
@@ -3297,6 +3501,110 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 
+  /applications/{id}/email-sender:
+    get:
+      operationId: getEmailSender
+      summary: How an application's end user notices are sent
+      tags: [Applications]
+      description: >-
+        Returns the application's email sender setting. With no setting saved
+        the mode is `default` (the CustomDomain™ transactional sender). The SMTP
+        password is write only: it is never returned, only `password_set`.
+        Requires `app:read`.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: The setting.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmailSender' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      operationId: putEmailSender
+      summary: Set how an application's end user notices are sent
+      tags: [Applications]
+      description: >-
+        Replaces the setting. `mode` is `default` (the CustomDomain™ sender),
+        `smtp` (the platform's own mail server, with the notice's From taken from
+        `from_address` and `from_name`) or `none` (nothing is sent; use the
+        `connection.records_outdated` webhook instead). With `smtp`, the host
+        must be a public address, the port one of 25, 465, 587 or 2525, and TLS is
+        always on: `implicit` on 465, `starttls` on the others. Plain text is not
+        offered. The password is sealed at rest; leave `smtp_password` out to keep
+        the stored one. A change of server, login or sender clears `verified_at`.
+        A mail failure at send time falls back to the default sender for that
+        message and is recorded in `last_error`. Requires `app:write`.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailSenderInput' }
+      responses:
+        '200':
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmailSender' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /applications/{id}/email-sender:test:
+    post:
+      operationId: testEmailSender
+      summary: Send one test message through an application's mail server
+      tags: [Applications]
+      description: >-
+        Sends a short test message to `to` through the saved SMTP server
+        (`mode` must be `smtp`). On success `verified_at` is recorded; on failure
+        `last_error` is recorded (with no secret in it) and the response is 502.
+        Limited to 5 per hour per application. Requires `app:write`.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { type: string, description: A plain email address. }
+      responses:
+        '200':
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, verified_at]
+                properties:
+                  ok: { type: boolean }
+                  verified_at: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+
   /billing/setup:
     post:
       operationId: startCardSetup
@@ -3862,6 +4170,7 @@ paths:
                       drift: { type: integer }
                       needs_action: { type: integer }
                       inconclusive: { type: integer }
+                      unconfirmed: { type: integer }
                       not_checked: { type: integer }
                   domains:
                     type: array
@@ -3914,9 +4223,19 @@ paths:
                     carries a `certificate` object. `domain.record_missing` /
                     `domain.record_restored` carry a `drift` object with the
                     record, what public DNS shows and what was done about it.
-                    `secure_status` is sent only where the deployment has
-                    Secure on (`SECURE_ENABLED`), once each time a
-                    certificate's status changes.
+                    `connection.records_outdated` fires once per domain a
+                    routing change moves (saving a connect target, or
+                    `POST /v1/connections/{id}:retarget`), carrying
+                    `records.previous` and `records.current`; the domain needs
+                    the new records. `certificate.failed` fires once per
+                    failure episode, when the edge first reports that issuing
+                    or renewing the certificate failed. `secure_status` is
+                    sent only where the deployment has Secure on
+                    (`SECURE_ENABLED`), once each time a certificate's status
+                    changes. Every connection, certificate and routing event
+                    also appears on the domain's timeline
+                    (`GET /v1/connections/{id}/events`) as a row of the same
+                    kind.
                   items:
                     type: string
                     enum:
@@ -5515,6 +5834,12 @@ paths:
         auto-connects the domain. Idempotent per session id (the Stripe webhook
         drives the same path server-side, so a closed tab never strands a paid
         session). `201` on first fulfillment, `200` on an idempotent replay.
+        Exactly one caller fulfills a session: the first to claim its order
+        registers the domain and captures the charge, and a caller that arrives
+        while it is still working waits briefly, then gets that result or a
+        `409` with code `fulfillment_in_progress`. A `409` never releases the
+        authorization; retry the call, or read `GET /v1/sell/orders/{id}`, to
+        see the outcome.
       security:
         - widgetJWT: []
       requestBody:
@@ -5539,6 +5864,16 @@ paths:
               schema: { $ref: '#/components/schemas/SellOrder' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            Another call is still completing this purchase (code:
+            fulfillment_in_progress). The payment stays authorized and `order`
+            is the order as it stands (status `purchasing`). Also `conflict`
+            when the order can no longer be fulfilled (for example `expired`);
+            the card was not charged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FulfillmentInProgressError' }
         '502':
           description: "Registrar registration failed after payment authorization; the card authorization was released (code: registration_failed)."
           content:
@@ -5550,8 +5885,9 @@ paths:
       operationId: listSellOrders
       summary: List the calling application's domain-purchase orders, newest first
       description: >-
-        Every order the application recorded (quoted, purchased, transferred,
-        failed, or expired). A quote-only order that was never paid for is
+        Every order the application recorded (quoted, purchasing, purchased,
+        transferred, failed, or expired). `purchasing` is an order being
+        registered right now, after its payment was authorized. A quote-only order that was never paid for is
         expired by the hourly reaper after 24 hours (status `expired`, with a
         `purchase.confirmation.expired` webhook), so "quoted" always means
         recent intent.
@@ -6049,6 +6385,38 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/AdminBillingTenantDetail' }
   schemas:
+    EmailSender:
+      type: object
+      required: [application_id, mode, smtp_host, smtp_port, smtp_username, password_set, tls, from_address, from_name, reply_to, verified_at, last_error, last_error_at]
+      properties:
+        application_id: { type: string }
+        mode: { type: string, enum: [default, smtp, none] }
+        smtp_host: { type: string }
+        smtp_port: { type: integer }
+        smtp_username: { type: string }
+        password_set: { type: boolean, description: Whether a password is stored. The password itself is never returned. }
+        tls: { type: string, enum: [implicit, starttls] }
+        from_address: { type: string }
+        from_name: { type: string }
+        reply_to: { type: string }
+        verified_at: { type: [string, 'null'], format: date-time }
+        last_error: { type: string, description: The last failure, with no secret in it. Empty after a success. }
+        last_error_at: { type: [string, 'null'], format: date-time }
+        updated_at: { type: [string, 'null'], format: date-time }
+    EmailSenderInput:
+      type: object
+      required: [mode]
+      additionalProperties: false
+      properties:
+        mode: { type: string, enum: [default, smtp, none] }
+        smtp_host: { type: string, description: A public host name or address. Private, loopback, link-local and metadata addresses are refused. }
+        smtp_port: { type: integer, enum: [25, 465, 587, 2525] }
+        smtp_username: { type: string }
+        smtp_password: { type: string, description: Write only. Omit to keep the stored password. }
+        tls: { type: string, enum: [implicit, starttls], description: implicit on port 465, starttls on the others. Defaults to starttls. }
+        from_address: { type: string, description: A plain address such as hello@example.com. Required for smtp. }
+        from_name: { type: string, maxLength: 100 }
+        reply_to: { type: string }
     Error:
       type: object
       required: [code, title]
@@ -6056,6 +6424,15 @@ components:
         code: { type: string, description: 'stable machine code, e.g. invalid_request, unauthorized, not_found, service_unavailable, internal_error' }
         title: { type: string, description: human-readable summary }
         details: { type: string, description: optional extra context }
+    FulfillmentInProgressError:
+      description: >-
+        The error envelope of `POST /v1/registrar/fulfill`'s `409`, plus the
+        order as it stands.
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            order: { $ref: '#/components/schemas/SellOrderView' }
     Environment:
       type: string
       enum: [production, staging, development]
@@ -7007,12 +7384,18 @@ components:
         kind:
           type: string
           description: >-
-            One of connection.disconnected, records.removed,
+            One of connection.created, connection.applied, connection.live,
+            connection.failed, connection.records.updated,
+            connection.reapply.failed, connection.records_outdated,
+            connection.disconnected, records.removed, records.rewritten,
             certificate.issued, certificate.renewed, certificate.failed,
-            certificate.expiring, certificate.removed, drift.found,
-            drift.fixed, drift.fix_failed, drift.action_required,
-            drift.restored, access.granted, access.revoked,
-            access.needs_reconnect.
+            certificate.expiring,
+            certificate.removed, drift.found, drift.fixed, drift.fix_failed,
+            drift.action_required, drift.restored, access.granted,
+            access.revoked, access.needs_reconnect. A connection or
+            certificate kind that is also a webhook event type is written
+            with the webhook, so the timeline and an integrator see the same
+            history.
         detail: { type: object, additionalProperties: true }
         created_at: { type: string, format: date-time }
     AccountConnection:
@@ -7125,12 +7508,23 @@ components:
         next_check_at: { type: string, format: date-time }
         result:
           type: string
-          enum: [ok, drift, inconclusive, not_checked, not_watched]
+          enum: [ok, drift, inconclusive, unconfirmed, not_checked, not_watched]
           description: >-
             The last check. `drift` is only reported after a second,
             independent look at the zone's own nameservers confirmed it;
             `inconclusive` means the lookup did not answer and the previous
-            finding stands.
+            finding stands; `unconfirmed` means the first lookup saw a change
+            the zone's own nameservers could not be asked to confirm (see
+            `reason`): earlier drift stands and nothing is restored.
+        reason:
+          type: string
+          enum: [ns_lookup_failed, timeout, all_servers_refused, no_server_answered, delegated, unsupported_type]
+          description: Set when `result` is `unconfirmed`, why the nameservers could not confirm.
+        unconfirmed_checks:
+          type: integer
+          description: >-
+            Set when `result` is `unconfirmed`, how many checks in a row. At 3
+            the workspace gets one inbox entry.
         drift_since: { type: string, format: date-time }
         drift:
           type: array
@@ -7206,7 +7600,7 @@ components:
         essential: { type: boolean, description: fail the apply if this record cannot be written }
     Connection:
       type: object
-      required: [id, domain, setup_type, status]
+      required: [id, application_id, domain, setup_type, status, created_at]
       properties:
         id: { type: string }
         application_id: { type: string }
@@ -7333,7 +7727,8 @@ components:
             The last failure reason recorded for this connection, from whichever
             path failed, not only the background poller. It is persisted by:
             the propagation poller / `:recheck` verification (e.g.
-            `propagation_timeout`, `setup_incomplete`, `domain_already_connected`);
+            `propagation_timeout`, `setup_incomplete`, `pending_expired`,
+            `domain_already_connected`);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
             `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
             `apex_not_supported`, `forwarding_not_supported`); the OAuth callback
@@ -7380,6 +7775,23 @@ components:
             records:
               type: array
               items: { $ref: '#/components/schemas/DnsRecord' }
+            end_user_email:
+              type: string
+              format: email
+              description: >-
+                The end user's email address, when one was given and the feature
+                is on. Present only on the response of the call that created
+                the connection with it, and on `GET /connections/{id}` with an
+                API key. Never in a list, a webhook, or any read by a widget
+                token.
+            ask_end_user_email:
+              type: boolean
+              description: >-
+                Present (true) on a create response only when the widget should
+                offer the end user an optional email field: the feature is on,
+                the caller is a widget token, the domain is not a test domain
+                and the connection has no address yet. The widget then calls
+                `PUT /connections/{id}/end-user-email`. Omitted otherwise.
     RecheckResult:
       allOf:
         - { $ref: '#/components/schemas/ConnectionWithRecords' }
@@ -7802,22 +8214,10 @@ components:
                 description: Human-readable, with the available alternatives named.
         record_conflicts:
           type: array
-          description: 'Existing DNS records the automatic write would REPLACE (value-mismatch / cname-collision / spf-merge). Counts toward will_fallback_to_manual.'
           items:
             type: object
             properties:
               kind: { type: string, description: 'value-mismatch | cname-collision | spf-merge' }
-              host: { type: string }
-              type: { type: string }
-              existing: { type: string }
-              desired: { type: string }
-        advisories:
-          type: array
-          description: 'Non-destructive advisories (e.g. a CAA record that blocks Let''s Encrypt, or an SPF to merge). Kept SEPARATE from record_conflicts so they never count toward will_fallback_to_manual and can be rendered as authorize/merge rather than "will be replaced".'
-          items:
-            type: object
-            properties:
-              kind: { type: string, description: 'caa-blocks-letsencrypt | spf-merge' }
               host: { type: string }
               type: { type: string }
               existing: { type: string }
@@ -8037,7 +8437,7 @@ components:
         orderId: { type: string, examples: [ord_1a2b3c] }
         domain: { type: string }
         registrar: { type: string }
-        status: { type: string, enum: [quoted, purchased, transferred, failed, expired] }
+        status: { type: string, enum: [quoted, purchasing, purchased, transferred, failed, expired] }
         createdAt: { type: string, format: date-time }
         regOrderId: { type: string, description: "the registrar's order reference, once purchased." }
         jobId: { type: string }

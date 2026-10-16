@@ -1,0 +1,70 @@
+---
+title: End user notices
+description: "Give CustomDomain™ the end user's email, from your server or the widget, and after a Move they get one email with the new DNS records, sent on your behalf."
+---
+
+When a connected domain is [moved](/docs/connect-flow/routing#changing-where-domains-point),
+the person who connected it may have to replace its DNS records. CustomDomain™
+can email them the new records on your behalf, once it knows their address.
+
+## Give us the address
+
+### From your server
+
+- **On the widget token:** `end_user_email` in the `POST /v1/tokens` body. It
+  is never put in the token. It is kept on our side, and a connection created
+  with the token takes it.
+- **On the connection:** `end_user_email` in the
+  [`POST /v1/connections`](/docs/connect-flow/create-a-connection) body. It wins
+  over the token's.
+- **Later:** `PUT /v1/connections/{id}/end-user-email` with an API key replaces
+  any earlier address.
+
+### From the widget
+
+When your server gives no address, the widget can ask for one. The create
+response carries `ask_end_user_email: true` when the feature is on, the caller
+is a widget token, the domain is not a test domain and the connection has no
+address yet. The widget then shows one optional field, **Get DNS updates by
+email**, and sends the answer with `PUT /v1/connections/{id}/end-user-email`.
+The end user can skip it.
+
+- A widget token can set an address only while the connection has none:
+  otherwise the answer is `409`, so a browser never overwrites what your server
+  gave.
+- Turn the field off with the widget option `askEndUserEmail: false`.
+
+## What the end user gets
+
+One email per Move, titled "Update the DNS records for" the domain. It names
+your application, says CustomDomain™ writes on its behalf, and lists the full
+record set the domain needs now. It has no button, no console link and no
+account wording, because the reader has no account with us.
+
+- At most 3 per connection in 30 days.
+- A Move that rewrites the records itself through a connected provider account
+  sends nothing. The end user is emailed only if that rewrite fails.
+- Every Move that needs new records from the customer also sends the
+  `connection.records_outdated` webhook and an email to your owners and admins,
+  whether or not there is an address.
+
+## Who sends it
+
+Each application picks its sender, in the console under **End user email** on
+the application's settings, or with `GET` and `PUT /v1/applications/{id}/email-sender`:
+
+| `mode` | What happens |
+| --- | --- |
+| `default` | The CustomDomain™ sender. |
+| `smtp` | Your own mail server, with the From taken from `from_address` and `from_name`. TLS is always on, on port 25, 465, 587 or 2525. Check it with `POST /v1/applications/{id}/email-sender:test`. |
+| `none` | Nothing is sent. Use the `connection.records_outdated` webhook to tell the end user yourself. |
+
+If your server fails at send time, that message goes through the default
+sender instead and the error is kept in `last_error`.
+
+## Where the address is kept
+
+The address is stored only on the connection and never logged. It is shown
+back only in the response of the call that created the connection with it, and
+on `GET /v1/connections/{id}` with an API key: never in a list, a webhook, or a
+read with a widget token.
