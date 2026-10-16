@@ -41,7 +41,7 @@ leaves out a [test mode](/docs/guides/test-mode) application's endpoints unless
 | `connection.records.updated` | A [managed](/docs/connect-flow/managed-connections) connection was re-applied (`POST /v1/connections/{id}:reapply`); its desired records were re-written and the connection re-verified. |
 | `connection.reapply.failed` | A managed re-apply push failed; if the stored grant was revoked, the connection is flagged for re-consent. |
 | `connection.disconnected` | A domain was [removed](/docs/connect-flow/offboarding). `removal` says what happened to its DNS records: `choice`, `outcome` (`removed`, `partly_removed`, `kept`, `manual`, `in_use`, `not_needed`, `failed`), `via`, and the records `removed`, `restored`, `left_in_place` and `failed`, plus any `manual_steps`. |
-| `connection.records_outdated` | A non-managed connection's applied records were computed against a superseded edge target; the envelope carries a `connect_link` to re-run setup. |
+| `connection.records_outdated` | A domain needs new DNS records: it was [moved](/docs/connect-flow/end-user-notices), with the records it was shown before and the ones it needs now, or a non-managed connection's applied records were computed against a superseded edge target, with a `connect_link` to re-run setup. |
 | `certificate.issued` | The edge issued the first certificate for a domain. |
 | `certificate.renewed` | The edge renewed a domain's certificate. |
 | `certificate.failed` | Issuing or renewing failed (once per failure episode); the edge keeps retrying. |
