@@ -15,14 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-- **End user notices, Move rewrites and lapsed plans (rolling out).** A platform can give the end user's email
+- **End user notices, Move rewrites and lapsed plans.** A platform can give the end user's email
   address on the widget token or the connection (`end_user_email`), or let the widget ask for it
   (`ask_end_user_email`, `PUT /v1/connections/{id}/end-user-email`); after a Move that person gets one email with
   the new records, sent through the application's own mail server when it has one
   (`/v1/applications/{id}/email-sender`). A domain whose records were written through a connected provider
   account is moved by rewriting them (`rewriting: true`). A paid plan that ends keeps its domains serving for
-  30 days, with emails, and then shows a neutral hold page. Each is accepted and ignored until it is switched
-  on for your account. See [End user notices](/docs/connect-flow/end-user-notices) and
+  30 days, with emails, and then shows a neutral hold page. See [End user notices](/docs/connect-flow/end-user-notices) and
   [Plans and quotas](/docs/billing/plans-and-quotas#when-a-paid-plan-ends).
 - **Edge serving is on Growth, bought domains follow routing, and the docs cover the hosted service only.**
   `POST /v1/connections` with an `application_url` now needs the Growth plan or above (`402

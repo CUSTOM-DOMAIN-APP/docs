@@ -911,8 +911,7 @@ paths:
                     and a connection created with this token takes it, so that
                     after a Move the person gets the new DNS records by email
                     on your behalf. An `end_user_email` on the connection
-                    create wins over it. Accepted and ignored until the
-                    feature is switched on for your account.
+                    create wins over it.
                 scope:
                   type: string
                   enum: [connect, app]
@@ -1202,8 +1201,7 @@ paths:
                     over an address given when the token was minted, is stored
                     only on the connection, and is shown back only in this
                     call's response and on `GET /connections/{id}` with an API
-                    key. Accepted and ignored until the feature is switched on
-                    for your account.
+                    key.
                 application_id:
                   type: string
                   description: >-
@@ -2006,8 +2004,7 @@ paths:
         address. The address is never echoed back and never logged.
 
 
-        Until the feature is switched on the call answers `204` and stores
-        nothing. Test domains refuse the call.
+        Test domains refuse the call.
       security:
         - widgetJWT: []
         - apiKey: []
