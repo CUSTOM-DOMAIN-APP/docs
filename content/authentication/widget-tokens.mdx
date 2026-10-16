@@ -89,6 +89,9 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
   wrong or unknown secret is `401`.
 - `domain` binds the token to one hostname: a domain-bound token may only act on
   that host. `domains` (a list) allows several hosts in one session.
+- `end_user_email` (optional) is the end user's address for
+  [end user notices](/docs/connect-flow/end-user-notices). It is never put in
+  the token; a connection created with the token takes it.
 - Only the creation response shows a client secret. If you lost it, rotate it
   (`POST /v1/applications/{id}/client-secret:rotate`, needs `keys:manage`),
   except for a console-created application (see above).

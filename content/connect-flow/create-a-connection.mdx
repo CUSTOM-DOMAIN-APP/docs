@@ -26,6 +26,7 @@ Optional body fields:
 | `monitor` | Drift [monitoring](/docs/connect-flow/monitoring). On unless you send `false`. |
 | `batch_id` | Groups the domains connected in one multi-domain session. |
 | `end_user_ref` | Your own id for the end user, shown as "Connected by" in the console. A widget token's end user must match. |
+| `end_user_email` | The end user's email address, so a [Move](/docs/connect-flow/end-user-notices) emails them the new records. Wins over one given when the token was minted. Accepted and ignored until the feature is switched on for your account. |
 | `application_id` | API key callers only: create on another application of the same workspace. A widget or agent token can only name its own. |
 
 Unknown fields are rejected with `400`. A workspace without an active or

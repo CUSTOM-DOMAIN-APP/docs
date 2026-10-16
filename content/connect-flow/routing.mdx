@@ -143,10 +143,21 @@ Moved a domain off the edge by mistake? Send `{"to": "edge"}` to move it back to
 the edge whatever the application's routing (**Undo: back to the edge** in the
 console). If its DNS still names the edge it is live again at once.
 
+A domain whose records were written through a connected provider account that
+still holds a usable key can be moved by rewriting them, when that is switched
+on for your account: the response carries `rewriting: true` and
+`customer_action_required: false`, the new records are written in the
+background and the domain is verified on them. If the write fails twice, the
+customer is told as for any other Move.
+
 A domain whose records your backend supplied (`PUT /v1/connections/{id}/records`)
 is refused with `409`: send it new records instead. So is a domain whose records
-were written into the customer's DNS during setup: disconnect and connect it
-again to move it.
+were written into the customer's DNS during setup by a rail that cannot rewrite
+them: disconnect and connect it again to move it.
+
+Every Move that needs new records from the customer sends the
+`connection.records_outdated` webhook and an email to your owners and admins,
+and can email the end user too: see [End user notices](/docs/connect-flow/end-user-notices).
 
 `GET /v1/applications/{id}/connect-target` returns the current mode
 (`edge` or `custom`), the target, and what the edge mode would point at, so a

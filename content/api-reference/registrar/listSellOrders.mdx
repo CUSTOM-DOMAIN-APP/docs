@@ -11,16 +11,16 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          Every order the application recorded (quoted, purchased, transferred,
-          failed, or expired). A quote-only order that was never paid for is
-          expired by the hourly reaper after 24 hours (status `expired`, with a
-          `purchase.confirmation.expired` webhook), so "quoted" always means
-          recent intent.
-
-
-          With a tenant API key it lists the orders of every application of the
-          tenant, or of one with `app_id` (another tenant's id answers `404`). A
-          widget token minted with scope `app`, or a delegated agent token with
+          Every order the application recorded (quoted, purchasing,
+          purchased, transferred, failed, or expired). `purchasing` is
+          an order being registered right now, after its payment was
+          authorized. A quote-only order that was never paid for is
+          expired by the hourly reaper after 24 hours (status `expired`,
+          with a `purchase.confirmation.expired` webhook), so "quoted"
+          always means recent intent. With a tenant API key it lists the
+          orders of every application of the tenant, or of one with
+          `app_id` (another tenant's id answers `404`). A widget token
+          minted with scope `app`, or a delegated agent token with
           `domains:read`, lists its own application's orders.
 ---
 

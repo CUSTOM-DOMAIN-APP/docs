@@ -252,6 +252,25 @@ with `reason: "unpaid"`), with an email first. Leaving it past due would never
 restrict anything. An unpaid subscription is fixed with a working card, which
 pays the open invoice; a second checkout is refused (`409`).
 
+### When a paid plan ends
+
+> **Rolling out:** until this is switched on for your account, a canceled or
+> unpaid plan only refuses new connections, and connected domains keep serving.
+
+When a paid subscription ends (`canceled`, or `unpaid` after its retries), the
+workspace's connected domains keep serving for **30 days**. Owners and admins
+are emailed when the 30 days start, with the date, and again 7 days and 1 day
+before. After that the domains show a neutral hold page until a paid plan is
+active again, and then they serve again at once.
+
+- A `past_due` plan (Stripe still retrying), a running trial, a workspace that
+  never subscribed and a comped workspace never lapse.
+- The hold page is a plain `503` that says "This site is temporarily
+  unavailable." It carries no brand and no link, asks search engines not to
+  index it, and sets `Retry-After` to an hour. Certificates keep renewing, so
+  the domain works the moment the plan is back.
+- A workspace is never held before its owners got the first email.
+
 ### Who sees billing
 
 Billing belongs to a workspace's **owners and admins** (`billing:manage`). The
@@ -275,7 +294,10 @@ Owners and admins of the workspace get these, each exactly once:
 | Free plan ending | The grace starts, and again with 7, 3 and 1 days left. |
 | New connections paused | The workspace becomes restricted (grace or comp ended, or unpaid after retries). |
 | Subscription active again | A restricted or past due workspace is back in good standing. |
-| Subscription canceled | The subscription ends. |
+| Subscription canceled | The subscription ends. Once [lapsed plans](#when-a-paid-plan-ends) are on, the first lapse email below goes instead. |
+| Domains pause on a date | A paid plan ended: the 30 days start. It gives the date the domains pause. |
+| Domains pause soon | 7 days and 1 day before the domains pause. |
+| Domains paused | The 30 days are over and the domains show the hold page. |
 
 ## Metered usage
 
