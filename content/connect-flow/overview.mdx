@@ -31,6 +31,11 @@ chosen from `POST /v1/domains:check`; the widget drives them automatically.
 All four converge on the same outcome: the desired records land in DNS, the
 connection moves `pending → propagating → live`, and the edge serves the domain.
 
+For a provider with no sign-in or key a third party can use,
+[secure sign-in](/docs/guides/secure-sign-in) (offered to selected workspaces for
+now) lets the customer sign in to the provider in a temporary browser, and the
+records are added on the provider's own DNS page once the customer approves them.
+
 ## Resuming an abandoned setup
 
 A setup that was started but not finished isn't lost. In the console, the

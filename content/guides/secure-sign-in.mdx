@@ -1,0 +1,232 @@
+---
+title: Secure sign-in
+description: "How secure sign-in connects a domain at a DNS provider with no sign-in or key you can use: what your customer sees, what we never see, resume, and the API."
+---
+
+Some DNS providers offer no sign-in and no API key a third party can use.
+Without help, a customer of one of them types records into the provider's panel
+by hand. **Secure sign-in** gives them a shorter way: they sign in to the provider in
+a temporary browser that a browser hosting company runs for a few minutes, and
+CustomDomain™ makes the changes on the provider's DNS page for that one domain,
+then closes the browser.
+
+<Callout title="Offered to selected workspaces for now">
+  Secure sign-in runs only where it is switched on for your workspace and the
+  domain's provider. `POST /v1/domains:check` says so per domain in
+  `rails.cloud_browser` (present only where the deployment has it on). When
+  `available` is `false`, `reason` says why, for example
+  `not_enabled_for_workspace`, `provider_not_listed`, `oauth_available` (the
+  provider has a sign-in of its own, which wins) or `site_not_supported` (the
+  provider keeps each account on one country site, and the visitor's site is not
+  served yet). The widget and the console offer it only when it is available.
+</Callout>
+
+## Who can start it
+
+A person is always there. Only two callers may start a secure sign-in:
+
+1. **The widget**, in your customer's browser, with a
+   [widget token](/docs/authentication/widget-tokens) minted for the domain and
+   the customer's `end_user_ref`. A token bound to no domain, or to another one,
+   cannot start it, so its domain check answers `available: false` with
+   `caller_cannot_start` and the widget shows the manual setup.
+2. **The console**, from a domain's Connect page.
+
+An AI agent, the MCP server and a plain API call are refused with
+`403 browser_customer_present_only`, and their domain check never offers it.
+
+## What your customer sees
+
+The examples below use Namecheap as the provider and `acme.com` as the domain.
+In the widget the sign-in screen has **Open secure sign in** and **Set up
+manually instead**. On a computer the sign-in opens in a popup the size of every
+other provider sign-in (680 by 760, centered over the page). On a phone or a
+tablet it opens as a sheet over the page, and the sheet follows the visible part
+of the screen, so the keyboard never covers a field.
+
+A bar across the top shows the provider and the site the sign-in goes to. The
+site gets a tick when it is the provider's own, and a warning ("This page is not
+on Namecheap's site. Do not type your password here.") when it is not. The
+popup's words are in the widget's 13 languages.
+
+### Our own sign-in form
+
+The popup opens on a sign-in form of ours: the provider's logo, "Sign in to
+Namecheap", the first field named the way the provider names it (Email,
+Username, Email or username, or Username or customer number), the password, and
+**Sign in**. Below them are the provider's own Google, Apple or other buttons,
+where it has them, and at the foot **Use Namecheap's page instead**.
+
+Your customer types into our fields, and their own browser passes each key to
+the provider's real sign-in page in the remote browser. At **Sign in** the
+provider's own button is pressed. A provider that asks for the username and the
+password on two pages gets them in that order.
+
+If the provider turns the sign-in down, its own message ("That password is
+incorrect", at most 120 characters, with email addresses and long numbers
+masked) shows on our form with the password emptied and the username kept. If
+nothing happens for 10 seconds after **Sign in**, the popup shows the provider's
+page instead.
+
+The provider's page is always one tap away. It is also what the popup shows when
+we have no reviewed form for the provider, or when the customer picks **Use
+Namecheap's page instead**.
+
+### Codes, links and approvals
+
+The remote browser is a new device to every provider, so most providers ask for
+a code. Each prompt gets one screen of ours:
+
+| The provider asks for | The popup shows |
+| --- | --- |
+| A code by email, text or authenticator app | Where the code went ("Check your email for the code from Namecheap."), a code field and **Continue**. |
+| A sign-in link by email | "Open the email from Namecheap and tap the link, then come back here." When the customer comes back, the provider's page is nudged once. If it still waits 8 seconds later: "Signed in on this device instead? Paste the link from the email." |
+| An approval on another device | "Approve the sign in on your phone", with nothing to press. |
+| A passkey or a security key | "Passkeys cannot be used here" and **Use another way**. A passkey cannot reach a browser on another machine. |
+
+Codes take time to arrive, so a code or a link keeps the session open: the
+sign-in window runs at least 10 minutes from the moment the prompt appears, and
+the whole session can run 20 minutes instead of 15.
+
+### Google, Apple and other sign-ins
+
+Where the provider's sign-in page offers "Sign in with Google" (or Apple,
+Facebook, Amazon and the like) and we have reviewed that provider's sign-ins
+(GoDaddy's Google, Apple, Facebook and Amazon buttons, for example), our form
+shows the same buttons. Pressing one presses the provider's own, and the
+identity provider's page shows in the popup, including a window it opens. Your
+customer signs in there; **Back to GoDaddy** returns to the provider's page when
+the sign-in took the whole tab. Only your customer goes there: the
+software that makes the changes never visits an identity provider's page.
+
+If no Google window appears (some pages use the browser's own account chooser,
+which a fresh browser has no account for), the customer signs in with the
+provider's password instead.
+
+### Human checks
+
+Some providers show a "Verify you are human" check to a browser they have not
+seen before. The popup shows the provider's page with **Tick the box**, and your
+customer ticks it. We never solve, click, work around or hide a check. If it has
+not cleared after 45 seconds, **Try again** reloads the view and **Set it up
+another way** leads to the manual steps.
+
+### After the sign-in
+
+Once the sign-in is through, the popup says **Signed in** and then shows one line
+for each step ("Reading your DNS records", "Adding records", "Making the
+changes", "Checking the result") over the records, which tick as they are made.
+Changes made on the provider's DNS page are first shown in full on a **Review**
+screen ("Review the changes for acme.com"), and nothing changes until your
+customer presses **Approve and make these changes**. Then **Done.**
+
+Nobody watches the provider's page after the sign-in. If the provider asks for
+the password again, asks for a code, or shows a check in the middle of the work,
+the page is handed back ("Namecheap asks for your password again."). Your
+customer answers it the same way, and the work goes on once the prompt is gone.
+
+### Signed in to the wrong account
+
+The changes can be made only in the account that holds the domain's DNS. If the
+provider's page shows that the domain uses DNS somewhere else, the popup says
+"acme.com does not use Namecheap's DNS, so its records are edited elsewhere."
+and the session ends with `browser_not_provider_dns`. If the domain's DNS page
+cannot be reached from the account, the popup moves to the manual steps with the
+browser still open. Either way your customer can start again and sign in to the
+account that holds the domain, or add the records by hand.
+
+## Resume after the window closes
+
+A phone often throws a popup away while your customer reads a code in their mail
+app, and a window can be closed by mistake. While the session still waits on the
+customer (about to sign in, signing in, a code prompt, or a page handed back),
+the widget shows **Continue signing in to Namecheap**. It opens the same
+session in a new popup: the same remote browser, still on the provider's page.
+
+The widget calls `POST /v1/connections/{id}/browser:resume` with the session it
+held:
+
+```json
+{ "session_id": "bs_…", "return_origin": "https://app.example.com", "locale": "en" }
+```
+
+The answer is the one `browser:start` gives (`session_id`, `open_url` with a new
+single use code, `vendor`, `expires_at`), and the previous popup stops working at
+that moment, so one popup holds the session at a time. A session that is not
+waiting on the customer answers `409 browser_not_waiting`, and one that ran out
+`410 browser_expired`; start a new sign-in then. A session can be resumed a few
+times, one every few seconds (`429 browser_rate_limited`).
+
+## Resize, full screen and turning a phone
+
+The popup can be resized, maximized, made full screen, or turned on a phone or a
+tablet. Our screens stay a centered column. When the window settles at a new size,
+the popup asks for the provider's page at that size with
+`POST /v1/browser-sessions/{sid}:viewport`:
+
+```json
+{ "w": 1280, "h": 800 }
+```
+
+Each side is clamped (320 to 1600 wide, 400 to 1200 high) and the answer is
+`202` with the size the page is set to. It works only while your customer is in
+control (signing in, or a page handed back): otherwise `409 browser_wrong_state`.
+At most 6 a minute per session.
+
+## What we never do
+
+- **We never see or keep a password.** Your customer types into our form or the
+  provider's page in their own browser, and each key goes from that browser
+  straight to the remote browser. Keystrokes, passwords and codes never pass
+  through CustomDomain™'s servers.
+- **Nothing is stored.** No password, cookie, recording or browser profile is
+  kept, and the browser is thrown away when the session ends.
+- **No run without a person.** A session never starts or goes on without your
+  customer there, and it ends when the popup stops checking in.
+- **Only the one DNS page.** Our software works only on the provider's DNS page
+  for that one domain. Every other page of the account is refused.
+- **No change without approval.** Changes made on the provider's DNS page are
+  shown in full and made only after your customer approves them.
+- **No check is solved for you.** A human check is always the customer's to tick.
+
+What the browser hosting company sees is the honest limit. The browser runs at
+that company, which the popup names ("Browser hosted by" and its name), and while
+a session runs the company could see the screen, which includes a Google or Apple
+password typed in a social sign-in. CustomDomain™'s servers never receive any of
+it.
+
+Each session records how far it got and, when it stopped short, why, from a
+fixed list (a human check left on screen, a code that never came, the customer
+cancelled, the provider's page changed, and so on), together with the popup's
+screens as steps. No domain, typed text, page text or address is recorded. Those
+counts are the **Secure sign-in** panel on the console's **Analytics** page.
+
+## Limits
+
+- Passkeys and security keys cannot be used.
+- On a phone or a tablet the keyboard reaches the remote page over a connection
+  the browser hosting company runs. A network that blocks it leaves the page
+  without a keyboard, and the manual steps are the way on.
+- Record types the provider's page cannot write, and a record set you supplied
+  yourself, are refused before the customer signs in
+  (`422 browser_unsupported_records`, with the types named).
+- A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
+
+## The API behind it
+
+The widget and the console make these calls; you do not need to. They are listed
+so you can read what a session did. Every route is in the
+[API reference](/docs/api-reference) under **Cloud browser**.
+
+| Call | What it does |
+| --- | --- |
+| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place) and `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)). |
+| `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
+| `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
+| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back, and `check` that a human check is on screen. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
+| `POST /v1/browser-sessions/{sid}:viewport` | The popup's new size (above). |
+| `POST /v1/browser-sessions/{sid}:event` | The popup reports one of its screens, for the sign-in funnel. `204`, changes nothing about the session, at most 30 a minute. |
+| `POST /v1/browser-sessions/{sid}:signed-in`, `:approve`, `:finish-manual`, `:cancel` | "I'm signed in", the approval of the exact changes, the manual steps done, and the end of the session. `:cancel` and `:event` also take the token in the body, for a page that is closing. |
+
+The widget's funnel names this rail `cloud_browser`, so your
+[analytics](/docs/widget-sdk/reference#analytics) count it like the others.
