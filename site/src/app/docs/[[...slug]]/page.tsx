@@ -6,9 +6,14 @@ import {
   DocsDescription,
   DocsPage,
   DocsTitle,
+  EditOnGitHub,
+  MarkdownCopyButton,
+  PageLastUpdate,
+  ViewOptionsPopover,
 } from "fumadocs-ui/layouts/docs/page";
 import { source } from "@/lib/source";
-import { metaDescription } from "@/lib/docs-description";
+import { pageDescription } from "@/lib/page-description";
+import { markdownPath } from "@/lib/markdown";
 import { getMDXComponents } from "@/components/mdx";
 import { openapi } from "@/lib/openapi";
 import { OpenAPIPage } from "@/lib/openapi-page";
@@ -16,14 +21,12 @@ import type { GeneratedPageProps } from "fumadocs-openapi";
 
 type Params = { slug?: string[] };
 
-// The generated API reference pages carry no authored description. They get a fitted one, used for the
-// meta tag, the structured data and the visible line alike. Other pages keep their own text.
-function pageDescription(
-  slug: string[] | undefined,
-  page: { data: { title: string; description?: string } },
-): string | undefined {
-  if (slug?.[0] !== "api-reference") return page.data.description;
-  return metaDescription(page.data.description, { title: page.data.title, slug });
+// Where each page's source lives, for "Edit on GitHub" and the view options menu.
+const CONTENT_ON_GITHUB = "https://github.com/CUSTOM-DOMAIN-APP/docs/blob/main/content";
+
+/** The page's social card, rendered by app/og/docs/[...slug]/route.tsx. */
+function ogImagePath(slugs: string[]): string {
+  return `/og/docs/${[...slugs, "image.png"].join("/")}`;
 }
 
 export default async function Page({
@@ -37,6 +40,10 @@ export default async function Page({
 
   const MDX = page.data.body;
   const description = pageDescription(slug, page);
+  const markdownUrl = markdownPath(page.url);
+  const githubUrl = `${CONTENT_ON_GITHUB}/${page.path}`;
+  // From git (source.config.ts); absent when the date is unknown.
+  const lastModified = (page.data as { lastModified?: Date | string | number }).lastModified;
 
   // schema.org structured data for every docs page: TechArticle (this is
   // technical reference/guide content) plus a BreadcrumbList mirroring the
@@ -78,7 +85,11 @@ export default async function Page({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{description}</DocsDescription>
+      <DocsDescription className="mb-0">{description}</DocsDescription>
+      <div className="flex flex-row flex-wrap items-center gap-2 border-b pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover markdownUrl={markdownUrl} githubUrl={githubUrl} />
+      </div>
       <DocsBody>
         <MDX
           components={getMDXComponents({
@@ -89,6 +100,10 @@ export default async function Page({
           })}
         />
       </DocsBody>
+      <div className="flex flex-row flex-wrap items-center justify-between gap-4">
+        <EditOnGitHub href={githubUrl} />
+        {lastModified ? <PageLastUpdate date={new Date(lastModified)} /> : null}
+      </div>
     </DocsPage>
   );
 }
@@ -106,9 +121,36 @@ export async function generateMetadata({
   const page = source.getPage(slug);
   if (!page) notFound();
 
+  const description = pageDescription(slug, page);
+  const canonical = `/docs/${(slug ?? []).join("/")}`;
+  const image = {
+    url: ogImagePath(page.slugs),
+    width: 1200,
+    height: 630,
+    alt: page.data.title,
+  };
+
   return {
     title: page.data.title,
-    description: pageDescription(slug, page),
-    alternates: { canonical: `/docs/${(slug ?? []).join("/")}` },
+    description,
+    alternates: {
+      canonical,
+      // The same page as Markdown, for agents and tools (app/docs-md).
+      types: { "text/markdown": markdownPath(page.url) },
+    },
+    openGraph: {
+      type: "article",
+      siteName: "CustomDomain™ docs",
+      title: page.data.title,
+      description,
+      url: canonical,
+      images: [image],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: page.data.title,
+      description,
+      images: [image.url],
+    },
   };
 }

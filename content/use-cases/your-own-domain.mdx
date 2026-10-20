@@ -1,0 +1,78 @@
+---
+title: Your own domain
+description: "Point a domain you own at something you run, with no code: connect it in the console, add or authorize the DNS records, and get HTTPS issued and renewed."
+---
+
+You have a domain and something to put on it: an app, a site hosted elsewhere, a
+redirect, or email. The console connects it without code. It finds where the
+domain's DNS is hosted, writes the records for you where that provider allows
+it, and otherwise shows the exact rows to add and checks them for you.
+
+## When this fits
+
+- The domain is yours, and so is what it should point at.
+- You would rather not work out which record goes where at your DNS provider.
+- You want HTTPS on it without managing certificates.
+
+If your customers are the ones connecting domains, see
+[SaaS platforms](/docs/use-cases/saas-platforms).
+
+## How CustomDomain™ fits in
+
+<Steps>
+
+<Step>
+
+### Sign up and connect the domain
+
+[Sign up](https://app.customdomain.ai/signup); the welcome screen asks who you are
+connecting domains for, and **Just connecting a domain of my own?** under its two
+cards is your answer. Then enter the domain, a subdomain such as `www.example.com` or the root `example.com`. Both
+work at every DNS provider; the record for a root depends on the provider (see
+[Root domains](/docs/dns/root-domains)).
+
+</Step>
+
+<Step>
+
+### Add the records, or let them be written
+
+The console offers what your provider supports, with the recommended way
+marked: sign in with the provider, the provider's one-click setup, a scoped API
+key, or the records to add by hand. Records written for you usually verify within seconds; records added
+by hand are verified as soon as the provider serves them. A domain waiting for
+its records has no deadline.
+
+</Step>
+
+<Step>
+
+### Point it at what you run
+
+CustomDomain™ does not host websites. Through its edge it serves your domain from
+a site or app hosted elsewhere, with the certificate issued and renewed for you,
+which needs the Growth plan. Connecting the domain does not. You can also point
+it straight at your own servers on any plan, and serve TLS yourself. See
+[Where domains point](/docs/connect-flow/routing).
+
+</Step>
+
+</Steps>
+
+The same domain can carry more than a site:
+
+- **Email.** MX, SPF, DKIM and DMARC, with SPF merged into the record you
+  already have rather than replacing it. See [Email DNS](/docs/dns/email-dns).
+- **A redirect.** A permanent 301 to another URL, issued at the edge, keeping
+  the path and query. See [Domain forwarding](/docs/connect-flow/forwarding).
+- **No domain yet?** Search for one and buy it in the console. See
+  [Buying a domain](/docs/sell/buying-a-domain).
+
+## What to read next
+
+<Cards>
+  <Card title="Console" href="/docs/getting-started/console" description="The whole console path, step by step." />
+  <Card title="How to set up a custom domain" href="/docs/guides/set-up-a-custom-domain" description="The right record, the root, CAA and conflicting records, and when it is live." />
+  <Card title="Root domains" href="/docs/dns/root-domains" description="What each DNS provider can hold at the root." />
+  <Card title="Troubleshooting" href="/docs/troubleshooting" description="Why a domain is still waiting, and what to check." />
+</Cards>

@@ -76,7 +76,7 @@ curl -s https://api.customdomain.ai/v1/providers/census | head -c 200
 ```text
 .
 ├── content/              # every documentation page, as MDX: this is the product
-│   ├── getting-started/  # pick a path, one page per path (console, API, widget, MCP), self-hosted quickstart
+│   ├── getting-started/  # the test mode quickstart, then one page per path (console, API, widget, MCP)
 │   ├── guides/           # task guides: set up, connect, choose a solution, serve from your app
 │   ├── concepts/         # architecture, connections, how domains classify into setup types
 │   ├── authentication/   # API keys, member roles, short-lived widget tokens

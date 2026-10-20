@@ -1,69 +1,100 @@
 ---
 title: Introduction
-description: "CustomDomain™ is custom-domain onboarding for multi-tenant SaaS: DNS setup, automatic SSL and a reverse proxy. Learn the connect, secure, serve, monitor loop."
+description: "CustomDomain™ lets your users connect a domain they already own: it finds the DNS provider, writes or shows the records, verifies them and issues TLS."
 ---
 
-**Custom-domain onboarding for multi-tenant SaaS**: DNS
-auto-configuration, automatic SSL, and a reverse proxy, in one fully-managed
-platform. Let your customers point their own domain at your product in minutes,
-with a drop-in widget and a REST API.
+Add CustomDomain™ to your product with a drop-in widget, the REST API or the MCP
+server, or connect a domain of your own in the console with no code.
 
-## What it does
+<Cards>
+  <Card title="Quickstart" href="/docs/getting-started/quickstart" description="Connect a first domain end to end in test mode, from your terminal. No real domain and no card." />
+</Cards>
 
-- **Connect**: a customer enters their domain; the engine detects their DNS
-  provider and applies the records through the best available
-  [rail](/docs/connect-flow/overview#the-four-rails) (OAuth into the provider,
-  provider-hosted one-click setup, a scoped API token, or guided-manual), then
-  watches propagation.
-- **Secure**: the edge issues a TLS certificate **on demand during the
-  handshake**, but only for hostnames a live/propagating connection has authorized.
-- **Serve**: the edge reverse-proxies the custom domain to your origin.
-- **Monitor**: webhooks, a developer console, usage metering, and DNS-drift
-  detection keep you informed after go-live.
+## How it works
 
-## The two planes
+<Steps>
 
-Two independent planes share one database and talk over HTTP:
+<Step>
 
-- **Connect plane** (the control-plane): the `/v1` REST API, the connect rails,
-  the propagation poller, quotas/metering, and webhooks.
-- **Edge plane**: on-demand TLS termination + reverse proxy, gated by a single
-  internal `ask` call to the control-plane.
+### Detect the provider
 
-See [Concepts](/docs/concepts/architecture) for the full model.
+A domain is entered in the widget, the console, the API or an agent.
+`POST /v1/domains:check` finds where its DNS is hosted and which ways in can run
+there: a sign-in with the provider, the provider's one-click setup, a scoped API
+key, or records added by hand.
 
-## Start here
+</Step>
 
-| If you want to… | Read |
-| --- | --- |
-| Find your path (console · API · widget · MCP) and the truths they share | [Which path are you on?](/docs/getting-started/overview) |
-| Point your own domain at your app, no code | [Console](/docs/getting-started/console) |
-| Provision domains from your server | [API](/docs/getting-started/api) |
-| Let your customers connect their domains in your UI | [Widget](/docs/getting-started/widget) |
-| Drive it from an agent | [MCP](/docs/getting-started/mcp) |
-| Understand connections, rails, and status | [Concepts](/docs/concepts/architecture) |
-| Authenticate API calls and the widget | [Authentication](/docs/authentication/overview) |
-| Embed the connect modal | [The widget SDK](/docs/widget-sdk/overview) |
-| Add email records / merge SPF safely | [Email DNS](/docs/dns/email-dns) |
-| Call the API | [API Reference](/docs/api-reference) |
-| React to events | [Webhooks](/docs/webhooks/overview) |
-| See which DNS providers auto-configure | [DNS providers](/docs/dns/providers) |
-| Buy a brand-new domain | [Buying a domain](/docs/sell/buying-a-domain) |
-| Understand the security model | [Security](/docs/security/overview) |
-| Configure plans and quotas | [Plans & quotas](/docs/billing/plans-and-quotas) |
-| Look up enums, env vars, error codes | [Reference](/docs/reference) |
-| Fix a stuck connection | [Troubleshooting](/docs/troubleshooting) |
-| Let an AI agent act on your domains | [Agent access](/docs/agents/overview) |
+<Step>
+
+### Write the records
+
+The best way in that can finish for this domain writes the records. Where the
+provider offers none, the exact rows are shown with that provider's own steps.
+Of the 178 providers in the census on 2026-10-09, 62 have an automatic path and
+116 are connected by hand ([DNS providers](/docs/dns/providers)).
+
+</Step>
+
+<Step>
+
+### Verify
+
+The connection goes `live` once every record resolves to its expected value.
+Records written for the user usually verify within seconds. There is no separate
+ownership TXT record: control is proven by the way the records were written, or by
+the records appearing in the domain's own DNS
+([setup types](/docs/concepts/ownership-and-setup-types#control-is-proven-by-the-rail)).
+
+</Step>
+
+<Step>
+
+### Issue TLS
+
+Once the domain is live, the CustomDomain™ edge issues its certificate on the
+first request and renews it on its own; on the Growth plan and up it also proxies
+the domain to your origin. Or point domains at your own infrastructure and serve
+TLS there ([Where domains point](/docs/connect-flow/routing)).
+
+</Step>
+
+</Steps>
+
+## Pick your path
+
+<Cards>
+  <Card title="SaaS platform" href="/docs/use-cases/saas-platforms" description="Embed the widget so your users connect their own domains inside your product." />
+  <Card title="Agency" href="/docs/use-cases/agencies" description="Manage client domains in one workspace and hand the DNS step to whoever holds it." />
+  <Card title="Your own domain" href="/docs/use-cases/your-own-domain" description="Point a domain you own at something you run, with no code." />
+  <Card title="AI agent" href="/docs/use-cases/ai-agents" description="Let an agent connect and check domains through the MCP server." />
+</Cards>
+
+## Build with
+
+<Cards>
+  <Card title="Widget" href="/docs/widget-sdk/overview" description="customdomain-js and @customdomain/react: the connect modal, in your branding." />
+  <Card title="REST API" href="/docs/api-reference" description="Every /v1 endpoint, its parameters, responses and errors." />
+  <Card title="Webhooks" href="/docs/webhooks/overview" description="Signed events when a domain goes live or fails, and when its certificate is issued or renewed." />
+  <Card title="MCP server" href="/docs/mcp/overview" description="Seventeen tools at https://mcp.customdomain.ai/mcp, with scoped agent access." />
+</Cards>
+
+## When something is stuck
+
+[Troubleshooting](/docs/troubleshooting) covers domains waiting for their records,
+DNS mistakes and certificate issues, and the [FAQ](/docs/faq) answers the common
+questions. For how the pieces fit together, start at
+[Connections](/docs/concepts/connections) and [Architecture](/docs/concepts/architecture).
 
 ## For AI agents
 
 A machine-readable index of this documentation is at
 [`/docs/llms.txt`](/docs/llms.txt): every page, with its title, URL and
 description, so an agent can fetch exactly the page it needs. A site-root copy is
-served at [`/llms.txt`](https://docs.customdomain.ai/llms.txt). There is no
-full-text bundle and no per-page raw-Markdown route today; earlier revisions of
-this page advertised `/docs/llms-full.txt` and `/llms/<page-slug>`, and both
-return 404.
+served at [`/llms.txt`](https://docs.customdomain.ai/llms.txt). Every page is also
+served as Markdown at its own URL plus `.md` (this one is
+[`/docs.md`](/docs.md)), and each page links to it with
+`<link rel="alternate" type="text/markdown">`.
 
 Agents can also drive the product directly through the hosted
 [MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`: seventeen

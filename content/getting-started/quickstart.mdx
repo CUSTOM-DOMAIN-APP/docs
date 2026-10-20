@@ -1,0 +1,282 @@
+---
+title: Quickstart
+description: "Connect your first domain end to end in test mode: create a test application, connect a .test name, watch it go live and open the widget. No card needed."
+---
+
+This page runs the whole connect flow once, from your terminal, without a real
+domain and without a card. It uses [test mode](/docs/guides/test-mode): a test
+mode application connects made up `.test` names on a simulated DNS, so nothing is
+looked up, written to a DNS provider, served or billed, and it does not use up any
+of your free domains.
+
+You need a CustomDomain™ account. [Sign up](https://app.customdomain.ai/signup)
+if you have none; signing up asks for no card. Every request below is shown as
+cURL and as Node (18 or newer, saved as an `.mjs` file so `await` works at the top
+level). The responses are trimmed to the fields this page uses; the field names
+are exact.
+
+<Steps>
+
+<Step>
+
+### Copy your default key
+
+Every workspace has a **default key** from the start. In the console, open
+**API & SDK**: an owner or admin sees it at the top of the page, masked, as
+`CUSTOMDOMAIN_API_KEY=cd_live_…`, with **Copy** beside it. Other members see only
+its prefix, so ask an owner or admin if you are one of them.
+
+Put it in an environment variable, so it never ends up in a file or a prompt:
+
+```bash
+export CUSTOMDOMAIN_API_KEY="cd_live_..."
+```
+
+It starts `cd_live_` because it is your workspace's key, and it works on real
+domains. What makes this run a test is the application you create with it next,
+not the key.
+
+</Step>
+
+<Step>
+
+### Create a test mode application
+
+Send `"sandbox": true` when you create the application. A test mode application
+needs no card.
+
+```bash tab="cURL"
+curl -X POST https://api.customdomain.ai/v1/applications \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Quickstart","sandbox":true}'
+```
+
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/applications", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ name: "Quickstart", sandbox: true }),
+});
+const app = await res.json();
+console.log(res.status, app.id, app.client_secret);
+```
+
+The answer is `201`:
+
+```json
+{
+  "id": "app_…",
+  "tenant_id": "ten_…",
+  "name": "Quickstart",
+  "environment": "development",
+  "sandbox": true,
+  "created_at": "2026-10-20T12:00:00Z",
+  "client_secret": "sk_…"
+}
+```
+
+Keep the `id` and the `client_secret`. The secret is shown only in this response,
+and step 5 uses it to open the widget. A workspace holds up to 3 test mode
+applications; a fourth is refused with `409 sandbox_limit`.
+
+</Step>
+
+<Step>
+
+### Create a connection
+
+Connect a `.test` name on the new application. Your default key belongs to
+another application of the workspace, so name this one with `application_id`.
+
+```bash tab="cURL"
+curl -X POST https://api.customdomain.ai/v1/connections \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"www.acme.test","application_id":"app_..."}'
+```
+
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/connections", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ domain: "www.acme.test", application_id: "app_..." }),
+});
+const connection = await res.json();
+console.log(res.status, connection.id, connection.status);
+```
+
+The answer is `201`, with the connection and the records a customer would be
+shown for a real domain:
+
+```json
+{
+  "id": "con_…",
+  "application_id": "app_…",
+  "domain": "www.acme.test",
+  "setup_type": "manual",
+  "status": "pending",
+  "sandbox": true,
+  "created_via": "api",
+  "routing": { "mode": "edge", "set_at": "2026-10-20T12:00:05Z" },
+  "created_at": "2026-10-20T12:00:05Z",
+  "records": [
+    { "type": "CNAME", "host": "www.acme.test", "value": "edge.customdomain.ai", "ttl": 3600, "applied": false }
+  ]
+}
+```
+
+There is nothing to add anywhere: in test mode the simulated DNS shows these
+records by itself. Sending the same request again returns the same connection
+with `200`, which is how it behaves for a real domain too.
+
+</Step>
+
+<Step>
+
+### Watch it reach `live`
+
+Read the connection until its `status` is `live`. In test mode that happens about
+15 seconds after it was created.
+
+```bash tab="cURL"
+curl https://api.customdomain.ai/v1/connections/con_... \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY"
+```
+
+```js tab="Node"
+const url = "https://api.customdomain.ai/v1/connections/con_...";
+const headers = { Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}` };
+
+for (;;) {
+  const connection = await (await fetch(url, { headers })).json();
+  console.log(connection.status);
+  if (connection.status === "live" || connection.status === "failed") break;
+  await new Promise((r) => setTimeout(r, 5000));
+}
+```
+
+```json
+{
+  "id": "con_…",
+  "domain": "www.acme.test",
+  "status": "live",
+  "sandbox": true,
+  "last_checked_at": "2026-10-20T12:00:21Z",
+  "records": [
+    { "type": "CNAME", "host": "www.acme.test", "value": "edge.customdomain.ai", "ttl": 3600, "applied": false }
+  ]
+}
+```
+
+A real connection moves through the same statuses: `pending` (records not seen
+yet), `propagating` (a rail wrote them and DNS is being watched), `live` and
+`failed`. To see the other endings, connect a name whose first part picks one:
+
+| Name | What happens |
+| --- | --- |
+| `timeout.acme.test` | The records never appear. After 60 seconds it is `failed` with `error_code: propagation_timeout`. |
+| `conflict.acme.test` | It stays `pending` with `error_code: domain_already_connected`, as a domain another account already serves would. |
+
+In your own code, react to the `connection.live` and `connection.failed`
+[webhooks](/docs/webhooks/overview) and keep the read as the fallback. A test mode
+application's events are signed and delivered like any other, and carry
+`"sandbox": true`; see [Webhooks in test mode](/docs/guides/test-mode#webhooks).
+
+</Step>
+
+<Step>
+
+### Open the widget
+
+The widget is how your customers connect their own domains inside your product.
+Your server trades the application's `client_secret` for a short-lived widget
+token, and only that token reaches the browser. Mint one for a second name:
+
+```bash tab="cURL"
+curl -X POST https://api.customdomain.ai/v1/tokens \
+  -H "Content-Type: application/json" \
+  -d '{"application_id":"app_...","client_secret":"sk_...","domain":"shop.acme.test"}'
+```
+
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/tokens", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    application_id: "app_...",
+    client_secret: process.env.CUSTOMDOMAIN_CLIENT_SECRET, // server only
+    domain: "shop.acme.test",
+  }),
+});
+const { token } = await res.json();
+console.log(res.status, token);
+```
+
+```json
+{ "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
+```
+
+The token lasts 15 minutes. Paste it into a page with the hosted script, serve the
+page from any local web server (for example `python3 -m http.server`), and click
+the button:
+
+```html
+<button id="connect">Connect a domain</button>
+<script src="https://app.customdomain.ai/widget-assets/customdomain-sdk.js"></script>
+<script>
+  document.getElementById("connect").addEventListener("click", () => {
+    customdomain.open({
+      applicationId: "app_...",
+      token: "eyJ...", // from the call above
+      domain: "shop.acme.test",
+      onSuccess: ({ domain }) => console.log(`${domain} is live`),
+    });
+  });
+</script>
+```
+
+The widget shows a **Test mode** strip across the top, goes straight to the manual
+setup, which says there is nothing to add, and reaches the connected screen when
+the simulated DNS shows the records. `onSuccess` fires then.
+
+In your product the page never holds a pasted token: it asks your own server
+route for one each time it opens the widget. See
+[Installation & embed](/docs/widget-sdk/installation-and-embed).
+
+</Step>
+
+</Steps>
+
+<Callout type="warn" title="Keys stay on your server">
+  The API key and the `client_secret` never go to a browser. The widget token is
+  the only credential a page should hold, and it is minted per session.
+</Callout>
+
+## AI-assisted
+
+- **Have a coding agent build this with you.** Every page of these docs is also
+  served as Markdown at its own URL plus `.md`, so give the agent
+  `https://docs.customdomain.ai/docs/getting-started/quickstart.md` and keep the key
+  in an environment variable it reads, not in the prompt.
+- **Let an agent connect and manage domains itself.** Add the hosted MCP server,
+  `https://mcp.customdomain.ai/mcp`, to the agent and install the
+  [agent skill](/docs/agents/skills), which teaches it the safe way to use the
+  tools. See [MCP: drive it from an agent](/docs/getting-started/mcp). An agent
+  grant cannot be given a test mode application, so an agent works on your live
+  application and real domains.
+
+## Next steps
+
+<Cards>
+  <Card title="Move to a real domain" href="/docs/guides/test-mode#move-to-a-real-domain" description="Switch to your live application and its credentials. Your server code stays the same." />
+  <Card title="Embed the widget" href="/docs/widget-sdk/installation-and-embed" description="A token route on your server, the SDK in your front end, React and theming." />
+  <Card title="Provision from your server" href="/docs/getting-started/api" description="The pre-flight check, creating connections and applying records with the API." />
+  <Card title="React to webhooks" href="/docs/webhooks/overview" description="The events, the payload and how deliveries are signed and retried." />
+</Cards>

@@ -35,3 +35,48 @@ function verify(rawBody, tsHeader, sigHeader, secret, toleranceSec = 300) {
 
 Compute the HMAC over the exact bytes received (don't re-serialize the JSON) and
 prepend `${timestamp}.` before hashing. The comparison must be constant-time.
+
+## Send yourself a signed test delivery
+
+To check a receiver before any real event reaches it, sign a body with your
+endpoint's secret the same way and post it to the receiver. Both samples read the
+secret from `WEBHOOK_SECRET` and send to a receiver at
+`http://localhost:3000/webhooks/cd`; change that to yours.
+
+```bash tab="cURL"
+BODY='{"id":"evt_test","type":"connection.live","domain":"www.acme.test"}'
+TS=$(date +%s)
+SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -hex | sed 's/^.* //')
+curl -X POST http://localhost:3000/webhooks/cd \
+  -H "Content-Type: application/json" \
+  -H "X-JE-Timestamp: $TS" \
+  -H "X-JE-Signature: sha256=$SIG" \
+  -H "X-JE-Event-Id: evt_test" \
+  -d "$BODY"
+```
+
+```js tab="Node"
+import crypto from "node:crypto";
+
+const secret = process.env.WEBHOOK_SECRET; // whsec_…
+const body = JSON.stringify({ id: "evt_test", type: "connection.live", domain: "www.acme.test" });
+const ts = Math.floor(Date.now() / 1000);
+const signature = "sha256=" + crypto.createHmac("sha256", secret).update(`${ts}.${body}`).digest("hex");
+
+const res = await fetch("http://localhost:3000/webhooks/cd", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-JE-Timestamp": String(ts),
+    "X-JE-Signature": signature,
+    "X-JE-Event-Id": "evt_test",
+  },
+  body,
+});
+console.log(res.status);
+```
+
+Your receiver should answer `2xx` for this request, and reject it once you change
+one byte of the body or send a timestamp older than your window. For real, signed
+deliveries without a real domain, register the endpoint on a
+[test mode](/docs/guides/test-mode#webhooks) application.

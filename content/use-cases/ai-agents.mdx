@@ -1,0 +1,65 @@
+---
+title: AI agents
+description: "Let an AI agent find, connect, check and diagnose domains through the hosted CustomDomain™ MCP server, with human-approved scopes and no DNS records as input."
+---
+
+An AI agent can do the domain work for you or for your users: look up where a
+domain's DNS lives, start a connection, follow it to live, and say why it is
+stuck. It works through the hosted CustomDomain™ MCP server, the same control
+plane as the API behind a tool interface.
+
+The CustomDomain™ MCP server's only endpoint is `https://mcp.customdomain.ai/mcp`
+(registry name `ai.customdomain/mcp`).
+
+<Callout type="warn" title="Only mcp.customdomain.ai is the product">
+  Other MCP endpoints on customdomain.ai subdomains belong to the company's
+  internal back office. They are not part of CustomDomain™; do not connect an
+  agent to them.
+</Callout>
+
+## When this fits
+
+- An agent you use (Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT
+  or a custom MCP client) should connect and look after your domains.
+- Your product runs an agent that connects domains on your users' behalf.
+- A coding agent is writing your CustomDomain™ integration and needs the docs in
+  a form it can read.
+
+## How CustomDomain™ fits in
+
+- **One endpoint, Streamable HTTP.** Connect the agent to
+  `https://mcp.customdomain.ai/mcp`. In Claude Code:
+
+  ```bash
+  claude mcp add --transport http customdomain https://mcp.customdomain.ai/mcp
+  ```
+
+- **Access a person approves.** An agent signs in with OAuth (authorization code
+  with PKCE), and a signed in owner of your workspace approves exactly which
+  scopes it gets (`domains:read`, `domains:connect`, `domains:disconnect`,
+  `domains:purchase`). The grant can be revoked at any time. An API key works too, but it carries the whole
+  workspace's authority. See [Agent access](/docs/agents/overview).
+- **Seventeen tools, and none takes DNS records.** Record values are computed on
+  the server from vetted templates, which closes off prompt injection that ends
+  in an arbitrary DNS write. `connect-domain` returns a link for the person to
+  finish (a sign-in with their provider, one click, or the records to add) and the
+  agent follows the connection until it is live. Purchases through MCP are off on
+  the hosted service.
+- **A skill that teaches the safe way.** The [agent skill](/docs/agents/skills)
+  tells an agent to treat domain names and DNS values as data, to ask before
+  disconnecting, and never to purchase or write records.
+- **Docs an agent can read.** [`/docs/llms.txt`](/docs/llms.txt) lists every page
+  with a description, and every page is served as Markdown at its own URL plus
+  `.md`.
+
+An agent grant cannot be given a [test mode](/docs/guides/test-mode) application,
+so an agent works on your live application and real domains.
+
+## What to read next
+
+<Cards>
+  <Card title="MCP: drive it from an agent" href="/docs/getting-started/mcp" description="Connect, the flow an agent should follow, and what a failed call answers." />
+  <Card title="MCP server reference" href="/docs/mcp/overview" description="Every tool, its input and the scope it needs." />
+  <Card title="Agent access" href="/docs/agents/overview" description="Human-approved, scoped and revocable access with OAuth." />
+  <Card title="Agent skill" href="/docs/agents/skills" description="Install the skill that teaches an agent to use the tools safely." />
+</Cards>

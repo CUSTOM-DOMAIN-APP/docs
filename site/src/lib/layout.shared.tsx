@@ -10,6 +10,9 @@ export function baseOptions(): BaseLayoutProps {
       url: "/docs",
     },
     links: [
+      { text: "Console", url: "https://app.customdomain.ai", external: true, active: "none" },
+      { text: "Get an API key", url: "https://app.customdomain.ai/signup", external: true, active: "none" },
+      { text: "Status", url: "https://status.customdomain.ai", external: true, active: "none" },
       {
         type: "icon",
         label: "npm",
