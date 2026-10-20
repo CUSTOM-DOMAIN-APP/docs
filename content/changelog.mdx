@@ -15,6 +15,31 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 20, 2026: secure sign-in in our own form, nameserver moves, and who opens the widget.**
+  *Secure sign-in* (offered to selected workspaces) now opens on a sign-in form of ours, with the provider's own
+  Google, Apple or other buttons below it and the provider's page one tap away. Your customer types into our fields
+  and each key goes from their browser to the remote browser, never through our servers. A code, an emailed link, an
+  approval on a phone and a passkey each get one short screen, and a human check is the customer's to tick. A code
+  or a link keeps the session open (up to 20 minutes). A closed popup can be reopened on the same session with
+  **Continue signing in** (`POST /v1/connections/{id}/browser:resume`), the popup can be resized or
+  made full screen (`POST /v1/browser-sessions/{sid}:viewport`), and the popup says so when the domain's DNS is
+  not at the provider the customer signed in to. `browser:start` takes `widget_session_id` and `purpose`, the session view carries `form`, `signals` and
+  `handback`, the popup reports its screens with `POST /v1/browser-sessions/{sid}:event`, and the widget's funnel
+  names the rail `cloud_browser`. *Nameserver migration*: an application can offer its end users a move of their
+  domain's nameservers to CustomDomain™ or to your own DNS (a Cloudflare, Amazon Route 53, Google Cloud DNS or Azure
+  DNS account, or your own nameservers), with their consent, records and email copied first, DNSSEC handled, and a
+  move back. Set it with `nameserver_migration` on `PATCH /v1/applications/{id}` or in the application's
+  **Nameservers** section, and use `POST /v1/connections/{id}/nameservers:migrate`, `GET .../nameservers`,
+  `POST .../nameservers:rollback` and `GET /v1/applications/{id}/nameserver-migrations`. Seven webhooks follow a
+  move (`nameservers.started`, `.dnssec_cleared`, `.changed`, `.active`, `.failed`, `.rolled_back`, `.drifted`),
+  and the MCP server (0.6.0) has three more tools, twenty in all: `check-nameserver-status`, `migrate-nameservers`
+  and `rollback-nameservers`. *Widget sessions*: each widget open now keeps one record of the session (the end
+  user's IP address, country, region and city, device, system and browser, screen and viewport, language, time
+  zone and the host page's origin, and how it went), never the domain or anything typed. The address is kept for as
+  long as your account exists. **Analytics** shows the counts as **Devices and places** and, for secure sign-in,
+  **Secure sign-in**, and `GET /v1/analytics/connect` returns them as `audience` and `secure_sign_in`. See
+  [Secure sign-in](/docs/guides/secure-sign-in), [Nameserver migration](/docs/guides/nameserver-migration) and
+  [What a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
 - **End user notices, Move rewrites and lapsed plans.** A platform can give the end user's email
   address on the widget token or the connection (`end_user_email`), or let the widget ask for it
   (`ask_end_user_email`, `PUT /v1/connections/{id}/end-user-email`); after a Move that person gets one email with
