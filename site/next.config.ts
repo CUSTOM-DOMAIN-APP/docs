@@ -49,10 +49,10 @@ const nextConfig: NextConfig = {
         destination: "/docs/authentication/widget-tokens",
         permanent: true,
       },
-      // Running the platform yourself is no longer documented: the self-hosted
-      // quickstart and the self-hosting section were removed. Their inbound links
-      // land on the hosted paths instead of a 404.
-      { source: "/docs/getting-started/quickstart", destination: "/docs/getting-started/overview", permanent: true },
+      // Running the platform yourself is no longer documented: the self-hosting
+      // section was removed, and its inbound links land on the hosted paths
+      // instead of a 404. (/docs/getting-started/quickstart, the old self-hosted
+      // quickstart's address, is a page again: the hosted test mode quickstart.)
       { source: "/docs/self-hosting", destination: "/docs/getting-started/overview", permanent: true },
       { source: "/docs/self-hosting/:path*", destination: "/docs/getting-started/overview", permanent: true },
       // The Entri evaluation guide moved to the marketing blog, where dated,
