@@ -44,33 +44,69 @@ other provider sign-in (680 by 760, centered over the page). On a phone or a
 tablet it opens as a sheet over the page, and the sheet follows the visible part
 of the screen, so the keyboard never covers a field.
 
-A bar across the top shows the provider and the site the sign-in goes to. The
-site gets a tick when it is the provider's own, and a warning ("This page is not
-on Namecheap's site. Do not type your password here.") when it is not. The
-popup's words are in the widget's 13 languages.
+A bar across the top names the provider. While the provider's own page is on
+screen (a human check, a Google or Apple page, or the provider's sign-in page),
+the bar also shows the site that page is on, with a tick when it is the
+provider's own and a warning ("This page is not on Namecheap's site. Do not type
+your password here.") when it is not. The popup's words are in the widget's 13
+languages.
 
 ### Our own sign-in form
 
-The popup opens on a sign-in form of ours: the provider's logo, "Sign in to
-Namecheap", the first field named the way the provider names it (Email,
-Username, Email or username, or Username or customer number), the password, and
-**Sign in**. Below them are the provider's own Google, Apple or other buttons,
-where it has them, and at the foot **Use Namecheap's page instead**.
+The popup opens on a sign-in form of ours: the provider's logo, **Sign in**, the
+first field named the way the provider names it, the password (hidden, with a
+button to show it), **Forgot password?** and **Sign in**. Below them, after "or",
+are the provider's own Google, Apple or other buttons, where it has them. This
+first screen has no link to the provider's page.
+
+The first field's label is the provider's own, in all 13 languages: "Username or
+Customer #" at GoDaddy (with GoDaddy's own **Use email** switch), "Customer ID,
+email address or domain" at IONOS, "Username" at Namecheap, Name.com, Hover and
+Spaceship, "Email address" at Squarespace and Hostinger, "User ID" at Network
+Solutions and "Email" at Wix. A provider that asks for the username first and the
+password on a second page (IONOS and Wix) is asked the same way: the username
+alone and **Next**, then the password. If the provider answers that there is no
+such account, its answer shows right there, over **Next**.
 
 Your customer types into our fields, and their own browser passes each key to
 the provider's real sign-in page in the remote browser. At **Sign in** the
-provider's own button is pressed. A provider that asks for the username and the
-password on two pages gets them in that order.
+provider's own button is pressed.
 
 If the provider turns the sign-in down, its own message ("That password is
 incorrect", at most 120 characters, with email addresses and long numbers
-masked) shows on our form with the password emptied and the username kept. If
-nothing happens for 10 seconds after **Sign in**, the popup shows the provider's
-page instead.
+masked) shows on our form with the password emptied and the username kept.
 
-The provider's page is always one tap away. It is also what the popup shows when
-we have no reviewed form for the provider, or when the customer picks **Use
-Namecheap's page instead**.
+**Forgot password?** opens the provider's own password reset page in a new tab of
+your customer's own browser, never in the remote browser, so the reset email's
+link opens there too. Back in the popup, the password field asks for the new one
+("Use your new password.").
+
+The form is built as a real sign-in form, and each field carries the provider's
+name ("GoDaddy Username or Customer #"), so a password manager's search finds the
+customer's saved login for the provider. A manager will not offer it by itself,
+because the form is on our site, not the provider's.
+
+### When the popup shows the provider's page
+
+Our form is the way in. The popup moves to the provider's own sign-in page by
+itself, with "Continue on Namecheap's page" across its foot, only when our form
+cannot do the job:
+
+- we have no reviewed form for that provider;
+- nothing we recognize happens for 10 seconds after **Sign in** or **Next**;
+- the provider shows something our screens cannot represent (a field that is not
+  a username, a password or a code), twice in a row;
+- the connection that carries the keys to the remote browser does not open.
+
+After two sign-ins that ended in the provider's error, the form also offers **Try
+on Namecheap's page** beside **Forgot password?**. That one is your customer's
+choice.
+
+Wherever the popup shows the provider's page (there, for a human check, or for a
+Google or Apple sign-in), it brings the part that matters, such as the sign-in
+card or the check, into view in a rounded frame of ours, with a margin of the
+real page around it, so nothing beside it is cut off at an edge. A page laid out
+for a phone keeps its whole width.
 
 ### Codes, links and approvals
 
@@ -79,10 +115,19 @@ a code. Each prompt gets one screen of ours:
 
 | The provider asks for | The popup shows |
 | --- | --- |
-| A code by email, text or authenticator app | Where the code went ("Check your email for the code from Namecheap."), a code field and **Continue**. |
+| A code by email, text or authenticator app | Where the code went ("Check your email for the code from Namecheap."), a code field, **Paste** and **Continue**. |
 | A sign-in link by email | "Open the email from Namecheap and tap the link, then come back here." When the customer comes back, the provider's page is nudged once. If it still waits 8 seconds later: "Signed in on this device instead? Paste the link from the email." |
 | An approval on another device | "Approve the sign in on your phone", with nothing to press. |
 | A passkey or a security key | "Passkeys cannot be used here" and **Use another way**. A passkey cannot reach a browser on another machine. |
+
+The code field is a one-time code field, so a phone's own offer to fill a code
+from Messages or Mail reaches it. Until it holds a code, a **Paste** button stands
+where **Continue** will be. A tap on it reads the clipboard, takes the first code
+in it (4 to 10 digits, also written "482 913" or "482-913"; never part of a longer
+number such as a phone number) and puts it in the field. When the provider's page
+said how many digits the code has and the pasted code has that many, it is sent at
+once. Nothing read from the clipboard is kept, logged or reported. Where the
+provider also emails a sign-in link, **Paste the link instead** is there too.
 
 Codes take time to arrive, so a code or a link keeps the session open: the
 sign-in window runs at least 10 minutes from the moment the prompt appears, and
@@ -125,15 +170,44 @@ the password again, asks for a code, or shows a check in the middle of the work,
 the page is handed back ("Namecheap asks for your password again."). Your
 customer answers it the same way, and the work goes on once the prompt is gone.
 
+The work is done by software of ours that picks one click at a time from an
+outline of the provider's page. For a step that has worked the same way at that
+provider several times, it first follows that path again, with the values of the
+plan your customer approved; otherwise a fast model picks each click, and a stronger model
+takes over for the rest of the session when the fast one gets stuck. Neither
+chooses what is typed: the values come from the approved plan. They never see a
+password field or anything typed, and email addresses, keys and secrets in the
+outline are masked. Every click passes the same checks whichever way it was
+chosen: only the one DNS page, and only the changes approved.
+
 ### Signed in to the wrong account
 
-The changes can be made only in the account that holds the domain's DNS. If the
-provider's page shows that the domain uses DNS somewhere else, the popup says
-"acme.com does not use Namecheap's DNS, so its records are edited elsewhere."
-and the session ends with `browser_not_provider_dns`. If the domain's DNS page
-cannot be reached from the account, the popup moves to the manual steps with the
-browser still open. Either way your customer can start again and sign in to the
-account that holds the domain, or add the records by hand.
+The changes can be made only in the account that holds the domain. If the account
+your customer signed in to does not hold it (a personal account instead of the
+business one, for example), the popup says so on a screen of ours: "acme.com
+isn't in j\*\*\*@example.com's Namecheap account" (or "this Namecheap account" when
+the provider's page shows no name), with **Sign in with another account**. That
+signs the remote browser out of the provider and opens our form again, empty.
+From the second wrong account on, **Set it up another way** leads to the manual
+steps as well. Three accounts can be tried: the third that does not hold the
+domain ends the session (`browser_wrong_account`).
+
+Before it asks, the DNS page is read twice, after a fresh load, so a page that
+failed for a moment is not taken for a wrong account. Where the provider has an
+account switcher (GoDaddy's Delegate Access), our software first opens the
+account that holds the domain, when the switcher shows which one it is; it types
+nothing there and refuses any control that changes who has access.
+
+The account name on that screen is the one the provider's page shows (a user
+name, a customer number or an address, with an address masked to its first
+character and its domain). It is shown to your customer only, and never stored
+or logged.
+
+If the provider's page shows that the domain uses DNS somewhere else, the popup
+says "acme.com does not use Namecheap's DNS, so its records are edited
+elsewhere." and the session ends with `browser_not_provider_dns`. A provider that
+sends such a domain away from its DNS page instead of saying so leads to the
+manual steps, with the browser still open.
 
 ## Resume after the window closes
 
@@ -211,6 +285,8 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
   yourself, are refused before the customer signs in
   (`422 browser_unsupported_records`, with the types named).
 - A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
+  Signing in with another account starts the sign-in window again but does not
+  extend that limit, and three accounts at most can be tried.
 
 ## The API behind it
 
@@ -223,7 +299,8 @@ so you can read what a session did. Every route is in the
 | `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place) and `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)). |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
-| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back, and `check` that a human check is on screen. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
+| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back, `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
+| `POST /v1/browser-sessions/{sid}:switch-account` | Signs the remote browser out of the provider and opens its sign-in again, only while the view carries `wrongAccount` (otherwise `409 browser_wrong_state`). `202`; meanwhile the view's `notice` is `switching_account`. One every 10 seconds (`429 browser_rate_limited`). |
 | `POST /v1/browser-sessions/{sid}:viewport` | The popup's new size (above). |
 | `POST /v1/browser-sessions/{sid}:event` | The popup reports one of its screens, for the sign-in funnel. `204`, changes nothing about the session, at most 30 a minute. |
 | `POST /v1/browser-sessions/{sid}:signed-in`, `:approve`, `:finish-manual`, `:cancel` | "I'm signed in", the approval of the exact changes, the manual steps done, and the end of the session. `:cancel` and `:event` also take the token in the body, for a page that is closing. |

@@ -3390,6 +3390,59 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:switch-account:
+    post:
+      operationId: switchAccountBrowserSession
+      summary: Sign in with another account
+      tags: [Cloud browser]
+      description: >-
+        The customer signed in to the provider with an account that does not
+        hold the domain (the view says `wrongAccount`), and tries another one.
+        Allowed only then. The control plane signs the cloud browser out of
+        the provider in the background (the provider's own sign out page,
+        then the browser forgets the provider's cookies and storage, never a
+        social sign in's) and opens the provider's sign in again; meanwhile
+        the view says `notice` `switching_account` and takes no input. The
+        sign in window starts again; the hard cap does not move. At most
+        three accounts are tried: the third that does not hold the domain
+        ends the session (`failed`, `error.code` `browser_wrong_account`),
+        and so does a sign out that fails. No body.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '202':
+          description: Signing out; the sign in follows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [awaiting_sign_in] }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the session is not waiting for a choice of account (no `wrongAccount` in the view), or is signing out already.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: '`browser_rate_limited`: switched less than ten seconds ago.'
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until it is taken again. }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /connect/oauth/callback:
     get:
       operationId: oauthCallback
@@ -4221,7 +4274,7 @@ paths:
                     pixel_ratio: { type: number, minimum: 0.25, maximum: 10 }
                     touch: { type: boolean, description: The device has a touch screen. }
                     language: { type: string, description: "The browser's language (navigator.language), a BCP 47 tag." }
-                    locale: { type: string, description: The language the widget shows, a BCP 47 tag. }
+                    locale: { type: string, description: "The language the widget shows, a BCP 47 tag." }
                     time_zone: { type: string, description: 'An IANA time zone, such as Europe/Berlin.' }
                     color_scheme: { type: string, enum: [light, dark] }
                     reduced_motion: { type: boolean }
@@ -6985,7 +7038,7 @@ components:
         from_name: { type: string }
         reply_to: { type: string }
         verified_at: { type: [string, 'null'], format: date-time }
-        last_error: { type: string, description: The last failure, with no secret in it. Empty after a success. }
+        last_error: { type: string, description: "The last failure, with no secret in it. Empty after a success." }
         last_error_at: { type: [string, 'null'], format: date-time }
         updated_at: { type: [string, 'null'], format: date-time }
     EmailSenderInput:
@@ -6994,11 +7047,11 @@ components:
       additionalProperties: false
       properties:
         mode: { type: string, enum: [default, smtp, none] }
-        smtp_host: { type: string, description: A public host name or address. Private, loopback, link-local and metadata addresses are refused. }
+        smtp_host: { type: string, description: "A public host name or address. Private, loopback, link-local and metadata addresses are refused." }
         smtp_port: { type: integer, enum: [25, 465, 587, 2525] }
         smtp_username: { type: string }
         smtp_password: { type: string, description: Write only. Omit to keep the stored password. }
-        tls: { type: string, enum: [implicit, starttls], description: implicit on port 465, starttls on the others. Defaults to starttls. }
+        tls: { type: string, enum: [implicit, starttls], description: "implicit on port 465, starttls on the others. Defaults to starttls." }
         from_address: { type: string, description: A plain address such as hello@example.com. Required for smtp. }
         from_name: { type: string, maxLength: 100 }
         reply_to: { type: string }
@@ -8635,11 +8688,42 @@ components:
             guide_url: { type: string }
         notice:
           type: string
-          enum: [not_signed_in]
-          description: Present after a `:signed-in` that landed on the sign in page, until the customer presses the button again.
+          enum: [not_signed_in, switching_account]
+          description: >-
+            `not_signed_in`: present after a `:signed-in` that landed on the
+            sign in page, until the customer presses the button again.
+            `switching_account`: after `:switch-account`, while the cloud
+            browser signs out of the provider; `interactive` is false and there
+            is no `form` or `signals` until the sign in is back.
+        wrongAccount:
+          type: object
+          required: [tried, max]
+          description: >-
+            In `awaiting_sign_in`: the account signed in does not hold the
+            domain (the provider's DNS page said so twice, and its account
+            switcher, where it has one, opened none that does). The customer
+            chooses: `:switch-account` to sign in with another account, or
+            `:cancel`. The live view stays (they may switch accounts by hand in
+            it and press "I'm signed in" again, which counts no new try);
+            there is no `form`. On a session that ended because the third
+            account did not hold the domain either, the last count without
+            `account`. Never the domain on other nameservers: that ends with
+            `browser_not_provider_dns`.
+          properties:
+            account:
+              type: string
+              maxLength: 64
+              description: >-
+                The name the provider shows for the account signed in (a user
+                name, a customer number or an address, read from its header or
+                account menu), shown to this customer only and never stored or
+                logged; an address is masked to its first character and its
+                domain (`j***@gmail.com`). Absent when the page shows none.
+            tried: { type: integer, minimum: 1, maximum: 3, description: "How many accounts were found not to hold the domain." }
+            max: { type: integer, description: "How many may be tried: 3." }
         error:
           type: object
-          description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan.
+          description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.
           properties:
             code: { type: string }
             message: { type: string }
@@ -8809,6 +8893,14 @@ components:
           description: >-
             The selector of the page's own "Resend the code" or "Resend the
             link" control. Absent when it was not seen (today, every provider).
+        forgotUrl:
+          type: string
+          format: uri
+          description: >-
+            The provider's own "forgot password" page, https on the provider's
+            own hosts, for the popup to open in a new tab of the customer's own
+            browser (never in the cloud browser), so the reset email's link
+            opens there too. Absent when it was not seen.
     BrowserHandback:
       type: object
       required: [reason]
@@ -8862,7 +8954,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported, caller_cannot_start]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -9479,7 +9571,7 @@ components:
           enum: [zone_copy_failed, zone_not_served, dnssec_timeout, ds_removal_failed, credential_refused, registrar_refused, registrar_locked, agent_failed, delegation_timeout, delegation_drift, internal]
         failure_detail: { type: string }
         records_copied: { type: integer }
-        email_records: { type: integer, description: How many of the copied records carry mail (MX, SPF, DKIM, DMARC). }
+        email_records: { type: integer, description: "How many of the copied records carry mail (MX, SPF, DKIM, DMARC)." }
         email_kinds: { type: array, items: { type: string, enum: [mx, spf, dkim, dmarc] } }
         ds_present: { type: boolean, description: The registry published a DS record (DNSSEC was on) during the move. }
         ds_removed_at: { type: string, format: date-time }
