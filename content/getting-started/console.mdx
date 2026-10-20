@@ -268,7 +268,7 @@ Each application has its own page: open it from **Applications** or from the
 switcher. Its summary counts the application's domains by status, and its
 **Domains** (the ones that need attention first, each opening its details),
 **API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
-it**, **Nameservers** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
+it**, **Domain maintenance** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
@@ -276,28 +276,43 @@ can't be previewed here: its client secret was issued to whoever created it
 and was never stored in the console, so mint its tokens with `POST /v1/tokens`
 and that secret.
 
-#### Nameservers
+#### Domain maintenance
 
-An application's **Settings** tab has a **Nameservers** section, for offering
-your end users a move of their domain's nameservers to your DNS host
-([Nameserver migration](/docs/guides/nameserver-migration)). A test mode
-application has none. It shows:
+An application's **Settings** tab has a **Domain maintenance** section: your
+platform keeps your users' domains working for them (records stay correct,
+certificates renew, problems get fixed) once each user agrees in the widget. One
+setting where the user bought the domain changes, its *nameservers*, which say
+who runs the domain's DNS. The guide is
+[Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
+A test mode application has none. The section has:
 
-- a before and after diagram of the route you pick: the registrar stays the same,
-  and the nameservers and the DNS host change;
-- the mode: **Off** (never offered), **Offer** (a second choice beside adding
-  records) or **Prefer** (the first choice; adding records stays one click away);
-- the two routes: **We host your DNS**, or **Your own DNS**, either **A DNS host we
-  connect to** (pick one of your connected Cloudflare, Amazon Route 53, Google
-  Cloud DNS or Azure DNS accounts; only this application's moves use it) or **Your
-  own nameservers** (2 to 13, one per line);
-- **Moves**: this application's figures (started, moved, median time to move,
-  waited on DNSSEC, stopped and why, moved back) and its latest moves, each
-  opening its domain.
+- **Maintain your users' domains**, a switch, off by default. Nothing changes for
+  your users until you **Save**; once saved, each user is asked when they connect
+  a domain.
+- **Before and after**: a user's domain as two parts. Where it is registered (paid
+  for) stays; what keeps it working (its DNS) moves to whoever runs it. A **?**
+  beside DNS, registrar and nameservers gives one plain line and a link to the
+  guide.
+- **Who runs it**: **CustomDomain™** (recommended, the default; nothing to set up)
+  or **Your own account** (pick one of your connected Cloudflare, Amazon Route 53,
+  Google Cloud DNS or Azure DNS accounts; only this application uses it). Under
+  **Advanced**, **Use your own nameservers instead** takes 2 to 13 nameservers, one
+  per line.
+- **Show it as the first choice**: users see it first, and adding records stays
+  one tap away. Off, it is a quiet second choice.
+- **Domains you maintain**, under the section once it is on: how many are
+  maintained, being set up and need attention, the typical setup time, why some
+  stopped, and one row per domain (who runs it, its status in plain words, the
+  records copied, when it was last checked), each opening the domain.
 
-A domain whose nameservers are moving shows the move on its **DNS** tab: where the
-move is, the old and new nameservers, what the registry lists now and when it was
-read, the next step, and **Move back**.
+The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
+`target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
+
+A maintained domain shows a **Domain maintenance** section on its **DNS** tab: its
+status, three steps (**Copying settings**, **Waiting for the registrar**,
+**Live**), the next thing to do, where its records are, its nameservers under
+**Technical details**, and **Move back**
+([what moving back does](/docs/guides/nameserver-migration#moving-back)).
 
 ## 3. Connect a domain
 
