@@ -3,7 +3,9 @@ title: FAQ
 description: "Short answers to common questions about connecting domains: which providers auto-configure, how records get written, whether keys are stored, and apex domains."
 ---
 
-### Which DNS providers auto-configure records?
+<Accordions type="multiple">
+
+<Accordion title="Which DNS providers auto-configure records?" id="which-dns-providers-auto-configure-records">
 
 The hosted service writes the records for the customer at 74 DNS providers,
 through a sign-in, an API key or an access role (Cloudflare, Route 53, Google
@@ -21,7 +23,9 @@ steps for that. See
 [Provider setup](/docs/dns/provider-setup) for per-provider credential steps
 and eligibility gates.
 
-### Can I buy a new domain here too?
+</Accordion>
+
+<Accordion title="Can I buy a new domain here too?" id="can-i-buy-a-new-domain-here-too">
 
 Yes, under **Sell → Buy a domain** in the console. Checkout only *authorizes* your
 card; the domain is registered server-side, and the card is captured only after
@@ -29,7 +33,9 @@ registration succeeds (a failure releases the hold, so you pay nothing). The
 purchased domain shows up in Domains already connected. See
 [Buying a domain](/docs/sell/buying-a-domain).
 
-### How does a domain actually get configured?
+</Accordion>
+
+<Accordion title="How does a domain actually get configured?" id="how-does-a-domain-actually-get-configured">
 
 Through one of four [rails](/docs/connect-flow/overview#the-four-rails): the
 customer authorizes their DNS provider via OAuth (records written with the
@@ -38,7 +44,9 @@ a one-click setup redirect, a scoped API token you pass once, or the
 guided-manual copy-paste flow. `POST /v1/domains:check` tells you which are
 available for a given domain.
 
-### Is my provider API key stored?
+</Accordion>
+
+<Accordion title="Is my provider API key stored?" id="is-my-provider-api-key-stored">
 
 Only if you keep **Remember this key** ticked when you connect in the console
 (through the API, only when you connect it as a
@@ -50,14 +58,18 @@ page. Untick the box and the key is used once to write the records, then
 forgotten. Account passwords and tokens that expire within hours are never
 kept. See [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
-### Can I connect several domains on the same provider account at once?
+</Accordion>
+
+<Accordion title="Can I connect several domains on the same provider account at once?" id="can-i-connect-several-domains-on-the-same-provider-account-at-once">
 
 Yes, at providers whose API can list an account's domains, among them **Cloudflare, GoDaddy, Route 53, and Namecheap**. After you apply a key
 to one domain, the console offers to list the account's other domains and connect
 them (all or a subset) in one step. See
 [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
 
-### Does it support apex domains as well as subdomains?
+</Accordion>
+
+<Accordion title="Does it support apex domains as well as subdomains?" id="does-it-support-apex-domains-as-well-as-subdomains">
 
 Yes. A connection's `host` is empty for the apex or the subdomain label
 otherwise. A root domain works at **every** provider: where the provider has a
@@ -68,13 +80,17 @@ DigitalOcean, Name.com, OVH…) it uses `A` records pointing at our edge. `POST
 `apex_message` (set only when *this* record set can't be realized) so you can
 steer the customer. See [Root domains](/docs/dns/root-domains).
 
-### Does it support wildcard domains?
+</Accordion>
+
+<Accordion title="Does it support wildcard domains?" id="does-it-support-wildcard-domains">
 
 `POST /v1/domains:check` returns a `wildcard_support` flag per detected provider.
 Whether you offer wildcard in your product depends on how you use that flag in
 your onboarding flow.
 
-### How long does DNS propagation usually take?
+</Accordion>
+
+<Accordion title="How long does DNS propagation usually take?" id="how-long-does-dns-propagation-usually-take">
 
 For records written for the customer (a sign-in, one-click setup or an API
 key), usually seconds: the connection is checked every five seconds at first,
@@ -86,20 +102,26 @@ The connection sits in `propagating` (or `pending`, for records added by hand)
 until every desired record resolves; `GET /v1/connections/{id}` shows current
 status.
 
-### What happens if I revoke or delete an API key?
+</Accordion>
+
+<Accordion title="What happens if I revoke or delete an API key?" id="what-happens-if-i-revoke-or-delete-an-api-key">
 
 Revocation is immediate: a revoked key stops authenticating on its next request.
 Keys are never returned by list endpoints after creation; only metadata (`last4`,
 `created_at`, `revoked_at`) is visible.
 
-### Can a connection lose its "live" status?
+</Accordion>
+
+<Accordion title='Can a connection lose its "live" status?' id="can-a-connection-lose-its-live-status">
 
 The lifecycle is forward-only, so a `live` connection isn't demoted
 automatically. But [Monitor](/docs/webhooks/overview#event-catalog) detects when a
 live domain's records stop resolving and fires `domain.record_missing`, so you can
 react. See [Offboarding](/docs/connect-flow/offboarding).
 
-### Is there a sandbox / test mode?
+</Accordion>
+
+<Accordion title="Is there a sandbox / test mode?" id="is-there-a-sandbox--test-mode">
 
 Yes. A [test mode](/docs/guides/test-mode) application runs the whole connect flow,
 the widget, the API and your webhooks, on made up `.test` names such as
@@ -116,3 +138,7 @@ also carry an environment (`production` / `staging` / `development`), and keys a
 prefixed `cd_test_` / `cd_live_` (keys created before that prefix change use
 `sk_test_` / `sk_live_` and keep working), but a `cd_test_` key made for a staging or
 development environment works on real domains.
+
+</Accordion>
+
+</Accordions>

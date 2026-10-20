@@ -15,12 +15,32 @@ file starts the 14 day free trial, and without one the request is refused with
 `402 billing_required`).
 Keys created before the switch to `cd_` start with `sk_` and keep working.
 
-## 1. Pre-flight, and read what it says
+The Node samples use the built-in `fetch` (Node 18 or newer) and read the key from
+`CUSTOMDOMAIN_API_KEY`.
 
-```bash
+<Steps>
+
+<Step>
+
+### Pre-flight, and read what it says [#1-pre-flight-and-read-what-it-says]
+
+```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/domains:check \
   -H "Authorization: Bearer cd_live_..." -H "Content-Type: application/json" \
   -d '{"domain":"shop.acme.com"}'
+```
+
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/domains:check", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ domain: "shop.acme.com" }),
+});
+const check = await res.json();
+console.log(check.recommended_rail, check.end_user_automatic, check.blocked_reason);
 ```
 
 Branch on **`rails`** and **`recommended_rail`**, not on `setup_type`:
@@ -31,12 +51,32 @@ Token the user has to create at GoDaddy). `end_user_automatic: true` is the only
 where to send them for manual records. If you supply your own `records`, pass
 them here too so conflicts are computed against the real set.
 
-## 2. Create
+</Step>
 
-```bash
+<Step>
+
+### Create [#2-create]
+
+```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/connections \
   -H "Authorization: Bearer cd_live_..." -H "Content-Type: application/json" \
   -d '{"domain":"shop.acme.com","application_url":"https://tenant-42.yourapp.com"}'
+```
+
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/connections", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    domain: "shop.acme.com",
+    application_url: "https://tenant-42.yourapp.com",
+  }),
+});
+const connection = await res.json(); // 201 when new, 200 when it already existed
+console.log(res.status, connection.id, connection.records);
 ```
 
 `application_url` makes the CustomDomain™ edge serve the domain from that
@@ -51,14 +91,30 @@ domain returns the existing connection with `200`; if the only existing one is
 For records only you know (SES DKIM, verification `TXT`), follow with
 `PUT /v1/connections/{id}/records` (see [Bring your own records](/docs/dns/bring-your-own-records)).
 
-## 3. Apply (optional)
+</Step>
+
+<Step>
+
+### Apply (optional) [#3-apply-optional]
 
 If you hold a provider credential for the zone, write the records yourself:
 
-```bash
+```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/connections/<ID>/apply \
   -H "Authorization: Bearer cd_live_..." -H "Content-Type: application/json" \
   -d '{"provider":"cloudflare","credential":"<scoped token>"}'
+```
+
+```js tab="Node"
+const res = await fetch(`https://api.customdomain.ai/v1/connections/${connectionId}/apply`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ provider: "cloudflare", credential: process.env.CLOUDFLARE_TOKEN }),
+});
+if (!res.ok) console.error(res.status, await res.json()); // { code, title, details }
 ```
 
 A rejected credential is `422 ProviderAuthenticationError`; any other
@@ -66,7 +122,11 @@ provider refusal is `422 dns_write_failed` with the provider's reason.
 Route 53 temporary (`ASIA…`) keys also need the session token. Otherwise, show
 the records from `GET /v1/connections/{id}/records` and let the user add them.
 
-## 4. Verify and react
+</Step>
+
+<Step>
+
+### Verify and react [#4-verify-and-react]
 
 Subscribe to webhooks (`connection.live`, `connection.failed`; both carry
 `error_code` / `error_message` when there is one) and poll
@@ -74,7 +134,13 @@ Subscribe to webhooks (`connection.live`, `connection.failed`; both carry
 `propagating` fails after 24 hours; `POST /v1/connections/{id}:recheck`
 revives a failed connection.
 
+</Step>
+
+</Steps>
+
 ## Mistakes we see
+
+<Callout type="warn">
 
 - **Promising "automatic" from `setup_type`.** Use `rails`.
 - **Telling users "unregistered" on a resolver hiccup.** Only act on
@@ -92,3 +158,5 @@ revives a failed connection.
 - **Inventing the edge CNAME for an email-only connection.** A connection
   whose records have no edge record is never served and gets no certificate,
   by design.
+
+</Callout>
