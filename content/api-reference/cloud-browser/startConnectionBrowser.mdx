@@ -15,11 +15,28 @@ _openapi:
           own, the customer signs in to the provider inside a temporary browser
           that a browser hosting company runs for a few minutes. They type their
           own username, password and any verification code into the provider's
-          real sign in page, so CustomDomain™ never receives them, and nothing
-          is stored. Our software then reads the provider's DNS page for this
-          one domain, shows the customer the exact changes, and makes them only
-          after the customer approves. It never creates an API key at the
-          provider, and a session never runs without the customer present.
+          real sign in page, so CustomDomain™ never receives them, and the sign
+          in itself is never stored. Where the deployment turned it on for the
+          provider, the agent then makes a lasting API key on the provider's own
+          API page (named `CustomDomain` and the application's name, with the
+          domain and DNS scopes only and the longest expiry the provider
+          offers), checks it with one read only call, keeps it encrypted for
+          this application only, and writes the records through the provider's
+          API; the domain is then monitored and repaired like any connected
+          provider account, and the connection's `credential` shows the key's
+          record (never the key). Otherwise, or when making the key fails, our
+          software reads the provider's DNS page for this one domain, shows the
+          customer the exact changes, and makes them only after the customer
+          approves. A session never runs without the customer present.
+
+
+          With `mode: reconnect`, the session is the end user's sign in that
+          renews the connection's lasting API key (when it nears its end or the
+          provider stopped accepting it): the agent makes a new key with the
+          same scopes, checks it and swaps it in, and changes no DNS record. A
+          connection without such a key is refused with
+          `browser_reconnect_unavailable`. A reconnect link (`POST
+          /connections/{id}:reconnect-link`) opens the hosted page in this mode.
 
 
           Returns the address of the popup page that shows the browser. Its

@@ -2274,9 +2274,22 @@ paths:
         platform's own DNS host account) or `custom` (the platform's own
         nameservers; the zone must already answer for the domain). For
         `managed` and `dns_host` the domain's records are copied first, mail
-        included, so nothing breaks at the switch. An API key may pass
+        included, so nothing breaks at the switch: the whole zone through the
+        old DNS host's API when we hold a key there, else from public DNS,
+        and then the move waits in `needs_review` until a person confirms
+        the copy (`copy_reviewed`). An API key may pass
         `target` for `managed` or `custom`; `dns_host` is always the
-        application's own account.
+        application's own account. A delegated agent token may name only the
+        application's own target and may not send `skip_zone_check` (`403
+        target_not_allowed`): with a registrar account linked, nameservers an
+        agent chose would hand it the whole domain in one call.
+
+
+        **Where they change**: at the domain's registrar, looked up over
+        RDAP for every move (`registrar`), never at the DNS host because it
+        hosts the DNS. A key, an account, a cloud browser sign in and the
+        instructions all go to that registrar; when RDAP names none, the
+        detected DNS host is used as a guess and `next_step` names no company.
 
 
         **How they change** (`path`): `api`, the registrar's own API with a
@@ -2290,6 +2303,14 @@ paths:
         is no standard a third party can use to ask a registrar for this
         (Domain Connect edits records only; CDS and CSYNC need the current
         DNS operator and DNSSEC), so these three are the ways.
+
+
+        **A lost answer**: a registrar's error is not taken at its word, since a
+        timeout can come after the registrar acted. The registrar (then the
+        registry) is read back: the nameservers asked for mean the change
+        happened; others mean it didn't (`registrar_refused`); no answer
+        leaves the move in `setting` with `waiting_for: registrar_confirm`,
+        still possible to move back, and the next check reads back first.
 
 
         **DNSSEC**: when the registry publishes a DS record for the domain,
@@ -2347,6 +2368,10 @@ paths:
             (the registrar has no API call that changes nameservers),
             `nameserver_agent_unavailable` (path `agent` asked for, but the
             cloud browser can't change this registrar's nameservers),
+            `registrar_locks_nameservers` (the domain is registered at a
+            registrar that requires its own nameservers, Cloudflare
+            Registrar), `registrar_mismatch` (the key or account is at
+            another company than the registrar RDAP names),
             `zone_host_unsupported` or `dns_host_not_configured`.
           content:
             application/json:
@@ -2358,16 +2383,23 @@ paths:
       summary: Move the domain's nameservers back
       tags: [Nameservers]
       description: >-
-        Sets the nameservers the domain had before the move back. With a key
-        (sent once, or the migration's connected account) through the
-        registrar's API (`rollback_path: api`); otherwise the old nameservers
-        are handed to a person (`rollback_path: manual`, `next_step` names
-        them). A migration that changed nothing at the registrar yet is
-        simply stopped (`rollback_path: none`). The old DNS host's records
-        were never touched, so the domain answers as before once the registry
-        lists the old nameservers again. Idempotent. A widget token may move
-        back but may not send a key. A delegated agent token needs
-        `domains:connect`.
+        Moves the domain back, to one of two places (`rollback_target`): the
+        nameservers it had before (`previous`), or the registrar's own DNS
+        (`registrar_default`). Without a choice: the old nameservers while
+        they still answer for the zone, else the registrar's own DNS. The old
+        nameservers are asked first, because a DNS host may have deleted the
+        zone since (Cloudflare deletes a moved zone after 7 days); moving back
+        to ones that no longer answer is refused (`409 old_dns_gone`). A move
+        back to a domain that used the registrar's own DNS at the start goes
+        through the registrar's reset call, not its names set as custom ones.
+        With a key (sent once, or the migration's connected account) the
+        registrar's API makes it (`rollback_path: api`); otherwise the cloud
+        browser (`agent`) or a person (`manual`, `next_step` says what to set
+        or choose). A migration that changed nothing at the registrar yet is
+        simply stopped (`none`). Any cloud browser session still working on
+        the move is ended first. Idempotent. A widget token may move back,
+        and choose where, but may not send a key. A delegated agent token
+        needs `domains:connect`.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2388,9 +2420,18 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`old_dns_gone`: the old nameservers no longer answer for the zone; move back to the registrar''s own DNS instead. `changed_elsewhere`: the registrar lists other nameservers than the move''s, so a move back would overwrite someone else''s change. Or nothing was changed at the registrar to move back.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '502':
-          description: '`registrar_refused`: the registrar did not accept the old nameservers. Nothing was changed.'
+          description: '`registrar_refused`: the registrar did not accept the old nameservers; they were read back and nothing was changed.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: '`registrar_unconfirmed`: the registrar''s answer was lost and it could not be read back, so whether the move back happened is not known. Nothing is recorded; try again.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2576,6 +2617,57 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "A failed connection cannot be retried because the same application already has another active connection for this domain; retry that one instead" }
+  /connections/{id}:reconnect-link:
+    post:
+      operationId: createConnectionReconnectLink
+      summary: A link the end user opens to renew the domain's lasting API key
+      tags: [Cloud browser]
+      description: >-
+        For a connection whose records were written with a lasting API key the
+        cloud browser's agent made at the DNS provider. The link opens the
+        hosted connect page in reconnect mode, straight on the sign in for that
+        provider: after the end user signs in, the agent makes a new key with
+        the same scopes, checks it and swaps it in, and no DNS record changes.
+        It is a shared flow link (`/connect/{token}`): it works once and expires
+        after 14 days.
+
+
+        With `send: true` and the end user's email address on the connection
+        (and the end user email feature on), CustomDomain™ emails the link on
+        the application's behalf and the answer is `emailed: true` with no
+        `link`; otherwise the answer carries the `link` to pass on. The
+        control plane also emails one by itself 30 and 7 days before the key's
+        end and when the provider stops accepting it. A connection with no
+        such key answers `409` `not_reconnectable`. A delegated agent token
+        needs `domains:connect`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:connect']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                send: { type: boolean, description: "Email the link to the end user when their address is known." }
+      responses:
+        '200':
+          description: The link, or that it was emailed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [emailed]
+                properties:
+                  link: { type: string, format: uri, description: "The reconnect link; absent when it was emailed." }
+                  emailed: { type: boolean }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /connections/{id}:retarget:
     post:
       operationId: retargetConnection
@@ -2807,11 +2899,29 @@ paths:
         own, the customer signs in to the provider inside a temporary browser
         that a browser hosting company runs for a few minutes. They type their
         own username, password and any verification code into the provider's
-        real sign in page, so CustomDomain™ never receives them, and nothing is
-        stored. Our software then reads the provider's DNS page for this one
-        domain, shows the customer the exact changes, and makes them only after
-        the customer approves. It never creates an API key at the provider, and
-        a session never runs without the customer present.
+        real sign in page, so CustomDomain™ never receives them, and the
+        sign in itself is never stored. Where the deployment turned it on for
+        the provider, the agent then makes a lasting API key on the provider's
+        own API page (named `CustomDomain` and the application's name, with the
+        domain and DNS scopes only and the longest expiry the provider offers),
+        checks it with one read only call, keeps it encrypted for this
+        application only, and writes the records through the provider's API;
+        the domain is then monitored and repaired like any connected provider
+        account, and the connection's `credential` shows the key's record (never
+        the key). Otherwise, or when making the key fails, our software reads
+        the provider's DNS page for this one domain, shows the customer the
+        exact changes, and makes them only after the customer approves. A
+        session never runs without the customer present.
+
+
+        With `mode: reconnect`, the session is the end user's sign in that
+        renews the connection's lasting API key (when it nears its end or the
+        provider stopped accepting it): the agent makes a new key with the same
+        scopes, checks it and swaps it in, and changes no DNS record. A
+        connection without such a key is refused with
+        `browser_reconnect_unavailable`. A reconnect link
+        (`POST /connections/{id}:reconnect-link`) opens the hosted page in this
+        mode.
 
 
         Returns the address of the popup page that shows the browser. Its
@@ -2874,6 +2984,14 @@ paths:
                   properties:
                     width: { type: integer, minimum: 360, maximum: 720, description: "Whole CSS pixels, 360 to 720: the live area's width plus the remote page's scrollbar, which the popup clips." }
                     height: { type: integer, minimum: 480, maximum: 800, description: "Whole CSS pixels, 480 to 800." }
+                mode:
+                  type: string
+                  enum: [connect, reconnect]
+                  description: >-
+                    `connect` (the default) connects the domain. `reconnect` renews the
+                    lasting API key CustomDomain™ made for this connection, for the key's
+                    own provider, and changes no DNS record; the session ends `done` when
+                    the new key is in place.
                 widget_session_id:
                   type: string
                   description: >-
@@ -2915,7 +3033,9 @@ paths:
         '409':
           description: >-
             `browser_session_active`: a secure sign in is already running for
-            this domain.
+            this domain, or `browser_reconnect_unavailable`: `mode: reconnect`
+            for a connection that has no lasting API key CustomDomain™ made, or
+            whose provider cannot make one now.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -4815,6 +4935,16 @@ paths:
                     `rolled_back`, and `drifted` (an active migration's
                     nameservers were changed away; `observed_nameservers` says
                     to what). They go to the migration's own application only.
+                    The `credential.created`, `credential.expiring`,
+                    `credential.failed` and `credential.removed` events follow
+                    the lasting API key the cloud browser's agent made at the
+                    domain's DNS provider (made and kept, renewed by a
+                    reconnect, 30 and 7 days before its end, refused by the
+                    provider or ended, removed); each carries a `credential`
+                    object with the key's record, never the key, its `rights`
+                    (`transfer`, `billing` or `account`: what it can do beyond
+                    DNS), and `reconnect: true` when the end user should sign
+                    in again.
                   items:
                     type: string
                     enum:
@@ -4838,6 +4968,10 @@ paths:
                       - certificate.renewed
                       - certificate.failed
                       - certificate.expiring
+                      - credential.created
+                      - credential.expiring
+                      - credential.failed
+                      - credential.removed
                       - nameservers.started
                       - nameservers.dnssec_cleared
                       - nameservers.changed
@@ -6169,6 +6303,10 @@ paths:
       description: >-
         Deletes the key and the account. Its domains stay connected and
         served, without continuous access; each domain's timeline records it.
+        For a lasting API key the cloud browser's agent made, this deletes
+        CustomDomain™'s copy only: the key lives at the provider until it is
+        revoked there, at `revoke_url`, and the application receives
+        `credential.removed`.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6183,6 +6321,10 @@ paths:
                   id: { type: string }
                   revoked: { type: boolean }
                   domains_kept_connected: { type: integer }
+                  revoke_url:
+                    type: string
+                    format: uri
+                    description: For a key the agent made, the provider's page where the key itself is revoked.
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -8154,6 +8296,18 @@ components:
             Whether the caller may change the account's access, scope or
             domains, connect domains with it and replace its key: an admin,
             an owner, or the member who connected it.
+        application_id:
+          type: string
+          description: >-
+            Set for an account bound to one application: a lasting API key the
+            cloud browser's agent made for it. Its key serves that application's
+            domains only; connecting another application's domain with it is
+            refused (`403`).
+        origin:
+          type: string
+          enum: [browser_agent]
+          description: "`browser_agent` for a key the agent made after the end user signed in; absent for a key a person pasted."
+        agent_key: { $ref: '#/components/schemas/AgentKey' }
     ConnectionServices:
       type: object
       required: [connection_id, application_id, domain, status, access, services, active_count]
@@ -8505,6 +8659,82 @@ components:
                 the caller is a widget token, the domain is not a test domain
                 and the connection has no address yet. The widget then calls
                 `PUT /connections/{id}/end-user-email`. Omitted otherwise.
+            credential:
+              $ref: '#/components/schemas/ConnectionCredential'
+    ConnectionCredential:
+      type: object
+      description: >-
+        The lasting API key the cloud browser's agent made at the domain's DNS
+        provider for this connection, on `GET /connections/{id}` only: its record,
+        never the key. Omitted when the connection has none.
+      required: [account_id, provider, status, scopes, rights]
+      properties:
+        account_id: { type: string, description: "The provider account that holds the key (`GET /provider-accounts/{id}`)." }
+        provider: { type: string }
+        status:
+          type: string
+          enum: [active, expiring, needs_reconnect, expired]
+          description: >-
+            `active`: the key works. `expiring`: it works and ends within 30 days;
+            the end user was asked to reconnect. `needs_reconnect`: the provider
+            stopped accepting it. `expired`: it reached its end and was deleted; the
+            domain stays connected and monitored, and repairs wait for a reconnect.
+        name: { type: string }
+        scopes: { type: array, items: { type: string } }
+        account: { type: string }
+        session_id: { type: string }
+        verified_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        notice: { type: string, enum: [d30, d7, expired] }
+        reconnect_reason: { type: string, enum: [expiring, expired, refused] }
+        reconnect_sent_at: { type: string, format: date-time }
+        renewed_at: { type: string, format: date-time }
+        old_key: { type: string, enum: [revoke_by_hand] }
+        revoke_url: { type: string, format: uri }
+        rights:
+          type: array
+          items: { type: string, enum: [transfer, billing, account] }
+          description: >-
+            What the key can do beyond the domain's DNS records, so the platform knows
+            what it holds: `transfer` (it can transfer the domain away), `billing` (it can
+            make charges on the account: Spaceship's renewals and purchases), `account`
+            (a key with no scopes, which holds every right the provider's API gives the
+            account, transfers and renewals included where the API offers them). Empty for
+            a key that reaches the DNS records only. The keys are made with every domain
+            scope the provider offers (the owner's decision of 2026-10-20).
+    AgentKey:
+      type: object
+      description: >-
+        What is kept about a lasting API key the cloud browser's agent made at a
+        provider after the end user signed in. Never the key.
+      required: [scopes, rights]
+      properties:
+        name: { type: string, description: "The name the key was made with: `CustomDomain` and the application's name." }
+        scopes: { type: array, items: { type: string }, description: "The scopes it was made with, as the provider names them; empty for a provider whose keys have none." }
+        account: { type: string, description: "The provider account's identifier when the page showed one (a customer number or user name). Never an email address." }
+        session_id: { type: string, description: "The cloud browser session that made it." }
+        verified_at: { type: string, format: date-time, description: "When the read through the provider's API answered with it." }
+        expires_at: { type: string, format: date-time, description: "Its own end at the provider; absent for no end date." }
+        notice: { type: string, enum: [d30, d7, expired], description: "The last expiry notice sent." }
+        reconnect_reason: { type: string, enum: [expiring, expired, refused], description: "Why the end user is asked to sign in again." }
+        reconnect_sent_at: { type: string, format: date-time, description: "When a reconnect link was last emailed or copied." }
+        renewed_at: { type: string, format: date-time, description: "When a reconnect last swapped in a new key." }
+        old_key:
+          type: string
+          enum: [revoke_by_hand]
+          description: "`revoke_by_hand`: the key a reconnect replaced still lives at the provider; revoke it at `revoke_url`."
+        revoke_url: { type: string, format: uri, description: "The provider's page where the key is revoked." }
+        rights:
+          type: array
+          items: { type: string, enum: [transfer, billing, account] }
+          description: >-
+            What the key can do beyond the domain's DNS records, so the platform knows
+            what it holds: `transfer` (it can transfer the domain away), `billing` (it can
+            make charges on the account: Spaceship's renewals and purchases), `account`
+            (a key with no scopes, which holds every right the provider's API gives the
+            account, transfers and renewals included where the API offers them). Empty for
+            a key that reaches the DNS records only. The keys are made with every domain
+            scope the provider offers (the owner's decision of 2026-10-20).
     RecheckResult:
       allOf:
         - { $ref: '#/components/schemas/ConnectionWithRecords' }
@@ -8907,13 +9137,15 @@ components:
       description: >-
         Present while the agent has paused in the middle of its work and waits
         for the customer: the provider asks for a code (a re-authentication or a
-        step up) or shows a check. `interactive` is true and `live_view_url`
+        step up), shows a check, or (`agreement`) shows the terms its API page
+        asks the account holder to accept before a key is made, which the agent
+        never accepts for them. `interactive` is true and `live_view_url`
         is the page's own view: the customer answers in the live view, and the
         keys go from their browser to the vendor, never through the control
         plane. Once the prompt is gone from the page the agent goes on. A
         password the provider asks for again keeps `hand_back`.
       properties:
-        reason: { type: string, enum: [code, check] }
+        reason: { type: string, enum: [code, check, agreement] }
     BrowserViewport:
       type: object
       required: [width, height]
@@ -9471,8 +9703,13 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [disabled, platform_subdomain, unsupported_tld, reserved]
-          description: Why the nameservers can't move, when `available` is false (the reasons of `managed_dns`).
+          enum: [disabled, platform_subdomain, unsupported_tld, reserved, registrar_locks_nameservers]
+          description: >-
+            Why the nameservers can't move, when `available` is false: the
+            reasons of `managed_dns`, or `registrar_locks_nameservers` (the
+            domain is registered at a registrar that requires its own
+            nameservers, Cloudflare Registrar; moving them needs a transfer
+            first).
         path:
           type: string
           enum: [agent, manual]
@@ -9482,11 +9719,41 @@ components:
             new nameservers; `manual`, they set them with the values shown. A
             connection linked to a connected account changes them through the
             registrar's API instead.
-        provider: { type: string, description: The detected registrar or DNS provider. }
+        provider:
+          type: string
+          description: >-
+            Where the nameservers would be changed: the registrar's provider id
+            when `registrar` names one we route to, else the detected DNS host
+            as a guess (then `registrar` is null and nothing names it).
+        registrar:
+          description: Who the domain is registered with, from RDAP; null when unknown.
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         nameservers:
           type: array
           items: { type: string }
           description: The new nameservers for target `custom`. For `managed` and `dns_host` they are known once the zone exists (the migration's `new_nameservers`).
+    NameserverRegistrar:
+      type: object
+      description: >-
+        The company a domain is registered with, where its nameservers are
+        changed. Looked up over RDAP at the TLD's registry (found through the
+        IANA bootstrap file) and matched to a provider by its IANA Registrar
+        ID, so a domain registered at GoDaddy with its DNS at Cloudflare is
+        changed at GoDaddy.
+      required: [name, source]
+      properties:
+        name: { type: string, description: 'The brand ("GoDaddy"), the reseller the registry names, or RDAP''s own name.' }
+        provider: { type: string, description: 'Our provider id for it, when we route to it (`godaddy`).' }
+        iana_id: { type: integer, description: The IANA Registrar ID, when the registry gives one. }
+        url: { type: string, description: "The registrar's website." }
+        source:
+          type: string
+          enum: [rdap, request, account, '']
+          description: >-
+            `rdap`: looked up. `request`: the caller named it with a key or an
+            account. `account`: RDAP said nothing, and a connected account read
+            the domain's registration. Empty: RDAP named a registrar we do not
+            route to (`name` only).
     NameserverMigrateRequest:
       type: object
       additionalProperties: false
@@ -9497,8 +9764,8 @@ components:
           type: string
           enum: [api, agent, manual]
           description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
-        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`).' }
-        provider_account_id: { type: string, description: A connected provider account at the registrar. }
+        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`).' }
         credential:
           type: object
           additionalProperties: false
@@ -9507,6 +9774,14 @@ components:
             token: { type: string, description: 'A registrar API key the customer created, in the adapter''s format. Used for this call only and never stored.' }
         zone_ready: { type: boolean, description: 'Target `custom`: the platform''s nameservers now serve the zone.' }
         skip_zone_check: { type: boolean, description: 'Target `custom`: do not check that the new nameservers answer for the zone before moving.' }
+        copy_reviewed:
+          type: boolean
+          description: >-
+            A person checked the copied records (state `needs_review`), so the
+            move may go on. Sent with the start by an API key, it accepts a copy
+            read from public DNS in advance; it does not cover a copy that read
+            nothing, which always waits for a person. A widget token may send it
+            only to a move already in `needs_review`.
         consent:
           type: object
           additionalProperties: false
@@ -9514,11 +9789,27 @@ components:
           properties:
             id: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
             version: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
-          description: The consent text the end user agreed to. Required from a widget token.
+          description: >-
+            The consent text the end user agreed to. Required from a widget
+            token, and it must name a text the widget shows (`nsm-consent`,
+            versions 1 to 3), so a stored consent always names the words that
+            were on the screen.
     NameserverRollbackRequest:
       type: object
       additionalProperties: false
       properties:
+        rollback_target:
+          type: string
+          enum: [previous, registrar_default]
+          description: >-
+            Where to move back. `previous`: the nameservers the domain had
+            (refused with `409 old_dns_gone` when they no longer answer for the
+            zone, as after Cloudflare deleted a moved zone). `registrar_default`:
+            the registrar's own DNS, through its reset call where it has one
+            (Namecheap, Spaceship, Name.com, Porkbun, Hostinger), the cloud
+            browser, or the person. Omitted: `previous` while the old
+            nameservers still answer, else `registrar_default` (the migration's
+            `rollback_default`).
         provider_account_id: { type: string }
         credential:
           type: object
@@ -9534,17 +9825,22 @@ components:
             version: { type: string }
     NameserverMigration:
       type: object
-      required: [id, zone, state, path, target, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, ds_present, can_rollback, created_at, updated_at]
+      required: [id, zone, state, path, target, registrar, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, copy_warnings, ds_present, can_rollback, rollback_targets, old_dns_serves, created_at, updated_at]
       properties:
         id: { type: string }
         connection_id: { type: string }
         zone: { type: string, description: The registrable domain whose nameservers move. }
         state:
           type: string
-          enum: [pending, copying, needs_dnssec_off, waiting_ds, setting, propagating, active, failed, rolled_back]
+          enum: [pending, copying, needs_review, needs_dnssec_off, waiting_ds, setting, propagating, active, failed, rolled_back]
           description: >-
             `pending`: target `custom` waits for the platform's zone.
-            `copying`: the zone is being created and the records copied.
+            `copying`: the zone is being created and the records copied; a copy
+            whose write to the DNS servers failed is retried, never switched
+            to. `needs_review`: the copy is not proven complete (it was read
+            from public DNS, which can't list a zone, or some records could not
+            be carried over); a person checks `copy_warnings` and confirms
+            with `copy_reviewed`.
             `needs_dnssec_off`: DNSSEC must be turned off at the registrar
             first. `waiting_ds`: DNSSEC is off; waiting for the registry to
             stop publishing the DS record and its TTL to pass.
@@ -9558,26 +9854,69 @@ components:
         path: { type: string, enum: [api, agent, manual] }
         target: { type: string, enum: [managed, dns_host, custom] }
         dns_host: { type: string, description: 'The DNS host of target `dns_host` (an adapter id such as `cloudflare`).' }
-        provider: { type: string, description: The registrar. }
+        provider:
+          type: string
+          description: >-
+            Where the nameservers are changed: the registrar's provider id
+            (`registrar.provider`), or, when `registrar` is null, the DNS host
+            the domain used, as a guess (then `next_step` says "where the
+            domain is registered" and names no company).
+        registrar:
+          description: Who the domain is registered with (RDAP, or the account or key the caller brought); null when unknown.
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        old_dns_host: { type: string, description: 'The DNS host the domain used when the move started (a provider id such as `cloudflare`).' }
         old_nameservers: { type: array, items: { type: string }, description: What the registry listed when the move started; a rollback sets these. }
         new_nameservers: { type: array, items: { type: string } }
         observed_nameservers: { type: array, items: { type: string }, description: What the registry listed at the last check. }
         waiting_for:
           type: string
-          enum: [zone_ready, zone_served, dnssec_off, ds_clear, credential, browser_session, registrar, delegation]
+          enum: [zone_ready, zone_served, copy_review, dnssec_off, ds_clear, credential, registrar_confirm, browser_session, registrar, delegation]
         next_step: { type: string, description: One sentence for a person. }
         failure_code:
           type: string
-          enum: [zone_copy_failed, zone_not_served, dnssec_timeout, ds_removal_failed, credential_refused, registrar_refused, registrar_locked, agent_failed, delegation_timeout, delegation_drift, internal]
+          enum: [zone_copy_failed, zone_not_served, dnssec_timeout, ds_removal_failed, credential_refused, registrar_refused, registrar_locked, changed_elsewhere, agent_failed, delegation_timeout, delegation_drift, internal]
+          description: '`changed_elsewhere`: the registrar listed other nameservers than the ones the move started from, so the change did not overwrite them.'
         failure_detail: { type: string }
         records_copied: { type: integer }
         email_records: { type: integer, description: "How many of the copied records carry mail (MX, SPF, DKIM, DMARC)." }
         email_kinds: { type: array, items: { type: string, enum: [mx, spf, dkim, dmarc] } }
+        copy_source:
+          type: string
+          enum: [api, discovery, existing_zone]
+          description: >-
+            How the records were copied. `api`: the whole zone, read through a
+            key we hold at the DNS host the domain used (a kept sign in or a
+            connected account there); proven complete. `discovery`: read from
+            public DNS at the names domains commonly use; a person confirms it.
+            `existing_zone`: the platform's zone already held records, which
+            were kept.
+        copy_warnings:
+          type: array
+          items: { type: string }
+          description: 'What a person should check before the switch: records left out (a Cloudflare proxied record answers with Cloudflare''s addresses, not the origin), lookups that went unanswered, forwarding that stays at the old host.'
+        copy_reviewed_at: { type: string, format: date-time, description: When a person confirmed a copy that is not proven complete. }
         ds_present: { type: boolean, description: The registry published a DS record (DNSSEC was on) during the move. }
         ds_removed_at: { type: string, format: date-time }
         ds_cleared_at: { type: string, format: date-time }
         can_rollback: { type: boolean }
-        rollback_path: { type: string, enum: [api, manual, none] }
+        rollback_path:
+          type: string
+          enum: [api, agent, manual, none]
+          description: >-
+            How the move back was made: `api` (the registrar's API, done),
+            `agent` (the person signs in to the registrar in the cloud browser
+            with `purpose: nameservers` and approves it), `manual` (`next_step`
+            says what to set or choose), `none` (nothing had changed yet).
+        rollback_targets:
+          type: array
+          items: { type: string, enum: [previous, registrar_default] }
+          description: The move backs possible now; `previous` is left out once the old nameservers no longer answer for the zone.
+        rollback_default: { type: string, enum: [previous, registrar_default], description: Where a move back without `rollback_target` goes. }
+        rollback_target: { type: string, enum: [previous, registrar_default], description: Where the move back went. }
+        rollback_set_at: { type: string, format: date-time, description: When the move back was made at the registrar; absent while a person or the cloud browser still has it to do. }
+        old_dns_serves:
+          type: [boolean, 'null']
+          description: Whether the old nameservers still answered for the zone when last asked (once a day while active, and at a move back); null when not asked yet.
         consent:
           type: object
           required: [id, version, at]
@@ -9597,11 +9936,13 @@ components:
         updated_at: { type: string, format: date-time }
     NameserverMigrationStats:
       type: object
-      required: [by_state, by_path, by_target, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]
+      required: [by_state, by_path, by_target, by_registrar, by_old_dns_host, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]
       properties:
         by_state: { type: object, additionalProperties: { type: integer } }
         by_path: { type: object, additionalProperties: { type: integer } }
         by_target: { type: object, additionalProperties: { type: integer } }
+        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when RDAP named none we route to.' }
+        by_old_dns_host: { type: object, additionalProperties: { type: integer }, description: 'Moves by the DNS host the domain left; `unknown` when none was detected.' }
         total: { type: integer }
         started: { type: integer }
         active: { type: integer }

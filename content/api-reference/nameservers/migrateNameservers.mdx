@@ -26,9 +26,22 @@ _openapi:
           platform's own DNS host account) or `custom` (the platform's own
           nameservers; the zone must already answer for the domain). For
           `managed` and `dns_host` the domain's records are copied first, mail
-          included, so nothing breaks at the switch. An API key may pass
-          `target` for `managed` or `custom`; `dns_host` is always the
-          application's own account.
+          included, so nothing breaks at the switch: the whole zone through the
+          old DNS host's API when we hold a key there, else from public DNS, and
+          then the move waits in `needs_review` until a person confirms the copy
+          (`copy_reviewed`). An API key may pass `target` for `managed` or
+          `custom`; `dns_host` is always the application's own account. A
+          delegated agent token may name only the application's own target and
+          may not send `skip_zone_check` (`403 target_not_allowed`): with a
+          registrar account linked, nameservers an agent chose would hand it the
+          whole domain in one call.
+
+
+          **Where they change**: at the domain's registrar, looked up over RDAP
+          for every move (`registrar`), never at the DNS host because it hosts
+          the DNS. A key, an account, a cloud browser sign in and the
+          instructions all go to that registrar; when RDAP names none, the
+          detected DNS host is used as a guess and `next_step` names no company.
 
 
           **How they change** (`path`): `api`, the registrar's own API with a
@@ -42,6 +55,14 @@ _openapi:
           is no standard a third party can use to ask a registrar for this
           (Domain Connect edits records only; CDS and CSYNC need the current DNS
           operator and DNSSEC), so these three are the ways.
+
+
+          **A lost answer**: a registrar's error is not taken at its word, since
+          a timeout can come after the registrar acted. The registrar (then the
+          registry) is read back: the nameservers asked for mean the change
+          happened; others mean it didn't (`registrar_refused`); no answer
+          leaves the move in `setting` with `waiting_for: registrar_confirm`,
+          still possible to move back, and the next check reads back first.
 
 
           **DNSSEC**: when the registry publishes a DS record for the domain,
