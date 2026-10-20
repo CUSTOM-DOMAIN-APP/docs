@@ -182,7 +182,7 @@ on.
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
-| **Analytics** | The widget funnel on its own tab, with a Traffic tab for what your domains receive at the edge (and the busiest domains) and a Providers tab for where customers drop off by DNS provider and by root versus subdomain. |
+| **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
 | **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
 | **API & SDK** | Server-side API keys (the workspace's default key at the top, **Create key** for more), with a Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
@@ -268,13 +268,36 @@ Each application has its own page: open it from **Applications** or from the
 switcher. Its summary counts the application's domains by status, and its
 **Domains** (the ones that need attention first, each opening its details),
 **API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
-it** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
+it**, **Nameservers** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
 can't be previewed here: its client secret was issued to whoever created it
 and was never stored in the console, so mint its tokens with `POST /v1/tokens`
 and that secret.
+
+#### Nameservers
+
+An application's **Settings** tab has a **Nameservers** section, for offering
+your end users a move of their domain's nameservers to your DNS host
+([Nameserver migration](/docs/guides/nameserver-migration)). A test mode
+application has none. It shows:
+
+- a before and after diagram of the route you pick: the registrar stays the same,
+  and the nameservers and the DNS host change;
+- the mode: **Off** (never offered), **Offer** (a second choice beside adding
+  records) or **Prefer** (the first choice; adding records stays one click away);
+- the two routes: **We host your DNS**, or **Your own DNS**, either **A DNS host we
+  connect to** (pick one of your connected Cloudflare, Amazon Route 53, Google
+  Cloud DNS or Azure DNS accounts; only this application's moves use it) or **Your
+  own nameservers** (2 to 13, one per line);
+- **Moves**: this application's figures (started, moved, median time to move,
+  waited on DNSSEC, stopped and why, moved back) and its latest moves, each
+  opening its domain.
+
+A domain whose nameservers are moving shows the move on its **DNS** tab: where the
+move is, the old and new nameservers, what the registry lists now and when it was
+read, the next step, and **Move back**.
 
 ## 3. Connect a domain
 
@@ -404,6 +427,26 @@ stored: visitors are estimated from a sketch of keyed hashes, and someone who
 visits on two days counts once on each. Hourly detail is kept 14 days and
 daily totals 400 days. The API has the same figures:
 `GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
+
+## Who opens the widget, and secure sign-in
+
+Two more panels on **Analytics** appear once there is something to count. Both
+follow the date range and the application picker, like the rest of the page.
+
+- **Devices and places**, on the **Widget** tab: the widget sessions by device
+  (desktop, phone, tablet), top countries and browsers, each a ranked list, and
+  how often a session on each kind of device connected its domain. Counts only:
+  no IP address, city or single session is ever shown. See
+  [what a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
+- **Secure sign-in**, on the **Providers** tab, when your customers used
+  [secure sign-in](/docs/guides/secure-sign-in): sessions started, signed in and
+  done, the average time to sign in and to done, a table per DNS provider
+  (started, signed in, changes shown, applied, done), and why the rest stopped
+  ("Human check on screen", "Code or approval never came", "Customer cancelled"
+  and so on), counted without and with a proxy in the customer's country. A reason
+  a proxy could change is marked **A proxy can change this**.
+
+The API has both: `audience` and `secure_sign_in` on `GET /v1/analytics/connect`.
 
 ## Many domains, and whose they are
 

@@ -3,8 +3,8 @@ title: Webhook events and delivery
 description: "Register HTTPS endpoints to receive signed webhook events as connections progress, with the event catalog, the payload envelope and how delivery retries work."
 ---
 
-Register HTTPS endpoints to receive signed events as connections progress and as
-monitored domains drift.
+Register HTTPS endpoints to receive signed events as connections progress, as
+monitored domains drift and as nameserver moves go through.
 
 ## Register an endpoint
 
@@ -65,6 +65,13 @@ leaves out a [test mode](/docs/guides/test-mode) application's endpoints unless
 | `certificate.renewed` | The edge renewed a domain's certificate. |
 | `certificate.failed` | Issuing or renewing failed (once per failure episode); the edge keeps retrying. |
 | `certificate.expiring` | A certificate that has not renewed expires in 14, 7 or 3 days, or expired. The certificate events carry a `certificate` object (`status`, `issuer`, `issued_at`, `expires_at`, `days_left`, `error`). See [Certificates](/docs/connect-flow/certificates). |
+| `nameservers.started` | A [nameserver move](/docs/guides/nameserver-migration) was created. Every `nameservers.*` event carries a `nameservers` object (see [below](#payload-envelope)) and goes to the move's own application only. |
+| `nameservers.dnssec_cleared` | The registry stopped publishing the domain's `DS` record, so the nameservers can move. |
+| `nameservers.changed` | The registrar took the new nameservers, or the delegation first showed one of them. |
+| `nameservers.active` | The registry lists every new nameserver: the move is done. |
+| `nameservers.failed` | The move stopped. `failure_code` says why. |
+| `nameservers.rolled_back` | The move was rolled back to the old nameservers. |
+| `nameservers.drifted` | An active move's nameservers were changed away. `observed_nameservers` says to what. |
 | `domain.record_missing` | [Monitoring](/docs/connect-flow/monitoring) confirmed a record disappeared or was repointed. `drift` carries `record_type`, `verdict` (`record_missing` or `record_changed`), `expected`, `observed` and `action` (`auto_fixed`, `fix_failed` or `action_required`). |
 | `domain.record_restored` | A previously missing record is observed again. |
 | `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed: the domain is registered (and only then is the card captured). |
@@ -130,6 +137,32 @@ Additional conditional fields ride connection events:
   omits it: the edge serves no redirect there, so the redirect is yours to serve.
 - `connection_id`: the connection the event is about, on connection,
   certificate and drift events.
+- `nameservers`: on every `nameservers.*` event, the move it is about:
+  `migration_id`, `zone` (the registrable domain), `state`, `path` (`api`,
+  `agent` or `manual`), `target` (`managed`, `dns_host` or `custom`),
+  `old_nameservers` and `new_nameservers`, and where they apply
+  `observed_nameservers` (what the registry lists, on `nameservers.active` and
+  `nameservers.drifted`), `failure_code` (on `nameservers.failed`, and
+  `delegation_drift` on `nameservers.drifted`), `records_copied` and
+  `email_records` (how many of the copied records carry mail). Each event is also
+  written to the domain's timeline as a row of the same kind.
+
+  ```json
+  "nameservers": {
+    "migration_id": "nsm_…",
+    "zone": "acme.com",
+    "state": "active",
+    "path": "api",
+    "target": "managed",
+    "old_nameservers": ["ns1.olddns.net", "ns2.olddns.net"],
+    "new_nameservers": ["ns-1402.awsdns-47.org", "ns-905.awsdns-49.net"],
+    "observed_nameservers": ["ns-1402.awsdns-47.org", "ns-905.awsdns-49.net"],
+    "records_copied": 14,
+    "email_records": 5
+  }
+  ```
+
+  The shape is illustrative: the values are made up.
 - `sandbox`: `true` on an event from a [test mode](/docs/guides/test-mode)
   application, whose domain is a simulated `.test` name. Real events carry no
   `sandbox` field. Test mode events are signed and delivered like any other, so

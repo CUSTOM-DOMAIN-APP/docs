@@ -76,7 +76,10 @@ where an owner fixes it.
 Buying: `search-domain-availability` and `generate-domain-suggestions` work as
 read tools. `create-domain-order` exists, but ordering is off on the hosted
 service. `check-order-status` and `list-domain-orders` read orders. Email and
-forwarding: `add-email`, `forward-domain`.
+forwarding: `add-email`, `forward-domain`. Moving a domain's nameservers to the
+application's DNS host: `migrate-nameservers` and `rollback-nameservers` (both ask
+the person first and send `confirm: true`), and `check-nameserver-status` to follow
+the move. See [Nameserver migration](/docs/guides/nameserver-migration).
 
 ## Re-apply and disconnect
 

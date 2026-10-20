@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: "The CustomDomain™ Model Context Protocol server: seventeen tools an AI agent can call to search, connect and manage domains, plus scopes, transports and auth."
+description: "The CustomDomain™ Model Context Protocol server: twenty tools an AI agent can call to search, connect and manage domains, plus scopes, transports and auth."
 ---
 
 CustomDomain™ ships a **Model Context Protocol (MCP) server** so an AI agent
@@ -18,12 +18,12 @@ you pick, and says when it has signed in (see
 [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)). The [agent skill](/docs/agents/skills) teaches an agent the safe
 way to use the tools below.
 
-The server reports itself as `customdomain-mcp` (protocol revision
-`2025-06-18`) and advertises only the `tools` capability.
+The server reports itself as `customdomain-mcp`, version `0.6.0` (protocol
+revision `2025-06-18`), and advertises only the `tools` capability.
 
 ## Tools
 
-The server registers **seventeen tools**, in a fixed order. None of them takes DNS
+The server registers **twenty tools**, in a fixed order. None of them takes DNS
 records as input. Records always come from the control plane, so an agent can
 never inject them. Each tool needs one scope (see below).
 
@@ -46,7 +46,10 @@ never inject them. Each tool needs one scope (see below).
 | `diagnose-connection` | `{ connectionId }` | `domains:read` | Explain, record by record, what public DNS shows for a connection and what the user still has to do: each record is `found`, `missing` or `mismatch`, plus the issues that explain it (a hostname typed in the Name field, a proxy in front, a leftover record). Read only. |
 | `check-billing-status` | none | `domains:read` | Check whether the workspace may connect new domains right now. When it may not, `restricted` is `true`, `code` is `billing_required` and `details` say where an owner or admin fixes billing. Also returns the plan and this month's usage. Read only. |
 | `list-domain-orders` | `{ limit? }` | `domains:read` | List the domain purchases made through the account, newest first (default 50, at most 200). A list that was cut says `truncated: true`. Read only. |
-{/* NEW TOOLS GO HERE: add one row per new tool directly above this line, then change the count word ("seventeen") in this page's description and in the sentence under Tools, and in user-journeys.mdx and index.mdx. This marker stays; the docs sync test reads it. */}
+| `check-nameserver-status` | `{ connectionId }` | `domains:read` | Read the [nameserver move](/docs/guides/nameserver-migration) of a connection's domain: its `state` (`pending`, `copying`, `needs_dnssec_off`, `waiting_ds`, `setting`, `propagating`, `active`, `failed`, `rolled_back`), the old and new nameservers, what the registry lists now, what it waits on and the next step for a person. `done` is `true` once it is active, failed or rolled back. Read only. |
+| `migrate-nameservers` | `{ connectionId, confirm, path?, providerAccountId?, target?, nameservers?, zoneReady? }` | `domains:connect` | Move a connected domain's nameservers to the application's DNS host, so its records are hosted and kept correct from then on. The records are copied first, mail included, and DNSSEC is turned off first when it is on. This changes who answers for the whole domain, so ask the person first and send `confirm: true`. The nameservers change through a connected registrar account (`providerAccountId`), the person's own [secure sign-in](/docs/guides/secure-sign-in), or by the person at the registrar: `nextStep` says which. `target` is `managed` or `custom` (with `nameservers`, 2 to 13); omit it to use the application's setting. Never send a registrar key. Poll `check-nameserver-status` until `done` is `true`. |
+| `rollback-nameservers` | `{ connectionId, confirm }` | `domains:connect` | Set a domain's nameservers back to the ones it had before the move. With a connected registrar account it happens at once; otherwise `nextStep` names the old nameservers for the person to set. Ask the person first and send `confirm: true`. |
+{/* NEW TOOLS GO HERE: add one row per new tool directly above this line, then change the count word ("twenty") in this page's description and in the sentence under Tools, and in user-journeys.mdx and index.mdx. This marker stays; the docs sync test reads it. */}
 
 The scope is checked twice. A delegated agent token must carry the tool's scope,
 or the call is refused before it runs; the control plane checks the same scope
@@ -75,8 +78,8 @@ no scopes: the control plane authorizes each call.
 
 | Scope | Lets an agent |
 | --- | --- |
-| `domains:read` | Look, and change nothing: availability, suggestions, connection, certificate and order status, diagnosis, provider discovery, listings, billing standing. |
-| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward and email setup. A recheck can move a failed connection back into verification, so it is here and not in read. |
+| `domains:read` | Look, and change nothing: availability, suggestions, connection, certificate, order and nameserver move status, diagnosis, provider discovery, listings, billing standing. |
+| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward and email setup, and move its nameservers or move them back. A recheck can move a failed connection back into verification, so it is here and not in read. |
 | `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. A grant approved before this scope existed does not carry it: the person approves the agent again to add it. |
 | `domains:purchase` | Register a domain. Spends money, and the grant needs a saved card and a monthly spend cap. |
 
