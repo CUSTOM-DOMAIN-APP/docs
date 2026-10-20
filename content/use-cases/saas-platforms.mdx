@@ -1,0 +1,99 @@
+---
+title: SaaS platforms
+description: "Let your users connect a domain they already own inside your product: embed the widget, mint tokens on your server, and serve every customer domain."
+---
+
+Your product gives each customer a page, a store, a help center or an app, and
+they want it on a domain they already own. CustomDomain™ adds that step to your
+product: the customer types their domain, and the records are written for them
+where their DNS provider allows it, or shown with exact steps and checked
+automatically where it does not.
+
+## When this fits
+
+- Your customers own the domains, and they should connect them **inside your
+  product**, in your branding.
+- You do not want to support DNS by hand: which record, which provider panel,
+  why it has not gone live yet.
+- You need the certificate issued and renewed for every customer domain, or you
+  already terminate TLS yourself and only need the DNS part.
+
+If the domain is yours rather than your customers', see
+[Your own domain](/docs/use-cases/your-own-domain). If your server decides which
+domains get connected and there is no customer in the loop, the
+[API path](/docs/getting-started/api) fits better than the widget.
+
+## How CustomDomain™ fits in
+
+<Steps>
+
+<Step>
+
+### Your server mints a widget token
+
+Your backend holds the credential and trades it for a short-lived widget token
+(15 minutes, one application, optionally one domain and one end user). For an
+application made in the console that is an API key sent to
+`POST https://app.customdomain.ai/api/widget-token`; for one made over the API it
+is the application's `client_secret` sent to `POST /v1/tokens`. Only the token
+reaches the browser. See [Widget tokens](/docs/authentication/widget-tokens).
+
+</Step>
+
+<Step>
+
+### The widget connects the domain
+
+`customdomain-js` (or `@customdomain/react`, or the hosted script) opens the
+connect modal. It detects the customer's DNS provider and offers the way in it
+can actually complete: a sign-in with the provider, the provider's one-click
+setup, or the records to add by hand with the provider's own steps and a live
+check of each record. See [Widget](/docs/getting-started/widget).
+
+</Step>
+
+<Step>
+
+### The domain is verified and served
+
+The connection goes `live` once every record resolves. Through the CustomDomain™
+edge, the certificate is issued on the first request and renewed on its own, and
+each request is proxied to your origin with the customer's hostname in
+`X-Forwarded-Host`; edge serving is part of the Growth plan and up. Or point
+customer domains at your own infrastructure, on every plan, and serve TLS
+yourself. See [Where domains point](/docs/connect-flow/routing).
+
+</Step>
+
+<Step>
+
+### Your backend hears about it
+
+`connection.live` and `connection.failed` [webhooks](/docs/webhooks/overview)
+carry your own id for the customer as `user_id`, and the reason when there is
+one. `GET /v1/connections/{id}` is the fallback.
+
+</Step>
+
+</Steps>
+
+Build it on [test mode](/docs/guides/test-mode) first: a test mode application
+runs the widget, the API and your webhooks on made up `.test` names, with no card
+and nothing billed.
+
+<Callout title="What one click covers">
+  Of the 178 providers in the census on 2026-10-09, 62 have an automatic path
+  (6 provider OAuth, 1 Domain Connect, 55 scoped API key). Customers at the other
+  116 add the records by hand, with the exact rows shown and verified
+  automatically. The live split is at `GET /v1/providers/census`; see
+  [DNS providers](/docs/dns/providers).
+</Callout>
+
+## What to read next
+
+<Cards>
+  <Card title="Quickstart" href="/docs/getting-started/quickstart" description="A first connection and the widget, end to end in test mode." />
+  <Card title="Widget" href="/docs/getting-started/widget" description="Mint a token, open the modal, and what customers see per DNS provider." />
+  <Card title="Installation & embed" href="/docs/widget-sdk/installation-and-embed" description="npm, React, embedded mode and white-label theming." />
+  <Card title="Serve customer domains from your app" href="/docs/guides/serve-customer-domains-from-your-app" description="Set an origin and tell domains apart with X-Forwarded-Host." />
+</Cards>
