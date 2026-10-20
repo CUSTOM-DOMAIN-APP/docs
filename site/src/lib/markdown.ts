@@ -71,10 +71,10 @@ function deref(doc: Json, node: unknown, depth = 0): unknown {
   return deref(doc, cur, depth + 1);
 }
 
-/** A cell for a Markdown table: one line, pipes escaped. */
+/** A cell for a Markdown table: one line, backslashes then pipes escaped. */
 function cell(text: unknown): string {
   if (typeof text !== "string") return "";
-  return text.replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
+  return text.replace(/\s+/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").trim();
 }
 
 function typeOf(doc: Json, schema: unknown): string {

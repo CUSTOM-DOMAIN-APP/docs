@@ -55,7 +55,8 @@ function expressionAttribute(node: JsxNode, name: string): unknown {
   return literal(value?.data?.estree?.body?.[0]?.expression);
 }
 
-const cell = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").replace(/\|/g, "\\|") : "");
+// One line; backslashes are escaped before pipes so a "\|" in the source cannot end the cell.
+const cell = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|") : "");
 
 function typeTable(node: JsxNode): string | undefined {
   const type = expressionAttribute(node, "type");
