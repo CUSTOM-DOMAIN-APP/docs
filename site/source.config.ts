@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineDocs, defineConfig } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
+import { stringifyComponent } from "./mdx-markdown";
 
 // Fumadocs MDX collection config. `dir` points at the repo's real content/
 // directory (one level up from this app), so there is no copy or sync step:
@@ -19,8 +20,11 @@ export const docs = defineDocs({
   docs: {
     // Exposes page.data.getText("processed"): the page as Markdown, which the
     // /docs/<slug>.md route serves and the "Copy Markdown" button copies.
-    // Heading ids are left out so the output is plain Markdown.
-    postprocess: { includeProcessedMarkdown: { headingIds: false } },
+    // Heading ids are left out and components are written as plain Markdown
+    // (mdx-markdown.ts), so the output reads as an ordinary Markdown page.
+    postprocess: {
+      includeProcessedMarkdown: { headingIds: false, stringify: stringifyComponent },
+    },
   },
 });
 
