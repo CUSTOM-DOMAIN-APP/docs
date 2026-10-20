@@ -51,42 +51,61 @@ do the same any time under **Settings, Security**.
 
 ## 2. Tell us who the domains are for
 
-The first time you sign in, the welcome asks one question: who are the domains
-for? It is one click, and it sets up the steps that suit you. The question needs
-an answer. Every step after it has **Skip to dashboard** at the bottom right,
+The first time you sign in, the welcome asks one question: **Who are you
+connecting domains for?** Two cards answer it, and a click on either moves on:
+
+- **My product's users**: "I run a product or platform. My users bring their own
+  domains, through our widget or API."
+- **My clients**: "I'm an agency or freelancer. I connect and look after domains
+  for the businesses I work for."
+
+Under the cards, the link **Just connecting a domain of my own?** is the third
+answer. Each answer sets up only the steps it needs, and the question must be
+answered. Every step after it has **Skip to dashboard** at the bottom right,
 which takes you to the console; what is left stays on the checklist on
 **Overview**, and **Change my answers** there opens the welcome again. A step
 whose own button does the work also has **Not now**, which moves on to the next step.
 
 | You pick | The steps after the question |
 | --- | --- |
-| **My customers** (you run a product and want your users to bring their own domains) | About you, your brand with a live preview on the real widget, then who writes the code: **I am writing the code** or **My AI writes the code**. The same screen shows your application ID and your default key to copy. Then the widget code, or for your AI, the setup for the agent you use and one prompt to copy (it has your application ID, never your key). That is the last step |
-| **My clients, or many of my own** | A box to paste your domains into, with a client's name beside each (or one domain, if that is all you have). See [Many domains, and whose they are](#many-domains-and-whose-they-are) |
-| **Just me** (a domain you own) | Your domain, with an option to set up email on it in the same step |
-| **Not sure yet** | A short list of things to try (connect a domain of your own, preview the widget with your brand, let an AI agent connect domains), then the path of the one you pick |
+| **My product's users** | Your product's website (see below), your brand with a live preview on the real widget, then who writes the code: **I am writing the code** or **My AI writes the code**. The same screen shows your application ID and your default key to copy. Then the widget code, or for your AI, the setup for the agent you use and one prompt to copy (it has your application ID, never your key). That is the last step |
+| **My clients** | A box to paste your domains into, with a client's name beside each (or one domain, if that is all you have). See [Many domains, and whose they are](#many-domains-and-whose-they-are) |
+| **Just connecting a domain of my own?** | Your domain, with an option to set up email on it in the same step |
 
 **I am writing the code** shows the widget code in four steps, each with a copy button: your key, a token route on your server, the widget for your framework with your application ID filled in, and the result. Then pick where to keep building, or **Try it now**.
 
-Under the cards, **Also let an AI agent connect and manage domains for me** adds
-one more step, **Give your agent access**, to any of them. Pick the agent you use
-(Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT or another), add
-CustomDomain™ to it with a command or a few fields, and paste in the prompt the step
-gives you, which says what to do first for what you told the welcome. Most agents sign
-in with your account, so there is no key to paste, and the step says **connected**
-only once the agent signed in and you approved what it may do. It is optional: **Not
-now** moves on. See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)
+**What's your product's website?** is the step after **My product's users**. The
+address is filled in from a work email (not from free mail such as Gmail), and the
+page is read in the background while you type, so **Continue** works at any time.
+What it finds comes back as one sentence you can correct, such as "Looks like Acme
+is a website builder. Right?", with **Yes** and **Not quite**. A sentence we are
+sure of shows as already confirmed. **Not quite**, **No website yet**, or a site
+that says too little opens one optional line instead: "In a few words, what does
+Acme do?" What kind of product it is sets the widget options in your install code,
+the example customer domain in the brand preview, the prompt for your AI and the
+guide the code step links to. Your product name sits under it, filled in from the
+website or your email address; your customers see it on the widget.
+
+The first screen asks nothing about AI agents. With **My product's users**, **My AI
+writes the code** is the agent path: pick the agent you use (Claude Code, Claude
+Desktop, Codex, Cursor, VS Code, ChatGPT or another), add CustomDomain™ to it with a
+command or a few fields, and copy the prompt. With **My clients** or a domain of
+your own, the last screen offers **Let an AI agent connect domains** ("It only does
+what you approve."), which opens the console's **MCP server** page with the setup
+for your agent. Most agents sign in with your account, so there is no key to paste,
+and an agent counts as connected only once it signed in and you approved what it may
+do. See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)
 and [Agents](/docs/agents/overview).
 
 Pointing a domain at a website needs the Growth plan: CustomDomain™ does not host
 websites, it serves your domain through its edge to a site hosted elsewhere
-(see [Domain routing](/docs/connect-flow/routing)). The **Just me** card says so
-before you choose it. Connecting the domain does not need it.
+(see [Domain routing](/docs/connect-flow/routing)). Once your own domain is
+connected, the last screen says so beside **Point it at my website**. Connecting
+the domain does not need it.
 
-Everything that can be worked out is filled in for you to confirm. Your company
-name and website come from your sign-up email (not from free mail such as Gmail,
-where it asks for the website instead), your logo, name and brand color are read
-from your website, and for your own domain it offers the one your work email is
-at. Change anything that is off.
+Everything else that can be worked out is filled in for you to confirm: your logo,
+name and brand color are read from your website, and for your own domain the welcome
+offers the one your work email is at. Change anything that is off.
 
 The domain step finds where the domain is registered and hosted as soon as you
 type it, says whether we can set it up automatically or will show you the
@@ -107,18 +126,20 @@ ping you when it is live, with **Notify me** and **Not now**: your browser asks 
 when you click, and it turns push on for a domain going live and nothing else (see
 [Notifications](/docs/guides/notifications)). Open the welcome again any time to change who the domains
 are for: from the first row of the checklist on **Overview**, or from **Change my
-answers** under the go-live list if you picked **My customers**.
+answers** under the go-live list if you picked **My product's users**.
 
 A short tour of the console follows. Replay it any time from the setup
 checklist on **Overview**. The checklist follows what you picked: for your own
 domain, connecting it (and setting up email, or pointing it at your site, if you
 chose those); for a few clients, connecting the first domain; always ending with
-inviting your team. If you asked for an agent, an optional **Connect your agent** row
-is done when an agent has signed in and been approved, and says so by name; an agent
-that uses a key leaves nothing to see, so the row says that too. If you picked **My customers**, the checklist is the go-live
-list below.
+inviting your team. If you chose **Let an AI agent connect domains**, an optional
+**Connect your agent** row is done when an agent has signed in and been approved, and
+says so by name; an agent that uses a key leaves nothing to see, so the row says that
+too. If you picked **My product's users**, the checklist is the go-live list below, and
+it ends with the same optional row when the welcome found your product is an AI app or
+agent builder.
 
-### Your go-live list (My customers)
+### Your go-live list (My product's users) [#your-go-live-list-my-customers]
 
 If you run a product and want your users to bring their own domains, **Overview**
 shows a go-live list. A row is done when something has happened that proves it,
@@ -202,7 +223,7 @@ console lays itself out by it. Nothing is hidden or removed: every page is still
 click away. The answer changes the order of the menu, what the main button does, and
 what **Overview** and **Domains** lead with.
 
-| | My customers | My clients, or many of my own | Just me |
+| | My product's users | My clients | A domain of my own |
 | --- | --- | --- | --- |
 | **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Domain routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Domain routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Domain routing and Connected accounts. Widget and API & SDK are under **Integrate** |
 | **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
@@ -213,9 +234,10 @@ what **Overview** and **Domains** lead with.
 The counts on **Overview** include every domain, so when they link to **Domains** in a
 workspace for your customers they open the **All** tab, and what you click is what you
 see. The first-run tour follows the same layout. A workspace that has not said who its
-domains are for, or picked **Not sure yet**, gets the console as it has always been.
+domains are for gets the console as it has always been.
 
-Change it any time under **Settings → What this workspace is for**. Owners and admins
+Change it any time under **Settings → What this workspace is for**, where the three
+answers are **My product's users**, **My clients** and **A domain of my own**. Owners and admins
 can change it; it changes the console for everyone in the workspace, and everyone else
 sees it read only. A teammate you invite sees the same console you do, whatever they
 answer in the welcome.
@@ -386,8 +408,8 @@ daily totals 400 days. The API has the same figures:
 ## Many domains, and whose they are
 
 If you manage domains for clients, or have a lot of your own, you don't have to
-connect them one at a time. The welcome's first screen for **My clients, or many
-of my own** is a box: paste a column from a spreadsheet, a line of addresses or
+connect them one at a time. After **My clients**, the welcome's next screen is a
+box: paste a column from a spreadsheet, a line of addresses or
 a list of links, in any mix. The same box is on **Domains** under **Add
 several**, up to 200 at a time.
 
