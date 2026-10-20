@@ -60,10 +60,10 @@ See [Concepts](/docs/concepts/architecture) for the full model.
 A machine-readable index of this documentation is at
 [`/docs/llms.txt`](/docs/llms.txt): every page, with its title, URL and
 description, so an agent can fetch exactly the page it needs. A site-root copy is
-served at [`/llms.txt`](https://docs.customdomain.ai/llms.txt). There is no
-full-text bundle and no per-page raw-Markdown route today; earlier revisions of
-this page advertised `/docs/llms-full.txt` and `/llms/<page-slug>`, and both
-return 404.
+served at [`/llms.txt`](https://docs.customdomain.ai/llms.txt). Every page is also
+served as Markdown at its own URL plus `.md` (this one is
+[`/docs.md`](/docs.md)), and each page links to it with
+`<link rel="alternate" type="text/markdown">`.
 
 Agents can also drive the product directly through the hosted
 [MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`: seventeen

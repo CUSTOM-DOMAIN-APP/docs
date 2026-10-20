@@ -24,6 +24,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: repoRoot,
   },
+  async rewrites() {
+    return [
+      // Every docs page as Markdown, at its own URL plus ".md" (and /docs.md for
+      // the docs home). Served by app/docs-md; each page advertises it with
+      // <link rel="alternate" type="text/markdown">.
+      { source: "/docs.md", destination: "/docs-md" },
+      { source: "/docs/:path*.md", destination: "/docs-md/:path*" },
+    ];
+  },
   async redirects() {
     return [
       // Friendly entry point: docs.customdomain.ai/ -> the docs index.
