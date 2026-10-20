@@ -106,7 +106,8 @@ Wherever the popup shows the provider's page (there, for a human check, or for a
 Google or Apple sign-in), it brings the part that matters, such as the sign-in
 card or the check, into view in a rounded frame of ours, with a margin of the
 real page around it, so nothing beside it is cut off at an edge. A page laid out
-for a phone keeps its whole width.
+for a phone keeps its whole width, and a page with nothing to bring forward shows
+edge to edge.
 
 ### Codes, links and approvals
 
@@ -165,6 +166,12 @@ Changes made on the provider's DNS page are first shown in full on a **Review**
 screen ("Review the changes for acme.com"), and nothing changes until your
 customer presses **Approve and make these changes**. Then **Done.**
 
+Where the provider has an API page we have reviewed (Namecheap today) and the
+account qualifies for it, the first step is "Creating your API key" instead: our
+software turns on API access in the account for CustomDomain™'s address, reads the
+key the page shows, uses it once to add the records, and does not keep it. API
+access stays on in the account afterwards, where your customer can turn it off.
+
 Nobody watches the provider's page after the sign-in. If the provider asks for
 the password again, asks for a code, or shows a check in the middle of the work,
 the page is handed back ("Namecheap asks for your password again."). Your
@@ -175,10 +182,10 @@ outline of the provider's page. For a step that has worked the same way at that
 provider several times, it first follows that path again, with the values of the
 plan your customer approved; otherwise a fast model picks each click, and a stronger model
 takes over for the rest of the session when the fast one gets stuck. Neither
-chooses what is typed: the values come from the approved plan. They never see a
-password field or anything typed, and email addresses, keys and secrets in the
-outline are masked. Every click passes the same checks whichever way it was
-chosen: only the one DNS page, and only the changes approved.
+chooses what is typed: our code fills in each value. They never see a password
+field or anything typed, and email addresses, keys and secrets in the outline are
+masked. Every click passes the same checks whichever way it was chosen: only the
+pages it needs, and only the changes approved.
 
 ### Signed in to the wrong account
 
@@ -257,8 +264,10 @@ At most 6 a minute per session.
   kept, and the browser is thrown away when the session ends.
 - **No run without a person.** A session never starts or goes on without your
   customer there, and it ends when the popup stops checking in.
-- **Only the one DNS page.** Our software works only on the provider's DNS page
-  for that one domain. Every other page of the account is refused.
+- **Only the pages it needs.** Our software works only on the provider's DNS page
+  for that one domain, on its API page where it creates a key, and on its account
+  switcher where it opens the account that holds the domain (all above). Every
+  other page of the account is refused.
 - **No change without approval.** Changes made on the provider's DNS page are
   shown in full and made only after your customer approves them.
 - **No check is solved for you.** A human check is always the customer's to tick.
