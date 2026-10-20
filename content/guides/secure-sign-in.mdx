@@ -1,14 +1,18 @@
 ---
 title: Secure sign-in
-description: "How secure sign-in connects a domain at a DNS provider with no sign-in or key you can use: what your customer sees, what we never see, resume, and the API."
+description: "How secure sign-in connects a domain at a DNS provider with no sign-in you can use: what your customer sees, the lasting API key it makes, reconnecting, what we never see, and the API."
 ---
 
-Some DNS providers offer no sign-in and no API key a third party can use.
-Without help, a customer of one of them types records into the provider's panel
-by hand. **Secure sign-in** gives them a shorter way: they sign in to the provider in
-a temporary browser that a browser hosting company runs for a few minutes, and
-CustomDomain™ makes the changes on the provider's DNS page for that one domain,
-then closes the browser.
+Some DNS providers offer no sign-in a third party can use. Without help, a
+customer of one of them creates an API key or types records into the provider's
+panel by hand. **Secure sign-in** gives them a shorter way: they sign in to the
+provider in a temporary browser that a browser hosting company runs for a few
+minutes. Then, where the provider allows it, our software makes a lasting
+[API key](#lasting-api-keys) at the provider and CustomDomain™ keeps it, so the
+domain is connected through the provider's API and kept correct from then on.
+Where no key can be made, our software makes the changes on the provider's DNS
+page for that one domain, in the same session. Either way the browser is closed
+at the end.
 
 <Callout title="Offered to selected workspaces for now">
   Secure sign-in runs only where it is switched on for your workspace and the
@@ -159,23 +163,34 @@ another way** leads to the manual steps.
 
 ### After the sign-in
 
-Once the sign-in is through, the popup says **Signed in** and then shows one line
-for each step ("Reading your DNS records", "Adding records", "Making the
-changes", "Checking the result") over the records, which tick as they are made.
-Changes made on the provider's DNS page are first shown in full on a **Review**
-screen ("Review the changes for acme.com"), and nothing changes until your
-customer presses **Approve and make these changes**. Then **Done.**
+Once the sign-in is through, the popup says **Signed in**, and our software takes
+one of two ways, in this order:
 
-Where the provider has an API page we have reviewed (Namecheap today) and the
-account qualifies for it, the first step is "Creating your API key" instead: our
-software turns on API access in the account for CustomDomain™'s address, reads the
-key the page shows, uses it once to add the records, and does not keep it. API
-access stays on in the account afterwards, where your customer can turn it off.
+1. **A lasting API key.** Where the provider has an API page we have reviewed,
+   the account qualifies and the hosted service has the key turned on for that
+   provider ([which ones](#which-providers)), the popup reads "Creating your API
+   key", then "Adding records", then **Done.** Our software makes a key on the
+   provider's own API page, CustomDomain™ checks it and keeps it, and the records
+   are added through the provider's API, as they are for a key someone pasted.
+2. **The DNS page.** Where no key can be made (no reviewed API page, an account
+   that does not qualify, a key that fails its check, or the key turned off for
+   that provider), the same session goes on to the provider's DNS page for the
+   domain. The popup shows one line for each step ("Reading your DNS records",
+   "Making the changes", "Checking the result") over the records, which tick as
+   they are made. The changes are first shown in full on a **Review** screen
+   ("Review the changes for acme.com"), and nothing changes until your customer
+   presses **Approve and make these changes**. Then **Done.** Nothing is kept,
+   so a later change at that provider needs another sign-in.
+
+Your customer never loses a step: whatever stops the first way, the second one
+runs in the same session, without another sign-in.
 
 Nobody watches the provider's page after the sign-in. If the provider asks for
 the password again, asks for a code, or shows a check in the middle of the work,
 the page is handed back ("Namecheap asks for your password again."). Your
 customer answers it the same way, and the work goes on once the prompt is gone.
+An API page that asks the account holder to accept the provider's API terms is
+handed back too ([below](#the-providers-terms-are-your-customers)).
 
 The work is done by software of ours that picks one click at a time from an
 outline of the provider's page. For a step that has worked the same way at that
@@ -215,6 +230,175 @@ says "acme.com does not use Namecheap's DNS, so its records are edited
 elsewhere." and the session ends with `browser_not_provider_dns`. A provider that
 sends such a domain away from its DNS page instead of saying so leads to the
 manual steps, with the browser still open.
+
+## The lasting API key [#lasting-api-keys]
+
+An *API key* is a password for software: the provider issues it, and whoever
+holds it can call the provider's API for the account. After the sign-in, where
+the provider allows it, our software makes one on the provider's own API page,
+and CustomDomain™ keeps it. The domain is then connected as if your customer had
+pasted a key in the widget: CustomDomain™ writes its records, checks them, and
+puts back any that go missing, all through the provider's API, with no browser
+and no customer, until the key nears its end.
+
+### Which providers
+
+| Provider | What is made | What it can do beyond the domain's DNS (`rights`) | Ends |
+| --- | --- | --- | --- |
+| GoDaddy | A Personal Access Token with GoDaddy's whole Domains & DNS group | Transfer the domain away (`transfer`) | After 1 year, the longest GoDaddy offers |
+| Namecheap | API access turned on for CustomDomain™'s address, and the account's own key | Everything Namecheap's API allows the account (`account`) | No end date |
+| Name.com | A production API token (Name.com's tokens have no scopes) | Everything Name.com's API allows the account (`account`) | No end date |
+| Spaceship | An API key and secret with every domain and DNS permission, transfers and billing included | Transfer the domain away, and make charges on the account: renewals and purchases (`transfer`, `billing`) | No end date |
+| Hostinger | An API token (Hostinger's tokens have no scopes) | Everything Hostinger's API allows the account (`account`) | The longest Hostinger offers: none where it offers that, else 1 year or less |
+| IONOS, US site only | An API key: a public prefix and a secret | Nothing: it reaches the DNS records only | No end date |
+
+Each provider is turned on by itself, once a live session there has made,
+checked and kept a key; until then a session at that provider goes to the DNS
+page. **GoDaddy stays off** until GoDaddy's written permission is on file:
+GoDaddy's published API terms do not allow keys made for its customers by
+someone else without it. Every other provider, and IONOS's other country sites,
+has no key page yet, so its sessions use the DNS page.
+
+Some accounts cannot have a key: an account under Namecheap's API thresholds, an
+IONOS account outside IONOS's API programme, or one GoDaddy says is not eligible.
+The session then goes on to the DNS page. Our software never joins a programme,
+changes a plan or turns on two step settings for your customer; at Name.com,
+with two step verification on, the one thing it turns on is the account's
+"name.com API Access" switch.
+
+### Every domain scope, said in `rights`
+
+Since October 20, 2026 each key is made with every scope the provider's page
+offers for domains: DNS, nameservers and, where the page offers them, transfers
+and (at Spaceship) billing. Scopes for the provider's other products (GoDaddy's
+Commerce, Email and Hosting, Spaceship's contacts, Seller Hub and Hyperlift) are
+never ticked.
+
+So that you always know what a key could do, each key's `rights` lists what it
+reaches beyond the domain's DNS records:
+
+| `rights` | Means |
+| --- | --- |
+| `transfer` | It can transfer the domain away from the provider. |
+| `billing` | It can make charges on the account: Spaceship's renewals and purchases. |
+| `account` | The provider's keys have no scopes, so it holds every right the provider's API gives the account, transfers and renewals included where the API offers them. |
+| (empty) | It reaches the DNS records only. |
+
+The console says the same in a sentence on the domain's key card, such as "This
+key can also transfer the domain away from Spaceship, and make charges on the
+account (renewals and purchases)."
+
+### The provider's terms are your customer's
+
+Some API pages ask the account holder to accept the provider's API terms before
+a key is made: Name.com's API Access Agreement, for one. Our software never
+accepts terms for anyone. The popup shows the provider's page with one line,
+"Accept Name.com's API terms yourself on the page. The setup goes on once you
+have.", and the work goes on once they are accepted (it waits up to 10 minutes).
+If your customer does not accept them, the session goes on to the DNS page.
+
+### Checked, then kept for one application
+
+- **What is typed.** Our software types only the key's name (`CustomDomain` and
+  your application's name, so your customer can find it at the provider) and, at
+  Namecheap, CustomDomain™'s address. It ticks only the scopes above, picks the
+  longest expiry the page offers, and presses only buttons we have reviewed.
+- **Read once, never shown.** The key is read once from the page. The software
+  that picks the clicks sees it masked (`[key1]`), and it is never logged, sent
+  in an event or stored with the session.
+- **Checked before it is kept.** CustomDomain™ makes one read only call with it
+  (the domain's records). A key the provider does not answer is never kept: your
+  application gets `credential.failed` and the session goes on to the DNS page.
+- **Kept for one application.** A checked key is kept encrypted, like a key a
+  person pastes in the console, as a
+  [provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in)
+  that belongs to the application whose domain it was made for. No other
+  application can use it: connecting another application's domain with it is
+  refused with `403`. If writing the records then fails, our copy is deleted
+  again and the session goes on to the DNS page.
+
+### What you see
+
+- `GET /v1/connections/{id}` carries `credential`: the provider account that holds
+  the key (`account_id`), `provider`, `status` (`active`, `expiring`,
+  `needs_reconnect` or `expired`), the key's `name`, `scopes` and `rights`, when
+  it was checked (`verified_at`) and ends (`expires_at`), and the reconnect
+  fields below. Never the key.
+- The provider account carries `application_id`, `origin: "browser_agent"` and
+  `agent_key`, the same record.
+- Four webhooks: `credential.created`, `credential.expiring`,
+  `credential.failed` and `credential.removed`
+  ([event catalog](/docs/webhooks/overview#event-catalog)).
+- In the console, the domain's page has a **Provider API key** card, and
+  **Connected accounts** lists the key as **Made at sign in**
+  ([console guide](/docs/getting-started/console#provider-api-key)).
+
+## When the key ends, and reconnecting [#reconnect]
+
+A key with an end date (GoDaddy's after a year, Hostinger's where it offers no
+"never") is watched every hour. The examples use Hostinger:
+
+1. **30 and 7 days before its end**, your application gets `credential.expiring`
+   (with `days_left` and `reconnect: true`), your workspace's owners and admins
+   get the notification **A DNS provider key ends soon**, and your customer gets
+   an email, "Reconnect Hostinger for acme.com", when you gave us their address
+   ([end user notices](/docs/connect-flow/end-user-notices#reconnect-emails)). The
+   key keeps working until its end.
+2. **At its end**, our copy is deleted. The domain stays connected and monitored,
+   but missing records are not put back until your customer reconnects. Your
+   application gets `credential.failed` (reason `expired`), and the owners and
+   your customer are told again.
+3. **When the provider stops accepting the key** (it answers `401` or `403`, for
+   example because your customer deleted it), the same happens with reason
+   `refused`.
+
+A reconnect is one sign-in by your customer, and there are three ways to ask for
+it:
+
+- **A reconnect link.** `POST /v1/connections/{id}:reconnect-link` answers a
+  `link` that opens CustomDomain™'s hosted page on the sign-in for the key's
+  provider. It works once and for 14 days. With `{"send": true}` and your
+  customer's address on the connection, CustomDomain™ emails it on your behalf
+  instead and answers `emailed: true`. The console's **Send reconnect link** and
+  **Copy reconnect link** do the same. A connection with no such key answers
+  `409 not_reconnectable`.
+- **The widget**, in your own product: `open({ mode: "reconnect", connectionId })`
+  with a [widget token](/docs/authentication/widget-tokens) minted for the domain
+  and your customer's `end_user_ref`, as for any connect
+  ([reference](/docs/widget-sdk/reference#open--openconfig)).
+- **The email** CustomDomain™ sends by itself before the end, at it, or when the
+  provider refuses the key.
+
+The widget opens straight on "Reconnect Hostinger": "Sign in to Hostinger once
+to keep acme.com connected. A new access key replaces the current one, and your DNS
+records stay as they are." After the sign-in, our software makes a new key with
+the same scopes, CustomDomain™ checks it and puts it in place of the old one in
+one step. No DNS record changes and the DNS page is never opened. The widget
+says "Hostinger is reconnected" and fires `customdomain:success` with `setupType:
+"reconnect"` and `reconnected: true`, and your application gets
+`credential.created` with `status: "renewed"`. A reconnect that cannot make a key
+leaves the current one as it was ("The new access key could not be made. The
+current one is unchanged.").
+
+The old key still exists at the provider: no provider has a way to revoke a key
+that we have verified, so our software does not try. The connection's
+`credential` then says `old_key: "revoke_by_hand"` with the provider's
+`revoke_url`, and the console's card says where to revoke it.
+
+`POST /v1/connections/{id}/browser:start` with `"mode": "reconnect"` is the call
+behind it. For a connection with no lasting key, or a provider whose key is
+turned off, it answers `409 browser_reconnect_unavailable` before a browser is
+started.
+
+### Removing the key
+
+**Remove** on the account in **Connected accounts**, or
+`DELETE /v1/provider-accounts/{id}`, deletes CustomDomain™'s copy of the key and
+sends `credential.removed`. The answer carries the provider's `revoke_url`: the
+key itself lives at the provider until your customer revokes it there, since no
+provider has an API that revokes one. The domain stays connected and served,
+without repairs. Removing the domain does the same for its key when no other
+domain uses it.
 
 ## Resume after the window closes
 
@@ -260,8 +444,10 @@ At most 6 a minute per session.
   provider's page in their own browser, and each key goes from that browser
   straight to the remote browser. Keystrokes, passwords and codes never pass
   through CustomDomain™'s servers.
-- **Nothing is stored.** No password, cookie, recording or browser profile is
-  kept, and the browser is thrown away when the session ends.
+- **Nothing of the sign-in is stored.** No password, cookie, recording or
+  browser profile is kept, and the browser is thrown away when the session ends.
+  The one thing kept is a [lasting API key](#lasting-api-keys) made on the
+  provider's own API page, encrypted, for one application.
 - **No run without a person.** A session never starts or goes on without your
   customer there, and it ends when the popup stops checking in.
 - **Only the pages it needs.** Our software works only on the provider's DNS page
@@ -270,6 +456,8 @@ At most 6 a minute per session.
   other page of the account is refused.
 - **No change without approval.** Changes made on the provider's DNS page are
   shown in full and made only after your customer approves them.
+- **No terms accepted for anyone.** A provider's API terms are your customer's
+  to accept.
 - **No check is solved for you.** A human check is always the customer's to tick.
 
 What the browser hosting company sees is the honest limit. The browser runs at
@@ -293,6 +481,8 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
 - Record types the provider's page cannot write, and a record set you supplied
   yourself, are refused before the customer signs in
   (`422 browser_unsupported_records`, with the types named).
+- A lasting API key is made only at the providers [listed above](#which-providers),
+  each once it is turned on, and GoDaddy's not before its written permission.
 - A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
   Signing in with another account starts the sign-in window again but does not
   extend that limit, and three accounts at most can be tried.
@@ -305,10 +495,11 @@ so you can read what a session did. Every route is in the
 
 | Call | What it does |
 | --- | --- |
-| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place) and `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)). |
+| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
+| `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). An API key, a widget token or an agent token with `domains:connect` may call it. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
-| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back, `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
+| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, or `agreement` for a provider's API terms), `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
 | `POST /v1/browser-sessions/{sid}:switch-account` | Signs the remote browser out of the provider and opens its sign-in again, only while the view carries `wrongAccount` (otherwise `409 browser_wrong_state`). `202`; meanwhile the view's `notice` is `switching_account`. One every 10 seconds (`429 browser_rate_limited`). |
 | `POST /v1/browser-sessions/{sid}:viewport` | The popup's new size (above). |
 | `POST /v1/browser-sessions/{sid}:event` | The popup reports one of its screens, for the sign-in funnel. `204`, changes nothing about the session, at most 30 a minute. |

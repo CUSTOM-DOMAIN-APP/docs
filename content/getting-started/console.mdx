@@ -186,7 +186,7 @@ on.
 | **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
 | **API & SDK** | Server-side API keys (the workspace's default key at the top, **Create key** for more), with a Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
-| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you. |
+| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 
 ### API keys and widget tokens
@@ -462,6 +462,35 @@ follow the date range and the application picker, like the rest of the page.
   a proxy could change is marked **A proxy can change this**.
 
 The API has both: `audience` and `secure_sign_in` on `GET /v1/analytics/connect`.
+
+### The API key a secure sign-in made [#provider-api-key]
+
+When a secure sign-in made a
+[lasting API key](/docs/guides/secure-sign-in#lasting-api-keys) at a domain's DNS
+provider, the domain's page has a **Provider API key** card:
+
+- One line on where the key stands, and its status: **Working**, **Ends soon**,
+  **Needs the end user to sign in again** or **Ended**.
+- When it ends, its name at the provider, when it was checked, and when it was
+  renewed and a reconnect link last went out.
+- **What it can do**, when the key reaches more than the domain's DNS, in a
+  sentence: "This key can also transfer the domain away from Spaceship, and make
+  charges on the account (renewals and purchases)."
+- **Send reconnect link** emails your customer a link to sign in again when you
+  gave us their address, and copies the link otherwise. **Copy reconnect link**
+  copies one to pass on. A link works once, for 14 days
+  ([reconnecting](/docs/guides/secure-sign-in#reconnect)).
+- After a renewal, a note that the old key still exists at the provider, with a
+  link to the provider's keys page to revoke it there.
+
+**Connected accounts** lists such a key with the badge **Made at sign in**. Its
+sheet shows the domain, when the key ends, its name, scopes, when it was checked
+and the account's name or number at the provider where the page showed one, never the key. It
+belongs to one application and serves only that domain, and it is renewed by your
+customer's sign-in, never by pasting a key, so its only action is **Remove**.
+Removing it deletes CustomDomain™'s copy; the key itself stays at the provider
+until it is revoked there. A domain's timeline says when the key was made,
+renewed, nearing its end or refused.
 
 ## Many domains, and whose they are
 

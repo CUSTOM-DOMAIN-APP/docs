@@ -31,10 +31,14 @@ chosen from `POST /v1/domains:check`; the widget drives them automatically.
 All four converge on the same outcome: the desired records land in DNS, the
 connection moves `pending → propagating → live`, and the edge serves the domain.
 
-For a provider with no sign-in or key a third party can use,
+For a provider with no sign-in a third party can use,
 [secure sign-in](/docs/guides/secure-sign-in) (offered to selected workspaces for
-now) lets the customer sign in to the provider in a temporary browser, and the
-records are added on the provider's own DNS page once the customer approves them.
+now) lets the customer sign in to the provider in a temporary browser. Where the
+provider allows it, a lasting API key is then made there and kept as a
+[provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in),
+and the records are written and kept correct through the provider's API;
+otherwise they are added on the provider's own DNS page once the customer
+approves them.
 
 ## Resuming an abandoned setup
 

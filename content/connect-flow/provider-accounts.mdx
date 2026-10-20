@@ -68,3 +68,31 @@ key works, but not for that domain) fails that domain and leaves the account
 as it is. The console's **Connected accounts** page
 shows all of this; *Remember this key* on the connect page keeps the key as a
 continuous account.
+
+## Keys made at a secure sign-in
+
+When a [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) makes a
+lasting API key at a domain's DNS provider, CustomDomain™ keeps it as a provider
+account of the workspace, checked and encrypted like any other, with continuous
+access and the domain's zone as its scope. Such an account is different in four
+ways:
+
+- **It belongs to one application.** `application_id` names the application
+  whose domain it was made for. Connecting another application's domain with it
+  is refused with `403`.
+- **It says where it came from.** `origin` is `browser_agent`, and `agent_key`
+  holds its record, never the key: the `name` it was made with (`CustomDomain`
+  and your application's name), its `scopes` and `rights` (what it can do beyond
+  DNS: `transfer`, `billing` or `account`), the provider's `account` identifier
+  when the page showed one (never an email address), the `session_id` that made
+  it, when it was checked (`verified_at`) and ends (`expires_at`), the last
+  `notice`, the `reconnect_reason`, `reconnect_sent_at` and `renewed_at`,
+  `old_key: "revoke_by_hand"` after a renewal, and the provider's `revoke_url`.
+- **It is renewed by a sign-in, not a pasted key.** Before its end, or once the
+  provider refuses it, the account is `needs_reconnect` and your customer signs
+  in again ([reconnecting](/docs/guides/secure-sign-in#reconnect)). In the
+  console, **Connected accounts** shows it as **Made at sign in**, and its only
+  action is **Remove**.
+- **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
+  answers the provider's `revoke_url` and sends `credential.removed`: the key
+  itself lives at the provider until it is revoked there.
