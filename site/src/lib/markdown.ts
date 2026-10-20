@@ -25,7 +25,9 @@ export async function pageMarkdown(page: Page, description: string | undefined):
 
   const operations = await apiOperations(page);
   const body = operations ? await operationsMarkdown(operations) : await page.data.getText("processed");
-  return `${head.join("\n")}\n${body.trim()}\n`;
+  // MDX comments ({/* ... */}) are notes for editors, not content.
+  const text = body.replace(/^\{\/\*[\s\S]*?\*\/\}[ \t]*\n?/gm, "").trim();
+  return `${head.join("\n")}\n${text}\n`;
 }
 
 // ---- generated API reference pages ----
