@@ -1222,7 +1222,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '409':
           description: >-
             `domain_already_connected`: another application already serves this
@@ -2081,7 +2081,7 @@ paths:
               schema: { $ref: '#/components/schemas/ManagedDNSView' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
           description: The domain's zone is already hosted for another account, or another change to it is in progress.
@@ -2292,6 +2292,7 @@ paths:
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
@@ -2340,7 +2341,7 @@ paths:
               schema: { $ref: '#/components/schemas/ReapplyResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked (re-consent required); or a provider account keeps it and CustomDomain™ did not write its records, or the account holds no usable key" }
         '422': { description: "The provider refused the provider account's key (`ProviderAuthenticationError`) or the write (`dns_write_failed`)" }
@@ -2593,6 +2594,7 @@ paths:
                     description: OVHcloud only, the region the consent was requested in.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '429':
           description: >-
@@ -2667,6 +2669,13 @@ paths:
                 locale:
                   type: string
                   description: The language the popup reads in, a plain code such as `en`. Defaults to `en`.
+                viewport_hint:
+                  type: object
+                  description: >-
+                    Optional. The size of the popup's live area, so the provider's sign in page fills it at full size. The remote browser is created at this width when it is a whole number from 360 to 720 and at this height when it is a whole number from 480 to 800; a side outside its range is ignored and the provider's default is used for it. The desktop popup (680 by 760) sends 695 by 716. Leave it out for the default.
+                  properties:
+                    width: { type: integer, minimum: 360, maximum: 720, description: "Whole CSS pixels, 360 to 720: the live area's width plus the remote page's scrollbar, which the popup clips." }
+                    height: { type: integer, minimum: 480, maximum: 800, description: "Whole CSS pixels, 480 to 800." }
       responses:
         '200':
           description: The session was created.
@@ -2691,7 +2700,9 @@ paths:
             key, a request with no `Origin` header, or an `Origin` that is not on
             the return origin allowlist) or
             `browser_provider_not_allowed` (the rail is not offered for this
-            provider or workspace, or the provider has a sign in of its own).
+            provider or workspace, or the provider has a sign in of its own), or
+            `workspace_suspended` (CustomDomain™ support suspended the workspace;
+            see the `ForbiddenOrSuspended` response).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3182,7 +3193,7 @@ paths:
                   rail: { type: string, description: '"async" on the managed rail; omitted on the sync rail.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '422':
           description: >-
@@ -3245,7 +3256,7 @@ paths:
               schema: { $ref: '#/components/schemas/Route53RoleStart' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/route53-role:complete:
@@ -4076,7 +4087,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Monitor
@@ -4793,8 +4804,20 @@ paths:
         before and after summary. Requires an API key whose role may manage
         identity settings (admin or owner); a widget JWT is refused with `403`,
         and a `503` means the audit log is not configured on the deployment.
+
+
+        The console's server also records here what an operator did through its
+        owner routes (disabling an account, signing it out, a verification
+        resend, a password reset link, the workspace's optional pages). It
+        presents the provisioning secret in `X-Provision-Secret`, names the
+        workspace in `tenant_id`, and may use only the `user.*` and
+        `workspace.features_set` verbs, which a tenant key may not. The actor is
+        recorded as `operator`, the reason in `after.reason` is required for all
+        of them but `user.verification_resent`, and the answer is a `500` when the
+        log did not take the event.
       security:
         - apiKey: []
+        - provisionSecret: []
       requestBody:
         required: true
         content:
@@ -4805,9 +4828,25 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [whitelabel.configured, api_key.default_revealed]
+                  enum:
+                    - whitelabel.configured
+                    - api_key.default_revealed
+                    - user.disabled
+                    - user.enabled
+                    - user.sessions_revoked
+                    - user.verification_resent
+                    - user.password_reset_link_issued
+                    - workspace.features_set
                   description: >-
-                    The console-recordable verb. Any other value is refused with `400`.
+                    The console-recordable verb. With an API key only
+                    `whitelabel.configured` and `api_key.default_revealed`; with
+                    the provisioning secret only the others. Any other value is
+                    refused with `400`.
+                tenant_id:
+                  type: string
+                  description: >-
+                    Provisioning secret only, and required with it: the
+                    workspace the event is recorded on. An unknown one is a `404`.
                 target:
                   type: string
                   description: >-
@@ -4835,6 +4874,8 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Secure (SSL)
@@ -5823,6 +5864,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '503': { $ref: '#/components/responses/Error' }
   /registrar/fulfill:
     post:
@@ -6282,7 +6324,7 @@ components:
       type: apiKey
       in: header
       name: X-Provision-Secret
-      description: Narrow secret for the one-call signup provisioning endpoint (also accepted as a Bearer token).
+      description: Narrow secret held by the customer console's server, for signup provisioning and its other server to server calls (also accepted as a Bearer token, except on POST /audit, where a Bearer is always a tenant credential).
     apiKey:
       type: http
       scheme: bearer
@@ -6349,6 +6391,26 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    ForbiddenOrSuspended:
+      description: >-
+        `forbidden`: the credential may not do this. `workspace_suspended`:
+        CustomDomain™ support suspended the workspace. While it is suspended, new
+        connections (one by one or in bulk, where each domain fails on its own),
+        every connect step on a domain it already has (the credentialed apply,
+        a provider sign in to connect, the cloud browser, Domain Connect, the
+        Route 53 access role, the hosted zone and `:reapply`) and the start of a
+        domain purchase are refused; reads, rechecks, removals and the sign in
+        to remove a domain keep working, and domains already connected keep
+        their records. A connect-scoped widget token, the tenant's own end user,
+        gets `402 connections_unavailable` instead, the neutral answer it gets for
+        a billing refusal. Support resumes the workspace; nothing in the API does.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: workspace_suspended
+            title: This workspace is suspended.
+            details: "New domains, connect steps and domain purchases are refused while CustomDomain™ support has this workspace suspended. Contact support to have it resumed."
     BillingRequired:
       description: >-
         Refused because of the workspace's billing. `billing_required`: the
@@ -6368,8 +6430,9 @@ components:
         (connections only): a plan that is refused past its quota (Starter, and
         the retired Free) is at it and the deployment enforces quotas.
         `connections_unavailable`: what a connect-scoped widget token, the
-        tenant's own end user, gets instead of either, with neutral wording, so
-        the tenant's customers are never told about the tenant's billing. A
+        tenant's own end user, gets instead of either (and instead of
+        `403 workspace_suspended`), with neutral wording, so the tenant's
+        customers are never told about the tenant's billing or account. A
         delegated agent token gets the full wording, and `GET /billing/standing`
         tells it beforehand whether a new connection would be refused.
       content:
@@ -7912,7 +7975,9 @@ components:
         `live_view_origin` are present only in `awaiting_sign_in` and
         `manual_assist` (`interactive` true) and, read only, in `checking`,
         `plan_ready`, `applying` and `verifying`; never in a terminal state. The
-        address is a bearer: anyone holding it can drive the browser.
+        address is a bearer: anyone holding it can drive the browser. While the
+        customer signs in it is the live view of the newest tab of the remote
+        browser (a sign in popup), and the first tab's again once that one closes.
       properties:
         id: { type: string }
         state:
@@ -7922,6 +7987,7 @@ components:
         provider_name: { type: string }
         vendor: { type: string, description: "The browser hosting company." }
         domain: { type: string }
+        site: { type: string, description: "The provider's registrable domain, for example namecheap.com. The popup shows it beside a lock while the customer signs in." }
         interactive: { type: boolean, description: "True when the customer may type in the live view." }
         live_view_url: { type: string, format: uri }
         live_view_origin: { type: string }
@@ -7958,6 +8024,46 @@ components:
           properties:
             code: { type: string }
             message: { type: string }
+        sign_in_viewport:
+          $ref: '#/components/schemas/BrowserViewport'
+        work_viewport:
+          $ref: '#/components/schemas/BrowserViewport'
+        sign_in_frame:
+          type: integer
+          minimum: 1
+          description: >-
+            In `awaiting_sign_in` only: the bottom edge of the provider's sign in card on the remote
+            screen, in CSS pixels from the top and under `sign_in_viewport`'s height, measured when the
+            sign in page opened. The popup ends its frame just under it, so the links below the card
+            stay out of sight. Sent only while the sign in tab still shows the page it was measured on
+            and no human check or second window is on screen; once that changes it is gone for the rest
+            of the session. Absent means show the whole screen.
+        signed_in_detected:
+          type: boolean
+          description: >-
+            In `awaiting_sign_in` only: the provider's sign in page gave way to its
+            DNS panel page and the panel held across two polls, so the customer
+            looks signed in. A hint: the popup then calls `:signed-in`, which checks
+            the page itself. Absent means not detected.
+        check:
+          type: boolean
+          description: >-
+            In `awaiting_sign_in` only: the vendor reports the sign in tab with the
+            title of a known human check page (Cloudflare's "Just a moment..."), so
+            the popup asks the customer to tick the box. Only this boolean is sent,
+            never the title. A page can fake its title, so it is a hint for the
+            popup's words and nothing else: it never counts toward
+            `signed_in_detected`, and nothing clicks or types because of it. Absent
+            means no check page.
+    BrowserViewport:
+      type: object
+      required: [width, height]
+      description: >-
+        The remote screen's size in CSS pixels, sent with the live view:
+        `sign_in_viewport` while the customer signs in, `work_viewport` after.
+      properties:
+        width: { type: integer }
+        height: { type: integer }
     BrowserPlan:
       type: object
       required: [hash, base_hash, changes, unchanged, approve_by]
@@ -7988,7 +8094,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -8011,8 +8117,11 @@ components:
             has a sign in of its own, which wins), `script_unhealthy` (its script
             failed in recent sessions and the rail is paused), `vendor_unavailable`
             (the browser vendor failed to create sessions and the rail is paused),
-            `monthly_cap` (the monthly browser minutes are used) and
-            `sign_in_not_wired` (the sign in token cannot be signed).
+            `monthly_cap` (the monthly browser minutes are used),
+            `sign_in_not_wired` (the sign in token cannot be signed) and
+            `site_not_supported` (the provider keeps each account on one
+            country site, and the site of the visitor's country is one the
+            rail does not serve yet).
         caveat:
           type: string
           description: >-
