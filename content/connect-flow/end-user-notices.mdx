@@ -1,6 +1,6 @@
 ---
 title: End user notices
-description: "Give CustomDomain™ the end user's email, from your server or the widget, and after a Move they get one email with the new DNS records, sent on your behalf."
+description: "Give CustomDomain™ the end user's email, from your server or the widget: after a Move they get one email with the new DNS records, and a reconnect email when their provider's API key needs them, sent on your behalf."
 ---
 
 When a connected domain is [moved](/docs/connect-flow/routing#changing-where-domains-point),
@@ -47,6 +47,23 @@ account wording, because the reader has no account with us.
 - Every Move that needs new records from the customer also sends the
   `connection.records_outdated` webhook and an email to your owners and admins,
   whether or not there is an address.
+
+## Reconnect emails
+
+When a [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) made a
+lasting API key at the domain's DNS provider, the same address gets a short email
+when that key needs the end user: 30 and 7 days before it ends, when it ends, and
+when the provider stops accepting it. It is titled "Reconnect Hostinger for
+acme.com" (the provider and the domain), names your application, says in one
+sentence what happened to the key, and has one button, **Reconnect Hostinger**,
+which opens a [reconnect link](/docs/guides/secure-sign-in#reconnect): one
+sign-in, nothing about the domain's DNS changes. The link works once.
+
+The same email goes out when you press **Send reconnect link** in the console, or
+call `POST /v1/connections/{id}:reconnect-link` with `{"send": true}`. Reconnect
+emails count toward the same 3 per connection in 30 days, and go through the
+sender below; with no address, or the sender set to `none`, nothing is sent and
+the `credential.*` webhooks are yours to act on.
 
 ## Who sends it
 

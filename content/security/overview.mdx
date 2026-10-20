@@ -151,8 +151,12 @@ only at a provider the deployment lists in `OAUTH_MANAGED_PROVIDERS`. The hosted
 service lists Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
 Vercel and WordPress.com, and keeps a sign-in there unless the user unticks
 **Keep this sign-in** or the call sends `"access": "one_time"`; the widget tells
-the customer the permission is kept. Account passwords and tokens that expire
-within hours are never kept. Whatever is kept:
+the customer the permission is kept. A
+[secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) keeps the lasting
+API key it made at the provider (never the sign-in itself), as a provider account
+that serves only the application whose domain it was made for, after one read
+only call proved it works; its `rights` say what it can do beyond DNS. Account
+passwords and tokens that expire within hours are never kept. Whatever is kept:
 
 - is **sealed at rest** with **AES-256-GCM** under the control plane's
   `GRANT_ENCRYPTION_KEY`;
@@ -160,10 +164,12 @@ within hours are never kept. Whatever is kept:
   returns it; the browser sees only details such as the provider, a label, the
   domains and the last use;
 - is used only to write, put back and remove the records of the domains it
-  covers;
+  covers and, for [Domain maintenance](/docs/guides/nameserver-migration), to
+  change their nameservers when the account is at the domain's registrar;
 - is **revocable at any time** on the console's **Connected accounts** page
-  (**Revoke** on an account, **Stop keeping** on a kept sign-in), which deletes
-  it and leaves the domains connected.
+  (**Revoke** on an account, **Stop keeping** on a kept sign-in, **Remove** on a
+  key made at sign-in), which deletes it and leaves the domains connected. A key
+  made at sign-in also lives at the provider until it is revoked there.
 
 A deployment without `GRANT_ENCRYPTION_KEY` keeps no provider accounts or
 sign-ins. Its console keeps a remembered key itself instead, sealed with

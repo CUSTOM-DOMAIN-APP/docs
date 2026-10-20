@@ -182,11 +182,11 @@ on.
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
-| **Analytics** | The widget funnel on its own tab, with a Traffic tab for what your domains receive at the edge (and the busiest domains) and a Providers tab for where customers drop off by DNS provider and by root versus subdomain. |
+| **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
 | **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
 | **API & SDK** | Server-side API keys (the workspace's default key at the top, **Create key** for more), with a Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
-| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you. |
+| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 
 ### API keys and widget tokens
@@ -268,13 +268,56 @@ Each application has its own page: open it from **Applications** or from the
 switcher. Its summary counts the application's domains by status, and its
 **Domains** (the ones that need attention first, each opening its details),
 **API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
-it** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
+it**, **Domain maintenance** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
 can't be previewed here: its client secret was issued to whoever created it
 and was never stored in the console, so mint its tokens with `POST /v1/tokens`
 and that secret.
+
+#### Domain maintenance
+
+An application's **Settings** tab has a **Domain maintenance** section: your
+platform keeps your users' domains working for them (records stay correct,
+certificates renew, problems get fixed) once each user agrees in the widget. One
+setting where the user bought the domain changes, its *nameservers*, which say
+who runs the domain's DNS. The guide is
+[Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
+A test mode application has none. The section has:
+
+- **Maintain your users' domains**, a switch, off by default. Nothing changes for
+  your users until you **Save**; once saved, each user is asked when they connect
+  a domain.
+- **Before and after**: a user's domain as two parts. Where it is registered (paid
+  for) stays; what keeps it working (its DNS) moves to whoever runs it. A **?**
+  beside DNS, registrar and nameservers gives one plain line and a link to the
+  guide.
+- **Who runs it**: **CustomDomain™** (recommended, the default; nothing to set up)
+  or **Your own account** (pick one of your connected Cloudflare, Amazon Route 53,
+  Google Cloud DNS or Azure DNS accounts; only this application uses it). Under
+  **Advanced**, **Use your own nameservers instead** takes 2 to 13 nameservers, one
+  per line.
+- **Show it as the first choice**: users see it first, and adding records stays
+  one tap away. Off, it is a quiet second choice.
+- **Domains you maintain**, under the section once it is on: how many are
+  maintained, being set up and need attention, the typical setup time, why some
+  stopped, and one row per domain (who runs it, its status in plain words, the
+  records copied, when it was last checked), each opening the domain.
+
+The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
+`target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
+
+A maintained domain shows a **Domain maintenance** section on its **DNS** tab: its
+status, three steps (**Copying settings**, **Waiting for the registrar**,
+**Live**), the next thing to do, and, when its settings could only be read from
+outside, what to check and **The records look right, continue**
+([the copy](/docs/guides/nameserver-migration#the-copy)). It names the registrar,
+where the nameservers are changed, only when it is known, and shows where its
+records are, its nameservers under **Technical details**, and the ways back:
+**Move back**, and **Move back to GoDaddy's DNS** (the registrar's own DNS) beside
+it, or in its place once the old nameservers no longer answer
+([what moving back does](/docs/guides/nameserver-migration#moving-back)).
 
 ## 3. Connect a domain
 
@@ -404,6 +447,55 @@ stored: visitors are estimated from a sketch of keyed hashes, and someone who
 visits on two days counts once on each. Hourly detail is kept 14 days and
 daily totals 400 days. The API has the same figures:
 `GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
+
+## Who opens the widget, and secure sign-in
+
+Two more panels on **Analytics** appear once there is something to count. Both
+follow the date range and the application picker, like the rest of the page.
+
+- **Devices and places**, on the **Widget** tab: the widget sessions by device
+  (desktop, phone, tablet), top countries and browsers, each a ranked list, and
+  how often a session on each kind of device connected its domain. Counts only:
+  no IP address, city or single session is ever shown. See
+  [what a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
+- **Secure sign-in**, on the **Providers** tab, when your customers used
+  [secure sign-in](/docs/guides/secure-sign-in): sessions started, signed in and
+  done, the average time to sign in and to done, a table per DNS provider
+  (started, signed in, changes shown, applied, done), and why the rest stopped
+  ("Human check on screen", "Code or approval never came", "Customer cancelled"
+  and so on), counted without and with a proxy in the customer's country. A reason
+  a proxy could change is marked **A proxy can change this**.
+
+The API has both: `audience` and `secure_sign_in` on `GET /v1/analytics/connect`.
+
+### The API key a secure sign-in made [#provider-api-key]
+
+When a secure sign-in made a
+[lasting API key](/docs/guides/secure-sign-in#lasting-api-keys) at a domain's DNS
+provider, the domain's page has a **Provider API key** card:
+
+- One line on where the key stands, and its status: **Working**, **Ends soon**,
+  **Needs the end user to sign in again** or **Ended**.
+- When it ends, its name at the provider, when it was checked, and when it was
+  renewed and a reconnect link last went out.
+- **What it can do**, when the key reaches more than the domain's DNS, in a
+  sentence: "This key can also transfer the domain away from Spaceship, and make
+  charges on the account (renewals and purchases)."
+- **Send reconnect link** emails your customer a link to sign in again when you
+  gave us their address, and copies the link otherwise. **Copy reconnect link**
+  copies one to pass on. A link works once, for 14 days
+  ([reconnecting](/docs/guides/secure-sign-in#reconnect)).
+- After a renewal, a note that the old key still exists at the provider, with a
+  link to the provider's keys page to revoke it there.
+
+**Connected accounts** lists such a key with the badge **Made at sign in**. Its
+sheet shows the domain, when the key ends, its name, scopes, when it was checked
+and the account's name or number at the provider where the page showed one, never the key. It
+belongs to one application and serves only that domain, and it is renewed by your
+customer's sign-in, never by pasting a key, so its only action is **Remove**.
+Removing it deletes CustomDomain™'s copy; the key itself stays at the provider
+until it is revoked there. A domain's timeline says when the key was made,
+renewed, nearing its end or refused.
 
 ## Many domains, and whose they are
 

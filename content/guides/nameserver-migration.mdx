@@ -1,0 +1,577 @@
+---
+title: Domain maintenance (nameserver migration)
+description: "Keep your users' domains working for them: with their consent, one setting where they bought the domain hands its DNS to you. Setup, the registrar, the copy, steps, DNSSEC, moving back, the API."
+---
+
+**Domain maintenance** lets your platform keep your users' domains working for
+them. Each user is asked once, in the widget, when they connect a domain. If they
+say yes, one setting at the company they bought the domain from changes, and from
+then on CustomDomain™ (or your own DNS account) runs the domain's DNS: every
+record your platform needs is written and kept correct, the certificate renews,
+and problems are fixed without asking the user again. The domain stays registered
+where it is, and its website and email keep working.
+
+The technical name is **nameserver migration**, because the one setting that
+changes is the domain's nameservers. The API, the webhooks and the MCP tools use
+that name (`nameserver_migration`, `nameservers.*`), and so does this page where
+it describes them.
+
+This page is for the engineer who turns it on, and for anyone who answers a
+user's questions about it ([What changes for your users](#end-user-faq) is at the
+end).
+
+## DNS, the registrar and nameservers [#what-nameservers-are]
+
+Three words come up everywhere here. In plain terms:
+
+- **DNS** is the internet's address book. It tells browsers and email where a
+  domain's website and mail live. A domain's DNS settings are called its
+  *records*.
+- **The registrar** is the company a domain was bought from and is renewed with,
+  like GoDaddy or Namecheap. It is often not the company that runs the domain's
+  DNS: a domain bought at GoDaddy can have its DNS at Cloudflare.
+- **Nameservers** are one setting at the registrar. They say who runs the
+  domain's DNS. Changing them is the only change a move makes.
+
+So a domain has two parts: where it is registered (paid for), which a move never
+touches, and what keeps it working (its DNS), which a move hands to you.
+
+Behind those two parts are three parties:
+
+| Party | What it does | Changes in a move? |
+| --- | --- | --- |
+| Registrar | Where the domain is registered and renewed (GoDaddy, Namecheap and so on). It tells the registry which nameservers answer for the domain. | No |
+| Nameservers | The servers the registry lists for the domain. Every DNS question about the domain goes to them. | Yes |
+| DNS host | Whoever runs those nameservers and keeps the domain's records (`A`, `MX`, `TXT` and the rest). | Yes |
+
+Moving the nameservers changes who answers for the domain: the registry stops
+listing the old DNS host's nameservers and lists the new ones. The registrar, the
+registration, the renewal date and the owner stay exactly as they were.
+
+What the user gets:
+
+- **One change, made once.** After it, every record your platform needs is
+  written for them, and records that drift are put back.
+- **Their website and email keep working.** The domain's records are copied to
+  the new DNS host before the nameservers move, and the copy counts the mail
+  records (`MX`, SPF, DKIM, DMARC) so the screen can say "email included".
+  Nothing changes at the registrar until the copy is in place, and a copy we could
+  only read from outside waits for a person to check it ([The copy](#the-copy)).
+- **They can switch back, two ways.** To the nameservers they had, while their
+  previous DNS host still answers for the domain (Cloudflare deletes a moved
+  domain's records after 7 days), or to their registrar's own DNS, which is always
+  there. See [What moving back does](#moving-back).
+
+## Where the nameservers are changed: at the registrar [#where-the-nameservers-are-changed]
+
+A domain's nameservers are changed at its **registrar**, which is often not the
+company that runs its DNS. Registered at GoDaddy with its DNS at Cloudflare is
+the most common split, and then the change is made at GoDaddy. So for every move,
+CustomDomain™ looks the registrar up:
+
+1. **In public registration data.** A domain's registry publishes who the
+   domain is registered with, over RDAP (the protocol behind the public WHOIS
+   lookup at lookup.icann.org). The answer names the registrar, its website, its
+   IANA Registrar ID and, when the registry shows one, the reseller it was bought
+   through.
+2. **Matched to a provider we connect to**, by that IANA ID: all of GoDaddy's
+   registrar accreditations are GoDaddy, Namecheap's is Namecheap, and so on. A
+   registrar we do not connect to, such as a wholesale registrar that sells
+   through resellers, is named (by the reseller when the registry shows one), and
+   the person makes the change there.
+3. **Used for every way of making the change.** A registrar key, a connected
+   account, a [secure sign-in](/docs/guides/secure-sign-in) and the manual
+   instructions all go to that registrar. An account at the DNS host is never
+   used for the change, and a key or account at another company than the
+   registrar is refused (`422 registrar_mismatch`). Without an account linked to
+   the connection, a connected account of the workspace at the registrar that can
+   read the domain's registration is used (for a move your server or the console
+   starts).
+
+When the registry answers nothing, the move goes on with the detected DNS host
+as a guess and names no company: the next step says to make the change "where
+acme.com is registered (the company it was bought from; lookup.icann.org names
+it)". A connected account at that DNS host is used then only when it can read the
+domain's registration, which shows it is the registrar's. The move carries the registrar as `registrar` (`name`, `provider`,
+`iana_id`, `url` and `source`), `null` when it is not known, and the DNS host the
+domain left as `old_dns_host`.
+
+**Cloudflare Registrar** requires Cloudflare's own nameservers, so a domain
+registered there cannot be moved without transferring it to another registrar
+first. The domain check says `available: false` with
+`reason: registrar_locks_nameservers`, and a move is refused with
+`422 registrar_locks_nameservers` before anything is copied.
+
+## Who runs it: CustomDomain™ or your own account [#the-two-routes]
+
+Each application picks who runs the DNS of the domains it maintains. The console
+calls this **Who runs it**; the API calls it the `target`.
+
+| Who runs it | `target` | Where the domain's DNS lives | Choose it when |
+| --- | --- | --- | --- |
+| **CustomDomain™** (recommended, the default) | `{"kind": "managed"}` | CustomDomain™'s [managed DNS](/docs/dns/managed-dns) | You want records kept correct and monitored, changes that take effect at once and automatic certificates, with nothing to run. |
+| **Your own account** | `{"kind": "dns_host", "account_id": "pacct_…"}` | Your own account at Cloudflare, Amazon Route 53, Google Cloud DNS or Azure DNS | You keep DNS in your own infrastructure and want us to add each user's domain to it, copy the records and make the change. |
+| **Your own nameservers** (under **Advanced**) | `{"kind": "custom", "nameservers": ["ns1.you.net", "ns2.you.net"]}` | Your own nameservers | You run DNS yourself, on your own servers or a host we do not connect to. You set up each domain; we make the change. |
+
+**CustomDomain™** uses [managed DNS](/docs/dns/managed-dns), which is rolling out
+gradually, so the domain check says per domain whether it can be offered
+([below](#turn-it-on)).
+
+### What your own account needs [#a-dns-host-we-connect-to]
+
+Connect the account first as a
+[provider account](/docs/connect-flow/provider-accounts) of the workspace with
+continuous access, using a key that may create zones (a *zone* is one domain's
+set of records at a DNS host):
+
+| DNS host | What the key needs | Notes |
+| --- | --- | --- |
+| Cloudflare | A token that may create zones | A token that reaches several Cloudflare accounts also needs the account named. Each zone gets its own nameserver pair, and records are written DNS only (not proxied). |
+| Amazon Route 53 | An IAM access key that may create hosted zones | A hosted zone of that name already in the account is used. The Route 53 access role is scoped to one zone and cannot create zones, so it does not fit here. |
+| Google Cloud DNS | A project ID and an access token | An access token expires after about an hour, so a move started later cannot create its zone until the account is connected again. |
+| Azure DNS | A subscription, a resource group and an access token | The same hour long token. A zone is never overwritten: one that already exists is used. |
+
+In the console, **Your own account** shows a tile for each of these hosts. A host
+you have connected can be picked (with a choice of account when there are
+several); one you have not is a link to connect it, and one connected with a key
+that cannot create zones says so.
+
+Each zone is found or created, never made twice: a retry uses the zone it already
+made, and a zone that already existed in your account keeps what it holds. Only
+the connection's own records are written into it, and nothing is deleted.
+
+### Your own nameservers
+
+In the console, open **Advanced** under **Your own account**, tick **Use your own
+nameservers instead**, and list them one per line. Give 2 to 13 nameserver host
+names. The zone must answer on them before the nameservers move: a move to your
+nameservers waits in `pending` until you say the zone is ready
+(`zone_ready: true`), then checks that your nameservers answer for the domain
+(`skip_zone_check: true` skips that check).
+
+### Per application
+
+The setting, the DNS host account, the console's figures and the webhooks belong
+to one application. A move only ever uses its own application's DNS host
+account (a call that names another application's account is refused with
+`422 dns_host_not_configured`), `GET /v1/applications/{id}/nameserver-migrations`
+lists one application's moves, and the `nameservers.*` webhooks go to the move's
+own application only.
+
+## Turn it on
+
+In the console: **Applications**, the application, **Settings**, then **Domain
+maintenance** (a [test mode](/docs/guides/test-mode) application has none). Turn
+on **Maintain your users' domains**, choose **Who runs it**, and **Save**. Nothing
+changes for your users until you save. Once saved, each user is asked when they
+connect a domain. Turned off again, new users are not asked, and domains already
+maintained stay that way.
+
+With the API, `PATCH /v1/applications/{id}` with `nameserver_migration`. The API
+is the same as before the console's new words: its switches map to `mode`, and
+**Who runs it** to `target`.
+
+| In the console | `mode` | What the widget does |
+| --- | --- | --- |
+| **Maintain your users' domains** off (the default) | `off` | Never offers it. The application carries no setting. |
+| On, **Show it as the first choice** off | `offer` | Shows it as a quiet second choice beside adding records. |
+| On, **Show it as the first choice** on | `prefer` | Makes it the first screen of the manual path. Adding records stays one tap away. |
+
+| Who runs it | `target` |
+| --- | --- |
+| **CustomDomain™** (recommended, the default) | `{"kind": "managed"}` |
+| **Your own account**, then the account | `{"kind": "dns_host", "account_id": "pacct_…"}` |
+| **Advanced**, **Use your own nameservers instead** | `{"kind": "custom", "nameservers": […]}` |
+
+```bash
+curl -X PATCH https://api.customdomain.ai/v1/applications/<APP_ID> \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "nameserver_migration": { "mode": "prefer", "target": { "kind": "managed" } } }'
+```
+
+Send `{"nameserver_migration": {"mode": "off"}}` to turn it off. Once it is on,
+`POST /v1/domains:check` carries `nameserver_migration` for the domain (`mode`,
+`target`, `available`, `path`, `provider`, `registrar`, and `reason` when
+`available` is `false`, such as `registrar_locks_nameservers`), and only then.
+The registrar lookup there waits 3 seconds at most; the move looks again with
+more time.
+
+## What your users see [#what-your-end-user-sees]
+
+With **Show it as the first choice** off, the widget's manual setup shows it as a
+quiet card beside adding records: "Let Acme Sites keep your domain working", "One
+change where you bought it. Your website and email keep working." With it on, the
+manual path opens on the consent screen, and **Add records instead** is one tap
+away.
+
+The widget asks once, in plain words. The title names your platform and the
+domain ("Let Acme Sites keep acme.com working?"), and under it are "Your domain
+stays where you bought it. Only one setting there changes.", the nameservers now
+and after, "Your website and email keep working. Nothing changes until your
+settings are in place.", "You can switch back any time." and one button, **Yes,
+set it up**. For a domain whose DNS is at Cloudflare it adds "Switching back to
+Cloudflare works for 7 days. After that you switch back to GoDaddy's own DNS."
+(the registrar's name, or "your registrar"). It is white label: your platform's
+name, never ours. The id and version of that consent text (`nsm-consent`,
+version `3`) are stored with the move and the time; the person's address is not.
+A widget's move must name a consent text the widget shows (`nsm-consent`
+versions `1` to `3`), so a stored consent always names the words that were on the
+screen.
+
+Then the same screen shows its progress (copy settings, security check, make the
+change, live) and the next thing to do: a copy to check ("Check the copy before
+anything changes.", then **Looks right, continue**), the nameservers to type at
+the registrar, a button to sign in to the registrar with
+[secure sign-in](/docs/guides/secure-sign-in), or that we are waiting on the
+registry. The registrar is named only when it is known; otherwise the screen
+says "your registrar", never the DNS host's name. **Move back** is there while it
+can be, with the other way back beside it when both are possible. A finished move
+hands over to the usual success screen. Every string is in the widget's 13
+languages.
+
+## What each status means [#the-steps]
+
+A domain's page in the console shows three steps: **Copying settings**
+(`pending`, `copying`, `needs_review`), **Waiting for the registrar**
+(`needs_dnssec_off` through `propagating`) and **Live** (`active`). **Domains you
+maintain** and the domain's badge give its status in plain words, the first
+column here:
+
+| Console says | State | What happens | Waits on |
+| --- | --- | --- | --- |
+| Setting up | `pending` | Your own nameservers only: wait for `zone_ready`, then check your nameservers answer for the zone. | you |
+| Setting up | `copying` | Create the zone (managed DNS, or your DNS host account), copy the domain's records into it with the connection's own, count the mail records ([The copy](#the-copy)). A copy whose write to the DNS servers failed is retried, never switched to. Retried every 2 minutes for 6 hours. | us |
+| Check the copy | `needs_review` | The copy is not proven complete: it was read from public DNS, or some records could not be carried over. `copy_warnings` says what to check, and the move goes on once a person confirms it (`copy_reviewed: true`; in the console, **The records look right, continue**). 14 days at most. | a person |
+| Waiting for the user | `needs_dnssec_off` | The registry publishes a `DS` record and we cannot remove it ourselves. | the person |
+| Waiting for the registrar | `waiting_ds` | DNSSEC is off. Wait until the registry stops publishing the `DS` record and its TTL has passed (5 minutes to 48 hours; 1 hour when unknown). | the registry |
+| Waiting for the user (paths `manual` and `agent`), or Waiting for the registrar (path `api`) | `setting` | The nameservers are being changed (`waiting_for` says by whom). With a key, the registrar is read first and its answer is read back ([below](#how-the-nameservers-change)); when its answer was lost and it cannot be read back yet, the move waits here with `waiting_for: registrar_confirm`, can still be moved back, and the next check reads back first. 14 days at most. | the registrar or the person |
+| Almost live | `propagating` | Changed. The delegation is read every 5 minutes for 2 hours, then hourly up to 48 hours. | the registry |
+| Maintained | `active` | The registry lists every new nameserver. Read again every 6 hours: a move away is `failed` with `delegation_drift`, and back again is `active`. Once a day, whether the old nameservers still answer for the domain (`old_dns_serves`), which decides the [default way back](#moving-back). | |
+| Stopped | `failed` | `failure_code` says why. A delegation failure is still read twice a day for 14 days, and turns `active` if the delegation becomes the new one. | |
+| Moved back | `rolled_back` | Moved back. No longer maintained. | |
+
+Why a move stopped, as `failure_code` and as the console says it:
+
+| `failure_code` | Console says |
+| --- | --- |
+| `zone_copy_failed` (also a copy not confirmed within 14 days) | Copying the zone failed |
+| `zone_not_served` | The new nameservers did not answer |
+| `dnssec_timeout` (after 7 days) | DNSSEC stayed on |
+| `ds_removal_failed` | DNSSEC could not be turned off |
+| `credential_refused` | The key was refused |
+| `registrar_refused` (it was read back and still lists the old nameservers) | The registrar refused |
+| `registrar_locked` | The domain is locked |
+| `changed_elsewhere` (the registrar listed other nameservers than the ones the move started from, so they were not overwritten) | Changed elsewhere first |
+| `agent_failed` | The sign in did not finish |
+| `delegation_timeout` | The registry never showed it |
+| `delegation_drift` | Moved away after |
+| `internal` | Something went wrong on our side |
+
+A zone has one open move at a time, so two connections under one registrable
+domain (`acme.com` and `shop.acme.com`) share it, and a move of the same zone for
+another account is refused with `409`.
+
+## The copy [#the-copy]
+
+The new DNS host must hold every record the domain relies on before the
+nameservers move, or the switch takes the website and the mail down. There are
+two ways to know them, and the move says which in `copy_source`:
+
+- **`api`: the whole zone, read through the old DNS host's API.** When
+  CustomDomain™ holds a key at the DNS host the domain uses now (a sign-in kept
+  for the connection, or a connected account there), every record is read
+  through that host's API. Such a copy is proven complete, unless a record could
+  not be carried over (a forwarding rule, or a root `CNAME` a host flattens),
+  which `copy_warnings` names.
+- **`discovery`: read from public DNS.** Public DNS cannot list a domain's
+  records, so the names domains commonly use are asked one by one. Such a copy is
+  never proven, and the move waits in `needs_review` until a person checks
+  `copy_warnings` and confirms it. Your server may accept it in advance by
+  sending `copy_reviewed: true` with the start; a copy that read nothing at all
+  always waits for a person, and in the widget only after the end user saw it.
+  For a domain whose DNS is at Cloudflare, records that answer with Cloudflare's
+  proxy addresses are not copied as if they were the website's own address: they
+  are left out and named, so the person adds the real addresses or connects the
+  Cloudflare account.
+- **`existing_zone`** (your own account only): your zone already held records,
+  which are kept; only the connection's own records are written.
+
+Nothing changes at the registrar until the copy is at the new DNS servers: a
+copy whose write failed is retried, never switched to. When a person confirms a
+copy, the time is kept (`copy_reviewed_at`).
+
+## How the nameservers change
+
+No standard lets a third party ask a registrar to change a domain's nameservers.
+Domain Connect changes records only, and CDS and CSYNC (RFC 7344, RFC 7477) need
+the current DNS host to publish them and the domain to be signed with DNSSEC,
+which most domains are not. So each move takes one of three paths:
+
+| `path` | How | Credential |
+| --- | --- | --- |
+| `api` | The registrar's own API. | A key the customer created, at the registrar: a connected provider account, or a key sent with the call and used once, never stored. The connection's linked account is used when it is at the registrar, also for an end user's move. |
+| `agent` | [Secure sign-in](/docs/guides/secure-sign-in): the end user signs in to their registrar and approves a plan whose only step is the exact new nameservers (or turning DNSSEC off, or for a move back the old nameservers or the registrar's own DNS). Only those controls are opened, and only the approved values are typed; DNSSEC stays closed unless the plan turns it off. A code the registrar asks for is handed back to the person. | None: the person's own sign-in. |
+| `manual` | The person sets them at the registrar with the values shown. | None |
+
+A registrar's answer is not taken at its word. Before a change, the registrar is
+read: it must still list the nameservers the move started from, so a change
+someone made there since is never overwritten (the move stops with
+`changed_elsewhere`). After an error, the registrar (then the registry) is read
+back, because a timeout can come after the registrar acted: the new nameservers
+mean the change happened, the old ones mean it did not (`registrar_refused`), and
+no answer leaves the move in `setting` with `waiting_for: registrar_confirm`.
+
+What each registrar's API can do:
+
+| Registrar | Read | Change | Remove a `DS` record | Back to its own DNS | Most nameservers |
+| --- | --- | --- | --- | --- | --- |
+| GoDaddy | yes | yes | no | no (secure sign-in or by hand) | 13 |
+| Namecheap | yes | yes | no | yes (BasicDNS) | 12 |
+| Name.com | yes | yes | yes | yes | 13 |
+| Porkbun | yes | yes | yes | yes | 13 |
+| Hostinger | yes | yes | no | yes | 4 |
+| Spaceship | yes | yes | no | yes | 12 |
+| IONOS | yes | no (secure sign-in or by hand) | no | no (secure sign-in or by hand) | |
+
+Secure sign-in can change the nameservers at Namecheap, GoDaddy and Name.com, where
+it is offered, and choose the registrar's own DNS at Namecheap ("Namecheap
+BasicDNS") and GoDaddy ("GoDaddy Nameservers"). GoDaddy permits its API to a
+customer for their own domains, so CustomDomain™ changes GoDaddy nameservers only
+with a key the customer created and gave us, never with one we made or read off a
+page. At the other registrars, a [lasting API key](/docs/guides/secure-sign-in#lasting-api-keys) made
+at sign-in counts as a connected account, and it changes the nameservers only for
+domains of the application it was made for.
+
+## Why DNSSEC comes first [#dnssec]
+
+DNSSEC is a security lock some domains have on their DNS: the registry publishes
+a `DS` record, and resolvers use it to check that answers come from the domain's
+DNS host. When the registry publishes one, the nameservers must not move until it
+is gone and resolvers have dropped it, or validating resolvers would stop
+answering for the domain. With a connected account that keeps access (path `api`)
+at a registrar whose API removes `DS` records (Name.com and Porkbun), we remove it
+and wait (`waiting_ds`). Otherwise the move stops at `needs_dnssec_off`, the
+workspace's owners and admins get a "needs attention"
+[notification](/docs/guides/notifications), and the secure sign-in path offers a
+session whose only step is turning DNSSEC off. Some registrars turn DNSSEC on by default
+(Squarespace and Spaceship among them), so expect it.
+
+The new DNS host does not sign the zone. Turning DNSSEC on again there is the DNS
+host owner's choice after the move.
+
+## What moving back does [#moving-back]
+
+A domain can be moved back two ways, and a move back names one in
+`rollback_target`:
+
+| Way back | `rollback_target` | Where the domain's DNS goes | When it works |
+| --- | --- | --- | --- |
+| **To the previous nameservers** | `previous` | Back to the DNS host it had before (`old_nameservers`). We never touched the records there, so the domain answers as it did before the move. | Only while that host still answers for the domain. Some hosts delete a domain's records a few days after its nameservers move away: Cloudflare deletes such a zone after 7 days, and its support cannot restore it. So the old nameservers are asked first, and a move back to ones that no longer answer is refused with `409 old_dns_gone`. |
+| **To the registrar's own DNS** | `registrar_default` | The registrar's "use our nameservers" choice (often called its default DNS). It holds the records it had before the move, not the ones changed since; at Spaceship and Squarespace DNSSEC may sign the domain again. | Always. |
+
+Without a choice, a move back goes to the previous nameservers while they still
+answer, and to the registrar's own DNS once they do not. The move says which:
+`rollback_default` is where a plain move back goes, `rollback_targets` lists the
+ways possible now (`previous` is left out once the old nameservers stopped
+answering), and `old_dns_serves` says whether they still answered when last
+asked (once a day while the move is active, and at a move back). A domain that
+used the registrar's own DNS when the move started goes back through the
+registrar's own reset, not by setting its old names as custom ones.
+
+How it is made, in `rollback_path`:
+
+- `api`: through the registrar's API, at once (`rollback_set_at`), with a key
+  sent once or the move's connected account. For the registrar's own DNS, this is
+  its reset call where it has one: Namecheap, Spaceship, Name.com, Porkbun and
+  Hostinger ([table above](#how-the-nameservers-change)).
+- `agent`: the end user signs in to the registrar with
+  [secure sign-in](/docs/guides/secure-sign-in) (`purpose: nameservers`) and
+  approves the move back: the old nameservers, or the registrar's own DNS. This
+  is the way to the registrar's own DNS at GoDaddy, and elsewhere without a key.
+- `manual`: `next_step` says what to set, or what to choose at the registrar.
+- `none`: nothing had changed at the registrar yet, so the move is just stopped.
+
+A move back reads the registrar first. It must still list the move's
+nameservers: if someone changed them since, the answer is
+`409 changed_elsewhere` and nothing is written. A list already where the move
+back goes (an earlier answer lost) counts as done. A registrar error is read back
+too: `502 registrar_refused` when nothing changed, `504 registrar_unconfirmed`
+when it cannot tell, and nothing is recorded then, so try again. Any secure
+sign-in still working on the move is ended first. It is idempotent, and the
+`nameservers.rolled_back` webhook says where it went (`rollback_target`).
+
+In the console, the domain's DNS tab offers the default way first (**Move back**,
+or **Move back to GoDaddy's DNS** once the old nameservers no longer answer) and,
+beside it, the other one when it is possible. Each asks first ("Move acme.com
+back?") and says what it does: "Its nameservers go back to the ones it had before. Its previous provider
+still answers for it, so it works as before.", or "It goes back to GoDaddy's own
+DNS, with the records it held there before the move. Records changed since then
+are not in it." In the widget, your user sees the same two buttons.
+
+A move back does not yet copy the connection's records into the registrar's DNS,
+restore how the connection was written before the move, or delete the zone the
+move created.
+
+## API
+
+| Route | Who may call it |
+| --- | --- |
+| `PATCH /v1/applications/{id}` with `nameserver_migration` | An API key that can write applications. |
+| `POST /v1/connections/{id}/nameservers:migrate` | An API key; a widget token (the end user: the application's mode must be `offer` or `prefer`, `consent` must name a text the widget shows, `target`, a key and the zone flags are refused, and `copy_reviewed` is taken only for a move in `needs_review`); an agent token with `domains:connect` (no target but the application's own, and no `skip_zone_check`: `403 target_not_allowed`). |
+| `GET /v1/connections/{id}/nameservers` | An API key, a widget token, or an agent token with `domains:read`. |
+| `POST /v1/connections/{id}/nameservers:rollback` with an optional `rollback_target` | An API key; a widget token (it may choose where, but not send a key); an agent token with `domains:connect`. |
+| `GET /v1/applications/{id}/nameserver-migrations?limit=&since=` | An API key: one application's moves and their `stats`. |
+| `POST /v1/connections/{id}/browser:start` with `"purpose": "nameservers"` | The widget or the console: the secure sign-in session of the `agent` path, once the move waits for it (`waiting_for: browser_session`). |
+
+Start a move from your server through the customer's connected registrar
+account:
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/connections/<ID>/nameservers:migrate \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "path": "api", "provider_account_id": "pacct_…" }'
+```
+
+To use a key once instead, send `provider` (the registrar's id, such as
+`porkbun`) and `credential: {"token": "…"}` in the registrar's key format; it is
+used for that call and never stored.
+
+`201` creates the move and `200` resumes the domain's open one with what the call
+brings (a key, `zone_ready`, `copy_reviewed` once a person checked the copy). The
+answer is the move as far as it got in that call:
+with a registrar key and no DNSSEC it is often already `propagating`. Poll
+`GET /v1/connections/{id}/nameservers` until `state` is `active`, `failed` or
+`rolled_back`. `waiting_for` says what it waits on and `next_step` is one sentence
+for a person. The shape is illustrative; the
+[API reference](/docs/api-reference) has every field under **Nameservers**.
+
+The `422` refusals say why a move cannot start: `nameserver_migration_unavailable`
+(`details` says why), `nameserver_api_unsupported` (the registrar has no API call
+that changes nameservers), `nameserver_agent_unavailable` (secure sign-in cannot
+change this registrar's nameservers), `registrar_locks_nameservers` (Cloudflare
+Registrar, [above](#where-the-nameservers-are-changed)), `registrar_mismatch`
+(the key or account is at another company than the domain's registrar),
+`zone_host_unsupported` or `dns_host_not_configured`.
+
+**Agent tokens never choose where the nameservers go.** A delegated agent token
+(an AI agent acting for a person) may start a move only to the application's own
+target, and may not send `skip_zone_check`; anything else is refused with
+`403 target_not_allowed`. With a registrar account linked, nameservers an agent
+chose would hand it the whole domain in one call. Your own API key may still name
+`managed` or `custom`.
+
+A move back takes `{"rollback_target": "previous"}` or
+`{"rollback_target": "registrar_default"}`, or nothing for the default
+([What moving back does](#moving-back)). Its refusals: `409 old_dns_gone` (the
+old nameservers no longer answer: move back to the registrar's own DNS instead),
+`409 changed_elsewhere` (the registrar lists other nameservers than the move's),
+`502 registrar_refused` (nothing changed) and `504 registrar_unconfirmed` (the
+answer was lost and could not be read back: try again).
+
+## Webhooks
+
+Seven events follow a move. Each carries a `nameservers` object and is written to
+the domain's timeline as a row of the same kind. When they are known, the object
+also names the `registrar` (`name`, `provider`, `iana_id`) and the `old_dns_host`,
+and on `nameservers.rolled_back` it says where the move back went
+(`rollback_target`). See the
+[event catalog](/docs/webhooks/overview#event-catalog) and the
+[payload](/docs/webhooks/overview#payload-envelope).
+
+| Event | When |
+| --- | --- |
+| `nameservers.started` | A move was created. |
+| `nameservers.dnssec_cleared` | The registry stopped publishing the `DS` record. |
+| `nameservers.changed` | The registrar took the new nameservers, or the delegation first showed one. |
+| `nameservers.active` | The registry lists every new nameserver. |
+| `nameservers.failed` | The move stopped (`failure_code`). |
+| `nameservers.rolled_back` | Moved back, to the previous nameservers or the registrar's own DNS (`rollback_target`). |
+| `nameservers.drifted` | An active move's nameservers were changed away (`observed_nameservers`). It is also an inbox item and the drift email. |
+
+## MCP
+
+The [MCP server](/docs/mcp/overview) has three tools for it:
+`check-nameserver-status` (`domains:read`), and `migrate-nameservers` and
+`rollback-nameservers` (`domains:connect`, both with `confirm: true`, which an
+agent sends only after the person agreed). The tools never send a registrar key.
+With an agent token, `migrate-nameservers` refuses `target` and `nameservers`:
+the application's setting decides where the nameservers go, and the control plane
+refuses the same (`403 target_not_allowed`). `migrate-nameservers` takes
+`copyReviewed` once the agent showed the person the copy's warnings and they
+agreed, and `rollback-nameservers` takes `target` (`previous` or
+`registrar_default`). Results carry `registrar`, `oldDnsHost`, `copySource`,
+`copyWarnings`, `rollbackDefault` and `rollbackTargets`.
+
+## In the console
+
+- **Application settings, Domain maintenance**: the switch **Maintain your users'
+  domains**, a before and after picture of a user's domain (where it is
+  registered stays; what keeps it working moves to CustomDomain™ or your host),
+  **Who runs it** (CustomDomain™, or your own Cloudflare, Amazon Route 53, Google
+  Cloud DNS or Azure DNS account, with your own nameservers under **Advanced**),
+  and **Show it as the first choice**. A **?** beside DNS, registrar and
+  nameservers gives one plain line and a link here, and every card links to the
+  part of this page that explains it.
+- **Domains you maintain**, under it once it is on: how many domains are
+  maintained, being set up and need attention, the typical setup time, why moves
+  stopped, and one row per domain with who runs it, its status in plain words, the
+  records copied and when it was last checked. Each row opens the domain.
+- **A domain's DNS tab**: a **Domain maintenance** section with its status, the
+  three steps, the next thing to do, for a copy to check what to check and **The
+  records look right, continue**, the domain's two parts (naming the registrar,
+  with its logo, only when it is known), where its records are (listed below for
+  CustomDomain™; a count and a link to your host's console for your own account),
+  its nameservers under **Technical details**, and the
+  [ways back](#moving-back): **Move back**, and **Move back to GoDaddy's DNS**
+  beside it or in its place. A domain your own DNS host runs is not offered
+  CustomDomain™'s managed DNS there.
+- **Webhooks**: a **Nameserver moves** group in the event picker. The domain's
+  timeline has a sentence for each event.
+
+A move is not billed on its own: CustomDomain™ bills connected domains, and a
+zone it hosts counts toward the [managed DNS](/docs/dns/managed-dns#limits) zone
+limit of the account.
+
+## What changes for your users [#end-user-faq]
+
+In the words you can give them.
+
+**What am I agreeing to?**
+That the platform keeps your domain working for you. One setting at the company
+you bought your domain from changes, so the platform can keep your domain's
+settings correct, renew its certificate and fix problems without asking you
+again.
+
+**Will my website or email stop working?**
+No. Your settings are copied first, email included, and nothing changes until
+they are in place. If some could only be read from outside, you are asked to
+check them first.
+
+**Does my domain move to another company?**
+No. It stays registered where you bought it, with the same renewal date and the
+same owner. You keep paying for it there.
+
+**What do I have to do?**
+Say yes. Then, unless the change can be made for you, either paste the values
+shown at the company you bought your domain from, or sign in there and approve
+the change. The screen tells you which.
+
+**How long does it take?**
+Usually minutes. It can take up to 48 hours to show everywhere.
+
+**Why do I have to turn off DNSSEC?**
+DNSSEC is a security lock on the old settings. It must be off before they move,
+or the domain would stop working during the move. You can turn it on again
+afterwards.
+
+**Can I switch back?**
+Yes, any time, two ways. To your previous provider, while it still has your
+records: some delete them a few days after the domain moves away (Cloudflare
+after 7). Or to your registrar's own DNS, which is always there, with the records
+it held before the move.
+
+**Who can change my records afterwards?**
+The platform, through the DNS host it uses. You can still ask it to change or
+show them.

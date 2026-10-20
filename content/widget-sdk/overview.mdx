@@ -32,11 +32,14 @@ window `CustomEvent`s, so you can integrate imperatively or declaratively.
 - **Enter domain** → validates the domain.
 - **Domain analysis** → detects the DNS provider and setup type (`domains:check`).
 - **Setup** → the best available rail: authorize with the provider, a Domain
-  Connect redirect, or copy the exact records to add, with a live check of
-  each record.
+  Connect redirect, a [secure sign-in](/docs/guides/secure-sign-in) where it is
+  offered, or copy the exact records to add, with a live check of each record.
 - **Other ways to finish** (on the records screen) → hand a ready prompt to an
   AI assistant, email the instructions to whoever manages DNS, or, where your
-  deployment offers it, let CustomDomain™ host the DNS.
+  deployment offers it, let CustomDomain™ host the DNS. Where your application
+  turns it on, the end user can instead let your platform keep the domain working,
+  with one change of its nameservers
+  ([Domain maintenance](/docs/guides/nameserver-migration)).
 - **In progress** → polls propagation; shows a stall hint after a while.
 - **Success** → the domain is `live`; the certificate is issued on the next
   TLS handshake.
