@@ -9013,6 +9013,17 @@ components:
           properties:
             name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21\"." }
             page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
+        api_activation:
+          type: object
+          required: [terms]
+          description: >-
+            Present while the customer signs in (created, awaiting_sign_in) when
+            the session will also turn the provider's API on for the account if
+            it is off (IONOS's free API access, ordered in its shop, never above
+            zero). The popup says so under Sign in and links the provider's
+            terms for it.
+          properties:
+            terms: { type: string, format: uri, description: "The provider's terms for its API product." }
         error:
           type: object
           description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.
