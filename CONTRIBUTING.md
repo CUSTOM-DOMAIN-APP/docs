@@ -43,13 +43,13 @@ This project has a documented history of overclaiming, and every number in these
 | Endpoint count | `site/openapi-v1.yaml`, counted, not remembered |
 | MCP tool count | `GET https://mcp.customdomain.ai/.well-known/agent/mcp.json`, the live server's tool list |
 
-Three provider numbers are true and mean different things. Keep them apart (all as of 2026-10-09):
+Three provider numbers are true and mean different things. Keep them apart (all as of 2026-10-21):
 
-- **178** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Counting the adapters the census does not list, "more than 170 providers are known" is the safe phrasing.
-- **62** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 55 scoped API key); the other 116 are connected by hand.
-- **77** built-in adapters ship in the Go registry (`GET /v1/providers`), a different quantity again: 63 of them belong to a catalogued provider through the census adapter link, and 14 do not. Ten of those 14 cover providers the census does not list, PowerDNS only reaches a server you run, and three (Unstoppable Domains, XServer Domain, Muumuu Domain) only sign in through the provider's MCP server. The hosted service switches on the Unstoppable Domains sign-in but not the other two, so it writes records at 74.
+- **189** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Since 2026-10-21 the census lists every provider with a built-in adapter, and "more than 180 providers are known" is the safe phrasing where no date is given.
+- **73** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 66 scoped API key); the other 116 are connected by hand. One of the 66, PowerDNS, is self-hosted software the hosted service does not write to, so say so wherever the 66 are counted in detail.
+- **77** built-in adapters ship in the Go registry (`GET /v1/providers`), a different quantity again: 74 of them belong to a catalogued provider through the census adapter link, and three (Unstoppable Domains, XServer Domain, Muumuu Domain) only sign in through the provider's MCP server, so the census lists them as manual. The hosted service switches on the Unstoppable Domains sign-in but not the other two, and PowerDNS reaches no customer's server, so it writes records at 74.
 
-Never attach 178 to an automatic verb. "One-click across 178 providers" is false. "62 of 178 auto-configure" is true.
+Never attach 189 to an automatic verb. "One-click across 189 providers" is false. "73 of 189 have an automatic path" is true.
 
 ## The product name
 

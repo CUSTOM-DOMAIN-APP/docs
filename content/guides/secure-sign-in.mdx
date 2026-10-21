@@ -16,7 +16,9 @@ at the end.
 
 <Callout title="Offered to selected workspaces for now">
   Secure sign-in runs only where it is switched on for your workspace and the
-  domain's provider. `POST /v1/domains:check` says so per domain in
+  domain's provider. Since October 21, 2026 the hosted service has it on at ten
+  providers: Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship,
+  Hostinger, Network Solutions and Wix. `POST /v1/domains:check` says so per domain in
   `rails.cloud_browser` (present only where the deployment has it on). When
   `available` is `false`, `reason` says why, for example
   `not_enabled_for_workspace`, `provider_not_listed`, `oauth_available` (the
@@ -183,7 +185,11 @@ one of two ways, in this order:
    so a later change at that provider needs another sign-in.
 
 Your customer never loses a step: whatever stops the first way, the second one
-runs in the same session, without another sign-in.
+runs in the same session, without another sign-in. The first way is tried once
+per session. Once it has ended without a key, the session goes straight to the
+DNS page whenever the work goes on again (after a page was handed back, or after
+**Continue signing in**), so no second key is made at the provider. A new
+session tries the key again.
 
 Nobody watches the provider's page after the sign-in. If the provider asks for
 the password again, asks for a code, or shows a check in the middle of the work,
@@ -481,6 +487,9 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
   yourself, are refused before the customer signs in
   (`422 browser_unsupported_records`, with the types named).
 - A lasting API key is made only at the providers [listed above](#which-providers).
+- At Spaceship and Network Solutions, no session has yet been seen to get past the
+  human check the provider's pages can show. A session that cannot get past it
+  ends with the other ways to connect.
 - A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
   Signing in with another account starts the sign-in window again but does not
   extend that limit, and three accounts at most can be tried.

@@ -2902,8 +2902,9 @@ paths:
         real sign in page, so CustomDomain™ never receives them, and the
         sign in itself is never stored. Where the deployment turned it on for
         the provider, the agent then makes a lasting API key on the provider's
-        own API page (named `CustomDomain` and the application's name, with the
-        domain and DNS scopes only and the longest expiry the provider offers),
+        own API page (named `CustomDomain` and the application's name, with
+        every domain scope the page offers, transfer and billing included,
+        and the longest expiry the provider offers),
         checks it with one read only call, keeps it encrypted for this
         application only, and writes the records through the provider's API;
         the domain is then monitored and repaired like any connected provider
@@ -7632,7 +7633,6 @@ components:
           required: [moved, kept]
           description: >-
             What a PUT did to the application's existing domains (PUT only).
-            Domains already on the new routing are in neither count.
           properties:
             moved:
               type: integer
@@ -7640,8 +7640,10 @@ components:
             kept:
               type: integer
               description: >-
-                Connected domains (and domains whose records were supplied or
-                written) that keep pointing where they do.
+                Every other domain, left pointing where it does: connected
+                domains, domains whose records were supplied or written, and
+                domains still waiting for DNS that were already on the new
+                routing.
     ConnectionDiagnosis:
       type: object
       required: [connection_id, domain, zone, status, all_found, records, issues]

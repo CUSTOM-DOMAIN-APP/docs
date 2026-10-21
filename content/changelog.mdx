@@ -15,6 +15,21 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 21, 2026: eleven more providers in the census, a confirmation before routing changes, and one
+  rule for Needs attention.** The census now lists every provider with a built-in adapter: Azure DNS, Bunny DNS,
+  Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr are
+  listed as API key providers, so `GET /v1/providers/census` counts 189 (73 with an automatic path, 116 by
+  hand). How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
+  target on your own infrastructure: it lists the records customers will add and how many domains follow or
+  stay, and saves on confirm. `existing_domains.kept` now also counts a waiting domain already on the new
+  routing, so the counts add up to every domain the change reaches. In the console, a domain needs attention
+  when its setup failed or stopped, its records were changed at the provider, or it is still being set up 48
+  hours after it was added, the same on **Overview**, **Domains** and an application's **Domains** tab.
+  Secure sign-in (offered to selected workspaces) is on at ten providers (Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship,
+  Hostinger, Network Solutions and Wix), and a session tries the lasting API key once: when that ends without
+  a key, the rest of the session uses the DNS page. See [DNS providers](/docs/dns/providers),
+  [Where domains point](/docs/connect-flow/routing#changing-where-domains-point),
+  [the console](/docs/getting-started/console) and [Secure sign-in](/docs/guides/secure-sign-in).
 - **October 20, 2026: secure sign-in in our own form and its lasting API keys, domain maintenance, and who opens the widget.**
   *Secure sign-in* (offered to selected workspaces) now opens on a sign-in form of ours, in each provider's own
   words: its own label for the username (GoDaddy's "Username or Customer #", IONOS's "Customer ID, email address or

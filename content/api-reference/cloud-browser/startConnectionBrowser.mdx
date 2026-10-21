@@ -18,9 +18,9 @@ _openapi:
           real sign in page, so CustomDomain™ never receives them, and the sign
           in itself is never stored. Where the deployment turned it on for the
           provider, the agent then makes a lasting API key on the provider's own
-          API page (named `CustomDomain` and the application's name, with the
-          domain and DNS scopes only and the longest expiry the provider
-          offers), checks it with one read only call, keeps it encrypted for
+          API page (named `CustomDomain` and the application's name, with
+          every domain scope the page offers, transfer and billing included,
+          and the longest expiry the provider offers), checks it with one read only call, keeps it encrypted for
           this application only, and writes the records through the provider's
           API; the domain is then monitored and repaired like any connected
           provider account, and the connection's `credential` shows the key's
