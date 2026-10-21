@@ -15,6 +15,39 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 21, 2026: the fixes from a security audit of how agents reach CustomDomain™.** `disconnect-domain`
+  now compares `confirm` with the connection's domain for every credential, API keys and client credentials tokens
+  included, and over the REST API any credential that sends `confirm` is held to it (`409 confirmation_mismatch`).
+  `add-email` and `forward-domain` check each value before anything is signed: `mxHost`, `spfInclude` and
+  `dkimTarget` are public hostnames, `dkimSelector` is one DNS label, `dmarcRua` is one email address (`mailto:`
+  accepted), and `target` is an `http` or `https` URL or a host at a public hostname. A bad value is `-32602`, naming
+  the argument, at the MCP server, and `400 invalid_request` at `domainconnect:start`, whose `vars` now take only
+  the template's own variables and never `edgeIp` or `edgeIp6`. A revoked or expired API key, `/token` JWT or agent
+  token now gets HTTP `401` with a `WWW-Authenticate` challenge instead of a failure inside a `200`. `POST /token`
+  allows one request a second per address (bursts of 10), refused `CLIENT_ID:CLIENT_SECRET` pairs are limited to 10
+  per address and then one every 10 seconds, both answer `429` with `Retry-After`, and an exchanged token is reused
+  until a minute before it expires. Replaying an agent's authorization code revokes its grant, and the control plane
+  checks an agent token's issuer and audience. The consent screen names the workspace and lets you choose the
+  application the agent acts in, and the control plane refuses an unverified host without the "I recognize this
+  host" confirmation (`acknowledged_unverified`). Only owners can view or rotate the workspace's default key, which
+  acts as an admin and creates no keys. `api.customdomain.ai` and `mcp.customdomain.ai` send HSTS, `nosniff` and a
+  referrer policy. The MCP server page also documents the purchase authorization callback: a `POST` of
+  `{ "domain": "example.com" }` with HTTP Basic auth, where a `200` approves and must carry `buyer.email` (else
+  `buyer_required`), and a `401`, any other status, a network error or the 10 second timeout deny; the hosted
+  service configures none, so `create-domain-order` answers `rejected` there. The page also says the tool call
+  limit (5 a second, bursts of 20) is counted per credential for API keys and per workspace for agent tokens, and
+  lists every fallback error code. See [MCP server](/docs/mcp/overview), [Removing a domain](/docs/connect-flow/offboarding),
+  [Template variables](/docs/connect-flow/verify-and-go-live#template-variables),
+  [The OAuth flow](/docs/agents/oauth-flow), [Managing access](/docs/agents/managing-access),
+  [API keys](/docs/authentication/overview) and [Security model](/docs/security/overview#response-headers).
+- **October 21, 2026: the notifications offer comes back after Not now, and Zoho's EU data center gets its own SPF
+  include.** **Get notified in this browser** on **Overview** used to show once per browser. Now **Not now** (there,
+  or on the welcome's ping) brings it back at least 3 days later, then at least 7 days after the second, and not by
+  itself after the third; **Don't ask again** appears once you have said **Not now**, and turning push on or blocking
+  it at the browser's prompt ends it too. A browser that blocked notifications gets **How to allow them**, a link to
+  **Settings → Notifications**. Where CustomDomain™ fills in a domain's mail provider SPF include from its MX
+  records, a mailbox at Zoho's EU data center (`mx.zoho.eu`) now gets `include:spf.zoho.eu`, not the US
+  `include:zoho.com`. See [Notifications](/docs/guides/notifications) and [Email DNS](/docs/dns/email-dns).
 - **October 21, 2026: eleven more providers in the census, a confirmation before routing changes, and one
   rule for Needs attention.** The census now lists every provider with a built-in adapter: Azure DNS, Bunny DNS,
   Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr are
@@ -87,13 +120,6 @@ never change meaning or disappear without a new major version. See the
   [Secure sign-in](/docs/guides/secure-sign-in), [the lasting API key](/docs/guides/secure-sign-in#lasting-api-keys),
   [Domain maintenance](/docs/guides/nameserver-migration) and
   [What a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
-- **The MCP docs say what the purchase gate expects, and whom two checks apply to.** [MCP server](/docs/mcp/overview)
-  now documents the purchase authorization callback: a `POST` of `{ "domain": "example.com" }` with HTTP Basic auth, where a `200`
-  approves and must carry `buyer.email` (else `buyer_required`), and a `401`, any other status, a network error or the
-  10 second timeout deny. The hosted service configures no callback, so `create-domain-order` answers `rejected` there.
-  The tool call limit (5 a second, bursts of 20) is counted per credential for API keys and per workspace for agent
-  tokens, and the `confirm` check on `disconnect-domain` currently compares the domain only for agent tokens. The page
-  also lists every fallback error code.
 - **End user notices, Move rewrites and lapsed plans.** A platform can give the end user's email
   address on the widget token or the connection (`end_user_email`), or let the widget ask for it
   (`ask_end_user_email`, `PUT /v1/connections/{id}/end-user-email`); after a Move that person gets one email with
@@ -123,11 +149,12 @@ never change meaning or disappear without a new major version. See the
   `ALIAS`-style record is found when it answers with one of them. The SDK's `dnsRecords` option
   carries DKIM records only, and now says so in the console when it is given others. See
   [Where domains point](/docs/connect-flow/routing).
-- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
-  that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
-  in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's
-  `checkDomain` returns it as `advisories`. If you read `record_conflicts` for that kind, read `advisories`
-  too. See [Root domains](/docs/dns/root-domains).
+- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now also returns a CAA
+  record that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`. Because
+  `/v1` is additive only, it stays in `record_conflicts` as well, so the same warning is in both: show it once,
+  and read `advisories` when it is there. It replaces nothing, so it never counts toward
+  `will_fallback_to_manual`. The SDK's `checkDomain` (0.5.4) maps `record_conflicts` only and still carries it
+  in `recordConflicts`. See [Root domains](/docs/dns/root-domains).
 - **The welcome ends on your build screen.** The widget code or the AI prompt is the last step. **Try it now**
   opens **Run your first connection**, and **MCP and agents** opens the AI setup.
 - **Let your AI add CustomDomain™ for you.** Pick the agent you use and the welcome shows how to add CustomDomain™ to

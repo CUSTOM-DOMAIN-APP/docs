@@ -202,7 +202,8 @@ A deployment without `GRANT_ENCRYPTION_KEY` cannot keep provider accounts, so
 its console keeps the key itself (AES-256-GCM under `WEB_SECRET_KEY`, one per
 workspace and provider), only to connect more domains. Keys saved that way are
 listed under **Keys to move** on the Connected accounts page until you move
-them to an account.
+them to an account. Saving or removing one of them needs a member or above; a
+viewer only sees them.
 
 Credentials that are passwords or expire within hours are never kept, whatever
 the request asks: ALL-INKL.COM KAS logins, Arsys API passwords, INWX, Subreg,

@@ -27,7 +27,8 @@ freely: **where its access would go**, the host your approval sends the browser
 - **Local tool**: a program on your own computer (`localhost`). Approve only if
   you started that program yourself just now.
 - **Unverified**: any other address. You can still approve, after confirming
-  that you recognize the host and started the connection yourself.
+  that you recognize the host and started the connection yourself. The control
+  plane refuses the approval without that confirmation.
 - **Blocked**: the agent's name imitates a brand (Claude, ChatGPT, OpenAI,
   Anthropic, Devin, CustomDomain™) that its host does not belong to. It can only
   be denied.
@@ -40,12 +41,18 @@ handed back to the agent to finish the token exchange. **Deny** cancels the
 request so it cannot be approved later; a verified or local agent is told it was
 denied, and an unverified or blocked one is not sent anywhere.
 
-The grant is bound to your workspace's default application, so the agent can act
-only on that application's domains.
+The page also says **where it acts**: your workspace, by name, and the
+application the agent will work in. With one live application it is named; with
+several you choose one, and the application selected in the console is chosen to
+start with. Test mode applications are not offered, because they have no real
+domains, and a workspace with no live application cannot approve an agent. The
+grant is bound to the application you approve, so the agent can act only on that
+application's domains.
 
 > Consent is recorded by the console **server side** with your workspace API key,
-> and the approving member must belong to your workspace. A browser or embed
-> token can never approve an agent, so a client can never approve itself.
+> and the approving member must belong to your workspace. A member's own key
+> records only that member as the approver. A browser or embed token can never
+> approve an agent, so a client can never approve itself.
 
 ## Spend caps and purchases
 
@@ -86,8 +93,8 @@ The **Agents** page (`/app/settings/agents`, in the sidebar under **More**) list
 every active grant: the agent, the application it acts in, when it was last used,
 and its scopes. A grant that can spend also shows this month's spend against its cap,
 and an expiring grant shows its end date. **Revoke** ends it immediately: the
-agent's tokens stop working within one token lifetime, and its refresh token is
-killed.
+control plane refuses the agent's next tool call (the MCP answers it with HTTP
+`401`), and its refresh token is killed.
 
 The page is off by default for each workspace. It switches on by itself when you
 approve an agent, so you never approve a grant you cannot find. You can

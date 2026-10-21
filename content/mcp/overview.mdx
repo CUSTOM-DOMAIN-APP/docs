@@ -36,10 +36,10 @@ never inject them. Each tool needs one scope (see below).
 | `check-connection-status` | `{ connectionId }` or `{ jobId }` | `domains:read` | Read a connection's live status and its records. `status` is one of `pending`, `propagating`, `live`, `failed`, and `connected: true` is the reliable terminal signal. A failed connection says why in `errorCode`. `managed` says whether `reapply-connection` can heal it. |
 | `check-order-status` | `{ orderId }` **or** `{ jobId }` | `domains:read` | Read the live status of a domain order, by `orderId` (direct) or `jobId` (sharing). Provide exactly one. |
 | `reapply-connection` | `{ connectionId }` | `domains:connect` | Re-apply a managed connection: the control plane recomputes its DNS from stored config and re-pushes it through the stored grant. Never supply records. Fails with the code `conflict` (409) when the connection has no stored grant, so read `managed` first. See [Managed connections](/docs/connect-flow/managed-connections). |
-| `disconnect-domain` | `{ connectionId, confirm }` | `domains:disconnect` | Remove any connection of the application, managed or not. The domain stops being served (edges forget the host within a minute), its certificate is removed and monitoring stops. DNS records come out only where a kept grant wrote them; otherwise they stay at the provider for the user to remove. This takes the domain offline and cannot be undone here, so ask the person first and send the domain they confirmed in `confirm`. Every caller must send `confirm`: without it the call fails with `-32602` and nothing is removed. The check that `confirm` names the connection's domain currently applies to agent tokens only. With an agent token, another domain is refused (`409 confirmation_mismatch`) and nothing is removed; with an API key or a client credentials token, `confirm` is sent but not compared, so check it yourself. Answers `409 removal_in_progress` while another removal of the same connection is running. See [Removing a domain](/docs/connect-flow/offboarding). |
+| `disconnect-domain` | `{ connectionId, confirm }` | `domains:disconnect` | Remove any connection of the application, managed or not. The domain stops being served (edges forget the host within a minute), its certificate is removed and monitoring stops. DNS records come out only where a kept grant wrote them; otherwise they stay at the provider for the user to remove. This takes the domain offline and cannot be undone here, so ask the person first and send the domain they confirmed in `confirm`. Every caller must send `confirm`: without it the call fails with `-32602` and nothing is removed. Whatever the credential (an API key, a client credentials token or an agent token), the server reads the connection first and compares `confirm` with its domain (case, a scheme, a path and a trailing dot do not matter): another domain is refused with `409 confirmation_mismatch` and nothing is removed, and the control plane checks it again before it removes anything. That read needs `domains:read`, so an agent token's grant needs it as well; without it the call fails with `forbidden` and nothing is removed. Answers `409 removal_in_progress` while another removal of the same connection is running. See [Removing a domain](/docs/connect-flow/offboarding). |
 | `discover-provider` | `{ domain }` | `domains:read` | Detect where a domain's DNS is hosted and which setup rails can run for it. `rails` says per rail (`oauth`, `domainConnect`, `apiKey`, `manual`) whether it can run for this domain, `recommendedRail` is the server's pick, `endUserAutomatic` is true only when that pick needs nothing typed by the person, and `blockedReason` (`unregistered` or `platform_subdomain`) means no rail can proceed. It no longer returns `supportsAutomatic` or `setupType`, which only meant that an adapter exists. `detectionError` (`nxdomain` or `resolver`) is set when detection could not finish. Also returns the pre-flight advisories `recordConflicts`, `willFallbackToManual` and `apexMessage`. Read only. Use it before `connect-domain`, `forward-domain` or `add-email`. |
-| `forward-domain` | `{ target, domain? , connectionId? }` | `domains:connect` | Forward (permanent 301) a domain to a destination. Returns a `link` to authorize, or the records to add, plus a `connectionId` to poll. Never writes DNS directly. |
-| `add-email` | `{ domain? , connectionId? , provider? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | `domains:connect` | Configure a domain for a mail provider (MX, SPF, DKIM, DMARC) through server side templates. Supply provider settings, never raw records. `provider` (`google`, `microsoft365` or `zoho`) fills the standard MX and SPF (`microsoft365` still needs your tenant's `mxHost`); DKIM values always come from you. Returns a `link` to authorize, or the records to add, plus a `connectionId` to poll. |
+| `forward-domain` | `{ target, domain? , connectionId? }` | `domains:connect` | Forward (permanent 301) a domain to a destination. `target` is an `http` or `https` URL, or a bare host, whose host is a public hostname (not an IP address, `localhost` or a name that resolves only inside a network, such as one ending in `.local` or `.internal`), with no user name or password in it. Any other value fails with `-32602`, which names `target`, before any call is made, and the control plane checks the same rule again. Returns a `link` to authorize, or the records to add, plus a `connectionId` to poll. Never writes DNS directly. |
+| `add-email` | `{ domain? , connectionId? , provider? , mxHost? , spfInclude? , dkimSelector? , dkimTarget? , dmarcRua? }` | `domains:connect` | Configure a domain for a mail provider (MX, SPF, DKIM, DMARC) through server side templates. Supply provider settings, never raw records. `provider` (`google`, `microsoft365` or `zoho`) fills the standard MX and SPF (`microsoft365` still needs your tenant's `mxHost`, and `zoho` fills Zoho's US data center, `mx.zoho.com` and `zoho.com`: for its EU data center send `mxHost` `mx.zoho.eu` and `spfInclude` `spf.zoho.eu`, since values you send win over the preset); DKIM values always come from you. Each value you send is checked before any call is made: `mxHost`, `spfInclude` and `dkimTarget` are fully qualified public hostnames (not an IP address, `localhost` or a name that resolves only inside a network, such as one ending in `.local` or `.internal`), `dkimSelector` is one DNS label with no dots, and `dmarcRua` is one email address at a public domain (a `mailto:` prefix is accepted and dropped) with no other DMARC tags. A value of another shape fails with `-32602`, which names the argument, and the control plane checks the same rules again. Returns a `link` to authorize, or the records to add, plus a `connectionId` to poll. |
 | `list-connections` | `{ status?, limit?, cursor? }` | `domains:read` | List the connected domains, each with `domain`, `connectionId`, `status`, `connected`, `setupType`, `managed` and, for a failed one, `errorCode`. With an API key it spans every application in the workspace. `status` filters to one of `pending`, `propagating`, `live`, `failed`; `limit` is up to 1000. A page that was cut says `truncated: true` and gives `nextCursor`: call again with it as `cursor`. Read only. |
 | `check-certificate-status` | `{ connectionId }` | `domains:read` | Read the HTTPS certificate of a connected domain: issuer, expiry, days left, whether renewal is failing and the last error. Certificates renew on their own. `attention` is empty when nothing needs a person, else `failed`, `renewal_failing`, `expired` or `expiring`. Read only. |
 | `recheck-connection` | `{ connectionId }` | `domains:connect` | Re-run a connection's DNS check now instead of waiting for the next scheduled one: a failed connection re-enters verification, a live one is checked for drift. Returns which records resolve and the new status; poll `check-connection-status` for the outcome. Writes no DNS. |
@@ -170,9 +170,10 @@ to fix it. Branch on `error`. After a `billing_required` failure,
 Three refusals happen before a tool runs:
 
 - A call with a missing or malformed argument (for example no `confirm` on
-  `disconnect-domain`, or a `confirm_domain` on `create-domain-order` that does
-  not repeat `domain`) gets the JSON-RPC error `-32602`, which names the
-  argument. An unknown tool is `-32601`.
+  `disconnect-domain`, a `confirm_domain` on `create-domain-order` that does
+  not repeat `domain`, or an `add-email` or `forward-domain` value of the wrong
+  shape, such as an IP address for `mxHost`) gets the JSON-RPC error `-32602`,
+  which names the argument. An unknown tool is `-32601`.
 - A token without the tool's scope gets the JSON-RPC error `-32003`,
   `insufficient_scope`, which names the scope it needed.
 - A caller over its tool call limit gets `rate_limited` with
@@ -184,10 +185,30 @@ Three refusals happen before a tool runs:
   share one bucket, and the `CLIENT_ID:CLIENT_SECRET` form against its
   application.
 
-A revoked or expired API key or `/token` JWT is not refused at the door today:
-the call reaches the control plane and answers a failure with the `error`
-`unauthorized`. A delegated agent token that fails verification (expired, bad
-signature, or issued for another audience) gets HTTP `401 invalid_token`.
+On the `http` transport, a credential that is missing, invalid, expired or
+revoked is answered with HTTP `401` rather than a failure inside a `200`, so the
+client knows to sign in again or use another credential. The answer carries the
+challenge
+`WWW-Authenticate: Bearer realm="mcp", error="invalid_token", resource_metadata="https://mcp.customdomain.ai/.well-known/oauth-protected-resource"`
+and the OAuth error body `{ "error": "invalid_token", "error_description": "..." }`:
+
+- **An API key or a `/token` JWT** is checked with the control plane when it
+  arrives, so a revoked or expired one is refused on `initialize` and
+  `tools/list` as well as on a tool call. The server reuses that answer for a
+  short while (60 seconds for a good credential, 30 for a refused one), and a
+  credential revoked within that time is refused by the next tool call it makes:
+  the request is answered `401` instead of a result. A check that fails for
+  another reason (the control plane cannot be reached) lets the request through.
+- **A delegated agent token** is verified locally: an expired one, a bad
+  signature or a token issued for another audience is refused at once. A token
+  whose grant was revoked still verifies, so `initialize` and `tools/list`
+  answer, but its first tool call that reaches the control plane is answered
+  `401`.
+- **A `CLIENT_ID:CLIENT_SECRET` pair** the control plane refuses is `401` at once
+  (see [Authentication](#authentication) for its limit).
+
+The `stdio` transport has no HTTP status: there a refused credential is a failed
+tool result with the `error` `unauthorized`.
 
 A request a browser sends from a web page is refused before any of this, unless
 the page's origin is the server's own or one its operator lists
@@ -213,7 +234,7 @@ The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
   | Route | Purpose |
   | --- | --- |
   | `POST /mcp` | The MCP JSON-RPC endpoint. **Requires `Authorization: Bearer`** (unless started with `-insecure` for local development). |
-  | `POST /token` | OAuth 2.0 **client credentials** grant: exchange `client_id` and `client_secret` for a short lived Bearer. |
+  | `POST /token` | OAuth 2.0 **client credentials** grant: exchange `client_id` and `client_secret` for a short lived Bearer. Limited per caller IP address (see [Authentication](#authentication)). |
   | `GET /healthz` | Liveness. Answers `200` with `ok`. |
   | `GET /.well-known/oauth-protected-resource` | RFC 9728 protected resource metadata, also served at `/.well-known/oauth-protected-resource/mcp`. The `401` from `/mcp` points here. It names the control plane (`https://api.customdomain.ai`) first as the authorization server, then this server, and lists the four scopes. |
   | `GET /.well-known/oauth-authorization-server` | RFC 8414 authorization server metadata for `/token` (the `client_credentials` grant). The authorization code flow for delegated agents belongs to the control plane, not to this server: see [Agent access](/docs/agents/overview). |
@@ -241,8 +262,18 @@ curl -X POST https://mcp.customdomain.ai/token \
 # → { "access_token": "eyJ…", "token_type": "Bearer", "expires_in": 900 }
 ```
 
-`expires_in` is the lifetime of the token in seconds: 900, which is 15 minutes
-(the control plane's `JUSTEASY_TOKEN_TTL`). Mint a new one when it runs out.
+`expires_in` is what is left of the token's life, in seconds: 900 (15 minutes,
+the control plane's `JUSTEASY_TOKEN_TTL`) for a new token. The server keeps the
+token it minted for a client id and secret and hands the same one back, with the
+seconds it has left, until a minute before it expires; the next request after
+that mints a new one. Mint again when it runs out.
+
+`POST /token` is limited per caller IP address: one request a second, with
+bursts of 10. Over the limit the answer is `429` with
+`{ "error": "rate_limited" }` and a `Retry-After` header in seconds. Each
+exchange carries the caller's address to the control plane, so the control
+plane's own limit on minting tokens counts each caller, not the MCP server as a
+whole.
 
 `POST /mcp` accepts **three** Bearer forms, so hosts that cannot run the token
 dance still authenticate:
@@ -251,13 +282,21 @@ dance still authenticate:
 2. a console API key (`cd_live_…` / `cd_test_…`, or an older `sk_live_…` /
    `sk_test_…` key, which keeps working),
 3. the `mcp-remote` shortcut `CLIENT_ID:CLIENT_SECRET`, which the server exchanges
-   for a JWT on the fly.
+   for a JWT on the fly and reuses like `/token` does, until a minute before it
+   expires. A pair the control plane refuses is `401`. Refused pairs are limited
+   per caller IP address: 10, then one more every 10 seconds. Past that, a pair
+   the server has not already exchanged gets `429 rate_limited` with
+   `Retry-After`, and no exchange is tried; a pair it already holds a token for
+   keeps working.
 
 For these **integrator** credentials the MCP server does not validate tokens
 cryptographically: it forwards the caller's credential to the control plane,
-which is the authority and rejects bad credentials on every wrapped call. Every
-route a tool calls takes all three credentials; purchases stay closed to API
-keys.
+which is the authority and rejects bad credentials on every wrapped call. It
+also asks the control plane about an API key or a `/token` JWT when it arrives
+(`GET /v1/billing/standing`, a read every credential may make), so a refused one
+gets HTTP `401` before any tool runs (see
+[What a call answers](#what-a-call-answers)). Every route a tool calls takes all
+three credentials; purchases stay closed to API keys.
 
 **Delegated agent tokens are the exception.** When a person grants an AI agent
 access, the agent presents a short lived **ES256** token that the MCP verifies
@@ -265,7 +304,9 @@ access, the agent presents a short lived **ES256** token that the MCP verifies
 enforces the tool's required scope on, so a read only grant can never reach a
 connect, disconnect or purchase tool. The token must name this server's endpoint
 as its audience (`aud`, RFC 8707), `https://mcp.customdomain.ai/mcp` by default;
-a token for another audience is refused with `401 invalid_token`. A client that
+a token for another audience is refused with `401 invalid_token`. The control
+plane checks every tool call's token again, its grant included, so a token whose
+grant was revoked is refused with `401` too. A client that
 follows the `401` to the protected resource metadata needs no key: it signs the
 person in at the control plane and receives a delegated agent token. See
 [Agent access](/docs/agents/overview) for the human first consent flow.

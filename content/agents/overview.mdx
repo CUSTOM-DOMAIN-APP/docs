@@ -35,7 +35,8 @@ control plane, then uses the resulting token at the MCP:
    or self registers (Dynamic Client Registration) and gets a `client_id`.
 2. **Authorize**: the agent sends the human to `GET /oauth/agent/authorize`; the
    control plane redirects the browser to your console's consent page.
-3. **Consent**: the owner signs in, reviews the requested scopes, and approves.
+3. **Consent**: the owner signs in, reviews the requested scopes, picks the
+   application the agent will act in, and approves.
 4. **Token**: the agent exchanges the authorization code (plus its PKCE verifier)
    for a short lived **ES256 access token** and a refresh token.
 5. **Act**: the agent calls MCP tools with the token. The MCP verifies the token
@@ -90,9 +91,13 @@ with that scope. Nothing else about the grant changes.
   [JWKS](/docs/agents/oauth-flow#discovery) with no per request callback; they are
   short lived (15 minutes) and refreshed.
 - **For this server only**: a token names the MCP endpoint as its audience, and the
-  MCP refuses a token issued for anything else.
-- **Revocable**: revoke a grant from the console at any time; the agent's tokens
-  stop working within one token lifetime.
+  MCP refuses a token issued for anything else. The control plane accepts only a
+  token it issued itself for the MCP endpoint or its own API.
+- **Revocable**: revoke a grant from the console at any time; the control plane
+  checks the grant on every call, so the agent's next tool call is refused.
+- **Codes and refresh tokens are good once**: a used one presented again revokes
+  the grant, and you are told (see [The OAuth flow](/docs/agents/oauth-flow#refresh)
+  for the one exception).
 - **Owner emails**: you are emailed when an agent connects, when it acts, and
   immediately when it spends money.
 - **A trail**: what an agent does and spends is in the audit log, under the actor
