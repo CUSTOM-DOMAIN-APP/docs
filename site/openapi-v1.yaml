@@ -975,7 +975,7 @@ paths:
         tool. Answers whether a domain's DNS provider supports one-click setup:
         it runs the same detection cascade as the widget (Domain Connect
         discovery probed ahead of NS-pattern matching) and cross-references the
-        63-provider census. Results are cached for 24 hours per domain and the
+        provider census. Results are cached for 24 hours per domain and the
         endpoint is rate-limited per IP; do not build product flows on it. Use
         the authenticated `domains:check`, which carries records-aware conflict
         and apex verdicts.
@@ -7633,6 +7633,8 @@ components:
           required: [moved, kept]
           description: >-
             What a PUT did to the application's existing domains (PUT only).
+            Domains still waiting for DNS that were already on the new routing
+            count as kept.
           properties:
             moved:
               type: integer
