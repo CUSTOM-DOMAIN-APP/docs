@@ -3,6 +3,13 @@ title: Troubleshooting
 description: "Fix stuck connections and common failures: pending or propagating domains, DNS mistakes, rail errors, provider tokens, certificate issues and DNS drift."
 ---
 
+<Callout title="Start with what the connection says">
+  Every connection carries its own diagnosis: `error_code` and `error_message` on
+  `GET /v1/connections/{id}`, on every list and on the webhook events. In the
+  console, the page of a domain that isn't live leads with **What happened** and
+  the next steps. Match the code or the symptom to a section below.
+</Callout>
+
 ## A connection is waiting in `pending`
 
 `pending` means we have not yet seen the DNS records in public DNS. **There is
@@ -22,6 +29,8 @@ instead, naming the service when it recognizes it ("Still points to
 Squarespace"). It also flags the mistakes that block a connection even when a
 record looks right:
 
+<Callout type="warn" title="Mistakes that block a connection">
+
 - **The full hostname typed into the Name field.** Most panels append the
   domain, so `www.acme.com` typed as the Name becomes
   `www.acme.com.acme.com`. Type only `www` (or `@` for the root).
@@ -31,6 +40,8 @@ record looks right:
   the same name keeps sending some visitors to the previous host.
 - **A conflicting record** at the same name (a `CNAME` cannot sit beside other
   records) or a `CAA` record that doesn't allow Let's Encrypt.
+
+</Callout>
 
 The widget runs the same check for your customers while they add records.
 

@@ -12,7 +12,11 @@ application and follow the steps below with its `client_secret` and a name such 
 `www.acme.test`. The widget runs end to end on a simulated DNS, with no card, no free
 domain used and nothing billed.
 
-## 1. Mint a widget token on your server
+<Steps>
+
+<Step>
+
+### Mint a widget token on your server [#1-mint-a-widget-token-on-your-server]
 
 Your server trades a credential for a short-lived widget token, and only that
 token reaches the browser. If you signed up in the console (most customers),
@@ -47,7 +51,11 @@ customer for the domain first, mint the token after that. A token minted before
 the domain is known still runs the whole flow; the widget then shows the manual
 setup for those providers instead.
 
-## 2. Open the modal
+</Step>
+
+<Step>
+
+### Open the modal [#2-open-the-modal]
 
 ```html
 <script src="https://app.customdomain.ai/widget-assets/customdomain-sdk.js"></script>
@@ -76,7 +84,11 @@ When the customer types a root domain (`acme.com`), the widget asks whether to
 connect it with `www` (recommended), on its own, or as a subdomain instead;
 pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains).
 
-## 3. What your customer will see, by provider
+</Step>
+
+<Step>
+
+### What your customer will see, by provider [#3-what-your-customer-will-see-by-provider]
 
 | Their DNS provider | The modal offers | They type |
 | --- | --- | --- |
@@ -92,7 +104,11 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 This table is what `POST /v1/domains:check` returns as `rails`; the widget
 reads it live, so you never have to maintain it.
 
-## 4. Records you supply
+</Step>
+
+<Step>
+
+### Records you supply [#4-records-you-supply]
 
 For records only you know (SES DKIM, a verification `TXT`), create the
 connection **server-side first** (`POST /v1/connections`, then
@@ -101,7 +117,11 @@ for that domain: it shows *your* records. An email-only set (no edge record) is
 verified and reported but **never served** and gets **no certificate**; that is
 by design. [Bring your own records](/docs/dns/bring-your-own-records).
 
-## 5. After the modal closes
+</Step>
+
+<Step>
+
+### After the modal closes [#5-after-the-modal-closes]
 
 After a sign-in or one-click setup writes the records, the modal waits for DNS
 to show them, which usually takes seconds. Past a minute it tells the customer
@@ -119,10 +139,18 @@ else, that person finishes from the link in the email (the modal reports
 `error_code` / `error_message`), and poll `GET /v1/connections/{id}` as the
 fallback.
 
+</Step>
+
+</Steps>
+
 ## Don't
+
+<Callout type="warn">
 
 - Don't gate your UI on `setupType === "automatic"`; read `rails`.
 - Don't send your API key or client secret from the page; the widget JWT is
   the browser credential.
 - Don't call `customdomain.open()` for `*.vercel.app`-style hosts; the
   pre-flight refuses them with `platform_subdomain`.
+
+</Callout>

@@ -33,6 +33,7 @@ you already get keep coming. Security and account email is always sent.
 | An agent hit its spend cap | An agent tried to buy a domain past the monthly cap you set. The purchase is refused and no money moves. | On | On |
 | An agent's credential was reused | An old agent credential was used again after it was replaced. The agent's access is revoked. | On | On |
 | A DNS provider needs reconnecting | A provider stopped accepting a saved key, so automatic repair is paused. | On | On |
+| A DNS provider key ends soon | An [API key a secure sign-in made](/docs/guides/secure-sign-in#reconnect) at a DNS provider ends in 30 or 7 days, so its end user can sign in again first. | On | On |
 | Routine agent actions | What an agent does, such as connecting a domain, once an hour. | On | Off |
 | A customer connects through your widget | One of your customers connected a domain with the widget. A domain you connected yourself with the widget, from the welcome, is told here too, as that domain being live. | On | Off |
 | Someone joins your team | A person you invited accepted. | On | Off |
@@ -40,7 +41,7 @@ you already get keep coming. Security and account email is always sent.
 These go to the **owners and admins** of the workspace. A member or a viewer
 does not get them. The last three are quiet by default because they can be
 frequent; turn push on for them if you want it. The exception is a workspace for
-your own product's customers (you chose **My customers** at the start): the first
+your own product's customers (you chose **My product's users** at the start): the first
 browser you turn push on in also pushes for **A customer connects through your
 widget**, because that is the moment you are waiting for. It is an ordinary choice
 under **Settings → Notifications**: turn it off there and it stays off.

@@ -7,11 +7,23 @@ A connection is created against an **application** and authorized by a
 [widget JWT](/docs/authentication/widget-tokens) (or an API key for
 server-side use). The only required field is the domain:
 
-```bash
+```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/connections \
   -H "Authorization: Bearer <WIDGET_JWT>" \
   -H "Content-Type: application/json" \
   -d '{"domain":"app.customer.com"}'
+```
+
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/connections", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${token}`, // a widget JWT, or an API key on your server
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ domain: "app.customer.com" }),
+});
+const connection = await res.json(); // 201 when new, 200 when it already existed
 ```
 
 Optional body fields:
@@ -68,7 +80,7 @@ verification: Amazon SES mints three Easy-DKIM `CNAME` selectors **per domain**,
 so no template can know them. Replace the connection's desired set with your own
 before the widget opens:
 
-```bash
+```bash tab="cURL"
 curl -X PUT https://api.customdomain.ai/v1/connections/con_…/records \
   -H "Authorization: Bearer cd_live_…" \
   -H "Content-Type: application/json" \
@@ -77,6 +89,23 @@ curl -X PUT https://api.customdomain.ai/v1/connections/con_…/records \
         {"type":"TXT","host":"@","value":"v=spf1 include:amazonses.com ~all"},
         {"type":"CNAME","host":"sel1._domainkey","value":"sel1.dkim.amazonses.com"}
       ]}'
+```
+
+```js tab="Node"
+const res = await fetch(`https://api.customdomain.ai/v1/connections/${connectionId}/records`, {
+  method: "PUT",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`, // API key only
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    records: [
+      { type: "MX", host: "@", value: "inbound-smtp.us-east-2.amazonaws.com", priority: 10 },
+      { type: "TXT", host: "@", value: "v=spf1 include:amazonses.com ~all" },
+      { type: "CNAME", host: "sel1._domainkey", value: "sel1.dkim.amazonses.com" },
+    ],
+  }),
+});
 ```
 
 The supplied set then behaves exactly like ours everywhere: the OAuth rail writes

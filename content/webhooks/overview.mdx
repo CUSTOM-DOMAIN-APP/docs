@@ -1,14 +1,15 @@
 ---
-title: Overview
+title: Webhook events and delivery
 description: "Register HTTPS endpoints to receive signed webhook events as connections progress, with the event catalog, the payload envelope and how delivery retries work."
 ---
 
-Register HTTPS endpoints to receive signed events as connections progress and as
-monitored domains drift.
+Register HTTPS endpoints to receive signed events as connections progress, as
+monitored domains drift, as nameserver moves go through and as the API keys a
+secure sign-in made near their end.
 
 ## Register an endpoint
 
-```bash
+```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/webhooks \
   -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
@@ -16,13 +17,32 @@ curl -X POST https://api.customdomain.ai/v1/webhooks \
 # → { "id": "whk_…", "url": "...", "events": [...], "secret": "whsec_…", "created_at": "..." }
 ```
 
+```js tab="Node"
+const res = await fetch("https://api.customdomain.ai/v1/webhooks", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    url: "https://api.acme.example/webhooks/cd",
+    events: ["connection.live", "domain.record_missing"],
+  }),
+});
+const { id, secret } = await res.json(); // store secret (whsec_…) now: it is not shown again
+```
+
 Register from your server with an API key (or an app-scoped widget token). A
 widget token minted by `POST /v1/tokens` has `connect` scope and is rejected
 with 403. The `url` must be a public `https` URL; `localhost` and private or
 link-local addresses are refused.
 
-The `secret` (`whsec_…`) is returned **once**. Store it to verify signatures. An
-empty `events` array subscribes to all events; `"*"` also matches all.
+<Callout type="warn">
+  The `secret` (`whsec_…`) is returned **once**. Store it to
+  [verify signatures](/docs/webhooks/verifying-signatures).
+</Callout>
+
+An empty `events` array subscribes to all events; `"*"` also matches all.
 
 Manage endpoints: `GET /v1/webhooks` lists them (secrets omitted; tenant-wide
 with an API key, app-scoped with a widget JWT; `?app_id=` narrows to one
@@ -46,6 +66,17 @@ leaves out a [test mode](/docs/guides/test-mode) application's endpoints unless
 | `certificate.renewed` | The edge renewed a domain's certificate. |
 | `certificate.failed` | Issuing or renewing failed (once per failure episode); the edge keeps retrying. |
 | `certificate.expiring` | A certificate that has not renewed expires in 14, 7 or 3 days, or expired. The certificate events carry a `certificate` object (`status`, `issuer`, `issued_at`, `expires_at`, `days_left`, `error`). See [Certificates](/docs/connect-flow/certificates). |
+| `credential.created` | A [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) made a lasting API key at the domain's DNS provider, and CustomDomain™ checked and kept it (`status: "active"`), or a [reconnect](/docs/guides/secure-sign-in#reconnect) put a new one in its place (`status: "renewed"`). Every `credential.*` event carries a `credential` object (see [below](#payload-envelope)), never the key, and goes to the key's own application only. |
+| `credential.expiring` | The key ends in 30 or 7 days (`days_left`). It keeps working until then; `reconnect: true` asks you to have your customer sign in again. |
+| `credential.failed` | The key stopped working: the provider refused it (`reason: "refused"`) or it reached its end (`expired`), and CustomDomain™'s copy was deleted. Also when a key that was made could not be kept (`not_kept`) and when a reconnect could not make a new one (`reconnect_failed`). The domain stays connected; repairs wait for a reconnect. |
+| `credential.removed` | CustomDomain™'s copy of the key was deleted (the account was removed, or its domain was). The key itself lives at the provider until it is revoked at `revoke_url`. |
+| `nameservers.started` | A [nameserver move](/docs/guides/nameserver-migration) was created. Every `nameservers.*` event carries a `nameservers` object (see [below](#payload-envelope)) and goes to the move's own application only. |
+| `nameservers.dnssec_cleared` | The registry stopped publishing the domain's `DS` record, so the nameservers can move. |
+| `nameservers.changed` | The registrar took the new nameservers, or the delegation first showed one of them. |
+| `nameservers.active` | The registry lists every new nameserver: the move is done. |
+| `nameservers.failed` | The move stopped. `failure_code` says why. |
+| `nameservers.rolled_back` | The domain was moved back, to its previous nameservers or to its registrar's own DNS (`rollback_target`). |
+| `nameservers.drifted` | An active move's nameservers were changed away. `observed_nameservers` says to what. |
 | `domain.record_missing` | [Monitoring](/docs/connect-flow/monitoring) confirmed a record disappeared or was repointed. `drift` carries `record_type`, `verdict` (`record_missing` or `record_changed`), `expected`, `observed` and `action` (`auto_fixed`, `fix_failed` or `action_required`). |
 | `domain.record_restored` | A previously missing record is observed again. |
 | `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed: the domain is registered (and only then is the card captured). |
@@ -61,12 +92,14 @@ emit, and the `events` enum in the [OpenAPI spec](/v1/openapi.json) matches it.
 An unknown event string is still accepted at registration, but it can never be
 delivered, so subscribe only to the events above.
 
-> **Status:** the drift events (`domain.record_missing` / `domain.record_restored`)
-> are produced by the hourly Monitor sweep, which **delivers** them only where
-> `MONITOR_ALERTS_ENABLED=1`. With the flag off (the hosted default) the sweep
-> still runs in shadow mode but no drift webhooks are sent. `domain.purchased`
-> (and `purchase.error`) require the Sell purchase path, which is live on the
-> hosted service (gated by `SELL_PURCHASE_ENABLED`).
+<Callout title="Which events the hosted service sends">
+  The drift events (`domain.record_missing` and `domain.record_restored`) are
+  produced by the hourly Monitor sweep, which **delivers** them only where
+  `MONITOR_ALERTS_ENABLED=1`. With the flag off (the hosted default) the sweep
+  still runs in shadow mode but no drift webhooks are sent. `domain.purchased`
+  (and `purchase.error`) require the Sell purchase path, which is live on the
+  hosted service (gated by `SELL_PURCHASE_ENABLED`).
+</Callout>
 
 ## Payload envelope
 
@@ -109,6 +142,71 @@ Additional conditional fields ride connection events:
   omits it: the edge serves no redirect there, so the redirect is yours to serve.
 - `connection_id`: the connection the event is about, on connection,
   certificate and drift events.
+- `nameservers`: on every `nameservers.*` event, the move it is about:
+  `migration_id`, `zone` (the registrable domain), `state`, `path` (`api`,
+  `agent` or `manual`), `target` (`managed`, `dns_host` or `custom`),
+  `old_nameservers` and `new_nameservers`, and where they apply
+  `observed_nameservers` (what the registry lists, on `nameservers.active` and
+  `nameservers.drifted`), `failure_code` (on `nameservers.failed`, and
+  `delegation_drift` on `nameservers.drifted`), `records_copied` and
+  `email_records` (how many of the copied records carry mail). When they are
+  known it also carries `registrar`, the company the domain is registered with,
+  where the nameservers are changed (`name`, our `provider` id when we connect to
+  it, and `iana_id`, its IANA Registrar ID), and `old_dns_host`, the DNS host the
+  domain left (a provider id such as `cloudflare`). On `nameservers.rolled_back`,
+  `rollback_target` says where the move back went: `previous` (the nameservers
+  the domain had) or `registrar_default` (the registrar's own DNS). Each event is
+  also written to the domain's timeline as a row of the same kind.
+
+  ```json
+  "nameservers": {
+    "migration_id": "nsm_…",
+    "zone": "acme.com",
+    "state": "active",
+    "path": "api",
+    "target": "managed",
+    "registrar": { "name": "GoDaddy", "provider": "godaddy", "iana_id": 146 },
+    "old_dns_host": "cloudflare",
+    "old_nameservers": ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+    "new_nameservers": ["ns-1402.awsdns-47.org", "ns-905.awsdns-49.net"],
+    "observed_nameservers": ["ns-1402.awsdns-47.org", "ns-905.awsdns-49.net"],
+    "records_copied": 14,
+    "email_records": 5
+  }
+  ```
+
+  The shape is illustrative: the values are made up.
+- `credential`: on every `credential.*` event, the lasting API key it is about,
+  never the key itself: `account_id` (the
+  [provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in)
+  that holds it), `provider`, `status` (`active`, `renewed`, `expiring`,
+  `needs_reconnect`, `expired` or `removed`), `key_name`, `scopes`, `expires_at`
+  (absent for a key with no end date), `days_left` (on `credential.expiring`),
+  `reason` (`refused`, `expired`, `expiring`, `not_kept` or `reconnect_failed`),
+  `revoke_url` (the provider's page where the key is revoked), `rights` (what it
+  can do beyond the domain's DNS: `transfer`, `billing` or `account`; see
+  [rights](/docs/guides/secure-sign-in#every-domain-scope-said-in-rights)) and
+  `reconnect: true` when your customer should sign in again, with
+  `POST /v1/connections/{id}:reconnect-link` or the widget's
+  `mode: "reconnect"`. `connection_id` names the domain's connection.
+
+  ```json
+  "credential": {
+    "account_id": "pacct_…",
+    "provider": "hostinger",
+    "status": "expiring",
+    "key_name": "CustomDomain Acme Sites",
+    "expires_at": "2026-11-19T12:00:00Z",
+    "days_left": 30,
+    "reason": "expiring",
+    "revoke_url": "https://hpanel.hostinger.com/api",
+    "rights": ["account"],
+    "reconnect": true
+  }
+  ```
+
+  The shape is illustrative: the values are made up. `scopes` is left out for a
+  provider whose keys have none, as here.
 - `sandbox`: `true` on an event from a [test mode](/docs/guides/test-mode)
   application, whose domain is a simulated `.test` name. Real events carry no
   `sandbox` field. Test mode events are signed and delivered like any other, so

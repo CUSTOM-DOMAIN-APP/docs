@@ -49,7 +49,7 @@ The completeness map: every user-facing flow and the surface that implements it.
 ## AI-agent journeys (MCP)
 
 An agent drives domains through the [MCP server](/docs/mcp/overview), hosted at
-`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API with seventeen tools.
+`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API with twenty tools.
 A person approves what the agent may do first: see
 [Agent access](/docs/agents/overview).
 
@@ -68,6 +68,7 @@ A person approves what the agent may do first: see
 | M11 | Find out why a domain is not live, then re-run the check after the fix | `diagnose-connection` → `recheck-connection` → `check-connection-status` |
 | M12 | Find out whether the workspace may connect new domains | `check-billing-status` |
 | M13 | List the domain purchases | `list-domain-orders` |
+| M14 | Move a domain's nameservers to the application's DNS host, follow the move, and move them back (the person confirms first) | `migrate-nameservers` → `check-nameserver-status` / `rollback-nameservers` |
 {/* NEW TOOLS GO HERE: add one row per new tool directly above this line. This marker stays; the docs sync test reads the one in mcp/overview.mdx. */}
 
 ## Platform-operator journeys

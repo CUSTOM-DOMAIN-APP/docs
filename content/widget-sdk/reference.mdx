@@ -54,7 +54,7 @@ Every meaningful transition fires **both** a `window` `CustomEvent` (read
 | Window event | Callback | Fires | `detail` / arg |
 | --- | --- | --- | --- |
 | `customdomain:step` | `onStepChange(detail)` | on every screen change | `{ step, domain?, provider?, user?, error? }`. `user` is your `userId`. `error` is the last error shown (`{ code, title, details }`), present only after an error screen. With several domains queued it also carries `pendingDomains` and `processedDomains` |
-| `customdomain:success` | `onSuccess(result)` | when the domain reaches `live` | `{ jobId, domain, setupType, provider, success: true }`. `setupType` is `automatic` or `manual`. `alreadyConnected: true` is added when the domain was already live and this was a resume. With several domains queued it also carries `processedDomains` and `pendingDomains` |
+| `customdomain:success` | `onSuccess(result)` | when the domain reaches `live`, or a reconnect renewed its key | `{ jobId, domain, setupType, provider, success: true }`. `setupType` is `automatic` or `manual`, or `reconnect` with `reconnected: true` after a [reconnect](/docs/guides/secure-sign-in#reconnect). `alreadyConnected: true` is added when the domain was already live and this was a resume. With several domains queued it also carries `processedDomains` and `pendingDomains` |
 | `customdomain:close` | `onClose(detail)` | when the modal closes | `{ lastStatus, error?, shared?, manualScreenDisabled? }`. `shared` is set when the user forwarded the setup to a colleague before closing |
 | `customdomain:error` | `onError(err)` | when the widget shows an error | `{ code, message, title?, details? }` |
 | `customdomain:fallback` | `onFallback(detail)` | once per analysis, when the user is routed to a non-automatic screen | `{ reason, provider?, screen, message? }`. `reason` is one of `no_end_user_rail` (no sign-in or one-click at this provider), `conflicts_exceed_tolerance`, `provider_unsupported`, `unknown_provider`; `message` is the human explanation shown |
@@ -119,8 +119,8 @@ allow another connection; the end user only sees a neutral message) and
 | `apiBase` / `widgetBase` | `string` | Override the default control-plane (`https://api.customdomain.ai`) / widget (`https://app.customdomain.ai`) hosts (for example a staging environment). |
 | `iframeSandbox` | `string` | Advanced. Replaces the iframe's `sandbox` attribute. The default allows scripts, forms and popups that escape the sandbox so provider sign-in windows can open. |
 | `searchType` | `string` | Search mode for the buy-a-domain screen, such as `standard` or `ai`. |
-| `mode` | `"connect" \| "remove"` | `"remove"` opens the removal flow (what `removeDomain` sets). npm packages 0.5.2 or newer. |
-| `connectionId` | `string` | The connection to remove, when you kept its id. Otherwise the prefilled domain is looked up. Either way, mint the token for that domain and end user (`POST /v1/tokens` with `domain` and `end_user_ref`). |
+| `mode` | `"connect" \| "remove" \| "reconnect"` | `"remove"` opens the removal flow (what `removeDomain` sets; npm packages 0.5.2 or newer). `"reconnect"` opens straight on the sign-in that renews the domain's [lasting API key](/docs/guides/secure-sign-in#reconnect): one sign-in, a new key, no DNS change. A domain with no such key, or a provider whose key is turned off, gets a short notice instead. The hosted script and the npm packages pass `mode` through; the packages' types (0.5.4) name only `"connect"` and `"remove"`, so a TypeScript caller casts `"reconnect"` for now. |
+| `connectionId` | `string` | The connection to remove or reconnect, when you kept its id. Otherwise the prefilled domain is looked up. Either way, mint the token for that domain and end user (`POST /v1/tokens` with `domain` and `end_user_ref`). |
 | `onSuccess` / `onClose` / `onStepChange` / `onError` / `onFallback` / `onRemoved` | fn | Callbacks (mirror the events above). |
 
 A `DNSRecord` is `{ type, host, value, ttl?, priority?, purpose? }`. Supported
@@ -284,10 +284,32 @@ assistants can open in a new tab.
 
 Every widget session reports its funnel (opened, domain entered, provider
 detected, offered one-click or sign-in, shown records to copy, live, or closed
-early) with the provider, the rail, and whether the domain was a root or a
-subdomain. No domain name or end-user identifier is sent. Read it in the
+early) with the provider, the rail (`oauth`, `domain_connect`, `api_key`,
+`managed_dns`, `cloud_browser` for [secure sign-in](/docs/guides/secure-sign-in),
+or `manual`), and whether the domain was a root or a subdomain. Read it in the
 console under **Analytics**, or from your server with
 `GET /v1/analytics/connect` (an API key). The records screen's alternatives
 report as their own steps: `handoff-ai` (copied or opened the AI prompt),
 `share-email` (sent the instructions, or copied the link instead), and
 `managed-dns` (opened or started DNS hosting).
+
+### What a widget session records
+
+Each time the widget opens, CustomDomain™ keeps one record of that session,
+attributed to your workspace and application, for security, abuse prevention,
+support and to improve the widget. It never holds the domain name, anything the
+end user typed, a cookie or an account.
+
+| From | What is kept |
+| --- | --- |
+| The request | The end user's IP address. The country, region and city Cloudflare derives from it, and the network's AS number and name where the deployment passes them on. The device type (phone, tablet or computer), operating system and browser (its major version), read from the user agent, which itself is not kept. |
+| The widget | The screen size and the widget's viewport size, the pixel ratio, whether the screen is a touch screen, the browser's language and the widget's language, the time zone, light or dark mode and reduced motion, the kind of network connection where the browser reports it, the widget's and the SDK's version, whether the widget was embedded or a modal, and the origin of the host page and of its referrer (scheme, host and port, never a path). |
+| How it went | The first and last step, the rail, the provider, whether it worked, the error code, and the connection and any secure sign-in it started. |
+
+The IP address is kept for as long as your account exists, unless the deployment
+sets a window (`IP_RETENTION_DAYS`, the number of days after which the address
+is cleared and the rest of the record stays). The record is deleted with the
+application it belongs to. You see counts only: the devices, countries,
+browsers, systems and embeds in **Analytics**, **Devices and places**, and in
+`audience` on `GET /v1/analytics/connect`. No address, city or single session
+is ever shown.

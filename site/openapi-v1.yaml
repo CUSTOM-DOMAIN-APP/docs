@@ -52,6 +52,8 @@ tags:
     description: The connect pipeline for one customer domain, across all four rails.
   - name: Managed DNS
     description: CustomDomain™ hosts a domain's whole zone after the user points its nameservers at us once, and writes every record from then on.
+  - name: Nameservers
+    description: Move an end user's nameservers to the platform's DNS host, with their consent, and back. Per application, with analytics.
   - name: Secure
     description: 'Edge-managed TLS certificates (SSL) for connected domains: issue, renew, import, deprovision.'
   - name: Power
@@ -417,8 +419,15 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       operationId: updateApplication
-      summary: Rename an application
+      summary: Rename an application or set its nameserver migration
       tags: [Applications]
+      description: >-
+        Send `name`, `nameserver_migration` or both. `nameserver_migration`
+        sets whether the application offers to move an end user's
+        nameservers and where to (`{"mode": "off"}` clears it). A `dns_host`
+        target names a connected provider account of the workspace with
+        continuous access at a DNS host whose API creates zones; only this
+        application's migrations ever use it.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -428,9 +437,16 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              minProperties: 1
+              additionalProperties: false
               properties:
                 name: { type: string, maxLength: 80 }
+                nameserver_migration:
+                  type: object
+                  required: [mode]
+                  properties:
+                    mode: { type: string, enum: ['off', offer, prefer] }
+                    target: { $ref: '#/components/schemas/NameserverTarget' }
       responses:
         '200':
           description: Application
@@ -1222,7 +1238,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '409':
           description: >-
             `domain_already_connected`: another application already serves this
@@ -2081,7 +2097,7 @@ paths:
               schema: { $ref: '#/components/schemas/ManagedDNSView' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
           description: The domain's zone is already hosted for another account, or another change to it is in progress.
@@ -2208,6 +2224,218 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/nameservers:
+    get:
+      operationId: getNameserverMigration
+      summary: The connection's latest nameserver migration
+      tags: [Nameservers]
+      description: >-
+        The newest nameserver migration started for the connection's domain:
+        its state, the old and new nameservers, what the registry lists now,
+        what it waits on (`waiting_for`) and what a person does next
+        (`next_step`). Poll it while the state is not `active`, `failed` or
+        `rolled_back`. 404 when no migration was started for this connection.
+        Authorized like the other connection routes: an API key within the
+        tenant, or a widget token of the connection's own application. A
+        delegated agent token needs `domains:read`.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['domains:read']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The migration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverMigration' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/nameservers:migrate:
+    post:
+      operationId: migrateNameservers
+      summary: Move the domain's nameservers, with the end user's consent
+      tags: [Nameservers]
+      description: >-
+        Starts moving the nameservers of the connection's registrable domain
+        (acme.com, also for shop.acme.com) to the application's DNS host, or
+        resumes the domain's open migration with what the call brings (a key,
+        `zone_ready`, `skip_zone_check`). 201 when a migration was created,
+        200 when one was resumed. The response is the migration as far as it
+        got in this call: with a registrar key and no DNSSEC it is often
+        already `propagating` or `active`.
+
+
+        **Where the nameservers go** is the application's
+        `nameserver_migration.target` (PATCH `/applications/{id}`): `managed`
+        (CustomDomain™ hosts the zone), `dns_host` (a zone we create in the
+        platform's own DNS host account) or `custom` (the platform's own
+        nameservers; the zone must already answer for the domain). For
+        `managed` and `dns_host` the domain's records are copied first, mail
+        included, so nothing breaks at the switch: the whole zone through the
+        old DNS host's API when we hold a key there, else from public DNS,
+        and then the move waits in `needs_review` until a person confirms
+        the copy (`copy_reviewed`). An API key may pass
+        `target` for `managed` or `custom`; `dns_host` is always the
+        application's own account. A delegated agent token may name only the
+        application's own target and may not send `skip_zone_check` (`403
+        target_not_allowed`): with a registrar account linked, nameservers an
+        agent chose would hand it the whole domain in one call.
+
+
+        **Where they change**: at the domain's registrar, looked up over
+        RDAP for every move (`registrar`), never at the DNS host because it
+        hosts the DNS. A key, an account, a cloud browser sign in and the
+        instructions all go to that registrar; when RDAP names none, the
+        detected DNS host is used as a guess and `next_step` names no company.
+
+
+        **How they change** (`path`): `api`, the registrar's own API with a
+        key the customer created (`credential` with `provider`, used once and
+        never stored, or `provider_account_id`, a connected account; the
+        connection's linked account is used when there is one); `agent`, the
+        cloud browser, where the end user signs in to their registrar and
+        approves the exact nameservers (start it with `POST
+        /connections/{id}/browser:start` and `purpose: nameservers`);
+        `manual`, the person sets them with the values in `next_step`. There
+        is no standard a third party can use to ask a registrar for this
+        (Domain Connect edits records only; CDS and CSYNC need the current
+        DNS operator and DNSSEC), so these three are the ways.
+
+
+        **A lost answer**: a registrar's error is not taken at its word, since a
+        timeout can come after the registrar acted. The registrar (then the
+        registry) is read back: the nameservers asked for mean the change
+        happened; others mean it didn't (`registrar_refused`); no answer
+        leaves the move in `setting` with `waiting_for: registrar_confirm`,
+        still possible to move back, and the next check reads back first.
+
+
+        **DNSSEC**: when the registry publishes a DS record for the domain,
+        the nameservers do not move until it is gone and its TTL has passed,
+        or the domain would stop resolving. With a connected account (lasting
+        access) whose registrar API removes DS records, we remove it;
+        otherwise the migration waits in `needs_dnssec_off` for the person
+        (or the cloud browser's `remove_dnssec` step).
+
+
+        **A widget token** (the end user) may start a migration only when the
+        application's `nameserver_migration.mode` is `offer` or `prefer`, must
+        send `consent` (the id and version of the consent text the person
+        agreed to; stored with the time, never their address), and may not
+        send `target`, `credential`, `provider_account_id`, `zone_ready` or
+        `skip_zone_check`. A delegated agent token needs `domains:connect`
+        (the MCP tool also asks the person to confirm first).
+      security:
+        - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['domains:connect']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NameserverMigrateRequest' }
+      responses:
+        '200':
+          description: The domain's open migration, resumed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverMigration' }
+        '201':
+          description: A migration was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverMigration' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            The domain already uses these nameservers, its nameservers are
+            being moved for another account, or another change to the
+            migration is in progress.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `nameserver_migration_unavailable` (this domain's nameservers
+            can't be moved; `details` says why), `nameserver_api_unsupported`
+            (the registrar has no API call that changes nameservers),
+            `nameserver_agent_unavailable` (path `agent` asked for, but the
+            cloud browser can't change this registrar's nameservers),
+            `registrar_locks_nameservers` (the domain is registered at a
+            registrar that requires its own nameservers, Cloudflare
+            Registrar), `registrar_mismatch` (the key or account is at
+            another company than the registrar RDAP names),
+            `zone_host_unsupported` or `dns_host_not_configured`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/nameservers:rollback:
+    post:
+      operationId: rollbackNameservers
+      summary: Move the domain's nameservers back
+      tags: [Nameservers]
+      description: >-
+        Moves the domain back, to one of two places (`rollback_target`): the
+        nameservers it had before (`previous`), or the registrar's own DNS
+        (`registrar_default`). Without a choice: the old nameservers while
+        they still answer for the zone, else the registrar's own DNS. The old
+        nameservers are asked first, because a DNS host may have deleted the
+        zone since (Cloudflare deletes a moved zone after 7 days); moving back
+        to ones that no longer answer is refused (`409 old_dns_gone`). A move
+        back to a domain that used the registrar's own DNS at the start goes
+        through the registrar's reset call, not its names set as custom ones.
+        With a key (sent once, or the migration's connected account) the
+        registrar's API makes it (`rollback_path: api`); otherwise the cloud
+        browser (`agent`) or a person (`manual`, `next_step` says what to set
+        or choose). A migration that changed nothing at the registrar yet is
+        simply stopped (`none`). Any cloud browser session still working on
+        the move is ended first. Idempotent. A widget token may move back,
+        and choose where, but may not send a key. A delegated agent token
+        needs `domains:connect`.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['domains:connect']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NameserverRollbackRequest' }
+      responses:
+        '200':
+          description: The migration, rolled back.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverMigration' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`old_dns_gone`: the old nameservers no longer answer for the zone; move back to the registrar''s own DNS instead. `changed_elsewhere`: the registrar lists other nameservers than the move''s, so a move back would overwrite someone else''s change. Or nothing was changed at the registrar to move back.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: '`registrar_refused`: the registrar did not accept the old nameservers; they were read back and nothing was changed.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: '`registrar_unconfirmed`: the registrar''s answer was lost and it could not be read back, so whether the move back happened is not known. Nothing is recorded; try again.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/grant:
     delete:
       operationId: disableManagedConnection
@@ -2292,6 +2520,7 @@ paths:
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
@@ -2340,7 +2569,7 @@ paths:
               schema: { $ref: '#/components/schemas/ReapplyResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked (re-consent required); or a provider account keeps it and CustomDomain™ did not write its records, or the account holds no usable key" }
         '422': { description: "The provider refused the provider account's key (`ProviderAuthenticationError`) or the write (`dns_write_failed`)" }
@@ -2388,6 +2617,57 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "A failed connection cannot be retried because the same application already has another active connection for this domain; retry that one instead" }
+  /connections/{id}:reconnect-link:
+    post:
+      operationId: createConnectionReconnectLink
+      summary: A link the end user opens to renew the domain's lasting API key
+      tags: [Cloud browser]
+      description: >-
+        For a connection whose records were written with a lasting API key the
+        cloud browser's agent made at the DNS provider. The link opens the
+        hosted connect page in reconnect mode, straight on the sign in for that
+        provider: after the end user signs in, the agent makes a new key with
+        the same scopes, checks it and swaps it in, and no DNS record changes.
+        It is a shared flow link (`/connect/{token}`): it works once and expires
+        after 14 days.
+
+
+        With `send: true` and the end user's email address on the connection
+        (and the end user email feature on), CustomDomain™ emails the link on
+        the application's behalf and the answer is `emailed: true` with no
+        `link`; otherwise the answer carries the `link` to pass on. The
+        control plane also emails one by itself 30 and 7 days before the key's
+        end and when the provider stops accepting it. A connection with no
+        such key answers `409` `not_reconnectable`. A delegated agent token
+        needs `domains:connect`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:connect']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                send: { type: boolean, description: "Email the link to the end user when their address is known." }
+      responses:
+        '200':
+          description: The link, or that it was emailed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [emailed]
+                properties:
+                  link: { type: string, format: uri, description: "The reconnect link; absent when it was emailed." }
+                  emailed: { type: boolean }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /connections/{id}:retarget:
     post:
       operationId: retargetConnection
@@ -2593,6 +2873,7 @@ paths:
                     description: OVHcloud only, the region the consent was requested in.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '429':
           description: >-
@@ -2618,11 +2899,29 @@ paths:
         own, the customer signs in to the provider inside a temporary browser
         that a browser hosting company runs for a few minutes. They type their
         own username, password and any verification code into the provider's
-        real sign in page, so CustomDomain™ never receives them, and nothing is
-        stored. Our software then reads the provider's DNS page for this one
-        domain, shows the customer the exact changes, and makes them only after
-        the customer approves. It never creates an API key at the provider, and
-        a session never runs without the customer present.
+        real sign in page, so CustomDomain™ never receives them, and the
+        sign in itself is never stored. Where the deployment turned it on for
+        the provider, the agent then makes a lasting API key on the provider's
+        own API page (named `CustomDomain` and the application's name, with the
+        domain and DNS scopes only and the longest expiry the provider offers),
+        checks it with one read only call, keeps it encrypted for this
+        application only, and writes the records through the provider's API;
+        the domain is then monitored and repaired like any connected provider
+        account, and the connection's `credential` shows the key's record (never
+        the key). Otherwise, or when making the key fails, our software reads
+        the provider's DNS page for this one domain, shows the customer the
+        exact changes, and makes them only after the customer approves. A
+        session never runs without the customer present.
+
+
+        With `mode: reconnect`, the session is the end user's sign in that
+        renews the connection's lasting API key (when it nears its end or the
+        provider stopped accepting it): the agent makes a new key with the same
+        scopes, checks it and swaps it in, and changes no DNS record. A
+        connection without such a key is refused with
+        `browser_reconnect_unavailable`. A reconnect link
+        (`POST /connections/{id}:reconnect-link`) opens the hosted page in this
+        mode.
 
 
         Returns the address of the popup page that shows the browser. Its
@@ -2667,6 +2966,39 @@ paths:
                 locale:
                   type: string
                   description: The language the popup reads in, a plain code such as `en`. Defaults to `en`.
+                purpose:
+                  type: string
+                  enum: ['', nameservers]
+                  description: >-
+                    `nameservers` starts the session for the connection's
+                    nameserver migration (path `agent`) instead of its
+                    records: the plan is to turn DNSSEC off, or to set the
+                    exact new nameservers, and the agent may open only those
+                    controls. Refused with `409` unless the migration is
+                    waiting for a sign in (`waiting_for: browser_session`).
+                    Empty or omitted: the records.
+                viewport_hint:
+                  type: object
+                  description: >-
+                    Optional. The size of the popup's live area, so the provider's sign in page fills it at full size. The remote browser is created at this width when it is a whole number from 360 to 720 and at this height when it is a whole number from 480 to 800; a side outside its range is ignored and the provider's default is used for it. The desktop popup (680 by 760) sends 695 by 716. Leave it out for the default.
+                  properties:
+                    width: { type: integer, minimum: 360, maximum: 720, description: "Whole CSS pixels, 360 to 720: the live area's width plus the remote page's scrollbar, which the popup clips." }
+                    height: { type: integer, minimum: 480, maximum: 800, description: "Whole CSS pixels, 480 to 800." }
+                mode:
+                  type: string
+                  enum: [connect, reconnect]
+                  description: >-
+                    `connect` (the default) connects the domain. `reconnect` renews the
+                    lasting API key CustomDomain™ made for this connection, for the key's
+                    own provider, and changes no DNS record; the session ends `done` when
+                    the new key is in place.
+                widget_session_id:
+                  type: string
+                  description: >-
+                    Optional. The widget's own session id (the `session_id` of its funnel beacons, 8 to 64 of
+                    `[A-Za-z0-9_-]`). It is recorded on the cloud browser session and the widget session of the same
+                    application is linked to it, so a sign in's outcome can be read against the device and place it ran
+                    for. It changes nothing about the session; a value that is not a session id is ignored.
       responses:
         '200':
           description: The session was created.
@@ -2691,7 +3023,9 @@ paths:
             key, a request with no `Origin` header, or an `Origin` that is not on
             the return origin allowlist) or
             `browser_provider_not_allowed` (the rail is not offered for this
-            provider or workspace, or the provider has a sign in of its own).
+            provider or workspace, or the provider has a sign in of its own), or
+            `workspace_suspended` (CustomDomain™ support suspended the workspace;
+            see the `ForbiddenOrSuspended` response).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2699,7 +3033,9 @@ paths:
         '409':
           description: >-
             `browser_session_active`: a secure sign in is already running for
-            this domain.
+            this domain, or `browser_reconnect_unavailable`: `mode: reconnect`
+            for a connection that has no lasting API key CustomDomain™ made, or
+            whose provider cannot make one now.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2736,6 +3072,101 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /connections/{id}/browser:resume:
+    post:
+      operationId: resumeConnectionBrowser
+      summary: Hand the cloud browser sign in to a new popup
+      tags: [Cloud browser]
+      description: >-
+        **Customer present only.** The customer left the popup to read a code
+        in their mail app and the phone threw it away, or closed the window by
+        mistake, while the session still waits on them. This hands the SAME
+        session (the same remote browser, still on the provider's page) to a
+        new popup: the answer is the one of `browser:start`, with a new single
+        use bootstrap code in the popup's address, and the previous popup's
+        session token stops working at once. One popup at a time.
+
+
+        Allowed only while the session waits on the customer: about to sign
+        in, signing in (a code prompt included), or while the agent has handed
+        the page back. It takes the gate of `browser:start` (an end user's
+        widget token bound to the domain and the end user, or the console, and
+        an `Origin` on the return origin allowlist). A session takes a few, one
+        every few seconds.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                locale:
+                  type: string
+                  description: The language the new popup reads in, a plain code such as `en`. Defaults to the session's.
+                session_id:
+                  type: string
+                  description: The session the caller last held. When present and the connection's waiting session is another one, the answer is `409 browser_not_waiting`, and the caller starts a new sign in.
+                return_origin:
+                  type: string
+                  description: The caller's origin, as for `browser:start`. When present it must be an allowed origin; the session keeps the origin it started with.
+                viewport_hint:
+                  type: object
+                  description: Accepted for symmetry with `browser:start` and not used; the session keeps its size.
+                  properties:
+                    width: { type: integer }
+                    height: { type: integer }
+      responses:
+        '200':
+          description: The session was handed to a new popup.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, open_url, vendor, expires_at]
+                properties:
+                  session_id: { type: string, description: 'The same session id the start answered.' }
+                  open_url:
+                    type: string
+                    format: uri
+                    description: The popup page, with `#c=<new bootstrap code>&l=<locale>` in its fragment.
+                  vendor: { type: string, description: "The browser hosting company, shown to the customer." }
+                  expires_at: { type: string, format: date-time, description: "The latest the session can end now." }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `browser_customer_present_only` (as for `browser:start`), or
+            `workspace_suspended`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `browser_not_waiting`: no secure sign in for this domain is waiting
+            on the customer (none is running, or the agent or a change is
+            working).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: >-
+            `browser_rate_limited`: resumed a moment ago (`Retry-After`), or
+            too many times for one session (start again).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /browser-sessions:redeem:
     post:
       operationId: redeemBrowserSession
@@ -2893,8 +3324,8 @@ paths:
       description: >-
         Idempotent: a session that is already over answers its own state. During
         `applying` it stops at the next change boundary, never inside a change.
-        A `navigator.sendBeacon` cannot set headers, so this route (and only
-        this one) also accepts the token in the body, as `{"token": "..."}`
+        A `navigator.sendBeacon` cannot set headers, so this route (and
+        `:event`) also accepts the token in the body, as `{"token": "..."}`
         with a content type of `text/plain` or JSON.
       security:
         - browserSession: []
@@ -2953,6 +3384,182 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '410':
           description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:event:
+    post:
+      operationId: browserSessionEvent
+      summary: Report a step of the sign in window
+      tags: [Cloud browser]
+      description: >-
+        The popup reports one step of its window, for the sign in funnel: the
+        sheet shown, a code or push prompt, a social sign in card, the typing
+        overlay, the hand back for a password, the manual steps taken, the
+        window closed. The control plane records it with the states it writes
+        itself and counts it per provider. It changes nothing about the
+        session and is not a heartbeat. `detail` is one short word (an `sms`, a
+        `google`), never anything the customer typed, a page, an address or a
+        URL: the closed alphabet refuses a space, a slash, a question mark, an
+        equals sign and an at sign. A session that has ended still takes a step
+        (the window closes after the end) while it answers its last view. At
+        most 30 steps a minute per session. A `navigator.sendBeacon` cannot set
+        headers, so, as for `:cancel`, the token may come in the body as
+        `token` with a content type of `text/plain` or JSON.
+      security:
+        - browserSession: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BrowserSessionEvent' }
+          text/plain:
+            schema: { type: string, description: 'The same JSON object, sent by `navigator.sendBeacon`.' }
+      responses:
+        '204':
+          description: Recorded.
+        '400':
+          description: '`invalid_request`: the body is not the object above, the step is not one of the list, or the detail is not a short word.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '429':
+          description: '`browser_rate_limited`: more than 30 steps in a minute for this session.'
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until the next step is taken. }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:viewport:
+    post:
+      operationId: browserSessionViewport
+      summary: Tell the server the popup's new size
+      tags: [Cloud browser]
+      description: >-
+        The popup's live area after a resize, a turn or full screen, in CSS
+        pixels. Each side is clamped to 320 to 1600 wide and 400 to 1200 high
+        and divided by the scale the session shows the provider's page at (the
+        provider's fit for the kind of device the popup started as), and the
+        page the customer sees is set to that size (device scale factor 1, not
+        mobile) after a read that says the page is not loading; the view's
+        `signals.viewport` reports it once it took, and `sign_in_viewport` is
+        the new size. Allowed only while the customer is in control: signing
+        in (a code or link wait included) or a page the agent handed back. At
+        most 6 a minute per session; send one when a resize has settled.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [w, h]
+              properties:
+                w: { type: integer, minimum: 0, maximum: 99999, description: "The live area's width; clamped to 320..1600." }
+                h: { type: integer, minimum: 0, maximum: 99999, description: "The live area's height; clamped to 400..1200." }
+      responses:
+        '202':
+          description: The size the page is set to.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [viewport]
+                properties:
+                  viewport: { $ref: '#/components/schemas/BrowserViewport' }
+        '400':
+          description: '`invalid_request`: the body is not `{w, h}` with two whole numbers.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the agent has the page; the customer is not in control.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: '`browser_rate_limited`: more than 6 in a minute for this session.'
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until the next one is taken. }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:switch-account:
+    post:
+      operationId: switchAccountBrowserSession
+      summary: Sign in with another account
+      tags: [Cloud browser]
+      description: >-
+        The customer signed in to the provider with an account that does not
+        hold the domain (the view says `wrongAccount`), and tries another one.
+        Allowed only then. The control plane signs the cloud browser out of
+        the provider in the background (the provider's own sign out page,
+        then the browser forgets the provider's cookies and storage, never a
+        social sign in's) and opens the provider's sign in again; meanwhile
+        the view says `notice` `switching_account` and takes no input. The
+        sign in window starts again; the hard cap does not move. At most
+        three accounts are tried: the third that does not hold the domain
+        ends the session (`failed`, `error.code` `browser_wrong_account`),
+        and so does a sign out that fails. No body.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '202':
+          description: Signing out; the sign in follows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [awaiting_sign_in] }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the session is not waiting for a choice of account (no `wrongAccount` in the view), or is signing out already.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: '`browser_rate_limited`: switched less than ten seconds ago.'
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until it is taken again. }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3182,7 +3789,7 @@ paths:
                   rail: { type: string, description: '"async" on the managed rail; omitted on the sync rail.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '422':
           description: >-
@@ -3245,7 +3852,7 @@ paths:
               schema: { $ref: '#/components/schemas/Route53RoleStart' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/route53-role:complete:
@@ -3434,6 +4041,48 @@ paths:
             application/json:
               schema: { type: object }
 
+  /applications/{id}/nameserver-migrations:
+    get:
+      operationId: listNameserverMigrations
+      summary: One application's nameserver migrations and their analytics
+      tags: [Nameservers]
+      description: >-
+        The application's nameserver migrations, newest first, with their
+        analytics: counts per state, path and target, the median time to
+        active, how many waited on DNSSEC and for how long, failures by
+        code, rollbacks and drifts. Only this application's migrations;
+        `since` narrows both the list and the analytics.
+      security:
+        - apiKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+          description: Keep the migrations created at or after this time (RFC 3339).
+      responses:
+        '200':
+          description: Migrations and analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [migrations, stats]
+                properties:
+                  migrations:
+                    type: array
+                    items: { $ref: '#/components/schemas/NameserverMigration' }
+                  stats: { $ref: '#/components/schemas/NameserverMigrationStats' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /applications/{id}/client-secret:rotate:
     post:
       operationId: rotateClientSecret
@@ -3701,10 +4350,18 @@ paths:
         `step` and `outcome` are allow-listed server-side and anything
         unrecognised is folded into a fixed label. A beacon that carries a
         `session_id` is also stored against the calling application, which is
-        what `GET /analytics/connect` reads; one without it is only counted. No
-        domain, IP or user agent is stored. It **always** answers `204`,
-        including for an invalid token or a malformed body, so telemetry can
-        never block or error the widget; do not branch on its response.
+        what `GET /analytics/connect` reads; one without it is only counted.
+        No domain is stored, and nothing the end user typed. With each stored
+        beacon the control plane keeps the end user's IP address and country
+        (from the request, believed only through Cloudflare), and the session
+        it belongs to: at its first beacon the address, the region and city
+        Cloudflare derived, and the device type, operating system and browser
+        parsed from the User-Agent (the string itself is not stored); at every
+        beacon the step, rail, provider and outcome. Addresses are kept for as
+        long as the account exists, unless the deployment's
+        `IP_RETENTION_DAYS` sets a window. It **always** answers `204`, including
+        for an invalid token or a malformed body, so telemetry can never block
+        or error the widget; do not branch on its response.
       requestBody:
         required: false
         content:
@@ -3716,11 +4373,38 @@ paths:
                 outcome: { type: string, description: 'Outcome label (server-side allow-list).' }
                 session_id: { type: string, description: 'Random id per widget open, 8 to 64 of [A-Za-z0-9_-].' }
                 provider: { type: string, description: Detected DNS provider id. }
-                rail: { type: string, enum: [oauth, domain_connect, manual, api_key, managed_dns] }
+                rail: { type: string, enum: [oauth, domain_connect, manual, api_key, managed_dns, cloud_browser] }
                 domain_kind: { type: string, enum: [apex, subdomain] }
                 error_code: { type: string, description: 'Widget error code, [A-Za-z0-9_] up to 48.' }
                 connection_id: { type: string }
                 elapsed_ms: { type: integer, description: Milliseconds since the widget opened (capped at a day). }
+                client:
+                  type: object
+                  description: >-
+                    Optional. What the widget reports about its surroundings, recorded on the session while the
+                    session has no value for it yet. Every field is optional, and a value outside its range or
+                    alphabet is dropped; unlike the beacon's own fields an unknown field here is ignored, and an
+                    object larger than 2 KiB is ignored whole.
+                  additionalProperties: true
+                  properties:
+                    screen_width: { type: integer, minimum: 1, maximum: 20000 }
+                    screen_height: { type: integer, minimum: 1, maximum: 20000 }
+                    viewport_width: { type: integer, minimum: 1, maximum: 20000 }
+                    viewport_height: { type: integer, minimum: 1, maximum: 20000 }
+                    pixel_ratio: { type: number, minimum: 0.25, maximum: 10 }
+                    touch: { type: boolean, description: The device has a touch screen. }
+                    language: { type: string, description: "The browser's language (navigator.language), a BCP 47 tag." }
+                    locale: { type: string, description: "The language the widget shows, a BCP 47 tag." }
+                    time_zone: { type: string, description: 'An IANA time zone, such as Europe/Berlin.' }
+                    color_scheme: { type: string, enum: [light, dark] }
+                    reduced_motion: { type: boolean }
+                    connection: { type: string, enum: [slow-2g, 2g, 3g, 4g], description: "The Network Information API's effective type, where the browser has it." }
+                    widget_version: { type: string }
+                    sdk: { type: string, enum: [script, npm, react] }
+                    sdk_version: { type: string }
+                    embed: { type: string, enum: [embedded, modal] }
+                    host_origin: { type: string, description: 'The page the widget is on. Only the scheme, host and port are kept.' }
+                    referrer_origin: { type: string, description: "The referrer of the widget's frame. Only the scheme, host and port are kept." }
       responses:
         '204':
           description: Always. Carries no body and reports no error by design.
@@ -3735,7 +4419,13 @@ paths:
         one-click or sign-in rail, were shown records to copy, succeeded, where
         the rest stopped, per provider and root versus subdomain) and connection
         outcomes (live rate, time to live, per provider and method, why the rest
-        are stuck), plus a daily series. API key; any member role.
+        are stuck), plus a daily series. `audience` counts the widget sessions
+        by device type, country, browser, operating system and embed (no
+        address, no city, no session listed), and `secure_sign_in` the cloud
+        browser sessions started in the window: the funnel per provider, the
+        failures by reason, and the same with and without a vendor proxy. Both
+        are scoped like the rest, to the key's workspace and `app_id` when
+        given. API key; any member role.
       security:
         - apiKey: []
       parameters:
@@ -4076,7 +4766,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Monitor
@@ -4235,7 +4925,26 @@ paths:
                     changes. Every connection, certificate and routing event
                     also appears on the domain's timeline
                     (`GET /v1/connections/{id}/events`) as a row of the same
-                    kind.
+                    kind. The `nameservers.*` events follow a nameserver
+                    migration (`POST /v1/connections/{id}/nameservers:migrate`),
+                    each with a `nameservers` object (`NameserverEventData`):
+                    `started`, `dnssec_cleared` (the registry stopped
+                    publishing the DS record), `changed` (the registrar took
+                    the new nameservers), `active` (the registry lists every
+                    one of them), `failed` (with `failure_code`),
+                    `rolled_back`, and `drifted` (an active migration's
+                    nameservers were changed away; `observed_nameservers` says
+                    to what). They go to the migration's own application only.
+                    The `credential.created`, `credential.expiring`,
+                    `credential.failed` and `credential.removed` events follow
+                    the lasting API key the cloud browser's agent made at the
+                    domain's DNS provider (made and kept, renewed by a
+                    reconnect, 30 and 7 days before its end, refused by the
+                    provider or ended, removed); each carries a `credential`
+                    object with the key's record, never the key, its `rights`
+                    (`transfer`, `billing` or `account`: what it can do beyond
+                    DNS), and `reconnect: true` when the end user should sign
+                    in again.
                   items:
                     type: string
                     enum:
@@ -4259,6 +4968,17 @@ paths:
                       - certificate.renewed
                       - certificate.failed
                       - certificate.expiring
+                      - credential.created
+                      - credential.expiring
+                      - credential.failed
+                      - credential.removed
+                      - nameservers.started
+                      - nameservers.dnssec_cleared
+                      - nameservers.changed
+                      - nameservers.active
+                      - nameservers.failed
+                      - nameservers.rolled_back
+                      - nameservers.drifted
       responses:
         '201':
           description: Created (secret returned once)
@@ -4793,8 +5513,20 @@ paths:
         before and after summary. Requires an API key whose role may manage
         identity settings (admin or owner); a widget JWT is refused with `403`,
         and a `503` means the audit log is not configured on the deployment.
+
+
+        The console's server also records here what an operator did through its
+        owner routes (disabling an account, signing it out, a verification
+        resend, a password reset link, the workspace's optional pages). It
+        presents the provisioning secret in `X-Provision-Secret`, names the
+        workspace in `tenant_id`, and may use only the `user.*` and
+        `workspace.features_set` verbs, which a tenant key may not. The actor is
+        recorded as `operator`, the reason in `after.reason` is required for all
+        of them but `user.verification_resent`, and the answer is a `500` when the
+        log did not take the event.
       security:
         - apiKey: []
+        - provisionSecret: []
       requestBody:
         required: true
         content:
@@ -4805,9 +5537,25 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [whitelabel.configured, api_key.default_revealed]
+                  enum:
+                    - whitelabel.configured
+                    - api_key.default_revealed
+                    - user.disabled
+                    - user.enabled
+                    - user.sessions_revoked
+                    - user.verification_resent
+                    - user.password_reset_link_issued
+                    - workspace.features_set
                   description: >-
-                    The console-recordable verb. Any other value is refused with `400`.
+                    The console-recordable verb. With an API key only
+                    `whitelabel.configured` and `api_key.default_revealed`; with
+                    the provisioning secret only the others. Any other value is
+                    refused with `400`.
+                tenant_id:
+                  type: string
+                  description: >-
+                    Provisioning secret only, and required with it: the
+                    workspace the event is recorded on. An unknown one is a `404`.
                 target:
                   type: string
                   description: >-
@@ -4835,6 +5583,8 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Secure (SSL)
@@ -5553,6 +6303,10 @@ paths:
       description: >-
         Deletes the key and the account. Its domains stay connected and
         served, without continuous access; each domain's timeline records it.
+        For a lasting API key the cloud browser's agent made, this deletes
+        CustomDomain™'s copy only: the key lives at the provider until it is
+        revoked there, at `revoke_url`, and the application receives
+        `credential.removed`.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -5567,6 +6321,10 @@ paths:
                   id: { type: string }
                   revoked: { type: boolean }
                   domains_kept_connected: { type: integer }
+                  revoke_url:
+                    type: string
+                    format: uri
+                    description: For a key the agent made, the provider's page where the key itself is revoked.
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -5823,6 +6581,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '503': { $ref: '#/components/responses/Error' }
   /registrar/fulfill:
     post:
@@ -6282,7 +7041,7 @@ components:
       type: apiKey
       in: header
       name: X-Provision-Secret
-      description: Narrow secret for the one-call signup provisioning endpoint (also accepted as a Bearer token).
+      description: Narrow secret held by the customer console's server, for signup provisioning and its other server to server calls (also accepted as a Bearer token, except on POST /audit, where a Bearer is always a tenant credential).
     apiKey:
       type: http
       scheme: bearer
@@ -6349,6 +7108,26 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    ForbiddenOrSuspended:
+      description: >-
+        `forbidden`: the credential may not do this. `workspace_suspended`:
+        CustomDomain™ support suspended the workspace. While it is suspended, new
+        connections (one by one or in bulk, where each domain fails on its own),
+        every connect step on a domain it already has (the credentialed apply,
+        a provider sign in to connect, the cloud browser, Domain Connect, the
+        Route 53 access role, the hosted zone and `:reapply`) and the start of a
+        domain purchase are refused; reads, rechecks, removals and the sign in
+        to remove a domain keep working, and domains already connected keep
+        their records. A connect-scoped widget token, the tenant's own end user,
+        gets `402 connections_unavailable` instead, the neutral answer it gets for
+        a billing refusal. Support resumes the workspace; nothing in the API does.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: workspace_suspended
+            title: This workspace is suspended.
+            details: "New domains, connect steps and domain purchases are refused while CustomDomain™ support has this workspace suspended. Contact support to have it resumed."
     BillingRequired:
       description: >-
         Refused because of the workspace's billing. `billing_required`: the
@@ -6368,8 +7147,9 @@ components:
         (connections only): a plan that is refused past its quota (Starter, and
         the retired Free) is at it and the deployment enforces quotas.
         `connections_unavailable`: what a connect-scoped widget token, the
-        tenant's own end user, gets instead of either, with neutral wording, so
-        the tenant's customers are never told about the tenant's billing. A
+        tenant's own end user, gets instead of either (and instead of
+        `403 workspace_suspended`), with neutral wording, so the tenant's
+        customers are never told about the tenant's billing or account. A
         delegated agent token gets the full wording, and `GET /billing/standing`
         tells it beforehand whether a new connection would be refused.
       content:
@@ -6400,7 +7180,7 @@ components:
         from_name: { type: string }
         reply_to: { type: string }
         verified_at: { type: [string, 'null'], format: date-time }
-        last_error: { type: string, description: The last failure, with no secret in it. Empty after a success. }
+        last_error: { type: string, description: "The last failure, with no secret in it. Empty after a success." }
         last_error_at: { type: [string, 'null'], format: date-time }
         updated_at: { type: [string, 'null'], format: date-time }
     EmailSenderInput:
@@ -6409,11 +7189,11 @@ components:
       additionalProperties: false
       properties:
         mode: { type: string, enum: [default, smtp, none] }
-        smtp_host: { type: string, description: A public host name or address. Private, loopback, link-local and metadata addresses are refused. }
+        smtp_host: { type: string, description: "A public host name or address. Private, loopback, link-local and metadata addresses are refused." }
         smtp_port: { type: integer, enum: [25, 465, 587, 2525] }
         smtp_username: { type: string }
         smtp_password: { type: string, description: Write only. Omit to keep the stored password. }
-        tls: { type: string, enum: [implicit, starttls], description: implicit on port 465, starttls on the others. Defaults to starttls. }
+        tls: { type: string, enum: [implicit, starttls], description: "implicit on port 465, starttls on the others. Defaults to starttls." }
         from_address: { type: string, description: A plain address such as hello@example.com. Required for smtp. }
         from_name: { type: string, maxLength: 100 }
         reply_to: { type: string }
@@ -6798,6 +7578,8 @@ components:
             reserved `.test` names only, and never touches a real domain, the
             free domain, the quota or billing. Fixed when the application is
             created. Omitted (treated as `false`) on a live application.
+        nameserver_migration:
+          $ref: '#/components/schemas/NameserverMigrationSetting'
         created_at: { type: string, format: date-time }
     ConnectionRouting:
       type: object
@@ -6980,7 +7762,77 @@ components:
               succeeded: { type: integer }
               created: { type: integer }
               went_live: { type: integer }
+        audience:
+          type: object
+          description: >-
+            Who opened the widget, from the session each widget open records (sessions from before this was
+            recorded have none). Each list counts sessions, how many reached a finish screen (`succeeded`) and how
+            many of their domains are live (`went_live`). Countries, browsers and systems list the eight busiest,
+            then `other`; `unknown` is last.
+          properties:
+            sessions: { type: integer }
+            devices: { type: array, items: { $ref: '#/components/schemas/AudienceRow' }, description: 'desktop, mobile, tablet, bot or unknown.' }
+            countries: { type: array, items: { $ref: '#/components/schemas/AudienceRow' }, description: 'ISO 3166-1 alpha-2 codes.' }
+            browsers: { type: array, items: { $ref: '#/components/schemas/AudienceRow' } }
+            systems: { type: array, items: { $ref: '#/components/schemas/AudienceRow' } }
+            embeds: { type: array, items: { $ref: '#/components/schemas/AudienceRow' }, description: 'embedded, modal or unknown.' }
+        secure_sign_in:
+          type: object
+          description: >-
+            The cloud browser sessions started in the window. `failures` is keyed by the failure taxonomy
+            (bot_wall, captcha, region_blocked, vendor_error, user_cancel and the rest); `proxy_sensitive` marks the
+            four a proxy in the customer's country could change. `proxy` has one row for the sessions without a
+            vendor proxy and one for those with one, when there were any.
+          properties:
+            sessions: { type: integer }
+            signed_in: { type: integer }
+            done: { type: integer }
+            done_manual: { type: integer }
+            sign_in_rate: { type: number }
+            average_seconds_to_sign_in: { type: integer }
+            average_seconds_to_done: { type: integer }
+            providers:
+              type: array
+              items:
+                type: object
+                properties:
+                  provider: { type: string }
+                  sessions: { type: integer }
+                  signed_in: { type: integer }
+                  planned: { type: integer }
+                  applied: { type: integer }
+                  done: { type: integer }
+                  done_manual: { type: integer }
+            failures:
+              type: array
+              items:
+                type: object
+                properties:
+                  key: { type: string }
+                  sessions: { type: integer }
+                  with_proxy: { type: integer }
+                  without_proxy: { type: integer }
+                  proxy_sensitive: { type: boolean }
+            proxy:
+              type: array
+              items:
+                type: object
+                properties:
+                  proxy: { type: boolean }
+                  sessions: { type: integer }
+                  signed_in: { type: integer }
+                  done: { type: integer }
+                  blocked: { type: integer, description: 'Ended in bot_wall, captcha, region_blocked or vendor_error.' }
+                  sign_in_rate: { type: number }
+                  blocked_rate: { type: number }
         truncated: { type: boolean }
+    AudienceRow:
+      type: object
+      properties:
+        key: { type: string }
+        sessions: { type: integer }
+        succeeded: { type: integer }
+        went_live: { type: integer }
     AnalyticsCount:
       type: object
       properties:
@@ -7392,7 +8244,10 @@ components:
             certificate.expiring,
             certificate.removed, drift.found, drift.fixed, drift.fix_failed,
             drift.action_required, drift.restored, access.granted,
-            access.revoked, access.needs_reconnect. A connection or
+            access.revoked, access.needs_reconnect, nameservers.started,
+            nameservers.dnssec_cleared, nameservers.changed,
+            nameservers.active, nameservers.failed, nameservers.rolled_back,
+            nameservers.drifted. A connection or
             certificate kind that is also a webhook event type is written
             with the webhook, so the timeline and an integrator see the same
             history.
@@ -7441,6 +8296,18 @@ components:
             Whether the caller may change the account's access, scope or
             domains, connect domains with it and replace its key: an admin,
             an owner, or the member who connected it.
+        application_id:
+          type: string
+          description: >-
+            Set for an account bound to one application: a lasting API key the
+            cloud browser's agent made for it. Its key serves that application's
+            domains only; connecting another application's domain with it is
+            refused (`403`).
+        origin:
+          type: string
+          enum: [browser_agent]
+          description: "`browser_agent` for a key the agent made after the end user signed in; absent for a key a person pasted."
+        agent_key: { $ref: '#/components/schemas/AgentKey' }
     ConnectionServices:
       type: object
       required: [connection_id, application_id, domain, status, access, services, active_count]
@@ -7792,6 +8659,82 @@ components:
                 the caller is a widget token, the domain is not a test domain
                 and the connection has no address yet. The widget then calls
                 `PUT /connections/{id}/end-user-email`. Omitted otherwise.
+            credential:
+              $ref: '#/components/schemas/ConnectionCredential'
+    ConnectionCredential:
+      type: object
+      description: >-
+        The lasting API key the cloud browser's agent made at the domain's DNS
+        provider for this connection, on `GET /connections/{id}` only: its record,
+        never the key. Omitted when the connection has none.
+      required: [account_id, provider, status, scopes, rights]
+      properties:
+        account_id: { type: string, description: "The provider account that holds the key (`GET /provider-accounts/{id}`)." }
+        provider: { type: string }
+        status:
+          type: string
+          enum: [active, expiring, needs_reconnect, expired]
+          description: >-
+            `active`: the key works. `expiring`: it works and ends within 30 days;
+            the end user was asked to reconnect. `needs_reconnect`: the provider
+            stopped accepting it. `expired`: it reached its end and was deleted; the
+            domain stays connected and monitored, and repairs wait for a reconnect.
+        name: { type: string }
+        scopes: { type: array, items: { type: string } }
+        account: { type: string }
+        session_id: { type: string }
+        verified_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        notice: { type: string, enum: [d30, d7, expired] }
+        reconnect_reason: { type: string, enum: [expiring, expired, refused] }
+        reconnect_sent_at: { type: string, format: date-time }
+        renewed_at: { type: string, format: date-time }
+        old_key: { type: string, enum: [revoke_by_hand] }
+        revoke_url: { type: string, format: uri }
+        rights:
+          type: array
+          items: { type: string, enum: [transfer, billing, account] }
+          description: >-
+            What the key can do beyond the domain's DNS records, so the platform knows
+            what it holds: `transfer` (it can transfer the domain away), `billing` (it can
+            make charges on the account: Spaceship's renewals and purchases), `account`
+            (a key with no scopes, which holds every right the provider's API gives the
+            account, transfers and renewals included where the API offers them). Empty for
+            a key that reaches the DNS records only. The keys are made with every domain
+            scope the provider offers (the owner's decision of 2026-10-20).
+    AgentKey:
+      type: object
+      description: >-
+        What is kept about a lasting API key the cloud browser's agent made at a
+        provider after the end user signed in. Never the key.
+      required: [scopes, rights]
+      properties:
+        name: { type: string, description: "The name the key was made with: `CustomDomain` and the application's name." }
+        scopes: { type: array, items: { type: string }, description: "The scopes it was made with, as the provider names them; empty for a provider whose keys have none." }
+        account: { type: string, description: "The provider account's identifier when the page showed one (a customer number or user name). Never an email address." }
+        session_id: { type: string, description: "The cloud browser session that made it." }
+        verified_at: { type: string, format: date-time, description: "When the read through the provider's API answered with it." }
+        expires_at: { type: string, format: date-time, description: "Its own end at the provider; absent for no end date." }
+        notice: { type: string, enum: [d30, d7, expired], description: "The last expiry notice sent." }
+        reconnect_reason: { type: string, enum: [expiring, expired, refused], description: "Why the end user is asked to sign in again." }
+        reconnect_sent_at: { type: string, format: date-time, description: "When a reconnect link was last emailed or copied." }
+        renewed_at: { type: string, format: date-time, description: "When a reconnect last swapped in a new key." }
+        old_key:
+          type: string
+          enum: [revoke_by_hand]
+          description: "`revoke_by_hand`: the key a reconnect replaced still lives at the provider; revoke it at `revoke_url`."
+        revoke_url: { type: string, format: uri, description: "The provider's page where the key is revoked." }
+        rights:
+          type: array
+          items: { type: string, enum: [transfer, billing, account] }
+          description: >-
+            What the key can do beyond the domain's DNS records, so the platform knows
+            what it holds: `transfer` (it can transfer the domain away), `billing` (it can
+            make charges on the account: Spaceship's renewals and purchases), `account`
+            (a key with no scopes, which holds every right the provider's API gives the
+            account, transfers and renewals included where the API offers them). Empty for
+            a key that reaches the DNS records only. The keys are made with every domain
+            scope the provider offers (the owner's decision of 2026-10-20).
     RecheckResult:
       allOf:
         - { $ref: '#/components/schemas/ConnectionWithRecords' }
@@ -7904,6 +8847,23 @@ components:
           items: { $ref: '#/components/schemas/DnsRecord' }
         role_arn: { type: string, description: 'The verified role, now stored so an empty call re-applies with it.' }
         zone: { type: string, description: The Route 53 hosted zone the records were written into. }
+    BrowserSessionEvent:
+      type: object
+      description: One step of the cloud browser sign in window, reported by the popup.
+      required: [step]
+      additionalProperties: false
+      properties:
+        step:
+          type: string
+          enum: [sheet_shown, sheet_accepted, sheet_declined, code_shown, code_sent, push_shown, social_card_shown, social_try_anyway, social_declined, passkey_shown, overlay_shown, overlay_sent, handback_shown, fallback_manual, window_closed]
+        detail:
+          type: string
+          maxLength: 64
+          pattern: '^[A-Za-z0-9_.:-]{0,64}$'
+          description: One short word that goes with the step, never personal data, typed text or a URL.
+        token:
+          type: string
+          description: The session token, only when it cannot be sent as a header (a beacon).
     BrowserSessionView:
       type: object
       required: [id, state, provider, domain]
@@ -7912,7 +8872,12 @@ components:
         `live_view_origin` are present only in `awaiting_sign_in` and
         `manual_assist` (`interactive` true) and, read only, in `checking`,
         `plan_ready`, `applying` and `verifying`; never in a terminal state. The
-        address is a bearer: anyone holding it can drive the browser.
+        address is a bearer: anyone holding it can drive the browser. While the
+        customer signs in it is the live view of the newest tab of the remote
+        browser on the provider's hosts or a social sign in host of the
+        provider (a sign in popup), and the first tab's again once that one
+        closes. It is always that tab's own view, so the debugging socket its
+        `wss` parameter names is that tab's too.
       properties:
         id: { type: string }
         state:
@@ -7922,6 +8887,7 @@ components:
         provider_name: { type: string }
         vendor: { type: string, description: "The browser hosting company." }
         domain: { type: string }
+        site: { type: string, description: "The provider's registrable domain, for example namecheap.com. The popup shows it beside a lock while the customer signs in." }
         interactive: { type: boolean, description: "True when the customer may type in the live view." }
         live_view_url: { type: string, format: uri }
         live_view_origin: { type: string }
@@ -7931,7 +8897,9 @@ components:
           description: >-
             The next timer that matters: the sign in window in `awaiting_sign_in`,
             the approval window in `plan_ready`, the apply window in `applying`,
-            the hard cap otherwise.
+            the hard cap otherwise. A code prompt keeps the sign in window open
+            for ten minutes from its first sight and raises the hard cap by five
+            minutes, to twenty at most.
         plan: { $ref: '#/components/schemas/BrowserPlan' }
         manual:
           type: object
@@ -7950,14 +8918,244 @@ components:
             guide_url: { type: string }
         notice:
           type: string
-          enum: [not_signed_in]
-          description: Present after a `:signed-in` that landed on the sign in page, until the customer presses the button again.
+          enum: [not_signed_in, switching_account]
+          description: >-
+            `not_signed_in`: present after a `:signed-in` that landed on the
+            sign in page, until the customer presses the button again.
+            `switching_account`: after `:switch-account`, while the cloud
+            browser signs out of the provider; `interactive` is false and there
+            is no `form` or `signals` until the sign in is back.
+        wrongAccount:
+          type: object
+          required: [tried, max]
+          description: >-
+            In `awaiting_sign_in`: the account signed in does not hold the
+            domain (the provider's DNS page said so twice, and its account
+            switcher, where it has one, opened none that does). The customer
+            chooses: `:switch-account` to sign in with another account, or
+            `:cancel`. The live view stays (they may switch accounts by hand in
+            it and press "I'm signed in" again, which counts no new try);
+            there is no `form`. On a session that ended because the third
+            account did not hold the domain either, the last count without
+            `account`. Never the domain on other nameservers: that ends with
+            `browser_not_provider_dns`.
+          properties:
+            account:
+              type: string
+              maxLength: 64
+              description: >-
+                The name the provider shows for the account signed in (a user
+                name, a customer number or an address, read from its header or
+                account menu), shown to this customer only and never stored or
+                logged; an address is masked to its first character and its
+                domain (`j***@gmail.com`). Absent when the page shows none.
+            tried: { type: integer, minimum: 1, maximum: 3, description: "How many accounts were found not to hold the domain." }
+            max: { type: integer, description: "How many may be tried: 3." }
         error:
           type: object
-          description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan.
+          description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.
           properties:
             code: { type: string }
             message: { type: string }
+        sign_in_viewport:
+          $ref: '#/components/schemas/BrowserViewport'
+        work_viewport:
+          $ref: '#/components/schemas/BrowserViewport'
+        sign_in_frame:
+          type: integer
+          minimum: 1
+          description: >-
+            In `awaiting_sign_in` only: the bottom edge of the provider's sign in card on the remote
+            screen, in CSS pixels from the top and under `sign_in_viewport`'s height, measured when the
+            sign in page opened. The popup ends its frame just under it, so the links below the card
+            stay out of sight. Sent only while the sign in tab still shows the page it was measured on
+            and no human check or second window is on screen; once that changes it is gone for the rest
+            of the session. Absent means show the whole screen.
+        signed_in_detected:
+          type: boolean
+          description: >-
+            In `awaiting_sign_in` only: the provider's sign in page gave way to its
+            DNS panel page and the panel held across two polls, so the customer
+            looks signed in. A hint: the popup then calls `:signed-in`, which checks
+            the page itself. Absent means not detected.
+        check:
+          type: boolean
+          description: >-
+            In `awaiting_sign_in` only: the vendor reports the sign in tab with the
+            title of a known human check page (Cloudflare's "Just a moment..."), so
+            the popup asks the customer to tick the box. Only this boolean is sent,
+            never the title. A page can fake its title, so it is a hint for the
+            popup's words and nothing else: it never counts toward
+            `signed_in_detected`, and nothing clicks or types because of it. Absent
+            means no check page.
+        signals: { $ref: '#/components/schemas/BrowserSignals' }
+        handback: { $ref: '#/components/schemas/BrowserHandback' }
+        form: { $ref: '#/components/schemas/BrowserSignInForm' }
+    BrowserSignals:
+      type: object
+      required: [host, hostVerified]
+      description: >-
+        Present only while the customer is in control (in `awaiting_sign_in`,
+        or while the agent has handed the page back), and only while fresh:
+        what the page the customer sees asks of them, so the popup can say it
+        in its own words. The control plane reads
+        it about every 700 ms from the page's DOM with a fixed, read only probe
+        in an isolated world of the page, never by the agent or a model, and it
+        never holds a field's value. A page can show anything, so it is a hint
+        for the popup's words and nothing else.
+      properties:
+        host: { type: string, description: "The live page's host name; empty when its address is not https (a blank window)." }
+        hostVerified: { type: boolean, description: "The host is one of the provider's hosts or one of its social sign in hosts, on an https address." }
+        field:
+          type: object
+          required: [kind]
+          description: The focused editable field, if any.
+          properties:
+            kind: { type: string, enum: [username, password, code, text] }
+            label: { type: string, maxLength: 60, description: "What the page calls the field: its label, aria label or placeholder." }
+            maxLength: { type: integer, minimum: 1, maximum: 256 }
+        codePrompt:
+          type: object
+          required: [kind]
+          description: The page asks for a code.
+          properties:
+            kind: { type: string, enum: [sms, app, email, unknown] }
+            digits: { type: integer, minimum: 4, maximum: 10 }
+        push: { type: boolean, description: "The page waits for an approval on another device. Never set with `linkPrompt`." }
+        linkPrompt:
+          type: boolean
+          description: >-
+            The page says a sign in or approval link was sent ("we sent you a
+            link", "check your email to confirm", "approve this sign in"), in
+            English and in the providers' German, Spanish, French and Italian.
+            The customer opens it in their mail and comes back; the popup may
+            then click the form's `continue` control. Like a code prompt, it
+            keeps the sign in open for 10 minutes from its first sight.
+        social:
+          type: array
+          description: The social sign in buttons the page shows.
+          items: { type: string, enum: [google, apple, facebook, amazon, microsoft, github] }
+        passkey: { type: boolean, description: "The page asks for a passkey or a security key." }
+        check: { type: boolean, description: "A CAPTCHA or a bot wall is showing." }
+        formError:
+          type: string
+          maxLength: 120
+          description: >-
+            The error the provider's own page shows near its form ("That
+            password is incorrect"): the text of an alert, a live region, the
+            description of an invalid field or a common error element, from an
+            element that holds no field. Every word with an at sign and every
+            run of four or more digits is replaced with an ellipsis. Never on a
+            social sign in host's page.
+        focus:
+          $ref: '#/components/schemas/BrowserRect'
+        viewport:
+          type: object
+          required: [w, h]
+          description: The page's own viewport (the remote browser's), in CSS pixels.
+          properties:
+            w: { type: integer }
+            h: { type: integer }
+    BrowserRect:
+      type: object
+      required: [x, y, w, h]
+      description: >-
+        The region of the page that matters now, in CSS pixels from the top
+        left of the page's viewport and clipped to it, for the popup to zoom
+        to: the form around the focused field, else the main form, else the
+        challenge's box on a check page, else the main card on a Google or
+        Apple page.
+      properties:
+        x: { type: integer }
+        y: { type: integer }
+        w: { type: integer }
+        h: { type: integer }
+    BrowserSignInForm:
+      type: object
+      required: [identifier, steps]
+      description: >-
+        Present while the customer signs in, for a provider whose sign in form
+        is known: the provider's form, so the popup's own form can drive it
+        from the customer's browser over the vendor's debugging socket (the
+        live view's `wss` parameter). No keystroke goes through CustomDomain™.
+        Selectors are reviewed constants, not secrets; one that matches nothing
+        on the day leaves the customer on the live page.
+      properties:
+        identifier: { type: string, enum: [email, username, email_or_username, username_or_customer], description: "What the first field takes." }
+        steps:
+          type: array
+          description: The form's pages in order (two for a provider that asks for the identifier first).
+          items:
+            type: object
+            required: [fields, submit]
+            properties:
+              fields:
+                type: array
+                items:
+                  type: object
+                  required: [kind, selector]
+                  properties:
+                    kind: { type: string, enum: [username, password] }
+                    selector: { type: string, description: "A CSS selector for document.querySelector." }
+              submit: { type: string, description: "A CSS selector of the control that sends the step." }
+        social:
+          type: object
+          description: The provider's own social sign in buttons the session allows, by kind.
+          additionalProperties: { type: string }
+          properties:
+            google: { type: string }
+            apple: { type: string }
+            facebook: { type: string }
+            amazon: { type: string }
+            microsoft: { type: string }
+            github: { type: string }
+        passkeyAlt: { type: string, description: "The selector of the provider's \"use another way\" control on a passkey prompt." }
+        emailLink: { type: boolean, description: "The provider may email a sign in link instead of a code." }
+        continue:
+          type: string
+          description: >-
+            The selector of the page's own "Continue", "I've confirmed" or
+            "Done" control on the page that waits for a code or a link, for the
+            popup to click from the customer's browser when they come back from
+            their email. Absent when it was not seen (today, every provider).
+        resend:
+          type: string
+          description: >-
+            The selector of the page's own "Resend the code" or "Resend the
+            link" control. Absent when it was not seen (today, every provider).
+        forgotUrl:
+          type: string
+          format: uri
+          description: >-
+            The provider's own "forgot password" page, https on the provider's
+            own hosts, for the popup to open in a new tab of the customer's own
+            browser (never in the cloud browser), so the reset email's link
+            opens there too. Absent when it was not seen.
+    BrowserHandback:
+      type: object
+      required: [reason]
+      description: >-
+        Present while the agent has paused in the middle of its work and waits
+        for the customer: the provider asks for a code (a re-authentication or a
+        step up), shows a check, or (`agreement`) shows the terms its API page
+        asks the account holder to accept before a key is made, which the agent
+        never accepts for them. `interactive` is true and `live_view_url`
+        is the page's own view: the customer answers in the live view, and the
+        keys go from their browser to the vendor, never through the control
+        plane. Once the prompt is gone from the page the agent goes on. A
+        password the provider asks for again keeps `hand_back`.
+      properties:
+        reason: { type: string, enum: [code, check, agreement] }
+    BrowserViewport:
+      type: object
+      required: [width, height]
+      description: >-
+        The remote screen's size in CSS pixels, sent with the live view:
+        `sign_in_viewport` while the customer signs in (the size the popup
+        last asked for with `:viewport`, when it did), `work_viewport` after.
+      properties:
+        width: { type: integer }
+        height: { type: integer }
     BrowserPlan:
       type: object
       required: [hash, base_hash, changes, unchanged, approve_by]
@@ -7988,7 +9186,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported, caller_cannot_start]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -8011,8 +9209,11 @@ components:
             has a sign in of its own, which wins), `script_unhealthy` (its script
             failed in recent sessions and the rail is paused), `vendor_unavailable`
             (the browser vendor failed to create sessions and the rail is paused),
-            `monthly_cap` (the monthly browser minutes are used) and
-            `sign_in_not_wired` (the sign in token cannot be signed).
+            `monthly_cap` (the monthly browser minutes are used),
+            `sign_in_not_wired` (the sign in token cannot be signed) and
+            `site_not_supported` (the provider keeps each account on one
+            country site, and the site of the visitor's country is one the
+            rail does not serve yet).
         caveat:
           type: string
           description: >-
@@ -8185,6 +9386,8 @@ components:
           description: The nameserver delegation the detector observed (normalized hostnames).
         managed_dns:
           $ref: '#/components/schemas/ManagedDNSAvailability'
+        nameserver_migration:
+          $ref: '#/components/schemas/NameserverMigrationOffer'
         integration_warnings:
           type: array
           description: >-
@@ -8454,6 +9657,317 @@ components:
         Domain: { type: string }
         Registrar: { type: string }
         RegOrderID: { type: string }
+    NameserverTarget:
+      type: object
+      description: >-
+        Where a domain's nameservers move. `managed`: CustomDomain™ hosts the
+        zone (route 1). `dns_host`: a zone we create in the platform's own DNS
+        host account, a connected provider account with continuous access at
+        Cloudflare, Amazon Route 53, Google Cloud DNS or Azure DNS (route 2a).
+        `custom`: the platform's own nameservers, 2 to 13 host names, whose
+        zone the platform runs (route 2b).
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [managed, dns_host, custom] }
+        provider: { type: string, description: 'For `dns_host`: the DNS host (an adapter id such as `cloudflare`). Set from the account.' }
+        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access).' }
+        nameservers:
+          type: array
+          minItems: 2
+          maxItems: 13
+          items: { type: string }
+          description: 'For `custom`: the nameserver host names, stored lower case without a trailing dot.'
+    NameserverMigrationSetting:
+      type: object
+      description: >-
+        Whether and how the application offers to move an end user's
+        nameservers. `off` (the default): never offered, and the setting is
+        omitted. `offer`: the widget shows the move as a quiet second choice
+        beside adding records. `prefer`: the move is the first choice. Send
+        `{"mode": "off"}` to clear it.
+      required: [mode, target]
+      properties:
+        mode: { type: string, enum: ['off', offer, prefer] }
+        target: { $ref: '#/components/schemas/NameserverTarget' }
+    NameserverMigrationOffer:
+      type: object
+      description: >-
+        What the widget offers for this domain, present only when the
+        calling application's `nameserver_migration.mode` is `offer` or
+        `prefer`.
+      required: [mode, target, available, path]
+      properties:
+        mode: { type: string, enum: [offer, prefer] }
+        target: { type: string, enum: [managed, dns_host, custom] }
+        dns_host: { type: string, description: 'The DNS host of target `dns_host`.' }
+        available: { type: boolean }
+        reason:
+          type: string
+          enum: [disabled, platform_subdomain, unsupported_tld, reserved, registrar_locks_nameservers]
+          description: >-
+            Why the nameservers can't move, when `available` is false: the
+            reasons of `managed_dns`, or `registrar_locks_nameservers` (the
+            domain is registered at a registrar that requires its own
+            nameservers, Cloudflare Registrar; moving them needs a transfer
+            first).
+        path:
+          type: string
+          enum: [agent, manual]
+          description: >-
+            How the widget's move would change them: `agent`, the end user
+            signs in to their registrar in the cloud browser and approves the
+            new nameservers; `manual`, they set them with the values shown. A
+            connection linked to a connected account changes them through the
+            registrar's API instead.
+        provider:
+          type: string
+          description: >-
+            Where the nameservers would be changed: the registrar's provider id
+            when `registrar` names one we route to, else the detected DNS host
+            as a guess (then `registrar` is null and nothing names it).
+        registrar:
+          description: Who the domain is registered with, from RDAP; null when unknown.
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        nameservers:
+          type: array
+          items: { type: string }
+          description: The new nameservers for target `custom`. For `managed` and `dns_host` they are known once the zone exists (the migration's `new_nameservers`).
+    NameserverRegistrar:
+      type: object
+      description: >-
+        The company a domain is registered with, where its nameservers are
+        changed. Looked up over RDAP at the TLD's registry (found through the
+        IANA bootstrap file) and matched to a provider by its IANA Registrar
+        ID, so a domain registered at GoDaddy with its DNS at Cloudflare is
+        changed at GoDaddy.
+      required: [name, source]
+      properties:
+        name: { type: string, description: 'The brand ("GoDaddy"), the reseller the registry names, or RDAP''s own name.' }
+        provider: { type: string, description: 'Our provider id for it, when we route to it (`godaddy`).' }
+        iana_id: { type: integer, description: The IANA Registrar ID, when the registry gives one. }
+        url: { type: string, description: "The registrar's website." }
+        source:
+          type: string
+          enum: [rdap, request, account, '']
+          description: >-
+            `rdap`: looked up. `request`: the caller named it with a key or an
+            account. `account`: RDAP said nothing, and a connected account read
+            the domain's registration. Empty: RDAP named a registrar we do not
+            route to (`name` only).
+    NameserverMigrateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        target:
+          $ref: '#/components/schemas/NameserverTarget'
+        path:
+          type: string
+          enum: [api, agent, manual]
+          description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
+        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`).' }
+        credential:
+          type: object
+          additionalProperties: false
+          required: [token]
+          properties:
+            token: { type: string, description: 'A registrar API key the customer created, in the adapter''s format. Used for this call only and never stored.' }
+        zone_ready: { type: boolean, description: 'Target `custom`: the platform''s nameservers now serve the zone.' }
+        skip_zone_check: { type: boolean, description: 'Target `custom`: do not check that the new nameservers answer for the zone before moving.' }
+        copy_reviewed:
+          type: boolean
+          description: >-
+            A person checked the copied records (state `needs_review`), so the
+            move may go on. Sent with the start by an API key, it accepts a copy
+            read from public DNS in advance; it does not cover a copy that read
+            nothing, which always waits for a person. A widget token may send it
+            only to a move already in `needs_review`.
+        consent:
+          type: object
+          additionalProperties: false
+          required: [id, version]
+          properties:
+            id: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
+            version: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
+          description: >-
+            The consent text the end user agreed to. Required from a widget
+            token, and it must name a text the widget shows (`nsm-consent`,
+            versions 1 to 3), so a stored consent always names the words that
+            were on the screen.
+    NameserverRollbackRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        rollback_target:
+          type: string
+          enum: [previous, registrar_default]
+          description: >-
+            Where to move back. `previous`: the nameservers the domain had
+            (refused with `409 old_dns_gone` when they no longer answer for the
+            zone, as after Cloudflare deleted a moved zone). `registrar_default`:
+            the registrar's own DNS, through its reset call where it has one
+            (Namecheap, Spaceship, Name.com, Porkbun, Hostinger), the cloud
+            browser, or the person. Omitted: `previous` while the old
+            nameservers still answer, else `registrar_default` (the migration's
+            `rollback_default`).
+        provider_account_id: { type: string }
+        credential:
+          type: object
+          additionalProperties: false
+          required: [token]
+          properties:
+            token: { type: string }
+        consent:
+          type: object
+          additionalProperties: false
+          properties:
+            id: { type: string }
+            version: { type: string }
+    NameserverMigration:
+      type: object
+      required: [id, zone, state, path, target, registrar, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, copy_warnings, ds_present, can_rollback, rollback_targets, old_dns_serves, created_at, updated_at]
+      properties:
+        id: { type: string }
+        connection_id: { type: string }
+        zone: { type: string, description: The registrable domain whose nameservers move. }
+        state:
+          type: string
+          enum: [pending, copying, needs_review, needs_dnssec_off, waiting_ds, setting, propagating, active, failed, rolled_back]
+          description: >-
+            `pending`: target `custom` waits for the platform's zone.
+            `copying`: the zone is being created and the records copied; a copy
+            whose write to the DNS servers failed is retried, never switched
+            to. `needs_review`: the copy is not proven complete (it was read
+            from public DNS, which can't list a zone, or some records could not
+            be carried over); a person checks `copy_warnings` and confirms
+            with `copy_reviewed`.
+            `needs_dnssec_off`: DNSSEC must be turned off at the registrar
+            first. `waiting_ds`: DNSSEC is off; waiting for the registry to
+            stop publishing the DS record and its TTL to pass.
+            `setting`: the nameservers are being changed (`waiting_for`
+            says by whom). `propagating`: changed; waiting for the registry to
+            list every new nameserver (checked every 5 minutes for 2 hours,
+            then hourly up to 48 hours). `active`: the registry lists them
+            (re-checked every 6 hours; a move away is `failed` with
+            `delegation_drift`). `failed`: see `failure_code`. `rolled_back`:
+            moved back.
+        path: { type: string, enum: [api, agent, manual] }
+        target: { type: string, enum: [managed, dns_host, custom] }
+        dns_host: { type: string, description: 'The DNS host of target `dns_host` (an adapter id such as `cloudflare`).' }
+        provider:
+          type: string
+          description: >-
+            Where the nameservers are changed: the registrar's provider id
+            (`registrar.provider`), or, when `registrar` is null, the DNS host
+            the domain used, as a guess (then `next_step` says "where the
+            domain is registered" and names no company).
+        registrar:
+          description: Who the domain is registered with (RDAP, or the account or key the caller brought); null when unknown.
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        old_dns_host: { type: string, description: 'The DNS host the domain used when the move started (a provider id such as `cloudflare`).' }
+        old_nameservers: { type: array, items: { type: string }, description: What the registry listed when the move started; a rollback sets these. }
+        new_nameservers: { type: array, items: { type: string } }
+        observed_nameservers: { type: array, items: { type: string }, description: What the registry listed at the last check. }
+        waiting_for:
+          type: string
+          enum: [zone_ready, zone_served, copy_review, dnssec_off, ds_clear, credential, registrar_confirm, browser_session, registrar, delegation]
+        next_step: { type: string, description: One sentence for a person. }
+        failure_code:
+          type: string
+          enum: [zone_copy_failed, zone_not_served, dnssec_timeout, ds_removal_failed, credential_refused, registrar_refused, registrar_locked, changed_elsewhere, agent_failed, delegation_timeout, delegation_drift, internal]
+          description: '`changed_elsewhere`: the registrar listed other nameservers than the ones the move started from, so the change did not overwrite them.'
+        failure_detail: { type: string }
+        records_copied: { type: integer }
+        email_records: { type: integer, description: "How many of the copied records carry mail (MX, SPF, DKIM, DMARC)." }
+        email_kinds: { type: array, items: { type: string, enum: [mx, spf, dkim, dmarc] } }
+        copy_source:
+          type: string
+          enum: [api, discovery, existing_zone]
+          description: >-
+            How the records were copied. `api`: the whole zone, read through a
+            key we hold at the DNS host the domain used (a kept sign in or a
+            connected account there); proven complete. `discovery`: read from
+            public DNS at the names domains commonly use; a person confirms it.
+            `existing_zone`: the platform's zone already held records, which
+            were kept.
+        copy_warnings:
+          type: array
+          items: { type: string }
+          description: 'What a person should check before the switch: records left out (a Cloudflare proxied record answers with Cloudflare''s addresses, not the origin), lookups that went unanswered, forwarding that stays at the old host.'
+        copy_reviewed_at: { type: string, format: date-time, description: When a person confirmed a copy that is not proven complete. }
+        ds_present: { type: boolean, description: The registry published a DS record (DNSSEC was on) during the move. }
+        ds_removed_at: { type: string, format: date-time }
+        ds_cleared_at: { type: string, format: date-time }
+        can_rollback: { type: boolean }
+        rollback_path:
+          type: string
+          enum: [api, agent, manual, none]
+          description: >-
+            How the move back was made: `api` (the registrar's API, done),
+            `agent` (the person signs in to the registrar in the cloud browser
+            with `purpose: nameservers` and approves it), `manual` (`next_step`
+            says what to set or choose), `none` (nothing had changed yet).
+        rollback_targets:
+          type: array
+          items: { type: string, enum: [previous, registrar_default] }
+          description: The move backs possible now; `previous` is left out once the old nameservers no longer answer for the zone.
+        rollback_default: { type: string, enum: [previous, registrar_default], description: Where a move back without `rollback_target` goes. }
+        rollback_target: { type: string, enum: [previous, registrar_default], description: Where the move back went. }
+        rollback_set_at: { type: string, format: date-time, description: When the move back was made at the registrar; absent while a person or the cloud browser still has it to do. }
+        old_dns_serves:
+          type: [boolean, 'null']
+          description: Whether the old nameservers still answered for the zone when last asked (once a day while active, and at a move back); null when not asked yet.
+        consent:
+          type: object
+          required: [id, version, at]
+          properties:
+            id: { type: string }
+            version: { type: string }
+            at: { type: string, format: date-time }
+        actor: { type: string, enum: [end_user, api_key, console, agent] }
+        created_at: { type: string, format: date-time }
+        set_at: { type: string, format: date-time, description: When the nameservers were changed at the registrar (or first seen changed). }
+        active_at: { type: string, format: date-time }
+        failed_at: { type: string, format: date-time }
+        rolled_back_at: { type: string, format: date-time }
+        drifted_at: { type: string, format: date-time }
+        checked_at: { type: string, format: date-time }
+        next_check_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    NameserverMigrationStats:
+      type: object
+      required: [by_state, by_path, by_target, by_registrar, by_old_dns_host, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]
+      properties:
+        by_state: { type: object, additionalProperties: { type: integer } }
+        by_path: { type: object, additionalProperties: { type: integer } }
+        by_target: { type: object, additionalProperties: { type: integer } }
+        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when RDAP named none we route to.' }
+        by_old_dns_host: { type: object, additionalProperties: { type: integer }, description: 'Moves by the DNS host the domain left; `unknown` when none was detected.' }
+        total: { type: integer }
+        started: { type: integer }
+        active: { type: integer }
+        median_seconds_to_active: { type: integer }
+        dnssec_waits: { type: integer, description: Migrations that found DNSSEC on. }
+        median_seconds_dnssec_wait: { type: integer, description: The median time from the start until the registry stopped publishing the DS record. }
+        failures_by_code: { type: object, additionalProperties: { type: integer } }
+        rolled_back: { type: integer }
+        drifted: { type: integer }
+    NameserverEventData:
+      type: object
+      description: The `nameservers` object of every `nameservers.*` webhook.
+      required: [migration_id, zone, state, path, target, old_nameservers, new_nameservers]
+      properties:
+        migration_id: { type: string }
+        zone: { type: string }
+        state: { type: string }
+        path: { type: string }
+        target: { type: string }
+        old_nameservers: { type: array, items: { type: string } }
+        new_nameservers: { type: array, items: { type: string } }
+        observed_nameservers: { type: array, items: { type: string } }
+        failure_code: { type: string }
+        records_copied: { type: integer }
+        email_records: { type: integer }
     ManagedDNSAvailability:
       type: object
       description: >-

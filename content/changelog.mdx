@@ -22,6 +22,63 @@ never change meaning or disappear without a new major version. See the
   The tool call limit (5 a second, bursts of 20) is counted per credential for API keys and per workspace for agent
   tokens, and the `confirm` check on `disconnect-domain` currently compares the domain only for agent tokens. The page
   also lists every fallback error code.
+- **October 20, 2026: secure sign-in in our own form and its lasting API keys, domain maintenance, and who opens the widget.**
+  *Secure sign-in* (offered to selected workspaces) now opens on a sign-in form of ours, in each provider's own
+  words: its own label for the username (GoDaddy's "Username or Customer #", IONOS's "Customer ID, email address or
+  domain"), the username first where the provider asks for it first, and **Forgot password?**, which opens the
+  provider's reset page in your customer's own browser. The provider's own Google, Apple or other buttons are below
+  it. Your customer types into our fields and each key goes from their browser to the remote browser, never through
+  our servers. The popup goes to the provider's own page by itself only when our form cannot do the job (no
+  reviewed form, a 10 second stall, a page our screens cannot show), and offers it after two failed sign-ins; there,
+  the part that matters sits in a frame of ours. A code, an emailed link, an approval on a phone and a passkey each
+  get one short screen, the code screen has **Paste**, and a human check is the customer's to tick. A code
+  or a link keeps the session open (up to 20 minutes). A closed popup can be reopened on the same session with
+  **Continue signing in** (`POST /v1/connections/{id}/browser:resume`), the popup can be resized or
+  made full screen (`POST /v1/browser-sessions/{sid}:viewport`), and the popup says so when the domain's DNS is
+  not at the provider the customer signed in to. Signed in to an account that does not hold the domain, your
+  customer can **Sign in with another account** (`POST /v1/browser-sessions/{sid}:switch-account`, up to three
+  accounts). `browser:start` takes `widget_session_id` and `purpose`, the session view carries `form`, `signals`,
+  `handback` and `wrongAccount`, the popup reports its screens with `POST /v1/browser-sessions/{sid}:event`, and the widget's funnel
+  names the rail `cloud_browser`. After the sign-in, where the provider allows it, our software now makes a
+  *lasting API key* on the provider's own API page (GoDaddy, Namecheap, Name.com, Spaceship, Hostinger and IONOS's
+  US site, all on since October 21; GoDaddy's with GoDaddy's permission), and CustomDomain™ checks it, keeps it encrypted for that one application and connects the domain through the
+  provider's API, so monitoring and repairs need no browser and no customer. Each key has every domain scope the
+  page offers, transfers and Spaceship's billing included, and says what it can do beyond DNS in `rights`
+  (`transfer`, `billing`, `account`). A provider's API terms are your customer's to accept (Name.com's), and where
+  no key can be made the change is made on the provider's DNS page in the same session, as before. Before a key ends
+  (30 and 7 days), at its end and when the provider refuses it, you get `credential.expiring` or `credential.failed`,
+  your owners a notification and your customer a "Reconnect" email; one sign-in renews it, with no DNS change, from
+  a reconnect link (`POST /v1/connections/{id}:reconnect-link`, or **Send reconnect link** on the domain's
+  **Provider API key** card) or the widget's `mode: "reconnect"`. `GET /v1/connections/{id}` carries the key's
+  record as `credential` (never the key), and `credential.created` and `credential.removed` complete the events.
+  *Domain maintenance* (nameserver migration): an application can keep its end
+  users' domains working for them, with one change of each domain's nameservers to CustomDomain™ or to your own DNS
+  (a Cloudflare, Amazon Route 53, Google Cloud DNS or Azure DNS account, or your own nameservers), with their
+  consent, records and email copied first, DNSSEC handled, and a move back. The application's **Domain
+  maintenance** section has one switch, **Maintain your users' domains**, a before and after picture, **Who runs
+  it** (CustomDomain™ by default, or your own DNS account) and **Show it as the first choice**. Under it,
+  **Domains you maintain** lists each domain with its status in plain words, and each domain's page shows its
+  progress in three steps. The widget's consent screen asks in your platform's name ("Let Acme Sites keep
+  acme.com working?"), in all 13 languages (consent version `3`). The nameservers are changed at the registrar the
+  domain is registered with, looked up in public registration data for every move (never at its DNS host), and a
+  domain registered at Cloudflare Registrar is refused. Nothing changes at the registrar until the copied settings
+  are in place, and a copy read from public DNS waits in `needs_review` until a person confirms it. A domain can move
+  back two ways: to its previous nameservers while they still answer (`409 old_dns_gone` after), or to its
+  registrar's own DNS, always (`rollback_target`). A registrar's answer is read back, a change made elsewhere is
+  never overwritten (`changed_elsewhere`), and an agent token cannot choose where the nameservers go
+  (`403 target_not_allowed`). The API is `nameserver_migration` on `PATCH /v1/applications/{id}` (`mode`
+  `off`, `offer` or `prefer`, and a `target`), and `POST /v1/connections/{id}/nameservers:migrate`, `GET .../nameservers`,
+  `POST .../nameservers:rollback` and `GET /v1/applications/{id}/nameserver-migrations`. Seven webhooks follow a
+  move (`nameservers.started`, `.dnssec_cleared`, `.changed`, `.active`, `.failed`, `.rolled_back`, `.drifted`)
+  and name the `registrar` and the `old_dns_host`, and the MCP server (0.6.0) has three more tools, twenty in all:
+  `check-nameserver-status`, `migrate-nameservers` and `rollback-nameservers`. *Widget sessions*: each widget open now keeps one record of the session (the end
+  user's IP address, country, region and city, device, system and browser, screen and viewport, language, time
+  zone and the host page's origin, and how it went), never the domain or anything typed. The address is kept for as
+  long as your account exists. **Analytics** shows the counts as **Devices and places** and, for secure sign-in,
+  **Secure sign-in**, and `GET /v1/analytics/connect` returns them as `audience` and `secure_sign_in`. See
+  [Secure sign-in](/docs/guides/secure-sign-in), [the lasting API key](/docs/guides/secure-sign-in#lasting-api-keys),
+  [Domain maintenance](/docs/guides/nameserver-migration) and
+  [What a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
 - **End user notices, Move rewrites and lapsed plans.** A platform can give the end user's email
   address on the widget token or the connection (`end_user_email`), or let the widget ask for it
   (`ask_end_user_email`, `PUT /v1/connections/{id}/end-user-email`); after a Move that person gets one email with

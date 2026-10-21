@@ -3,7 +3,11 @@ title: Installation & embed
 description: "Install customdomain-js, mint a widget token on your server, open the connect modal in the browser, and use React, embedded mode and white-label theming."
 ---
 
-## 1. Mint a token on your server
+<Steps>
+
+<Step>
+
+### Mint a token on your server [#1-mint-a-token-on-your-server]
 
 The browser must never see an API key or a `client_secret`. Your server holds
 the credential, asks CustomDomain™ for a short-lived widget token (15 minutes),
@@ -78,7 +82,11 @@ What runs where:
 See [Widget tokens](/docs/authentication/widget-tokens) for the full token
 lifecycle, scopes and both mint paths.
 
-## 2. Install and open
+</Step>
+
+<Step>
+
+### Install and open [#2-install-and-open]
 
 Pick one way to load the SDK.
 
@@ -135,6 +143,34 @@ and it is unset when the widget itself raised the error. A `status` of 429 or
 any 5xx is safe to retry after a moment; any other 4xx gives the same answer
 until the token, domain or records change. `checkDomain` and `checkRecords`
 throw the same class.
+
+The options in the example above:
+
+<TypeTable
+  type={{
+    applicationId: { type: "string", required: true, description: "Public application id." },
+    token: { type: "string", required: true, description: "Widget token (scope connect) minted on your server in step 1." },
+    getToken: { type: "() => string | Promise<string>", description: "Returns a fresh widget token from your own server route. Called when the current one expires mid-setup, so a long manual setup does not stop." },
+    domain: { type: "string", description: "Pre-filled domain." },
+    endUserRef: { type: "string", description: "Your id for this customer. Stored on the connection as end_user_ref, shown in the console, and sent with every webhook as user_id." },
+    wwwRedirect: { type: "boolean", description: "Root domains only. true connects the root and www and redirects the root to www; false connects the root alone; unset lets the user choose." },
+    onSuccess: { type: "(result) => void", description: "When the domain reaches live: { jobId, domain, setupType, provider, success: true }." },
+    onFallback: { type: "(detail) => void", description: "Once per analysis, when the user is routed to a non-automatic screen: { reason, provider?, screen, message? }." },
+    onClose: { type: "(detail) => void", description: "When the modal closes: { lastStatus, error?, shared?, manualScreenDisabled? }." },
+    onStepChange: { type: "(detail) => void", description: "On every screen change: { step, domain?, provider?, user?, error? }." },
+    onError: { type: "(err: CustomDomainError) => void", description: "When the widget shows an error: { code, message, details?, status? }." },
+    container: { type: "string", description: "CSS selector for embedded mode (implies whiteLabel.embedded). See Embedded mode below." },
+    whiteLabel: { type: "WhiteLabel", description: "Theming and behavior. See White-label theming below." },
+    apiBase: { type: "string", default: "https://api.customdomain.ai", description: "Control plane host, for example for a staging environment." },
+    widgetBase: { type: "string", default: "https://app.customdomain.ai", description: "Widget host." },
+  }}
+/>
+
+Every option, event and status is in the [reference](/docs/widget-sdk/reference#open--openconfig).
+
+</Step>
+
+</Steps>
 
 ## React
 
