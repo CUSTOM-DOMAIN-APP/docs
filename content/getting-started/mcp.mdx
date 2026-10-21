@@ -98,8 +98,8 @@ nameservers go: `target` and `nameservers` are refused. See
   domain they confirmed as `confirm`. Every caller must send it, and it is
   compared with the connection's domain whatever the credential (an API key, a
   client credentials token or an agent token): another domain answers
-  `409 confirmation_mismatch` and nothing is removed. The server reads the
-  connection to compare, so an agent token also needs `domains:read`.
+  `409 confirmation_mismatch` and nothing is removed. The control plane
+  checks it before anything is removed.
 - Disconnecting needs the `domains:disconnect` scope, which is separate from
   connecting. A grant approved before that scope existed does not carry it until
   the person approves the agent again. See
