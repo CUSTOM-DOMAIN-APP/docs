@@ -252,12 +252,11 @@ and no customer, until the key nears its end.
 | Hostinger | An API token (Hostinger's tokens have no scopes) | Everything Hostinger's API allows the account (`account`) | The longest Hostinger offers: none where it offers that, else 1 year or less |
 | IONOS, US site only | An API key: a public prefix and a secret | Nothing: it reaches the DNS records only | No end date |
 
-Each provider is turned on by itself, once a live session there has made,
-checked and kept a key; until then a session at that provider goes to the DNS
-page. **GoDaddy stays off** until GoDaddy's written permission is on file:
-GoDaddy's published API terms do not allow keys made for its customers by
-someone else without it. Every other provider, and IONOS's other country sites,
-has no key page yet, so its sessions use the DNS page.
+All six are on. GoDaddy's is on with GoDaddy's permission, which its published
+API terms require for keys made for its customers by someone else. When a key
+can't be made or checked (an account the provider won't give a key to, say),
+the session goes to the DNS page instead. Every other provider, and IONOS's
+other country sites, has no key page yet, so its sessions use the DNS page.
 
 Some accounts cannot have a key: an account under Namecheap's API thresholds, an
 IONOS account outside IONOS's API programme, or one GoDaddy says is not eligible.
@@ -481,8 +480,7 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
 - Record types the provider's page cannot write, and a record set you supplied
   yourself, are refused before the customer signs in
   (`422 browser_unsupported_records`, with the types named).
-- A lasting API key is made only at the providers [listed above](#which-providers),
-  each once it is turned on, and GoDaddy's not before its written permission.
+- A lasting API key is made only at the providers [listed above](#which-providers).
 - A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
   Signing in with another account starts the sign-in window again but does not
   extend that limit, and three accounts at most can be tried.
