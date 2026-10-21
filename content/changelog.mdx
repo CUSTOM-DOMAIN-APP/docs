@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 21, 2026: secure sign-in no longer shows the sign-in form after the code.** While the provider
+  finishes its own redirects, the popup says **Signing you in**. When a provider's API page sends the browser
+  through its sign-in page (GoDaddy's developer site), our software waits up to 8 seconds for it to come back; if the
+  provider wants a new sign-in there, the lasting key is skipped and the session goes on to the DNS page without
+  asking your customer to sign in again. See [Secure sign-in](/docs/guides/secure-sign-in#after-the-sign-in).
 - **October 21, 2026: the fixes from a security audit of how agents reach CustomDomain™.** `disconnect-domain`
   now compares `confirm` with the connection's domain for every credential, API keys and client credentials tokens
   included, and over the REST API any credential that sends `confirm` is held to it (`409 confirmation_mismatch`).
