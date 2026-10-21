@@ -9000,6 +9000,19 @@ components:
                 domain (`j***@gmail.com`). Absent when the page shows none.
             tried: { type: integer, minimum: 1, maximum: 3, description: "How many accounts were found not to hold the domain." }
             max: { type: integer, description: "How many may be tried: 3." }
+        left_key:
+          type: object
+          required: [name]
+          description: >-
+            An API key the cloud browser made at the provider and CustomDomain
+            did not keep (the provider's API refused it, it could not be stored,
+            or the first write with it failed), so it is still live in the
+            customer's account and most providers offer no API to delete it.
+            Present from then on, in every state, so the popup can name it and
+            link the provider's page to delete it. Never the key itself.
+          properties:
+            name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21\"." }
+            page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
         error:
           type: object
           description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.
@@ -9818,7 +9831,7 @@ components:
       properties:
         name: { type: string, description: 'The brand ("GoDaddy"), the reseller the registry names, or RDAP''s own name.' }
         provider: { type: string, description: 'Our provider id for it, when we route to it (`godaddy`).' }
-        iana_id: { type: integer, description: The IANA Registrar ID, when the registry gives one. }
+        iana_id: { type: integer, description: "The IANA Registrar ID, when the registry gives one." }
         url: { type: string, description: "The registrar's website." }
         source:
           type: string
