@@ -95,7 +95,10 @@ nameservers go: `target` and `nameservers` are refused. See
   them; anywhere else they stay at the provider and the user deletes them. It
   answers `409 removal_in_progress` while another removal of the same connection
   is running. The domain goes offline, so ask the person first and send the
-  domain they confirmed as `confirm`.
+  domain they confirmed as `confirm`. Every caller must send it, but the check
+  that it names the connection's domain currently applies to agent tokens only
+  (another domain answers `409 confirmation_mismatch`); with an API key or a
+  client credentials token, check it yourself.
 - Disconnecting needs the `domains:disconnect` scope, which is separate from
   connecting. A grant approved before that scope existed does not carry it until
   the person approves the agent again. See
@@ -104,9 +107,11 @@ nameservers go: `target` and `nameservers` are refused. See
 ## When a call fails
 
 A failed call is an `isError` result with `success: false`, an `error` code and
-`details`. Branch on the code. A token without the tool's scope gets
-`insufficient_scope`, and an account over its limit (5 calls a second, bursts of
-20) gets `rate_limited` with `retryAfterSeconds`. See
+`details` when there is one. Branch on the code. A token without the tool's
+scope gets `insufficient_scope`, and a caller over its limit (5 calls a second,
+bursts of 20) gets `rate_limited` with `retryAfterSeconds`. With API keys the
+limit is per credential, so each key has its own; agent tokens share one per
+workspace. See
 [What a call answers](/docs/mcp/overview#what-a-call-answers).
 
 ## Agent authorization

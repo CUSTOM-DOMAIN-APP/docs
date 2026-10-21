@@ -87,6 +87,13 @@ never change meaning or disappear without a new major version. See the
   [Secure sign-in](/docs/guides/secure-sign-in), [the lasting API key](/docs/guides/secure-sign-in#lasting-api-keys),
   [Domain maintenance](/docs/guides/nameserver-migration) and
   [What a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
+- **The MCP docs say what the purchase gate expects, and whom two checks apply to.** [MCP server](/docs/mcp/overview)
+  now documents the purchase authorization callback: a `POST` of `{ "domain": "example.com" }` with HTTP Basic auth, where a `200`
+  approves and must carry `buyer.email` (else `buyer_required`), and a `401`, any other status, a network error or the
+  10 second timeout deny. The hosted service configures no callback, so `create-domain-order` answers `rejected` there.
+  The tool call limit (5 a second, bursts of 20) is counted per credential for API keys and per workspace for agent
+  tokens, and the `confirm` check on `disconnect-domain` currently compares the domain only for agent tokens. The page
+  also lists every fallback error code.
 - **End user notices, Move rewrites and lapsed plans.** A platform can give the end user's email
   address on the widget token or the connection (`end_user_email`), or let the widget ask for it
   (`ask_end_user_email`, `PUT /v1/connections/{id}/end-user-email`); after a Move that person gets one email with
