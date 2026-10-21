@@ -195,7 +195,21 @@ DNS page whenever the work goes on again (after a page was handed back, or after
 session tries the key again. When the provider's API page sends the browser
 through its sign-in page (GoDaddy's developer site does), our software waits up
 to 8 seconds for it to come back; if the provider wants a new sign-in there, the
-key is skipped and your customer is not asked to sign in again.
+key is skipped and your customer is not asked to sign in again. After such a
+trip, our software waits up to 6 seconds for the page to change before it acts
+again, so a form the provider opens after its own check is seen.
+
+**GoDaddy.** When a lasting GoDaddy key can be made, the sign-in opens on
+GoDaddy's developer portal (the Personal Access Token page), the page GoDaddy's
+own instructions say to sign in to before a token is made. Your customer signs in
+there as usual; our software makes the token on that page and the domain is
+connected through GoDaddy's API. If no token can be made, the same window goes on
+to the domain's DNS page, and GoDaddy may ask to sign in again there.
+
+**Read-only DNS records.** If the provider's DNS page shows the records but every
+edit and delete control is turned off (an account that can view the domain but
+not change it, say), our software stops within a few seconds and changes nothing.
+The window stays open with the records to add by hand.
 
 Nobody watches the provider's page after the sign-in. If the provider asks for
 the password again, asks for a code, or shows a check in the middle of the work,
