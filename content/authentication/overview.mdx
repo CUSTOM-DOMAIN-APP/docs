@@ -21,11 +21,13 @@ types share the surface, each with a different blast radius.
   `"sandbox": true`; read that field from `GET /v1/applications`.
 - Stored only as a hash; the full key is shown **once**, at creation.
 - **The default key is the exception you can view any time.** Every workspace has one, labelled
-  `Default key`, made with the workspace (or the first time an owner or admin opens the **API & SDK**
-  page in a workspace that is older than it), with no card needed. It is an ordinary key with full workspace access. An owner or
-  admin sees it at the top of **API & SDK** as `CUSTOMDOMAIN_API_KEY=cd_live_…`, masked; the eye
-  shows it for 30 seconds and **Copy** copies it without showing it. Other members see only its
-  prefix. The control plane still keeps only its hash: the console keeps a copy sealed with its own
+  `Default key`, made with the workspace (or the first time an owner opens the **API & SDK**
+  page in a workspace that is older than it), with no card needed. It reaches the whole workspace
+  like any key, but it acts with **admin** authority, never an owner's: it cannot create API keys,
+  make, unmake or remove an owner, or delete the workspace (`403`). Only an owner
+  sees it at the top of **API & SDK** as `CUSTOMDOMAIN_API_KEY=cd_live_…`, masked; the eye
+  shows it for 30 seconds and **Copy** copies it without showing it. Admins, members and viewers
+  see only its prefix, and only an owner can rotate it. The control plane still keeps only its hash: the console keeps a copy sealed with its own
   secret (AES-256-GCM), and every view is recorded in the audit log, without the key; a view the
   audit log cannot record is refused.
   **Rotate** makes a new default key and the old one stops working at once; your other keys are
@@ -36,11 +38,13 @@ types share the surface, each with a different blast radius.
 - **Tenant-scoped**: an API key only ever reaches its own tenant's applications,
   connections, webhooks, and billing. Anything outside that tenant is a `404`.
 - **How much authority it carries inside the tenant depends on the key.** There
-  are two kinds:
+  are three kinds:
   - A **plain tenant key** (the one minted at provisioning, or minted by an
     operator) has no member attached and acts with **owner** authority. This is
-    the key the console seals and proxies with, and the one most API
-    integrations use.
+    the key the console seals and proxies with.
+  - The **default key** (above) has no member attached either, but acts with
+    **admin** authority, because anyone who once viewed it may still hold it. It
+    mints no keys.
   - A **member-scoped key**, minted for an invited member when they accept, is
     tied to that member and is gated by **their current role**, resolved
     server-side on every request. A `viewer`'s key can read but **cannot
@@ -67,7 +71,10 @@ types share the surface, each with a different blast radius.
 In the console, create and revoke keys on the **API & SDK** page. Creating a key
 (any key besides the default key) needs `admin` or `owner` and a card on file (the 14 day free trial; nothing is
 charged until it ends): a workspace that has not started it gets
-`402 billing_required` and is sent to **Billing**.
+`402 billing_required` and is sent to **Billing**. Over the API,
+`POST /v1/applications/{id}/keys` needs an admin's or an owner's key; a key
+minted with a member's key acts with that member's role, and the default key
+cannot create keys at all (`403`).
 
 The key the console itself uses to reach your workspace is marked **This console**
 in the list and has no **Revoke** button; revoking it would cut the console off
@@ -122,7 +129,8 @@ carries:
 - **An application binding.** A grant acts within one application and cannot
   read another application's connections.
 - **An audience**: the MCP endpoint by default, or the API origin when the client
-  asks. The MCP refuses a token issued for anything else.
+  asks. The MCP refuses a token issued for anything else, and the control plane
+  accepts a token only when it issued it itself (`iss`) for one of those two.
 - **The workspace and the member who approved it**, so access is always delegated
   from a person and revocable by them.
 
@@ -130,7 +138,8 @@ An agent token works at the [MCP server](/docs/mcp/overview), which verifies it
 locally against the JWKS, and on the connection and order routes the MCP tools
 call. It cannot manage keys, members, billing or webhooks; the one billing route
 it reaches is the read only standing. Revoke the grant and its tokens stop
-working within one token lifetime. See
+working at once: the control plane checks the grant on every call, and the MCP
+answers a refused call with HTTP `401`. See
 [Agent access](/docs/agents/overview) and [The OAuth flow](/docs/agents/oauth-flow).
 
 ## Management & provision secrets (operator)

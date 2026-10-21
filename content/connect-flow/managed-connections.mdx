@@ -104,7 +104,10 @@ stores.
 
 - **Re-apply.** `POST /v1/connections/{id}:reapply` (and the fleet reconciler)
   rewrites the records through the provider's DNS API with the kept credential,
-  into the zone the sign-in wrote.
+  into the zone the sign-in wrote. It leaves out records a one-click start stored
+  that still await the DNS provider's approval (see
+  [Template variables](/docs/connect-flow/verify-and-go-live#template-variables)):
+  nobody approved them yet.
 - **Refresh rotation.** An access token at or past its expiry is rotated with
   its refresh token before the write, and a token the provider refuses is
   rotated once and the write retried. Cloudflare invalidates a refresh token as

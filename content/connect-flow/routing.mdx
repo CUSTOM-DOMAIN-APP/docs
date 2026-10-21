@@ -118,6 +118,23 @@ The response says how many of each it reached:
 "existing_domains": { "moved": 3, "kept": 12 }
 ```
 
+`moved` counts the waiting domains that took the new routing. `kept` counts
+every other domain the change reaches, all left where they are: connected
+domains, domains whose records were supplied or written, and waiting domains
+already on the new routing. So saving the same target twice moves nothing the
+second time and counts every domain as kept. The audit log entry
+(`app.routing_set`, or `app.routing_cleared` for a return to the edge) records
+the same counts as `domains_moved` and `domains_kept`.
+
+In the console, **Domain routing** asks before it saves a target on your own
+infrastructure. The confirmation, "Point customer domains at
+customers.example.com?", lists the records customers will add and says what
+happens to the application's domains, for example "3 domains waiting for DNS
+will follow. 12 domains stay where they are." Nothing is saved until you
+confirm. The console counts those from the
+application's domain list before the save; the response's `existing_domains`
+is the exact count.
+
 Each connection's `routing` says where it points:
 
 ```json

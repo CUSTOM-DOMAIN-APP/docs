@@ -89,6 +89,12 @@ curl -X POST https://api.customdomain.ai/v1/connections/<ID>/domainconnect:start
 # → 200 { apply_url, service_id: "redirect", dc_provider }
 ```
 
+`redirectTarget` must be an `http` or `https` URL, or a bare host, at a public
+hostname (not an IP address, `localhost` or an internal name), with no user name
+or password; anything else answers `400 invalid_request` naming it, and the
+`redirect` template takes no other variable (see
+[Template variables](/docs/connect-flow/verify-and-go-live#template-variables)).
+
 The response's `apply_url` is opened in the provider popup; once the customer
 approves, the provider writes the `REDIR301` record and the propagation poller
 promotes the connection to live. Choose this path when the domain stays on its

@@ -99,7 +99,9 @@ purchase gate. A purchase that takes no payment (`POST /v1/registrar/purchase`)
 has its own switch, `SELL_DIRECT_PURCHASE_ENABLED`, and is off on the hosted
 service: every purchase there goes through checkout.
 
-Agents can drive the same purchase through the
-[MCP server](/docs/mcp/overview)'s `create-domain-order` and
-`check-order-status` tools, which are additionally fail-closed behind the
-integrator's purchase-authorization callback.
+The [MCP server](/docs/mcp/overview) has a `create-domain-order` tool, but
+purchases through MCP are off on the hosted service. The tool is gated by a
+[purchase authorization callback](/docs/mcp/overview#purchase-authorization-callback)
+as well as by the direct purchase switch, and the hosted service configures no
+callback, so it answers `rejected`. Agents can still read orders with
+`check-order-status` and `list-domain-orders`.

@@ -192,8 +192,8 @@ on.
 ### API keys and widget tokens
 
 Open **API & SDK**. Every workspace has a **default key** at the top of the page,
-made with the workspace and needing no card: owners and admins can view it at any
-time (see [API keys](/docs/authentication/overview)). For another key, press
+made with the workspace and needing no card: owners can view and rotate it at any
+time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)). For another key, press
 **Create key**, give it a name and pick an **Environment**: Production
 (`cd_live_…`), Development or Staging (both `cd_test_…`). The full key is shown
 once ("Copy your new key now"); only a hash is kept. Admins and owners can create
@@ -235,6 +235,15 @@ The counts on **Overview** include every domain, so when they link to **Domains*
 workspace for your customers they open the **All** tab, and what you click is what you
 see. The first-run tour follows the same layout. A workspace that has not said who its
 domains are for gets the console as it has always been.
+
+A domain **needs attention** when its setup failed or stopped making progress, when
+its records were changed at the provider, or when it is still being set up 48 hours
+after it was added. Setup has no deadline, so a domain still waiting keeps being
+checked; it is listed so that somebody looks. The console uses this one rule everywhere: the
+**Needs attention** count and card on **Overview** (each row says why, such as
+"Waiting for DNS, 6 days"), the **Needs attention** filter and the **Needs attention
+first** order on **Domains**, the counts per client, and an application's **Domains**
+tab.
 
 Change it any time under **Settings → What this workspace is for**, where the three
 answers are **My product's users**, **My clients** and **A domain of my own**. Owners and admins

@@ -100,6 +100,13 @@ A delegated agent token can remove a domain too, when its grant carries
 details name the domain), and with another domain `409 confirmation_mismatch`.
 Nothing is removed in either case.
 
+Any other credential (an API key, an application's client credentials token, a
+widget token) may leave `confirm` out, and the removal keeps its original
+contract. One that sends it is held to it the same way: another domain is
+`409 confirmation_mismatch`, an empty value is `400 confirmation_required`, and
+nothing is removed. Case, a scheme, a path and a trailing dot do not matter. The
+MCP server's `disconnect-domain` always sends it, whatever the credential.
+
 ## What always happens
 
 - The edge stops approving the host at once and every edge forgets it within a

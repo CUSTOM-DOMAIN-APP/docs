@@ -19,7 +19,10 @@ _openapi:
           social-login support, any `record_conflicts` observed in public
           DNS (records the automatic write would replace), and any
           `advisories` (warnings that replace nothing, such as a CAA record
-          that blocks Let's Encrypt). Unknown providers degrade to `setup_type: manual`.
+          that blocks Let's Encrypt). Within /v1 a `caa-blocks-letsencrypt`
+          advisory is also listed in `record_conflicts`, as before `advisories`
+          existed; it never counts toward `will_fallback_to_manual`, and new
+          clients should read it from `advisories`. Unknown providers degrade to `setup_type: manual`.
 
 
           Apex pre-flight: `apex_supported` reports whether the provider can

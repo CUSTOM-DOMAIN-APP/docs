@@ -21,7 +21,7 @@ An API key and a client secret are different credentials. Do not swap them:
 | | API key | Application client secret |
 | --- | --- | --- |
 | Looks like | `cd_live_` or `cd_test_` plus 32 hex characters (older keys: `sk_live_` / `sk_test_`) | `sk_` plus 32 hex characters |
-| Where you get it | **API & SDK**: the workspace's default key at the top (owners and admins can view it any time), or **Create key** (admins and owners; shown once). | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
+| Where you get it | **API & SDK**: the workspace's default key at the top (owners can view it any time), or **Create key** (admins and owners; shown once). | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
 | Sent as | `Authorization: Bearer …` | `client_secret` in the body of `POST /v1/tokens` |
 | What it does | Calls the API for your whole workspace | Mints widget tokens for one application, nothing else |
 

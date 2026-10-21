@@ -38,7 +38,15 @@ Rail B (API-token apply) and the automatic rails.
 | --- | --- |
 | Google Workspace | `MX smtp.google.com`, SPF `include:_spf.google.com`, DKIM `google._domainkey` TXT, DMARC |
 | Microsoft 365 | `MX <domain>.mail.protection.outlook.com`, `autodiscover` CNAME, SPF `include:spf.protection.outlook.com`, DKIM `selector1/2` CNAMEs, DMARC |
-| Zoho | `MX mx/mx2/mx3.zoho.com`, SPF `include:zoho.com`, DKIM TXT, DMARC |
+| Zoho (US data center) | `MX mx/mx2/mx3.zoho.com`, SPF `include:zoho.com`, DKIM TXT, DMARC |
+| Zoho (EU data center) | `MX mx.zoho.eu` (Zoho's `zoho.eu` mail hosts), SPF `include:spf.zoho.eu`, DKIM TXT, DMARC |
+
+Zoho's SPF include depends on the data center that holds the mailbox. When
+CustomDomain™ fills in a domain's mail provider SPF include itself, it reads the
+domain's MX records: hosts under `zoho.com` or `zohomail.com` get
+`include:zoho.com`, hosts under `zoho.eu` get `include:spf.zoho.eu`, and Zoho's
+other data centers (such as `mx.zoho.in`) get no include rather than a guessed
+one.
 
 ## MX records
 
@@ -93,6 +101,14 @@ single-purpose templates (`email-mx`, `email-spf`, `email-dkim`, and
 writes a `CNAME` (`<selector>._domainkey` pointing at the target your mail
 provider hosts), not a `TXT`. Either way the `SPFM`
 merge and MX `priority` behave identically.
+
+These templates take your mail provider's settings as variables, never records,
+and each is checked before a link is signed: `mxHost`, `spfInclude` and
+`dkimTarget` are public hostnames (not IP addresses or internal names),
+`dkimSelector` is one DNS label, and `dmarcRua` is one email address, with a
+`mailto:` prefix accepted and no other DMARC tags. A value of another shape is
+refused with `400 invalid_request` (`-32602` from the MCP server's `add-email`).
+See [Template variables](/docs/connect-flow/verify-and-go-live#template-variables).
 
 > Pre-flight: `POST /v1/domains:check` reports `spf_override_support` and returns
 > any `record_conflicts` (including `spf-merge` clashes) it observes in public

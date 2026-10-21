@@ -20,11 +20,13 @@ Three credential types with escalating authority (see
   only credential that reaches the browser.
 - **API keys** (`cd_live_` or `cd_test_` plus 32 hex characters) are stored as
   SHA-256 hashes and shown once at creation (the workspace's default key is the
-  exception: the console keeps a sealed copy that an owner or admin can view, see
+  exception: the console keeps a sealed copy that an owner can view, see
   [API keys](/docs/authentication/overview)), and revocation takes effect on the
   next request. Their **authority depends on how the key was
   minted**: a plain tenant key (the one issued at provisioning, or minted by an
-  operator) acts with **owner** authority, while a key minted for an invited
+  operator) acts with **owner** authority; the workspace's default key acts with
+  **admin** authority and mints no keys, since anyone who once viewed it may
+  still hold it; and a key minted for an invited
   **member** is bound to that member and resolves to **their current role** on
   every request, so a `viewer`'s key cannot mutate anything, and a demotion or
   removal takes effect immediately. See [Member roles](#roles--permissions).
@@ -109,6 +111,12 @@ particular:
 - A caller can never grant a role above their own, and **only an owner can
   create, promote-to, or demote an owner**. The org's **last owner** cannot be
   demoted or removed.
+- **The workspace's default key acts as an admin**, never as an owner: it is
+  refused (`403`) when it would make, unmake or remove an owner or delete the
+  workspace, and it cannot mint API keys at all. Only an owner can view or rotate
+  it in the console.
+- **Approving an agent with a member's own key** records that member as the
+  approver and no one else (`403` for another `member_id`).
 
 Unknown or vanished roles are **fail-closed**: denied everything, never
 escalated. See [Authentication](/docs/authentication/overview#member-roles).
@@ -183,7 +191,7 @@ one-click setup (which uses no server token) store nothing. See
 - API keys and application `client_secret`s are stored by the control plane only
   as SHA-256 hashes; the plaintext is shown once and never returned again. The
   workspace's default key is one exception: the console keeps a sealed copy that
-  an owner or admin can view. An application created in the console is the other: the console keeps its
+  an owner can view. An application created in the console is the other: the console keeps its
   `client_secret` sealed (AES-256-GCM) so it can mint widget tokens for you, and
   never displays it. An application created over the API returns the secret once.
 - Widget JWTs are signed per application, using a dedicated server-side signing
@@ -213,13 +221,35 @@ steady, with a burst of 30. Over the limit the API returns `429` with the code
 (`POST /v1/tokens` and the agent OAuth token and registration routes) fail
 closed if the limiter store is unavailable, rather than letting requests through
 unthrottled. The edge host-authorization gate (`/internal/ask`) is exempt. Agent
-client registration also has its own hourly budget per IP.
+client registration also has its own hourly budget per IP. The MCP server limits
+its own `POST /token` and refused `CLIENT_ID:CLIENT_SECRET` pairs per IP as well
+(see [MCP server](/docs/mcp/overview#authentication)).
 
 ## CORS
 
 The API is bearer-authenticated with no ambient cookies, so it reflects a
 wildcard origin (`Access-Control-Allow-Origin: *`), which is safe because there are no
 cookies to abuse. Per-application embed control lives at the widget layer.
+
+## Response headers
+
+`api.customdomain.ai` and `mcp.customdomain.ai` send these on every answer,
+including the ones the proxy in front of them gives itself:
+
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains` (two years,
+  not preloaded), so a browser reaches them only over HTTPS;
+- `X-Content-Type-Options: nosniff`, so a JSON or text answer is never run as a
+  script;
+- `Referrer-Policy: strict-origin-when-cross-origin`, unless the answer sets its
+  own.
+
+The pages a DNS provider sends the browser back to (the sign-in callback
+`GET /v1/connect/oauth/callback`, and the one-click callback and return page)
+refuse to be framed (`X-Frame-Options: DENY` and
+`Content-Security-Policy: frame-ancestors 'none'`), so another site cannot load
+one in a hidden frame; the page that reports the outcome to your window sends
+`Referrer-Policy: no-referrer`. Reporting to the window that opened the popup is
+unaffected.
 
 ## Exactly-once side effects
 

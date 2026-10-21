@@ -225,10 +225,12 @@ paths:
       summary: Ensure the workspace default key exists (secret returned only when created)
       tags: [Tenancy]
       description: >-
-        The workspace default key is an ordinary API key (full workspace access,
-        `cd_live_…` in production) flagged `is_default`, at most one active per
-        workspace, whose secret the customer console keeps sealed so the
-        workspace's owner or an admin can view it more than once. Server to
+        The workspace default key is an ordinary API key (`cd_live_…` in
+        production) flagged `is_default`, at most one active per workspace,
+        whose secret the customer console keeps sealed so the workspace's owner
+        can view it more than once. It acts with admin authority, never owner:
+        it cannot make, unmake or remove an owner, delete the workspace, or
+        create API keys (`403`). Server to
         server, guarded by the provision secret like `tenants:provision`; a
         missing and a wrong secret get the same `401`. With no active default key
         this creates one and answers `201` with the full secret ONCE in
@@ -491,6 +493,11 @@ paths:
       operationId: createApiKey
       summary: Issue an API key for an application (key returned once)
       tags: [Applications]
+      description: >-
+        Needs `keys:manage` (admin and above). A key minted with a member's key
+        acts with that member's role. The workspace default key (`is_default`)
+        cannot create keys (`403`): a key it minted would not carry its admin
+        limit.
       security:
         - apiKey: []
         - managementKey: []
@@ -517,6 +524,7 @@ paths:
                       key: { type: string, description: 'cd_live_… or cd_test_…; shown once, stored hashed' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     get:
       operationId: listApiKeys
@@ -975,7 +983,7 @@ paths:
         tool. Answers whether a domain's DNS provider supports one-click setup:
         it runs the same detection cascade as the widget (Domain Connect
         discovery probed ahead of NS-pattern matching) and cross-references the
-        63-provider census. Results are cached for 24 hours per domain and the
+        provider census. Results are cached for 24 hours per domain and the
         endpoint is rate-limited per IP; do not build product flows on it. Use
         the authenticated `domains:check`, which carries records-aware conflict
         and apex verdicts.
@@ -1030,9 +1038,11 @@ paths:
         `setup_type`, whether automatic setup is possible, whether the
         OAuth-into-provider and one-click setup rails are available, capability
         flags (`ns_support`, `wildcard_support`, `cname_flattening`,
-        `spf_override_support`, `caa_support`), social-login support, and any
-        `record_conflicts` observed in public DNS. Unknown providers degrade to
-        `setup_type: manual`.
+        `spf_override_support`, `caa_support`), social-login support, any
+        `record_conflicts` observed in public DNS (records the automatic write
+        would replace), and any `advisories` (warnings that replace nothing,
+        such as a CAA record that blocks Let's Encrypt). Unknown providers
+        degrade to `setup_type: manual`.
 
 
         Apex pre-flight: `apex_supported` reports whether the provider can host
@@ -1460,7 +1470,8 @@ paths:
         because the removal takes the domain offline, and must send `confirm`
         naming the domain. Without it the answer is `400 confirmation_required`,
         and with another domain `409 confirmation_mismatch`; nothing is removed
-        either way. Another application's connection answers `404`.
+        either way. Another application's connection answers `404`. Any other
+        credential that sends `confirm` is held to it the same way.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1476,11 +1487,14 @@ paths:
           in: query
           required: false
           description: >-
-            Required of a delegated agent token: the domain it is removing, as
-            written on the connection (case, scheme, path and a trailing dot do
-            not matter). Without it the answer is `400 confirmation_required`;
-            with another domain, `409 confirmation_mismatch`. Nothing is removed
-            either way. Other credentials ignore it.
+            The domain being removed, as written on the connection (case,
+            scheme, path and a trailing dot do not matter). Required of a
+            delegated agent token: without it the answer is `400
+            confirmation_required`. Any credential that sends it, an API key
+            or an application token included, gets `409 confirmation_mismatch`
+            when it names another domain (`400 confirmation_required` when it is
+            empty). Nothing is removed either way. A credential other than an
+            agent token may leave it out.
           schema: { type: string, examples: [shop.acme.com] }
       responses:
         '200':
@@ -1492,7 +1506,8 @@ paths:
         '400':
           description: >-
             `confirmation_required`: a delegated agent token did not send
-            `confirm`; `details` names the domain to send. `invalid_request`:
+            `confirm`, or a caller sent it empty; `details` names the domain to
+            send. `invalid_request`:
             `records` is neither `remove` nor `keep`. Nothing was removed.
           content:
             application/json:
@@ -1504,9 +1519,8 @@ paths:
           description: >-
             `reauthorization_required`: removing the records needs one more
             sign-in or key; `plan` is the removal plan. `removal_in_progress`:
-            another removal of the domain is running. `confirmation_mismatch`: a
-            delegated agent token's `confirm` names another domain. Nothing was
-            changed.
+            another removal of the domain is running. `confirmation_mismatch`:
+            `confirm` names another domain. Nothing was changed.
           content:
             application/json:
               schema:
@@ -1838,11 +1852,14 @@ paths:
           in: query
           required: false
           description: >-
-            Required of a delegated agent token: the domain it is removing, as
-            written on the connection (case, scheme, path and a trailing dot do
-            not matter). Without it the answer is `400 confirmation_required`;
-            with another domain, `409 confirmation_mismatch`. Nothing is removed
-            either way. Other credentials ignore it.
+            The domain being removed, as written on the connection (case,
+            scheme, path and a trailing dot do not matter). Required of a
+            delegated agent token: without it the answer is `400
+            confirmation_required`. Any credential that sends it, an API key
+            or an application token included, gets `409 confirmation_mismatch`
+            when it names another domain (`400 confirmation_required` when it is
+            empty). Nothing is removed either way. A credential other than an
+            agent token may leave it out.
           schema: { type: string, examples: [shop.acme.com] }
       requestBody:
         required: false
@@ -2902,8 +2919,9 @@ paths:
         real sign in page, so CustomDomain™ never receives them, and the
         sign in itself is never stored. Where the deployment turned it on for
         the provider, the agent then makes a lasting API key on the provider's
-        own API page (named `CustomDomain` and the application's name, with the
-        domain and DNS scopes only and the longest expiry the provider offers),
+        own API page (named `CustomDomain` and the application's name, with
+        every domain scope the page offers, transfer and billing included,
+        and the longest expiry the provider offers),
         checks it with one read only call, keeps it encrypted for this
         application only, and writes the records through the provider's API;
         the domain is then monitored and repaired like any connected provider
@@ -3755,6 +3773,26 @@ paths:
                 vars:
                   type: object
                   additionalProperties: { type: string }
+                  description: >-
+                    The template's caller-supplied variables, and only those:
+                    `email-full` takes `mxHost`, `spfInclude`, `dkimSelector`,
+                    `dkimTarget` and `dmarcRua` (`email-mx`, `email-spf`,
+                    `email-dkim` and `email-dmarc` take their part of that set),
+                    `redirect` takes `redirectTarget`, and the other templates
+                    take none. `edgeIp` and `edgeIp6` are set by the server from
+                    its configuration; naming one, or a variable the template
+                    does not take, answers `400 invalid_request`. Each value
+                    must have its variable's shape, else `400 invalid_request`
+                    whose `details` names it: `mxHost`, `spfInclude` and
+                    `dkimTarget` are public hostnames (not an IP address,
+                    `localhost` or an internal name such as `.internal` or
+                    `.local`); `dkimSelector` is one DNS label; `dmarcRua` is
+                    one email address (a `mailto:` prefix is accepted and
+                    dropped); `redirectTarget` is an http or https URL, or a
+                    host, at a public hostname. The records of a template that
+                    takes caller values are stored as awaiting the DNS
+                    provider until public DNS shows them, and are not written
+                    by a re-apply or into a hosted zone before then.
                 managed:
                   type: boolean
                   description: Opt into the managed (async) one-click rail.
@@ -4647,6 +4685,12 @@ paths:
                 vars:
                   type: object
                   additionalProperties: { type: string }
+                  description: >-
+                    The template's caller-supplied variables, the same set
+                    `POST /connections/{id}/domainconnect:start` takes.
+                    `edgeIp` and `edgeIp6` are set by the server; naming one, or
+                    a variable the template does not take, answers `400
+                    invalid_request`. An unknown template answers `404`.
       responses:
         '200':
           description: apply_url
@@ -6936,7 +6980,9 @@ paths:
         in browsers). The key's member needs `agent:manage` (owners and admins),
         and `member_id` must belong to the workspace. The approved scopes are a
         subset of what was requested. The grant is bound to one `application_id`
-        of the workspace. `domains:purchase` also needs a `spend_cap_cents` and a
+        of the workspace. An agent whose code goes to an unverified host needs
+        `acknowledged_unverified: true`, and one whose name imitates a brand is
+        refused (`403`). `domains:purchase` also needs a `spend_cap_cents` and a
         saved card. Persistent access is the default; `persist: false` ends it
         after `expires_days`. The authorization code is single use and is
         exchanged at `POST /oauth/agent/token`.
@@ -7632,7 +7678,8 @@ components:
           required: [moved, kept]
           description: >-
             What a PUT did to the application's existing domains (PUT only).
-            Domains already on the new routing are in neither count.
+            Domains still waiting for DNS that were already on the new routing
+            count as kept.
           properties:
             moved:
               type: integer
@@ -7640,8 +7687,10 @@ components:
             kept:
               type: integer
               description: >-
-                Connected domains (and domains whose records were supplied or
-                written) that keep pointing where they do.
+                Every other domain, left pointing where it does: connected
+                domains, domains whose records were supplied or written, and
+                domains still waiting for DNS that were already on the new
+                routing.
     ConnectionDiagnosis:
       type: object
       required: [connection_id, domain, zone, status, all_found, records, issues]
@@ -9417,10 +9466,35 @@ components:
                 description: Human-readable, with the available alternatives named.
         record_conflicts:
           type: array
+          description: >-
+            Existing DNS records the automatic write would replace
+            (`value-mismatch`, `cname-collision`, `spf-merge`); these count
+            toward `will_fallback_to_manual`. Within /v1 a
+            `caa-blocks-letsencrypt` advisory is also listed here, as before
+            `advisories` existed; it never counts toward the fallback, and new
+            clients should read it from `advisories`.
           items:
             type: object
             properties:
-              kind: { type: string, description: 'value-mismatch | cname-collision | spf-merge' }
+              kind: { type: string, description: 'value-mismatch | cname-collision | spf-merge | caa-blocks-letsencrypt' }
+              host: { type: string }
+              type: { type: string }
+              existing: { type: string }
+              desired: { type: string }
+        advisories:
+          type: array
+          description: >-
+            Warnings that are not a record the automatic write would replace,
+            so they never count toward `will_fallback_to_manual`. Today one
+            kind: `caa-blocks-letsencrypt`, a CAA record that does not authorize
+            Let's Encrypt, which blocks the certificate; the fix is to add a CAA
+            record for `letsencrypt.org` next to the existing ones, never to
+            remove them. Returned only when the application's domains route to
+            the edge.
+          items:
+            type: object
+            properties:
+              kind: { type: string, description: caa-blocks-letsencrypt }
               host: { type: string }
               type: { type: string }
               existing: { type: string }
@@ -10152,7 +10226,7 @@ components:
       properties:
         grant_type: { type: string, enum: [authorization_code, refresh_token] }
         client_id: { type: string }
-        code: { type: string, description: "With `authorization_code`: the single use code from the redirect. It lives 5 minutes." }
+        code: { type: string, description: "With `authorization_code`: the single use code from the redirect. It lives 5 minutes. Presenting a code that already issued tokens is `invalid_grant` and revokes the grant they came from (RFC 6749 §4.1.2)." }
         code_verifier: { type: string, description: "With `authorization_code`: the PKCE verifier for the `code_challenge` sent to authorize." }
         redirect_uri: { type: string, format: uri, description: "With `authorization_code`: exactly the `redirect_uri` sent to authorize." }
         refresh_token: { type: string, description: "With `refresh_token`: the latest refresh token. It is good for one exchange." }
@@ -10197,11 +10271,17 @@ components:
         client_id_host: { type: string, description: The host that publishes a metadata document client's document. }
     AgentConsentApproval:
       type: object
-      required: [request, member_id, application_id, scopes]
+      required: [request, application_id, scopes]
       description: The body is decoded with unknown fields rejected.
       properties:
         request: { type: string, description: "The consent request id the browser arrived with (`aqr_...`)." }
-        member_id: { type: string, description: The member who approves. It must belong to the workspace. }
+        member_id:
+          type: string
+          description: >-
+            The member who approves, recorded as the grant's approver, the
+            email recipient and the audit actor. It must belong to the
+            workspace. With a member's own key it must be that member (`403`
+            otherwise) and may be left out; with any other key it is required.
         application_id: { type: string, description: The one application of the workspace the agent will act within. }
         scopes:
           type: array
@@ -10218,6 +10298,15 @@ components:
             one).
         persist: { type: boolean, default: true, description: "True (the default) keeps the access until it is revoked. False ends it after `expires_days`." }
         expires_days: { type: integer, minimum: 0, default: 30, description: "With `persist: false`, days until the grant expires." }
+        acknowledged_unverified:
+          type: boolean
+          default: false
+          description: >-
+            The approver confirmed they recognize the host the authorization
+            code goes to. Required (`true`) when that host is neither a known
+            assistant's (`verified`) nor a loopback address (`local`) in
+            `GET /agent/consent-request/{id}`; without it such a consent is
+            refused with `400`.
     AgentConsentResult:
       type: object
       required: [redirect_uri, code, grant_id]

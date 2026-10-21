@@ -11,11 +11,12 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          The workspace default key is an ordinary API key (full workspace
-          access, `cd_live_…` in production) flagged `is_default`, at most one
-          active per workspace, whose secret the customer console keeps sealed
-          so the workspace's owner or an admin can view it more than once.
-          Server to server, guarded by the provision secret like
+          The workspace default key is an ordinary API key (`cd_live_…` in
+          production) flagged `is_default`, at most one active per workspace,
+          whose secret the customer console keeps sealed so the workspace's
+          owner can view it more than once. It acts with admin authority, never
+          owner: it cannot make, unmake or remove an owner, delete the
+          workspace, or create API keys (`403`). Server to server, guarded by the provision secret like
           `tenants:provision`; a missing and a wrong secret get the same `401`.
           With no active default key this creates one and answers `201` with the
           full secret ONCE in `api_key`. With one, it answers `200` with its id

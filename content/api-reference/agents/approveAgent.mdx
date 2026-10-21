@@ -16,8 +16,10 @@ _openapi:
           it lives in browsers). The key's member needs `agent:manage` (owners
           and admins), and `member_id` must belong to the workspace. The
           approved scopes are a subset of what was requested. The grant is bound
-          to one `application_id` of the workspace. `domains:purchase` also
-          needs a `spend_cap_cents` and a saved card. Persistent access is the
+          to one `application_id` of the workspace. An agent whose code goes to
+          an unverified host needs `acknowledged_unverified: true`, and one
+          whose name imitates a brand is refused (`403`). `domains:purchase`
+          also needs a `spend_cap_cents` and a saved card. Persistent access is the
           default; `persist: false` ends it after `expires_days`. The
           authorization code is single use and is exchanged at `POST
           /oauth/agent/token`.

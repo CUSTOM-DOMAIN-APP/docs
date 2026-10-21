@@ -15,6 +15,59 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 21, 2026: secure sign-in no longer shows the sign-in form after the code.** While the provider
+  finishes its own redirects, the popup says **Signing you in**. When a provider's API page sends the browser
+  through its sign-in page (GoDaddy's developer site), our software waits up to 8 seconds for it to come back; if the
+  provider wants a new sign-in there, the lasting key is skipped and the session goes on to the DNS page without
+  asking your customer to sign in again. See [Secure sign-in](/docs/guides/secure-sign-in#after-the-sign-in).
+- **October 21, 2026: the fixes from a security audit of how agents reach CustomDomain™.** `disconnect-domain`
+  now compares `confirm` with the connection's domain for every credential, API keys and client credentials tokens
+  included, and over the REST API any credential that sends `confirm` is held to it (`409 confirmation_mismatch`).
+  `add-email` and `forward-domain` check each value before anything is signed: `mxHost`, `spfInclude` and
+  `dkimTarget` are public hostnames, `dkimSelector` is one DNS label, `dmarcRua` is one email address (`mailto:`
+  accepted), and `target` is an `http` or `https` URL or a host at a public hostname. A bad value is `-32602`, naming
+  the argument, at the MCP server, and `400 invalid_request` at `domainconnect:start`, whose `vars` now take only
+  the template's own variables and never `edgeIp` or `edgeIp6`. A revoked or expired API key, `/token` JWT or agent
+  token now gets HTTP `401` with a `WWW-Authenticate` challenge instead of a failure inside a `200`. `POST /token`
+  allows one request a second per address (bursts of 10), refused `CLIENT_ID:CLIENT_SECRET` pairs are limited to 10
+  per address and then one every 10 seconds, both answer `429` with `Retry-After`, and an exchanged token is reused
+  until a minute before it expires. Replaying an agent's authorization code revokes its grant, and the control plane
+  checks an agent token's issuer and audience. The consent screen names the workspace and lets you choose the
+  application the agent acts in, and the control plane refuses an unverified host without the "I recognize this
+  host" confirmation (`acknowledged_unverified`). Only owners can view or rotate the workspace's default key, which
+  acts as an admin and creates no keys. `api.customdomain.ai` and `mcp.customdomain.ai` send HSTS, `nosniff` and a
+  referrer policy. The MCP server page also documents the purchase authorization callback: a `POST` of
+  `{ "domain": "example.com" }` with HTTP Basic auth, where a `200` approves and must carry `buyer.email` (else
+  `buyer_required`), and a `401`, any other status, a network error or the 10 second timeout deny; the hosted
+  service configures none, so `create-domain-order` answers `rejected` there. The page also says the tool call
+  limit (5 a second, bursts of 20) is counted per credential for API keys and per workspace for agent tokens, and
+  lists every fallback error code. See [MCP server](/docs/mcp/overview), [Removing a domain](/docs/connect-flow/offboarding),
+  [Template variables](/docs/connect-flow/verify-and-go-live#template-variables),
+  [The OAuth flow](/docs/agents/oauth-flow), [Managing access](/docs/agents/managing-access),
+  [API keys](/docs/authentication/overview) and [Security model](/docs/security/overview#response-headers).
+- **October 21, 2026: the notifications offer comes back after Not now, and Zoho's EU data center gets its own SPF
+  include.** **Get notified in this browser** on **Overview** used to show once per browser. Now **Not now** (there,
+  or on the welcome's ping) brings it back at least 3 days later, then at least 7 days after the second, and not by
+  itself after the third; **Don't ask again** appears once you have said **Not now**, and turning push on or blocking
+  it at the browser's prompt ends it too. A browser that blocked notifications gets **How to allow them**, a link to
+  **Settings → Notifications**. Where CustomDomain™ fills in a domain's mail provider SPF include from its MX
+  records, a mailbox at Zoho's EU data center (`mx.zoho.eu`) now gets `include:spf.zoho.eu`, not the US
+  `include:zoho.com`. See [Notifications](/docs/guides/notifications) and [Email DNS](/docs/dns/email-dns).
+- **October 21, 2026: eleven more providers in the census, a confirmation before routing changes, and one
+  rule for Needs attention.** The census now lists every provider with a built-in adapter: Azure DNS, Bunny DNS,
+  Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr are
+  listed as API key providers, so `GET /v1/providers/census` counts 189 (73 with an automatic path, 116 by
+  hand). How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
+  target on your own infrastructure: it lists the records customers will add and how many domains follow or
+  stay, and saves on confirm. `existing_domains.kept` now also counts a waiting domain already on the new
+  routing, so the counts add up to every domain the change reaches. In the console, a domain needs attention
+  when its setup failed or stopped, its records were changed at the provider, or it is still being set up 48
+  hours after it was added, the same on **Overview**, **Domains** and an application's **Domains** tab.
+  Secure sign-in (offered to selected workspaces) is on at ten providers (Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship,
+  Hostinger, Network Solutions and Wix), and a session tries the lasting API key once: when that ends without
+  a key, the rest of the session uses the DNS page. See [DNS providers](/docs/dns/providers),
+  [Where domains point](/docs/connect-flow/routing#changing-where-domains-point),
+  [the console](/docs/getting-started/console) and [Secure sign-in](/docs/guides/secure-sign-in).
 - **October 20, 2026: secure sign-in in our own form and its lasting API keys, domain maintenance, and who opens the widget.**
   *Secure sign-in* (offered to selected workspaces) now opens on a sign-in form of ours, in each provider's own
   words: its own label for the username (GoDaddy's "Username or Customer #", IONOS's "Customer ID, email address or
@@ -101,11 +154,12 @@ never change meaning or disappear without a new major version. See the
   `ALIAS`-style record is found when it answers with one of them. The SDK's `dnsRecords` option
   carries DKIM records only, and now says so in the console when it is given others. See
   [Where domains point](/docs/connect-flow/routing).
-- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now returns a CAA record
-  that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`, and no longer
-  in `record_conflicts`. It replaces nothing, so it never counts toward `will_fallback_to_manual`. The SDK's
-  `checkDomain` returns it as `advisories`. If you read `record_conflicts` for that kind, read `advisories`
-  too. See [Root domains](/docs/dns/root-domains).
+- **A blocking CAA record is reported as an advisory.** `POST /v1/domains:check` now also returns a CAA
+  record that blocks Let's Encrypt in a new `advisories` array, with kind `caa-blocks-letsencrypt`. Because
+  `/v1` is additive only, it stays in `record_conflicts` as well, so the same warning is in both: show it once,
+  and read `advisories` when it is there. It replaces nothing, so it never counts toward
+  `will_fallback_to_manual`. The SDK's `checkDomain` (0.5.4) maps `record_conflicts` only and still carries it
+  in `recordConflicts`. See [Root domains](/docs/dns/root-domains).
 - **The welcome ends on your build screen.** The widget code or the AI prompt is the last step. **Try it now**
   opens **Run your first connection**, and **MCP and agents** opens the AI setup.
 - **Let your AI add CustomDomain™ for you.** Pick the agent you use and the welcome shows how to add CustomDomain™ to

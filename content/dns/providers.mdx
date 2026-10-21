@@ -19,17 +19,17 @@ DNS, then offer the easiest way in that works at that provider, in this order:
 5. **Add the records by hand**: the exact rows to copy, with provider-specific
    steps and a link to the provider's DNS page. This works at every provider.
 
-CustomDomain™ knows more than 170 DNS hosts, registrars and domain platforms,
+CustomDomain™ knows more than 180 DNS hosts, registrars and domain platforms,
 among them every one of the 100 largest registrars (by domains under
 management in ICANN's registry reports for May 2026), and names most of them
 from the domain's nameservers. Knowing a provider is not the same as writing
 its records: most registrars give no third party a way to change DNS, so for
 them the fifth way, with that provider's own steps, is the way in. The tables
-below are what the hosted service offers as of 2026-10-09. On that date the
-census lists 178: 62 have an automatic path (6 provider OAuth, 1 Domain
-Connect, 55 scoped API key) and the other 116 are connected by hand. The
-adapters are a separate count: `GET /v1/providers` lists 77, of which 63 belong
-to a catalogued provider.
+below are what the hosted service offers as of 2026-10-09. On 2026-10-21 the
+census lists 189: 73 have an automatic path (6 provider OAuth, 1 Domain
+Connect, 66 scoped API key) and the other 116 are connected by hand. The
+adapters are a separate count: `GET /v1/providers` lists 77, and every one of
+them belongs to a provider the census lists.
 
 The console and the widget read the same verdict from
 `POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
@@ -183,13 +183,16 @@ own servers, which carry that company's nameservers, the same as cPanel hosts; a
 Exoscale DNS zone uses DNSimple's nameservers, so a domain there is detected as
 DNSimple.
 
-`GET /v1/providers` also lists PowerDNS, which only reaches a PowerDNS server
-you run yourself, so it is not a provider the hosted service can write to. Of
-the 77 adapters, the hosted service writes records through 74: the other three
-are PowerDNS and the two sign-ins through a provider's MCP server (XServer
-Domain, Muumuu Domain) that are built but switched off. Ten of
-the 77 cover providers the census does not list (Azure DNS, Bunny DNS,
-Constellix, deSEC, DNS Made Easy, GleSYS, Linode, LuaDNS, Njalla and Vultr).
+The census also lists PowerDNS as an API key provider. PowerDNS is software
+people run on their own servers, and the hosted service has no way to be told
+where a customer's server is, so it is not a provider the hosted service can
+write to. Of the 77 adapters, the hosted service writes records through
+74: the other three are PowerDNS and the two sign-ins through a provider's MCP
+server (XServer Domain, Muumuu Domain) that are built but switched off. Since
+2026-10-21 the census also lists the eleven providers with an adapter that it
+used to leave out: Azure DNS, Bunny DNS, Constellix, deSEC, DNS Made Easy,
+GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr, each as an
+API key provider.
 
 ### Using a provider token through the API
 

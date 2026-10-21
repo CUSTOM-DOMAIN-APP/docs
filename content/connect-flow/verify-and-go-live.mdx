@@ -57,6 +57,33 @@ Redirect the customer to `apply_url`; their provider applies the signed template
 Both the synchronous redirect and the asynchronous variant are supported.
 `service_id` may be omitted when a single/default template is loaded.
 
+### Template variables
+
+`vars` takes the template's caller-supplied variables, and only those. `email-full`
+takes `mxHost`, `spfInclude`, `dkimSelector`, `dkimTarget` and `dmarcRua`
+(`email-mx`, `email-spf`, `email-dkim` and `email-dmarc` take their part of that
+set), `redirect` takes `redirectTarget`, the partner template `clickfunnels` takes
+its partner's values, and every other template takes none. The edge address
+(`edgeIp`, `edgeIp6`) always comes from the platform's own configuration, on every
+path, a kept one-click authorization's re-apply included: naming one in `vars`,
+or a variable the template does not take, answers `400 invalid_request`. Each value
+must have its variable's shape, else `400 invalid_request` whose `details` names
+it:
+
+| Variable | Accepted value |
+| --- | --- |
+| `mxHost`, `spfInclude`, `dkimTarget` | A fully qualified public hostname, such as `mx.example.com`: not an IP address, `localhost` or a name that resolves only inside a network (such as one ending in `.local`, `.internal`, `.lan` or `.corp`). |
+| `dkimSelector` | One DNS label: up to 63 letters, digits, hyphens or underscores, with no dots. |
+| `dmarcRua` | One email address at a public domain, such as `dmarc@example.com`. A `mailto:` prefix is accepted and dropped; `;`, `,` and other DMARC tags are refused. |
+| `redirectTarget` | An `http` or `https` URL, or a bare host, whose host is a public hostname, with no user name or password, spaces, quotes or angle brackets. |
+
+On the synchronous redirect, the records of a template that takes caller values
+(email, forwarding) are kept as awaiting the DNS provider until public DNS shows
+them. Until then nothing else writes them: not a kept sign-in's re-apply, not a
+zone CustomDomain™ hosts, and not the zone a nameserver move builds. The same
+variable rules apply to `POST /v1/templates/{serviceId}/apply-url`, which answers
+`404` for an unknown template.
+
 The synchronous `apply_url` carries a signed `redirect_uri` back to
 `GET /v1/connect/dc/return/{state}`. Every template we publish allows that
 return since version 2 of the templates was merged into the public Domain
