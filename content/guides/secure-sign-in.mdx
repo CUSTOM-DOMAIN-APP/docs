@@ -59,11 +59,14 @@ languages.
 
 ### Our own sign-in form
 
-The popup opens on a sign-in form of ours: the provider's logo, **Sign in**, the
-first field named the way the provider names it, the password (hidden, with a
-button to show it), **Forgot password?** and **Sign in**. Below them, after "or",
-are the provider's own Google, Apple or other buttons, where it has them. This
-first screen has no link to the provider's page.
+The popup opens on a sign-in form of ours, laid out the way the providers' own
+sign-in pages are: the provider's logo, a large **Sign in**, the first field named
+the way the provider names it, the password (hidden, with **Show**), and a full-width
+**Sign in**. Each field is an outlined box with its name inside it. Below them,
+under "or sign in with", the provider's own Google, Apple and other sign-ins are a
+row of square buttons with each one's logo, where the provider has them, and
+**Forgot password?** is at the foot. There is no line of text under the logo, and
+this first screen has no link to the provider's page.
 
 The first field's label is the provider's own, in all 13 languages: "Username or
 Customer #" at GoDaddy (with GoDaddy's own **Use email** switch), "Customer ID,
@@ -145,7 +148,8 @@ the whole session can run 20 minutes instead of 15.
 Where the provider's sign-in page offers "Sign in with Google" (or Apple,
 Facebook, Amazon and the like) and we have reviewed that provider's sign-ins
 (GoDaddy's Google, Apple, Facebook and Amazon buttons, for example), our form
-shows the same buttons. Pressing one presses the provider's own, and the
+shows the same sign-ins, each as a square button with its logo (a screen reader
+reads "Continue with Google"). Pressing one presses the provider's own, and the
 identity provider's page shows in the popup, including a window it opens. Your
 customer signs in there; **Back to GoDaddy** returns to the provider's page when
 the sign-in took the whole tab. Only your customer goes there: the
@@ -215,8 +219,8 @@ ask to sign in again there.
 
 **Read-only DNS records.** If the provider's DNS page shows the records but every
 edit and delete control is turned off (an account that can view the domain but
-not change it, say), our software stops within a few seconds and changes nothing.
-The window stays open with the records to add by hand.
+not change it, say), our software stops within a few seconds and changes nothing,
+and the session ends with that reason.
 
 Nobody watches the provider's page after the sign-in. If the provider asks for
 the password again, asks for a code, or shows a check in the middle of the work,
@@ -261,8 +265,24 @@ or logged.
 If the provider's page shows that the domain uses DNS somewhere else, the popup
 says "acme.com does not use Namecheap's DNS, so its records are edited
 elsewhere." and the session ends with `browser_not_provider_dns`. A provider that
-sends such a domain away from its DNS page instead of saying so leads to the
-manual steps, with the browser still open.
+sends such a domain away from its DNS page instead of saying so ends the session
+too (see [When the setup cannot finish](#when-the-setup-cannot-finish)).
+
+### When the setup cannot finish
+
+Since October 21, 2026 the hosted service never hands the window over for your
+customer to add records by hand. If our software cannot finish on the provider's
+DNS page (a page it cannot read, a change the page did not take, records the page
+shows read only), the session ends and the browser is closed. The popup's last line
+is "The setup did not finish at GoDaddy. Close this window and try again.", and the
+**Sign in to GoDaddy** button on the card starts a new session. The connection
+stays pending, so if the records appear anyway it is completed as usual. The
+session's `error.code` is `browser_script_failed` or `browser_verify_failed`
+(`browser_zone_changed` when the records kept changing during review).
+
+A self-hosted deployment can turn the old behaviour back on with
+`BROWSER_MANUAL_ASSIST=true`: the session then moves to `manual_assist`, the window
+stays open with the records beside it, and `:finish-manual` ends it.
 
 ## The lasting API key [#lasting-api-keys]
 
@@ -331,8 +351,10 @@ If your customer does not accept them, the session goes on to the DNS page.
 
 ### Checked, then kept for one application
 
-- **What is typed.** Our software types only the key's name (`CustomDomain` and
-  your application's name, so your customer can find it at the provider) and, at
+- **What is typed.** Our software types only the key's name (`CustomDomain`,
+  your application's name and the day it was made, "CustomDomain Acme
+  2026-10-21", so your customer can find it at the provider and tell a new key from
+  an old one) and, at
   Namecheap, CustomDomain™'s address. It ticks only the scopes above, picks the
   longest expiry the page offers, and presses only buttons we have reviewed.
 - **Read once, never shown.** The key is read once from the page. The software

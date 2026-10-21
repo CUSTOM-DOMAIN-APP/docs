@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 21, 2026: secure sign-in finishes or says so, never "add the records by hand".** When our software
+  cannot finish on the provider's DNS page, the session now ends with "The setup did not finish at GoDaddy. Close
+  this window and try again.", and the card's button starts again; the window is no longer handed over with the
+  records to add by hand (self-hosted deployments can keep that with `BROWSER_MANUAL_ASSIST=true`). The popup's
+  sign-in form is laid out like the providers' own pages (a large **Sign in**, outlined fields, a full-width button)
+  and shows every social sign-in the provider offers as a row of logo buttons, Facebook and Amazon included. Lasting
+  API keys are named with the day they were made ("CustomDomain Acme 2026-10-21"). See
+  [Secure sign-in](/docs/guides/secure-sign-in#when-the-setup-cannot-finish).
 - **October 21, 2026: GoDaddy's "Verify it's you" code is handed to your customer, and a lasting key follows.**
   GoDaddy asks for a texted code when **Generate Token** is pressed; the window now shows that page so your
   customer can enter it, and our software then makes the token and connects the domain through GoDaddy's API,
