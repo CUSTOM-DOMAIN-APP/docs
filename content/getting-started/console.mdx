@@ -356,7 +356,8 @@ platform's own subdomain (`www.<name>.vercel.app`). Both used to sit on
 ## 4. Choose how to add the records
 
 The options shown are the truth for *your* provider, straight from the server.
-They appear in this order; the recommended one is marked.
+The recommended one is open; the others are closed one-line rows under
+**Other ways to connect**, in this order:
 
 1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
    Netlify, Vercel (by installing the CustomDomain™ integration) and
@@ -373,7 +374,12 @@ They appear in this order; the recommended one is marked.
    there, the provider sends you back here. GoDaddy, IONOS, Aruba,
    Squarespace, Cloudflare and Vercel are *not* offered this, on purpose: they
    have not onboarded our templates.
-3. **API key**: paste a scoped provider credential, one labeled field per part,
+3. **Sign in to the provider** (secure sign-in): at Namecheap, GoDaddy, IONOS,
+   Name.com, Squarespace, Hover, Spaceship and Hostinger, where neither of the
+   two above runs. **Open secure sign in** opens the provider's own sign-in in a
+   secure window; you approve the exact changes and we add the records. See
+   [Secure sign-in](/docs/guides/secure-sign-in).
+4. **API key**: paste a scoped provider credential, one labeled field per part,
    with a link to where it is created, the steps and the one requirement that
    matters; anything else, and the provider's notes, sit under a closed
    **Details**. We keep it encrypted when
@@ -381,7 +387,7 @@ They appear in this order; the recommended one is marked.
    GoDaddy account that holds a domain can create a Personal Access Token;
    Namecheap's API needs an eligible account and our server's IP on its
    allowlist. Route 53 offers an access role first, with no key to paste.
-4. **Add the records by hand**: the exact rows to copy, with a link to your
+5. **Add the records by hand**: the exact rows to copy, with a link to your
    provider's DNS panel. Then **Check now**.
 
 Not the one with DNS access? Under the records, **Send these records to a

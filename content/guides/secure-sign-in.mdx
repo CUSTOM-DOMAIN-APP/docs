@@ -37,7 +37,12 @@ A person is always there. Only two callers may start a secure sign-in:
    the customer's `end_user_ref`. A token bound to no domain, or to another one,
    cannot start it, so its domain check answers `available: false` with
    `caller_cannot_start` and the widget shows the manual setup.
-2. **The console**, from a domain's Connect page.
+2. **The console**, from a domain's Connect page. It is offered there as the
+   widget offers it, only when neither a sign-in of the provider's own nor
+   one-click setup runs. When the server recommends it, **Sign in to GoDaddy**
+   (with the provider's name) is the one open card, with **Open secure sign in**;
+   an API key and the records by hand are closed rows under **Other ways to
+   connect**.
 
 An AI agent, the MCP server and a plain API call are refused with
 `403 browser_customer_present_only`, and their domain check never offers it.
@@ -176,14 +181,17 @@ Facebook, Amazon and the like) and we have reviewed that provider's sign-ins
 (GoDaddy's Google, Apple, Facebook and Amazon buttons, for example), our form
 shows the same sign-ins, each as a square button with its logo (a screen reader
 reads "Continue with Google"). Pressing one presses the provider's own, and the
-identity provider's page shows in the popup, including a window it opens. Your
-customer signs in there; **Back to GoDaddy** returns to the provider's page when
+identity provider's page shows in the popup, including a window it opens
+(Squarespace and Wix open one), which is sized to your customer's screen as
+the provider's page is. Your customer signs in there; **Back to GoDaddy** returns to the provider's page when
 the sign-in took the whole tab. Only your customer goes there: the
 software that makes the changes never visits an identity provider's page.
 
 If no Google window appears (some pages use the browser's own account chooser,
 which a fresh browser has no account for), the customer signs in with the
-provider's password instead.
+provider's password instead. Google, Apple and Facebook can also refuse a sign-in
+from a browser they have not seen before; the provider's password works then
+too.
 
 ### Human checks
 
