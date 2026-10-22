@@ -74,12 +74,19 @@ continuous account.
 When a [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) makes a
 lasting API key at a domain's DNS provider, CustomDomain™ keeps it as a provider
 account of the workspace, checked and encrypted like any other, with continuous
-access and the domain's zone as its scope. Such an account is different in four
+access and the domain's zone as its scope. Such an account is different in five
 ways:
 
 - **It belongs to one application.** `application_id` names the application
   whose domain it was made for. Connecting another application's domain with it
   is refused with `403`.
+- **It can serve the application's other domains.** A key made at a sign in you
+  or a teammate started in the console connects another domain of the same
+  application with no second sign in and no second key: CustomDomain™ first
+  reads that domain's records with the key, and only when the provider answers
+  is the domain added to the key's scope. A domain in another account at the
+  provider is refused with `400`, and needs its own sign-in. A key your
+  customer's sign-in made in the widget serves only the domain they agreed to.
 - **It says where it came from.** `origin` is `browser_agent`, and `agent_key`
   holds its record, never the key: the `name` it was made with (`CustomDomain`
   and your application's name), its `scopes` and `rights` (what it can do beyond

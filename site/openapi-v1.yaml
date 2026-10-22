@@ -6421,7 +6421,12 @@ paths:
         domain in a zone the key does not reach fails alone
         (`zone_not_reached` on the connection); the account is flagged
         `needs_reconnect` only when the provider refuses the key itself, which
-        is checked with a request that does not depend on the zone. Takes an
+        is checked with a request that does not depend on the zone. A key
+        made at a secure sign in serves only its application, and a domain
+        outside its scope answers `400`, except for a key a member of the
+        workspace made at a sign in started in the console: when a read of
+        the domain's zone with the key works, the zone is added to the key's
+        scope and the domain is connected, with no new sign in. Takes an
         admin, an owner or the member who connected the account.
       security:
         - apiKey: []
