@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 22, 2026: one secure sign-in per provider account, and IONOS's DNS page reads.** A lasting API key
+  made at a secure sign-in you started in the console now connects your next domain of the same application at
+  that provider: the connect page offers **Use the saved IONOS key** above the sign-in, CustomDomain™ checks with
+  the provider that the key reaches the domain, and writes the records with no second sign-in and no second key.
+  A key your customer's sign-in made in the widget still serves only their domain. At IONOS, the records list
+  is now read with each record's type, and a session no longer asks for a key name IONOS already holds. See
+  [Secure sign-in](/docs/guides/secure-sign-in) and
+  [Provider accounts](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in).
 - **October 22, 2026: `customdomain-js` and `@customdomain/react` 0.5.5 on npm.** The packages' types name the
   widget's `"reconnect"` mode (renew a domain's lasting API key with one sign-in, no DNS change), `onSuccess`
   receives `reconnected`, and `checkDomain` maps `advisories` (a CAA record that blocks Let's Encrypt, for
