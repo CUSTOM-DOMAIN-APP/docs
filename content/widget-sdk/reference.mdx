@@ -38,7 +38,9 @@ Since 0.5.4 the packages also map `detectionError` (`nxdomain` or `resolver`;
 `resolver` is transient, so check again), `targetMode` (`edge` or `custom`),
 `integrationWarnings` (only when you passed `dnsRecords`: records the provider
 cannot write as given, each `{ code, message }`), `managedDns` (whether the
-managed DNS rail can take the domain, with a `reason` when it cannot) and
+deployment's managed DNS can take the domain, with a `reason` when it cannot;
+whether your users are offered it is your application's
+[Domain maintenance](/docs/guides/nameserver-migration) setting) and
 `sandbox` (the token belongs to a test mode application). For a root domain,
 `apexStrategy` (`alias`, `a_records` or `unsupported`), `apexRecordType` and
 `apexTargets` say how the root would be pointed; see
@@ -198,24 +200,34 @@ the last still hands over the link. *Copy link instead* mints a link and copies
 it. If you configured `customProperties.forwardLink.url`, the row opens your
 page with the link instead, as before.
 
-**Let CustomDomain™ host your DNS.** Offered only when `POST /v1/domains:check`
-returns `managed_dns.available: true` and the provider has no sign-in or
-one-click rail. The user reads what changes (the nameservers, once, at their
-registrar) and what doesn't (their registration; their website and email, since
-existing records are copied first), reviews the copied records (and can paste a
-zone file exported from the current provider), then gets the nameservers to set
-with the registrar's name and link and short steps, including turning DNSSEC
-off first. The widget watches `GET /v1/connections/{id}/managed-dns` until the
-delegation is `active`, then continues to the normal success path
-(`IN_PROGRESS`, then `FINISHED_SUCCESSFULLY` with `setupType: "automatic"`).
-Endpoints: `POST /v1/connections/{id}/managed-dns` (start, idempotent),
-`GET /v1/connections/{id}/managed-dns`, and
-`POST /v1/connections/{id}/managed-dns/records` with `{ zone_file }` or
-`{ records }`. These screens report `MANUAL_CONFIGURATION`.
+**Let your platform keep the domain working.** The row reads "Let Acme Sites
+keep your domain working", with your `applicationName`. Offered only when your application
+turns on [Domain maintenance](/docs/guides/nameserver-migration) (its
+`nameserver_migration` setting), the one switch for every DNS hosting offer the
+widget makes. The user agrees once, and the widget moves their nameservers to
+CustomDomain™ or to your own DNS host. With the setting off (the default), the
+widget offers no DNS hosting, even where `managed_dns.available` is `true`, and
+when the offer comes back `available: false` for a domain it shows no hosting
+row at all.
 
-To turn one off, set `customProperties.aiHandoff.hide`,
-`customProperties.forwardLink.hide` (the email row) or
-`customProperties.managedDns.hide`.
+**Finishing a zone CustomDomain™ already hosts.** A connection whose end user
+started [managed DNS](/docs/dns/managed-dns) in an earlier session (before the
+setting decided every offer) gets a row titled *Let CustomDomain™ host your DNS*
+to pick up where they left off. The widget no longer offers it to anyone new.
+The row leads to the copied records (where a zone file exported from the
+current provider can be pasted), then the nameservers to set with the
+registrar's name and link and short steps, including turning DNSSEC off first.
+The widget watches `GET /v1/connections/{id}/managed-dns` until the delegation
+is `active`, then continues to the normal success path (`IN_PROGRESS`, then
+`FINISHED_SUCCESSFULLY` with `setupType: "automatic"`). These screens report
+`MANUAL_CONFIGURATION`.
+
+To turn one off, set `customProperties.aiHandoff.hide` or
+`customProperties.forwardLink.hide` (the email row). DNS hosting is turned on
+or off by the application's setting, not here.
+`customProperties.managedDns.hide` is **deprecated**: it is still accepted and
+still hides the row for finishing a zone already started, which is all it can
+hide now.
 
 ## White-label configuration
 
@@ -236,7 +248,7 @@ and two layout behaviors:
 | `delegateClose` | The widget never tears itself down; it posts `customdomain:request-close` and you call `close()`. |
 | `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
 | `darkMode` / `darkTokens` | `"disabled"` (default), `"enabled"` or `"auto"` (follows the OS); `darkTokens` fine-tunes the dark palette. |
-| `customProperties` | Granular toggles: `hideCloseButton`, `hideProgressIndicator`, `providerLogin.changeProvider.hide`, `recordsPreview.hide`, `forwardLink` (`hide`, `url`, `label`), `gotoManualLink.hide`, `useCustomExitConfirmation`, `aiHandoff.hide`, `managedDns.hide`. |
+| `customProperties` | Granular toggles: `hideCloseButton`, `hideProgressIndicator`, `providerLogin.changeProvider.hide`, `recordsPreview.hide`, `forwardLink` (`hide`, `url`, `label`), `gotoManualLink.hide`, `useCustomExitConfirmation`, `aiHandoff.hide`, `managedDns.hide` (deprecated: see [Other ways to finish](#other-ways-to-finish)). |
 
 Tokens are emitted as CSS custom properties (`--je-<token>`) on the widget's
 shadow host, so they cannot affect your page. Every value must be a plain CSS

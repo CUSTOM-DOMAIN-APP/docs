@@ -33,6 +33,15 @@ never change meaning or disappear without a new major version. See the
   **Docs** opens in a new tab, and a **?** beside words such as **Managed**, a root domain or a CAA record
   explains them in place. Nothing changed in the API: its names and URLs stay as they were. See the new
   [Glossary](/docs/concepts/glossary).
+- **October 22, 2026: one setting decides whether your users are offered DNS hosting.** The widget used to offer
+  "Let CustomDomain™ host your DNS" on the records screen wherever managed DNS was available, even when your
+  application had [Domain maintenance](/docs/guides/nameserver-migration) off. Now your application's setting is
+  the only switch: off (the default), the widget offers no DNS hosting, and an end user's widget token can't start
+  [managed DNS](/docs/dns/managed-dns) (`403`); on, the widget offers the move you chose. A user who already
+  started a hosted zone can still finish it. Your API key and app-scoped tokens work as before. The widget
+  designer now shows the setting (**DNS hosting: Off**, **Offered** or **Offered first**) with a link to change
+  it, and `customProperties.managedDns.hide` is deprecated. See the
+  [Widget and SDK reference](/docs/widget-sdk/reference#other-ways-to-finish).
 - **October 22, 2026: one secure sign-in per provider account, and IONOS's DNS page reads.** A lasting API key
   made at a secure sign-in you started in the console now connects your next domain of the same application at
   that provider: the connect page offers **Use the saved IONOS key** above the sign-in, CustomDomain™ checks with

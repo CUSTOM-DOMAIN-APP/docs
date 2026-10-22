@@ -11,14 +11,18 @@ nameservers to CustomDomain™'s. From then on CustomDomain™ hosts the whole
 zone, and every record, now and later, is written automatically.
 
 Managed DNS is rolling out gradually, so
-`POST /v1/domains:check` tells you whether it is available for a domain, and
-the widget offers it only when it is.
+`POST /v1/domains:check` tells you whether it is available for a domain.
 
-To keep an application's end users' domains working for them (the console's
-**Domain maintenance**), with their consent, by moving their nameservers either
-to CustomDomain™ or to a DNS host of your own (Cloudflare, Amazon Route 53,
-Google Cloud DNS, Azure DNS, or your own nameservers), see
+**Your end users are offered it only when your application turns it on.** One
+setting decides every DNS hosting offer the widget makes: the application's
+**Domain maintenance** (`nameserver_migration`). With it on, the widget asks
+each end user once, with their consent, and moves their nameservers either to
+CustomDomain™ or to a DNS host of your own (Cloudflare, Amazon Route 53, Google
+Cloud DNS, Azure DNS, or your own nameservers); see
 [Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
+With it off (the default), the widget offers no DNS hosting, even where
+`managed_dns.available` is `true`. From your own server, with an API key or an
+app-scoped token, you can start managed DNS for any connection either way.
 
 ## How it works
 
@@ -112,6 +116,11 @@ deployment), `platform_subdomain` (`someone.github.io`: the name belongs to a
 hosting platform), `unsupported_tld` (no registrable domain whose nameservers a
 registrar can change) or `reserved`.
 
+This is the deployment's and the domain's verdict only. It doesn't say whether
+your application offers DNS hosting to its end users: that is the
+`nameserver_migration` block of the same response, present only when the
+application's setting is on.
+
 ### Start
 
 ```bash
@@ -197,6 +206,13 @@ The routes are authorized like the other connection routes: an API key for any
 connection in the tenant, or a widget token of the connection's own
 application and domain. Changes need a role that can write connections.
 
+An end user's **connect-scoped** widget token can start managed DNS only when
+the application offers DNS hosting (its `nameserver_migration` mode is `offer`
+or `prefer`). Otherwise the start answers `403` with "this application does not
+offer nameserver migration", and no zone is created. A connection that already
+has a zone can still call the start, to resume it, and read or edit its records
+as below. An API key or an app-scoped token is not limited by the setting.
+
 Once a zone is `active` it answers for the whole domain, email included, so an
 end user's **connect-scoped** widget token may only read it. Records can still
 be changed with an API key or an app-scoped token.
@@ -217,6 +233,7 @@ be changed with an API key or an app-scoped token.
 | --- | --- | --- |
 | `400` | `invalid_request` | Both or neither of `zone_file` and `records` were sent, or more than 500 `records` in one request |
 | `409` | `conflict` | The zone belongs to another account, a hand-added record would override a `customdomain` record, a `customdomain` record was deleted, or another change to the zone is in progress |
+| `403` | `forbidden` | An end user's widget token started managed DNS for an application that doesn't offer DNS hosting |
 | `413` | `payload_too_large` | The zone file is over 256 KB |
 | `422` | `managed_dns_unavailable` | Managed DNS isn't available for this domain (see the availability `reason`) |
 | `422` | `managed_dns_limit` | The account already holds its maximum number of zones |
