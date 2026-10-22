@@ -142,6 +142,22 @@ said how many digits the code has and the pasted code has that many, it is sent 
 once. Nothing read from the clipboard is kept, logged or reported. Where the
 provider also emails a sign-in link, **Paste the link instead** is there too.
 
+After **Continue** the screen says "Checking the code" until the provider answers,
+and then it says what the answer was:
+
+- **The provider refused the code.** The field comes back at once, outlined in
+  red, with the provider's own message under it ("The security code is
+  invalid"). If the provider still asks for the code 8 seconds later and says
+  nothing, the line is ours: "IONOS did not accept that code. Enter the newest
+  one." Each new session makes the provider send a new code, so a code from an
+  earlier email is the usual reason.
+- **The provider took the code.** The next screen says **Code accepted**: over the
+  password at IONOS, which asks for its code before the password, or under
+  "Signing you in" elsewhere.
+
+While the provider's page loads after a code, the screen stays at "Checking the
+code"; it never says "Signing you in" for a code the provider may still refuse.
+
 Codes take time to arrive, so a code or a link keeps the session open: the
 sign-in window runs at least 10 minutes from the moment the prompt appears, and
 the whole session can run 20 minutes instead of 15.
