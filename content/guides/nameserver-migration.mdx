@@ -121,8 +121,9 @@ gradually, so the domain check says per domain whether it can be offered
 
 Connect the account first as a
 [provider account](/docs/connect-flow/provider-accounts) of the workspace with
-continuous access, using a key that may create zones (a *zone* is one domain's
-set of records at a DNS host):
+continuous access and scope `all` (it creates a zone for every customer's domain,
+which no list names in advance), using a key that may create zones (a *zone* is
+one domain's set of records at a DNS host):
 
 | DNS host | What the key needs | Notes |
 | --- | --- | --- |
@@ -432,9 +433,12 @@ curl -X POST https://api.customdomain.ai/v1/connections/<ID>/nameservers:migrate
   -d '{ "path": "api", "provider_account_id": "pacct_…" }'
 ```
 
-To use a key once instead, send `provider` (the registrar's id, such as
-`porkbun`) and `credential: {"token": "…"}` in the registrar's key format; it is
-used for that call and never stored.
+A provider account given for some domains only (scope `selected`) moves only
+those domains' nameservers: for any other domain the call answers `403`, and a
+move already under way stops using it once the domain is taken off its list. To
+use a key once instead, send `provider` (the registrar's id, such as `porkbun`)
+and `credential: {"token": "…"}` in the registrar's key format; it is used for
+that call and never stored.
 
 `201` creates the move and `200` resumes the domain's open one with what the call
 brings (a key, `zone_ready`, `copy_reviewed` once a person checked the copy). The

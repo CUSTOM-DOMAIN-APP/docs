@@ -16,9 +16,10 @@ at the end.
 
 <Callout title="Offered to selected workspaces for now">
   Secure sign-in runs only where it is switched on for your workspace and the
-  domain's provider. Since October 21, 2026 the hosted service has it on at ten
-  providers: Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship,
-  Hostinger, Network Solutions and Wix. `POST /v1/domains:check` says so per domain in
+  domain's provider. The hosted service has it on at eight providers: Namecheap,
+  GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship and Hostinger. Network
+  Solutions and Wix are not offered yet: the address of their DNS page has not been
+  confirmed. `POST /v1/domains:check` says so per domain in
   `rails.cloud_browser` (present only where the deployment has it on). When
   `available` is `false`, `reason` says why, for example
   `not_enabled_for_workspace`, `provider_not_listed`, `oauth_available` (the
@@ -147,10 +148,16 @@ and then it says what the answer was:
 
 - **The provider refused the code.** The field comes back at once, outlined in
   red, with the provider's own message under it ("The security code is
-  invalid"). If the provider still asks for the code 8 seconds later and says
+  invalid"). If the provider takes long, the screen says "Still checking with
+  IONOS" from 8 seconds; if it still asks for the code 20 seconds later and says
   nothing, the line is ours: "IONOS did not accept that code. Enter the newest
   one." Each new session makes the provider send a new code, so a code from an
-  earlier email is the usual reason.
+  earlier email is the usual reason. **Try on IONOS's page** under it shows the
+  provider's own page instead, where the code can be typed (on a phone, in a code
+  field of ours over the page).
+- **The code found no field on the provider's page.** Nothing is typed (a code
+  typed where the page has no code field could land in its search box), the screen
+  says it did not go through, and **Try on IONOS's page** is offered.
 - **The provider took the code.** The next screen says **Code accepted**: over the
   password at IONOS, which asks for its code before the password, or under
   "Signing you in" elsewhere.
@@ -182,8 +189,9 @@ provider's password instead.
 
 Some providers show a "Verify you are human" check to a browser they have not
 seen before. The popup shows the provider's page with **Tick the box**, and your
-customer ticks it. We never solve, click, work around or hide a check. If it has
-not cleared after 45 seconds, **Try again** reloads the view and **Set it up
+customer ticks it. Our software never clicks, works around or hides a check; the
+browser hosting company may answer a standard check by itself, and one it does not
+answer is your customer's to tick. If it has not cleared after 45 seconds, **Try again** reloads the view and **Set it up
 another way** leads to the manual steps.
 
 ### After the sign-in
@@ -503,8 +511,11 @@ held:
 
 The answer is the one `browser:start` gives (`session_id`, `open_url` with a new
 single use code, `vendor`, `expires_at`), and the previous popup stops working at
-that moment, so one popup holds the session at a time. A session that is not
-waiting on the customer answers `409 browser_not_waiting`, and one that ran out
+that moment, so one popup holds the session at a time. Only the caller that started
+the session can resume it: the same end user's widget token, or the console. Anyone
+else, your own API key included, gets `409 browser_not_waiting`, since a popup on
+the session is a popup on your customer's signed-in account. A session that is not
+waiting on the customer answers `409 browser_not_waiting` too, and one that ran out
 `410 browser_expired`; start a new sign-in then. A session can be resumed a few
 times, one every few seconds (`429 browser_rate_limited`).
 
@@ -544,7 +555,9 @@ At most 6 a minute per session.
   shown in full and made only after your customer approves them.
 - **No terms accepted for anyone.** A provider's API terms are your customer's
   to accept.
-- **No check is solved for you.** A human check is always the customer's to tick.
+- **No check is clicked for you.** Our software never touches a human check. The
+  browser hosting company may answer a standard one by itself; any other is the
+  customer's to tick.
 
 What the browser hosting company sees is the honest limit. The browser runs at
 that company, which the popup names ("Browser hosted by" and its name), and while
@@ -568,9 +581,14 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
   yourself, are refused before the customer signs in
   (`422 browser_unsupported_records`, with the types named).
 - A lasting API key is made only at the providers [listed above](#which-providers).
-- At Spaceship and Network Solutions, no session has yet been seen to get past the
-  human check the provider's pages can show. A session that cannot get past it
-  ends with the other ways to connect.
+- At Spaceship, no session has yet been seen to get past the human check the
+  provider's pages can show. A session that cannot get past it ends with the other
+  ways to connect.
+- At Squarespace, the records Squarespace adds itself (Squarespace Defaults: the
+  root of the domain and `www`) can only be removed together, so a change there is
+  refused and your customer gets the manual steps; records on a subdomain are
+  changed as usual. Squarespace asks for the account password or a code again
+  before each change, which your customer answers in the popup.
 - A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
   Signing in with another account starts the sign-in window again but does not
   extend that limit, and three accounts at most can be tried.

@@ -3109,8 +3109,10 @@ paths:
         in, signing in (a code prompt included), or while the agent has handed
         the page back. It takes the gate of `browser:start` (an end user's
         widget token bound to the domain and the end user, or the console, and
-        an `Origin` on the return origin allowlist). A session takes a few, one
-        every few seconds.
+        an `Origin` on the return origin allowlist), and only the caller that
+        started the session may resume it: the same end user's widget token, or
+        the console. Anyone else, an API key included, gets `browser_not_waiting`.
+        A session takes a few, one every few seconds.
       security:
         - widgetJWT: []
         - apiKey: []
