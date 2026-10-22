@@ -132,7 +132,10 @@ A short tour of the console follows. Replay it any time from the setup
 checklist on **Overview**. The checklist follows what you picked: for your own
 domain, connecting it (and setting up email, or pointing it at your site, if you
 chose those); for a few clients, connecting the first domain; always ending with
-inviting your team. If you chose **Let an AI agent connect domains**, an optional
+inviting your team. For clients or your own domain, a **Your site is live** row also
+appears while a live domain has nothing to serve: it points at our edge, but no app
+address is set, so its visitors see an error page. The row stays open until every live
+domain serves something. If you chose **Let an AI agent connect domains**, an optional
 **Connect your agent** row is done when an agent has signed in and been approved, and
 says so by name; an agent that uses a key leaves nothing to see, so the row says that
 too. If you picked **My product's users**, the checklist is the go-live list below, and
@@ -184,10 +187,10 @@ on.
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
 | **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
 | **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
-| **API & SDK** | Server-side API keys (the workspace's default key at the top, **Create key** for more), with a Webhooks tab and a Guides tab for the first request and the SDK. |
+| **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Domain routing** | Where customer domains send traffic. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
-| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Team**, **Billing**, **Usage** and **Applications** open under it. |
+| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 
 ### API keys and widget tokens
 
@@ -197,7 +200,8 @@ time, and everyone else sees its prefix (see [API keys](/docs/authentication/ove
 **Create key**, give it a name and pick an **Environment**: Production
 (`cd_live_…`), Development or Staging (both `cd_test_…`). The full key is shown
 once ("Copy your new key now"); only a hash is kept. Admins and owners can create
-keys. Creating one needs a card on file, which starts the 14 day free trial
+and revoke keys; for anyone else **Create key** and **Revoke** are off, and the page
+says why. Creating one needs a card on file, which starts the 14 day free trial
 (nothing is charged until it ends). Your first ten domains are free without a
 card, but another key is not, so a workspace without a card that presses **Create
 key** sees "Start your free trial to create API keys" with an **Add a card**
@@ -211,10 +215,13 @@ application's secret: the console's copy would go stale and the preview, **Try i
 live** and that endpoint would stop working. See
 [Widget tokens](/docs/authentication/widget-tokens).
 
-Optional surfaces (the activity log, DNS monitoring, domain sales, the MCP
+Optional surfaces (the activity log, DNS monitoring, buying domains, the MCP
 server and agent access) are off until you need them: switch them on under
 **Settings → Features**. A workspace that already used one keeps it on, and
-agent access switches on by itself when you approve an agent.
+agent access switches on by itself when you approve an agent. Each switch shows or
+hides a page and nothing else: **DNS monitoring** shows the **Monitor** page, and
+every live domain is checked, with alerts on drift, whether it is on or off. **Buy
+domains** shows **Buy a domain**, where you search for a name and buy it yourself.
 
 ### The console follows who the domains are for
 
@@ -227,23 +234,29 @@ what **Overview** and **Domains** lead with.
 | --- | --- | --- | --- |
 | **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Domain routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Domain routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Domain routing and Connected accounts. Widget and API & SDK are under **Integrate** |
 | **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
-| **Overview** | The go-live list, then your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts |
+| **Overview** | The go-live list, then the domains that need attention (when any do), your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts and the domains that need attention (when any do) |
 | **Domains** | Opens on **From your product (widget)**, or on **All** until a customer has connected one | Opens on **All** | Opens on **All** |
 | **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Add your domains", with a button to paste a list | "Connect your domain" |
 
-The counts on **Overview** include every domain, so when they link to **Domains** in a
-workspace for your customers they open the **All** tab, and what you click is what you
+The counts on **Overview** include every domain of every application, read from the
+same list **Domains** shows, and each count is the number its filter lists there. In a
+workspace for your customers they open the **All** tab, so what you click is what you
 see. The first-run tour follows the same layout. A workspace that has not said who its
 domains are for gets the console as it has always been.
 
 A domain **needs attention** when its setup failed or stopped making progress, when
 its records were changed at the provider, or when it is still being set up 48 hours
 after it was added. Setup has no deadline, so a domain still waiting keeps being
-checked; it is listed so that somebody looks. The console uses this one rule everywhere: the
-**Needs attention** count and card on **Overview** (each row says why, such as
-"Waiting for DNS, 6 days"), the **Needs attention** filter and the **Needs attention
-first** order on **Domains**, the counts per client, and an application's **Domains**
-tab.
+checked; it is listed so that somebody looks. A live domain needs attention too when
+its certificate is failing or about to expire, when a change to its records was left
+for you to fix, when its provider stopped accepting our access, or when it is **live,
+but has nothing to serve**: it points at our edge, but no app address is set, so its
+visitors see an error page. The console uses this one rule for the **Needs attention**
+count and card on **Overview** (the card is there in every mode when a domain needs
+attention, and each row says why, such as "Waiting for DNS, 6 days" or "HTTPS
+certificate: The certificate expired."), the **Needs attention** filter and the
+**Needs attention first** order on **Domains**, and the counts per client. A live domain
+that needs attention is under both **Live** and **Needs attention**.
 
 Change it any time under **Settings → What this workspace is for**, where the three
 answers are **My product's users**, **My clients** and **A domain of my own**. Owners and admins
@@ -262,8 +275,15 @@ The **Application** switcher at the top of the sidebar is always there, even
 with a single application. It lists your applications and offers **New
 application** and **Manage applications**. Use more than one to keep surfaces
 apart: Production and Staging, or one per product. Each application has its
-own widget credentials, API keys and domains, and the console shows the
-active one; switching is remembered in your browser.
+own widget credentials, API keys and domains; switching is remembered in your
+browser. Pages that list or count show every application: **Overview**,
+**Domains** (narrow it with its application filter), **Analytics** (all
+applications to start with) and the keys on **API & SDK**, each key named with
+its application. Pages that set one up act on the active application: **Widget**,
+**Domain routing**, **Connect a domain** (a new domain lands in it) and adding a
+webhook endpoint. An API key works across the whole workspace (a test mode
+application's keys work only there), and a domain it connects lands in the key's
+application unless the call names another.
 
 Viewers see applications and their domains but cannot create one or use its
 widget, and the console says so. Buying a domain, bulk connect and the widget's
