@@ -37,7 +37,8 @@ never change meaning or disappear without a new major version. See the
   "Let CustomDomain™ host your DNS" on the records screen wherever managed DNS was available, even when your
   application had [Domain maintenance](/docs/guides/nameserver-migration) off. Now your application's setting is
   the only switch: off (the default), the widget offers no DNS hosting, and an end user's widget token can't start
-  [managed DNS](/docs/dns/managed-dns) (`403`); on, the widget offers the move you chose. A user who already
+  [managed DNS](/docs/dns/managed-dns) (`403`); on, the widget offers the move you chose, and when that move goes
+  to your own DNS host or nameservers a widget token can't start CustomDomain™'s managed DNS instead (`403`). A user who already
   started a hosted zone can still finish it. Your API key and app-scoped tokens work as before. The widget
   designer now shows the setting (**DNS hosting: Off**, **Offered** or **Offered first**) with a link to change
   it, and `customProperties.managedDns.hide` is deprecated. See the

@@ -207,9 +207,13 @@ connection in the tenant, or a widget token of the connection's own
 application and domain. Changes need a role that can write connections.
 
 An end user's **connect-scoped** widget token can start managed DNS only when
-the application offers DNS hosting (its `nameserver_migration` mode is `offer`
-or `prefer`). Otherwise the start answers `403` with "this application does not
-offer nameserver migration", and no zone is created. A connection that already
+the application offers DNS hosting on CustomDomain™ (its `nameserver_migration`
+mode is `offer` or `prefer` and its target is `managed`). With the setting off,
+the start answers `403` with "this application does not offer nameserver
+migration". With the target `dns_host` or `custom`, your users' DNS goes to
+your own DNS host or nameservers, so the start answers `403` with "this
+application hosts its users' DNS elsewhere; the nameserver move is its offer".
+Either way no zone is created. A connection that already
 has a zone can still call the start, to resume it, and read or edit its records
 as below. An API key or an app-scoped token is not limited by the setting.
 
@@ -233,7 +237,7 @@ be changed with an API key or an app-scoped token.
 | --- | --- | --- |
 | `400` | `invalid_request` | Both or neither of `zone_file` and `records` were sent, or more than 500 `records` in one request |
 | `409` | `conflict` | The zone belongs to another account, a hand-added record would override a `customdomain` record, a `customdomain` record was deleted, or another change to the zone is in progress |
-| `403` | `forbidden` | An end user's widget token started managed DNS for an application that doesn't offer DNS hosting |
+| `403` | `forbidden` | An end user's widget token started managed DNS for an application that doesn't offer DNS hosting, or that hosts its users' DNS on its own DNS host or nameservers |
 | `413` | `payload_too_large` | The zone file is over 256 KB |
 | `422` | `managed_dns_unavailable` | Managed DNS isn't available for this domain (see the availability `reason`) |
 | `422` | `managed_dns_limit` | The account already holds its maximum number of zones |
