@@ -174,9 +174,19 @@ is the same as before the console's new words: its switches map to `mode`, and
 
 | In the console | `mode` | What the widget does |
 | --- | --- | --- |
-| **Maintain your users' domains** off (the default) | `off` | Never offers it. The application carries no setting. |
+| **Maintain your users' domains** off (the default) | `off` | Never offers it, nor any other DNS hosting. The application carries no setting. |
 | On, **Show it as the first choice** off | `offer` | Shows it as a quiet second choice beside adding records. |
 | On, **Show it as the first choice** on | `prefer` | Makes it the first screen of the manual path. Adding records stays one tap away. |
+
+This is the one switch for every DNS hosting offer your users see. With it off,
+the widget never offers to host their DNS, even where
+[managed DNS](/docs/dns/managed-dns) is available, and a widget token can't
+start managed DNS (`403`). With **Your own account** or your own nameservers
+chosen, the move to them is the offer, and a widget token can't start
+CustomDomain™'s managed DNS either (`403`). When the offer comes back `available: false` for a
+domain (for example `registrar_locks_nameservers`), the widget shows no hosting
+option for it at all. The console's widget designer shows this setting as **DNS
+hosting: Off**, **Offered** or **Offered first**, with a link to change it.
 
 | Who runs it | `target` |
 | --- | --- |

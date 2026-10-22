@@ -89,4 +89,11 @@ repair that is switched off, `inactive`): DNS
 connect (with the rail that wrote the records and the access held), managed
 DNS, edge serving, the HTTPS certificate, Power, monitoring, automatic repair,
 redirects, email records and CAA. `GET /v1/services:summary` (API key) counts
-them per application and for the workspace.
+them per application and for the workspace, and names the domains that need
+attention (`needs_attention`).
+
+Edge serving is `attention` for a live domain whose records point at the edge
+when no origin is set for it (its own, or its application's default) and it
+has no redirect: the edge answers such a domain with an error page, so it is
+live, but has nothing to serve. Set an origin, or point the domain at your own
+servers, and it is `active` again.

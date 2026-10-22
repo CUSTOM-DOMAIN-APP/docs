@@ -2091,6 +2091,21 @@ paths:
         connection routes: an API key within the tenant, or a widget token of
         the connection's own application (and domain, when the token is bound
         to one).
+
+
+        The end user's widget token (scope `connect`) can start it only when
+        the application offers DNS hosting on CustomDomain™: its
+        `nameserver_migration` setting has mode `offer` or `prefer` and target
+        `managed`. With the setting off the call answers 403 `forbidden` with
+        the details "this application does not offer nameserver migration";
+        with target `dns_host` or `custom` it answers 403 `forbidden` with
+        "this application hosts its users' DNS elsewhere; the nameserver move
+        is its offer". Either way no zone is created. A connection that
+        already has a zone can still call it, to resume. API keys and
+        app-scoped tokens are not limited by the setting, and reading or
+        editing an existing zone's records is unchanged. `managed_dns` on
+        `POST /v1/domains:check` stays the deployment's and the domain's
+        verdict; it does not say whether the application offers hosting.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -6189,10 +6204,19 @@ paths:
         ones. The key is never returned.
 
 
+        A provider whose credential is a login or a short lived token (ALL-INKL,
+        Arsys, Azure DNS, Binary Lane, Google Cloud DNS, INWX, Loopia,
+        Openprovider, Plesk, Subreg) is used once and never kept: `access`
+        defaults to `one_time` for it, and `continuous` answers `422`
+        `use_once_credential`.
+
+
         Anyone whose role operates applications may connect a key, read the
         accounts and revoke one. Changing an account's access, scope or
-        domains, connecting domains with it and replacing its key take an
-        admin, an owner or the member who connected it (`can_manage`).
+        domains, listing the domains its key reaches, connecting domains with
+        it and replacing its key take an admin, an owner or the member who
+        connected it (`can_manage`). Every change is recorded in the audit log
+        (`provider_account.*`, `GET /audit`).
       security:
         - apiKey: []
       requestBody:
@@ -6205,7 +6229,11 @@ paths:
               properties:
                 provider: { type: string }
                 label: { type: string }
-                access: { type: string, enum: [continuous, one_time], default: continuous }
+                access:
+                  type: string
+                  enum: [continuous, one_time]
+                  default: continuous
+                  description: "`one_time` is the default, and the only access, for a provider whose credential is used once and never kept."
                 scope: { type: string, enum: [all, selected] }
                 domains:
                   type: array
@@ -6236,7 +6264,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
         '503': { $ref: '#/components/responses/Error' }
     get:
       operationId: listProviderAccounts
@@ -6248,7 +6276,9 @@ paths:
         whether the caller may manage each one (`can_manage`); and, in
         `kept_access`, the sign-ins and Domain Connect authorizations kept per
         domain, grouped by provider. A kept sign-in is stopped per domain with
-        `DELETE /connections/{id}/grant`.
+        `DELETE /connections/{id}/grant`. A viewer reads them without
+        `agent_key.account` (an end user's customer number at the provider)
+        and `agent_key.session_id`.
       security:
         - apiKey: []
       responses:
@@ -6287,6 +6317,9 @@ paths:
       operationId: getProviderAccount
       summary: One provider account with its domains
       tags: [Provider accounts]
+      description: >-
+        A viewer reads it without `agent_key.account` and
+        `agent_key.session_id`.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6314,7 +6347,10 @@ paths:
         anyone's who operates applications. A key an end user's secure sign-in
         made in the widget is never widened: a change that adds a domain or
         sets `scope` to `all` answers `403`, whoever asks; renaming, narrowing
-        and revoking still work.
+        and revoking still work. `continuous` access for a credential that is
+        used once and never kept answers `422` `use_once_credential`. A change
+        is recorded in the audit log (`provider_account.updated`, with the
+        label, access, scope, domains and applications before and after).
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6345,6 +6381,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
       summary: Revoke an account
@@ -6385,10 +6422,12 @@ paths:
       description: >-
         Lists the provider's domains with the kept key. `listed` is false for a
         provider that cannot list them. A refused key flags the account
-        `needs_reconnect`. A one time account past its hour answers `409`, and
-        its key is deleted then if the hourly cleanup has not deleted it yet.
-        A key an end user's secure sign-in made in the widget answers `403`: it
-        never lists the domains of the end user's account.
+        `needs_reconnect`. It takes an admin, an owner or the member who
+        connected the account (`can_manage`), as connecting domains with it
+        does; anyone else gets `403`. A one time account past its hour answers
+        `409`, and its key is deleted then if the hourly cleanup has not
+        deleted it yet. A key an end user's secure sign-in made in the widget
+        answers `403`: it never lists the domains of the end user's account.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6406,6 +6445,7 @@ paths:
                   listed: { type: boolean }
                   message: { type: string }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { description: "The provider refused the key; the account is flagged `needs_reconnect`" }
@@ -6419,8 +6459,11 @@ paths:
         Creates a connection for each domain under the application and writes
         its records with the account's key (keeping the CAA and TXT values
         already there and recording what each write replaced). Each domain is
-        linked to the account; a continuous account then keeps them in sync.
-        A domain the application already serves is only linked. A one time
+        linked to the account once its records are written; a domain whose
+        write fails is not linked and keeps the access it had. A continuous
+        account then keeps the linked domains in sync. A domain the
+        application already serves is only linked (`provider_account.relinked`
+        in the audit log). A one time
         account deletes its key once the domains are connected, even when the
         caller has gone away by then, and past its hour answers `409`. A
         domain in a zone the key does not reach fails alone
@@ -6429,11 +6472,14 @@ paths:
         is checked with a request that does not depend on the zone. A key
         made at a secure sign in serves only its application, and a domain
         outside its scope answers `400`, except for a key a member of the
-        workspace made at a sign in started in the console: when a read of
-        the domain's zone with the key works, the zone is added to the key's
-        scope and the domain is connected, with no new sign in. A key an end
-        user's secure sign-in made in the widget answers `403`: it connects
-        domains only through that end user's own widget session. A domain the
+        workspace made at a sign in started in the console (the console's
+        signed call, not an API key that names the console): when a read of
+        the domain's zone with the key works, the domain is connected with no
+        new sign in, and the zone is added to the key's scope once a write
+        there works (`provider_account.domain_added` in the audit log). A key
+        an end user's secure sign-in made in the widget, or one a sign in
+        started through the API made, answers `403`: it connects domains only
+        through that end user's own widget session. A domain the
         application already has, kept by such a key, is left as it is
         (`already`, not re-linked). Takes an admin, an owner or the member who
         connected the account.
@@ -6492,7 +6538,10 @@ paths:
         with the key replace the kept ones. Takes an admin, an owner or the
         member who connected the account. A key made at a secure sign-in
         answers `409`: it is renewed by signing in again (the reconnect mode of
-        the sign-in), not by pasting a key.
+        the sign-in), not by pasting a key. `continuous` access (asked, or the
+        account's own) for a credential that is used once and never kept
+        answers `422` `use_once_credential`; send `access` `one_time`. The new
+        key is recorded in the audit log (`provider_account.key_replaced`).
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6527,7 +6576,7 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
         '503': { $ref: '#/components/responses/Error' }
   /providers/{provider}/zones:list:
     post:
@@ -8345,7 +8394,16 @@ components:
         credential_held: { type: boolean, description: "Whether the key is still kept and usable (false for a one time account past its hour). The key itself is never returned." }
         status: { type: string, enum: [active, used, expired, needs_reconnect] }
         last_error: { type: string }
-        created_by: { type: string }
+        created_by:
+          type: string
+          description: >-
+            Who connected it: the API key's name (`member:<id>` for a member's
+            key) for a pasted key; for a key made at a secure sign-in, the member
+            or the workspace key whose console call started it, `end_user:<ref>`
+            or `widget:<application id>` for one the widget started, and
+            `api:<key id>` for one an API key started without the console's
+            signed call. Only a key a member made in the console serves the
+            application's other domains.
         last_used_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time, description: When a one time account's key is deleted at the latest. }
         created_at: { type: string, format: date-time }
@@ -8778,8 +8836,8 @@ components:
       properties:
         name: { type: string, description: "The name the key was made with: `CustomDomain` and the application's name." }
         scopes: { type: array, items: { type: string }, description: "The scopes it was made with, as the provider names them; empty for a provider whose keys have none." }
-        account: { type: string, description: "The provider account's identifier when the page showed one (a customer number or user name). Never an email address." }
-        session_id: { type: string, description: "The cloud browser session that made it." }
+        account: { type: string, description: "The provider account's identifier when the page showed one (a customer number or user name). Never an email address. Absent for a viewer." }
+        session_id: { type: string, description: "The cloud browser session that made it. Absent for a viewer." }
         verified_at: { type: string, format: date-time, description: "When the read through the provider's API answered with it." }
         expires_at: { type: string, format: date-time, description: "Its own end at the provider; absent for no end date." }
         notice: { type: string, enum: [d30, d7, expired], description: "The last expiry notice sent." }
@@ -9813,8 +9871,10 @@ components:
       type: object
       description: >-
         Whether and how the application offers to move an end user's
-        nameservers. `off` (the default): never offered, and the setting is
-        omitted. `offer`: the widget shows the move as a quiet second choice
+        nameservers. It is the one switch for every DNS hosting offer the
+        widget makes. `off` (the default): never offered, and the setting is
+        omitted; a widget token can't start managed DNS either, nor while the
+        target is `dns_host` or `custom`. `offer`: the widget shows the move as a quiet second choice
         beside adding records. `prefer`: the move is the first choice. Send
         `{"mode": "off"}` to clear it.
       required: [mode, target]
@@ -10104,7 +10164,11 @@ components:
       type: object
       description: >-
         Whether CustomDomain™ can host this domain's zone (managed DNS). Always
-        present on the domains:check response.
+        present on the domains:check response. It is the deployment's and the
+        domain's verdict only: whether the end user is offered DNS hosting is
+        the application's `nameserver_migration` setting, and a widget token
+        can start managed DNS only when that setting is on with target
+        `managed`.
       required: [available, reason]
       properties:
         available: { type: boolean }

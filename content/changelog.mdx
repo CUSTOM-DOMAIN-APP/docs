@@ -15,6 +15,48 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 22, 2026: the console's numbers agree, and Needs attention means one thing.** **Overview** counts
+  every application's domains, the same list **Domains** shows, and each count is what its filter lists there.
+  **Needs attention** now also covers live domains whose certificate is failing or about to expire, whose
+  records were changed and left for you, whose provider stopped accepting our access, or that are live with
+  nothing to serve (no app address on the edge, so visitors see an error page); the control plane's services
+  summary flags that last case on edge serving. **API & SDK** lists every application's keys with the
+  application each belongs to. Renaming the workspace no longer renames an application, and controls a role
+  can't use (API keys, webhook endpoints, saving the widget's look, revoking agent access) are off with the
+  reason. See [The console](/docs/getting-started/console#the-console-follows-who-the-domains-are-for) and
+  [Monitoring](/docs/connect-flow/monitoring#services-per-domain).
+- **October 22, 2026: one name for each thing in the console, and a docs link on every page.** The page
+  about where domains point is **Routing** in the menu, titled **Where domains point**; **Edge serving** now
+  names only the route through our edge. An application's **Domain maintenance** setting and a domain's
+  **Managed DNS** card are both **DNS hosting**. The console says **Workspace**, **Application** and **domain**
+  throughout. Every console page opens with one line on what it is for and a **Docs** link, the sidebar's
+  **Docs** opens in a new tab, and a **?** beside words such as **Managed**, a root domain or a CAA record
+  explains them in place. Nothing changed in the API: its names and URLs stay as they were. See the new
+  [Glossary](/docs/concepts/glossary).
+- **October 22, 2026: one setting decides whether your users are offered DNS hosting.** The widget used to offer
+  "Let CustomDomain™ host your DNS" on the records screen wherever managed DNS was available, even when your
+  application had [Domain maintenance](/docs/guides/nameserver-migration) off. Now your application's setting is
+  the only switch: off (the default), the widget offers no DNS hosting, and an end user's widget token can't start
+  [managed DNS](/docs/dns/managed-dns) (`403`); on, the widget offers the move you chose, and when that move goes
+  to your own DNS host or nameservers a widget token can't start CustomDomain™'s managed DNS instead (`403`). A user who already
+  started a hosted zone can still finish it. Your API key and app-scoped tokens work as before. The widget
+  designer now shows the setting (**DNS hosting: Off**, **Offered** or **Offered first**) with a link to change
+  it, and `customProperties.managedDns.hide` is deprecated. See the
+  [Widget and SDK reference](/docs/widget-sdk/reference#other-ways-to-finish).
+- **October 22, 2026: provider accounts keep only what may be kept, and leave a trail.** Logins and short lived
+  tokens (ALL-INKL, Arsys, Azure DNS, Binary Lane, Google Cloud DNS, INWX, Loopia, Openprovider, Plesk, Subreg)
+  get one time access only: continuous access answers `422` `use_once_credential`. Listing the domains an
+  account's key reaches takes whoever may manage the account, and a viewer no longer sees your customer's
+  number at their provider. A domain is linked to an account only once its records are written with it. Only
+  the console's own signed call makes a secure sign-in your workspace's, so a key a sign-in started through the
+  API serves its one domain. Every change and use of a kept key is in the audit log (`provider_account.*`,
+  `credential.used_for_nameservers`). See [Provider accounts](/docs/connect-flow/provider-accounts#audit-log).
+- **October 22, 2026: the console on a phone and a tablet.** The Overview no longer scrolls sideways, the menu
+  scrolls as one column with a fade while more is below (Settings is always reachable), and the top bar names the
+  section and the active application, which you can switch from there. A domain's DNS records are one card per
+  record on a phone, each value in full beside its copy button. **Domains** opens on **All** for every workspace,
+  and on a phone its filters wait behind **Filters** and a whole row opens the domain. See
+  [The console](/docs/getting-started/console).
 - **October 22, 2026: one secure sign-in per provider account, and IONOS's DNS page reads.** A lasting API key
   made at a secure sign-in you started in the console now connects your next domain of the same application at
   that provider: the connect page offers **Use the saved IONOS key** above the sign-in, CustomDomain™ checks with

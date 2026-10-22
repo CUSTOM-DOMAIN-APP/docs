@@ -17,7 +17,8 @@ ones that will work, even after you change the application's.
 | Root to `www` redirect | Served by the edge | Yours to serve |
 | Plans | Power (Growth and up) | Every plan |
 
-In the console both live under **Domain routing**.
+In the console both live under **Routing**, the page titled **Where domains point**.
+Going through the edge is what the console calls **Edge serving**.
 
 ## Through the edge
 
@@ -48,7 +49,7 @@ and Enterprise plans include. On Starter and Startup, the `power:default` and
 Pointing at [your own infrastructure](#your-own-infrastructure) below is not
 plan gated.
 
-**Domain routing** in the console checks the default origin for you: one request
+**Routing** in the console checks the default origin for you: one request
 to `/` from our server when you save it, and again when you choose **Check
 again**. It says whether the origin answered, could not be reached, showed a
 certificate we do not accept, took too long, or points at a private address. A
@@ -126,7 +127,7 @@ second time and counts every domain as kept. The audit log entry
 (`app.routing_set`, or `app.routing_cleared` for a return to the edge) records
 the same counts as `domains_moved` and `domains_kept`.
 
-In the console, **Domain routing** asks before it saves a target on your own
+In the console, **Routing** asks before it saves a target on your own
 infrastructure. The confirmation, "Point customer domains at
 customers.example.com?", lists the records customers will add and says what
 happens to the application's domains, for example "3 domains waiting for DNS
