@@ -356,15 +356,29 @@ software never changes a plan or turns on two step settings for your customer; a
 Name.com, with two step verification on, the one thing it turns on is the
 account's "name.com API Access" switch.
 
+A key can be made and then not kept: the provider refuses it when we check it,
+or the first change made with it fails. The key is then still in your customer's
+account, and most providers have no API to delete one, so the window's last
+screen names it ("An API key named “CustomDomain App 2026-10-22” was made at
+GoDaddy and is not in use.") with a link to the provider's page to delete it.
+Your console's **Activity** page records it too, as "An API key we made is still
+in your GoDaddy account", with the same name and link. The key itself is never
+shown or kept.
+
 IONOS's API is off for an account until the account signs up for it, a free
 product in IONOS's shop under IONOS's API terms. When IONOS's key page says it is
-off, our software orders that product for your customer and then makes the key,
-so they never go into IONOS's panel for it. Under the sign-in button the window
-says "Signing in also turns on IONOS's free API access for this account, if it is
-off." with a link to IONOS's terms. It never orders from a page that shows any
-price above zero or asks for payment details, ticks no box but the terms, and
-types nothing; if anything on IONOS's page is not as expected, the session goes
-on to the DNS page instead.
+off, our software opens that free order for your customer, so they never go into
+IONOS's panel for it. The last step is theirs: IONOS's checkout asks them to accept
+IONOS's general terms and to press Buy now, which can place a temporary hold on
+their card, and we never accept either for them. So the window shows them IONOS's
+checkout with "Finish IONOS's free API order on the page: accept its terms and
+place it. We go on after.", they finish it there, and the key is made. Under the
+sign-in button the window says "If IONOS's API is off for this account, we open
+its free order and you confirm it." with a link to IONOS's terms. Our software
+never presses anything on a page that shows a price above zero, asks for payment
+details or asks to hold a sum on a card, ticks no box, and types nothing; if
+anything on IONOS's page is not as expected, the session goes on to the DNS page
+instead.
 
 ### Every domain scope, said in `rights`
 
@@ -614,7 +628,7 @@ so you can read what a session did. Every route is in the
 | `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). An API key, a widget token or an agent token with `domains:connect` may call it. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
-| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, or `agreement` for a provider's API terms), `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
+| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, `agreement` for a provider's API terms, or `order` for the free order that turns the provider's API on, whose terms and Buy now are your customer's), `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
 | `POST /v1/browser-sessions/{sid}:switch-account` | Signs the remote browser out of the provider and opens its sign-in again, only while the view carries `wrongAccount` (otherwise `409 browser_wrong_state`). `202`; meanwhile the view's `notice` is `switching_account`. One every 10 seconds (`429 browser_rate_limited`). |
 | `POST /v1/browser-sessions/{sid}:viewport` | The popup's new size (above). |
 | `POST /v1/browser-sessions/{sid}:event` | The popup reports one of its screens, for the sign-in funnel. `204`, changes nothing about the session, at most 30 a minute. |

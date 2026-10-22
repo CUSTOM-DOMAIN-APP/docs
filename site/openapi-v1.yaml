@@ -9020,10 +9020,11 @@ components:
           required: [terms]
           description: >-
             Present while the customer signs in (created, awaiting_sign_in) when
-            the session will also turn the provider's API on for the account if
-            it is off (IONOS's free API access, ordered in its shop, never above
-            zero). The popup says so under Sign in and links the provider's
-            terms for it.
+            the session will also open the free order that turns the provider's
+            API on for the account if it is off (IONOS's free API access, in its
+            shop, never above zero). The customer accepts its terms and places
+            the order themselves, in the live view (`handback.reason` `order`).
+            The popup says so under Sign in and links the provider's terms for it.
           properties:
             terms: { type: string, format: uri, description: "The provider's terms for its API product." }
         error:
@@ -9212,15 +9213,18 @@ components:
       description: >-
         Present while the agent has paused in the middle of its work and waits
         for the customer: the provider asks for a code (a re-authentication or a
-        step up), shows a check, or (`agreement`) shows the terms its API page
-        asks the account holder to accept before a key is made, which the agent
-        never accepts for them. `interactive` is true and `live_view_url`
+        step up), shows a check, (`agreement`) shows the terms its API page
+        asks the account holder to accept before a key is made, or (`order`)
+        is at the customer's part of the free order that turns the provider's
+        API on (IONOS's checkout: its terms box and Buy now, which can place a
+        temporary hold on their card). The agent never accepts terms or places
+        an order for them. `interactive` is true and `live_view_url`
         is the page's own view: the customer answers in the live view, and the
         keys go from their browser to the vendor, never through the control
         plane. Once the prompt is gone from the page the agent goes on. A
         password the provider asks for again keeps `hand_back`.
       properties:
-        reason: { type: string, enum: [code, check, agreement] }
+        reason: { type: string, enum: [code, check, agreement, order] }
     BrowserViewport:
       type: object
       required: [width, height]
