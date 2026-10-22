@@ -2091,6 +2091,21 @@ paths:
         connection routes: an API key within the tenant, or a widget token of
         the connection's own application (and domain, when the token is bound
         to one).
+
+
+        The end user's widget token (scope `connect`) can start it only when
+        the application offers DNS hosting on CustomDomain™: its
+        `nameserver_migration` setting has mode `offer` or `prefer` and target
+        `managed`. With the setting off the call answers 403 `forbidden` with
+        the details "this application does not offer nameserver migration";
+        with target `dns_host` or `custom` it answers 403 `forbidden` with
+        "this application hosts its users' DNS elsewhere; the nameserver move
+        is its offer". Either way no zone is created. A connection that
+        already has a zone can still call it, to resume. API keys and
+        app-scoped tokens are not limited by the setting, and reading or
+        editing an existing zone's records is unchanged. `managed_dns` on
+        `POST /v1/domains:check` stays the deployment's and the domain's
+        verdict; it does not say whether the application offers hosting.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -9856,8 +9871,10 @@ components:
       type: object
       description: >-
         Whether and how the application offers to move an end user's
-        nameservers. `off` (the default): never offered, and the setting is
-        omitted. `offer`: the widget shows the move as a quiet second choice
+        nameservers. It is the one switch for every DNS hosting offer the
+        widget makes. `off` (the default): never offered, and the setting is
+        omitted; a widget token can't start managed DNS either, nor while the
+        target is `dns_host` or `custom`. `offer`: the widget shows the move as a quiet second choice
         beside adding records. `prefer`: the move is the first choice. Send
         `{"mode": "off"}` to clear it.
       required: [mode, target]
@@ -10147,7 +10164,11 @@ components:
       type: object
       description: >-
         Whether CustomDomain™ can host this domain's zone (managed DNS). Always
-        present on the domains:check response.
+        present on the domains:check response. It is the deployment's and the
+        domain's verdict only: whether the end user is offered DNS hosting is
+        the application's `nameserver_migration` setting, and a widget token
+        can start managed DNS only when that setting is on with target
+        `managed`.
       required: [available, reason]
       properties:
         available: { type: boolean }
