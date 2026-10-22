@@ -93,15 +93,16 @@ Pick one way to load the SDK.
 | Way | How | Current version |
 | --- | --- | --- |
 | Hosted script (no build step) | `<script src="https://app.customdomain.ai/widget-assets/customdomain-sdk.js"></script>` attaches `window.customdomain` | Always the latest build |
-| npm | `npm install customdomain-js` | 0.5.4 |
-| React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.4 |
+| npm | `npm install customdomain-js` | 0.5.5 |
+| React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.5 |
 
 <UsageStats />
 
 `getToken`, `wwwRedirect` and `onFallback` need `customdomain-js` 0.5.0 or
 newer; `removeDomain()`, `onRemoved` and the `customdomain:removed` event need
 0.5.2 or newer; `CustomDomainError.status` and the full `checkDomain` result
-need 0.5.4. The hosted script always has all of them.
+need 0.5.4; the `"reconnect"` mode's types, `reconnected` and `advisories` need
+0.5.5. The hosted script always has all of them.
 
 ```js
 import { customdomain } from "customdomain-js";
