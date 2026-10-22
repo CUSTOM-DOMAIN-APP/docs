@@ -6311,7 +6311,10 @@ paths:
         the key now. Switching to `continuous` needs the key still held.
         Changing `access`, `scope` or `domains` takes an admin, an owner or the
         member who connected the account (`403` otherwise); the label is
-        anyone's who operates applications.
+        anyone's who operates applications. A key an end user's secure sign-in
+        made in the widget is never widened: a change that adds a domain or
+        sets `scope` to `all` answers `403`, whoever asks; renaming, narrowing
+        and revoking still work.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6384,6 +6387,8 @@ paths:
         provider that cannot list them. A refused key flags the account
         `needs_reconnect`. A one time account past its hour answers `409`, and
         its key is deleted then if the hourly cleanup has not deleted it yet.
+        A key an end user's secure sign-in made in the widget answers `403`: it
+        never lists the domains of the end user's account.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6426,8 +6431,12 @@ paths:
         outside its scope answers `400`, except for a key a member of the
         workspace made at a sign in started in the console: when a read of
         the domain's zone with the key works, the zone is added to the key's
-        scope and the domain is connected, with no new sign in. Takes an
-        admin, an owner or the member who connected the account.
+        scope and the domain is connected, with no new sign in. A key an end
+        user's secure sign-in made in the widget answers `403`: it connects
+        domains only through that end user's own widget session. A domain the
+        application already has, kept by such a key, is left as it is
+        (`already`, not re-linked). Takes an admin, an owner or the member who
+        connected the account.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6481,7 +6490,9 @@ paths:
         connected, for a provider that cannot list them), and for a `selected`
         account that the key reaches every selected domain. `params` sent
         with the key replace the kept ones. Takes an admin, an owner or the
-        member who connected the account.
+        member who connected the account. A key made at a secure sign-in
+        answers `409`: it is renewed by signing in again (the reconnect mode of
+        the sign-in), not by pasting a key.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
