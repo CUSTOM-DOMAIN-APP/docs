@@ -9017,16 +9017,21 @@ components:
             page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
         api_activation:
           type: object
-          required: [terms]
+          required: [kind]
           description: >-
             Present while the customer signs in (created, awaiting_sign_in) when
-            the session will also open the free order that turns the provider's
-            API on for the account if it is off (IONOS's free API access, in its
-            shop, never above zero). The customer accepts its terms and places
-            the order themselves, in the live view (`handback.reason` `order`).
-            The popup says so under Sign in and links the provider's terms for it.
+            the session will also turn the provider's API on for the account if
+            it is off. `order`: it opens the provider's free order for it
+            (IONOS's free API access, in its shop, never above zero), whose
+            terms and order the customer accepts and places themselves in the
+            live view (`handback.reason` `order`). `access`: it turns the
+            account's API access on and allows CustomDomain's address
+            (Namecheap), the terms and the password it asks for being the
+            customer's. The popup says so under Sign in, with the provider's
+            terms when known.
           properties:
-            terms: { type: string, format: uri, description: "The provider's terms for its API product." }
+            kind: { type: string, enum: [order, access] }
+            terms: { type: string, format: uri, description: "The provider's terms for its API product, when known." }
         error:
           type: object
           description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.

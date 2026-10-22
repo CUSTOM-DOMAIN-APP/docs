@@ -352,9 +352,18 @@ them.
 
 Some accounts cannot have a key: an account under Namecheap's API thresholds, or
 one GoDaddy says is not eligible. The session then goes on to the DNS page. Our
-software never changes a plan or turns on two step settings for your customer; at
-Name.com, with two step verification on, the one thing it turns on is the
-account's "name.com API Access" switch.
+software never changes a plan or turns on two step settings for your customer. At
+Name.com, an account with two step verification needs a switch on its Security
+page before Name.com's API takes any token, and that switch is the account
+holder's to turn on: a session whose sign-in asked for a code makes no token and
+goes on to the DNS page, so no token is left that could not work.
+
+At Namecheap the key is the account's own: if the account's API access is off,
+our software turns it on and adds our address to its allowed list. Namecheap then
+shows its API terms and asks for the account password, and both are your
+customer's: the window shows Namecheap's page for them. Under the sign-in button
+the window says "We also turn on Namecheap's API for this account if it is off,
+and let our address use it."
 
 A key can be made and then not kept: the provider refuses it when we check it,
 or the first change made with it fails. The key is then still in your customer's
@@ -405,11 +414,14 @@ account (renewals and purchases)."
 ### The provider's terms are your customer's
 
 Some API pages ask the account holder to accept the provider's API terms before
-a key is made: Name.com's API Access Agreement, for one. Our software never
-accepts terms for anyone. The popup shows the provider's page with one line,
-"Accept Name.com's API terms yourself on the page. The setup goes on once you
-have.", and the work goes on once they are accepted (it waits up to 10 minutes).
-If your customer does not accept them, the session goes on to the DNS page.
+a key is made: Name.com's API Access Agreement and Reseller Agreement, for one.
+Our software never accepts terms for anyone. At Name.com it types the token's
+name, then the popup shows Name.com's page with one line, "Accept Name.com's API
+terms on the page and create the key there. The setup goes on once you have.",
+and your customer ticks the box and presses Create token. The work goes on with
+the token in the row named as we named it, never Name.com's test token or
+another token of the account (it waits up to 10 minutes). If your customer does
+not accept them, the session goes on to the DNS page.
 
 ### Checked, then kept for one application
 
