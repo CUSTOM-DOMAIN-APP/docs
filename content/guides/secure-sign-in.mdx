@@ -88,7 +88,10 @@ password.
 
 Your customer types into our fields, and their own browser passes each key to
 the provider's real sign-in page in the remote browser. At **Sign in** the
-provider's own button is pressed.
+provider's own button is pressed. The form shows at once; if the provider's page
+is still opening when your customer presses **Sign in**, a line under the button
+says so ("Opening Namecheap's sign in…") and the sign-in goes ahead as soon as
+the page is ready.
 
 If the provider turns the sign-in down, its own message ("That password is
 incorrect", at most 120 characters, with email addresses and long numbers
@@ -219,7 +222,8 @@ one of two ways, in this order:
 1. **A lasting API key.** Where the provider has an API page we have reviewed,
    the account qualifies and the hosted service has the key turned on for that
    provider ([which ones](#which-providers)), the popup reads "Creating your API
-   key", then "Adding records", then **Done.** Our software makes a key on the
+   key" over the records still to add, with "This takes about half a minute.",
+   then "Adding records", then **Done.** Our software makes a key on the
    provider's own API page, CustomDomain™ checks it and keeps it, and the records
    are added through the provider's API, as they are for a key someone pasted.
 2. **The DNS page.** Where no key can be made (no reviewed API page, an account
