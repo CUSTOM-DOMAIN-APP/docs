@@ -1,3 +1,9 @@
+/**
+ * The docs page route (/docs/...): renders one Fumadocs page from the content source with its Markdown copy and
+ * GitHub links, TechArticle and breadcrumb JSON-LD, and its metadata and social card. Every page in the source is
+ * generated at build; an unknown slug returns a 404.
+ */
+
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
