@@ -378,7 +378,7 @@ and let our address use it."
 A key can be made and then not kept: the provider refuses it when we check it,
 or the first change made with it fails. The key is then still in your customer's
 account, and most providers have no API to delete one, so the window's last
-screen names it ("An API key named “CustomDomain App 2026-10-22” was made at
+screen names it ("An API key named “CustomDomain App 2026-10-22 1528” was made at
 GoDaddy and is not in use.") with a link to the provider's page to delete it.
 Your console's **Activity** page records it too, as "An API key we made is still
 in your GoDaddy account", with the same name and link. The key itself is never
@@ -439,9 +439,9 @@ not accept them, the session goes on to the DNS page.
 ### Checked, then kept for one application
 
 - **What is typed.** Our software types only the key's name (`CustomDomain`,
-  your application's name and the day it was made, "CustomDomain Acme
-  2026-10-21", so your customer can find it at the provider and tell a new key from
-  an old one) and, at
+  your application's name and the day and minute it was made in UTC, "CustomDomain
+  Acme 2026-10-21 1528", so your customer can find it at the provider, tell a new
+  key from an old one, and never meet two keys of one name) and, at
   Namecheap, CustomDomain™'s address. It ticks only the scopes above, picks the
   longest expiry the page offers, and presses only buttons we have reviewed.
 - **Read once, never shown.** The key is read once from the page. The software
