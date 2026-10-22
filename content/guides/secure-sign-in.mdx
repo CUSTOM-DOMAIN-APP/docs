@@ -182,9 +182,15 @@ Facebook, Amazon and the like) and we have reviewed that provider's sign-ins
 shows the same sign-ins, each as a square button with its logo (a screen reader
 reads "Continue with Google"). Pressing one presses the provider's own, and the
 identity provider's page shows in the popup, including a window it opens
-(Squarespace and Wix open one), which is sized to your customer's screen as
-the provider's page is. Your customer signs in there; **Back to GoDaddy** returns to the provider's page when
-the sign-in took the whole tab. Only your customer goes there: the
+(Squarespace's opens one), which is sized to your customer's screen as
+the provider's page is. Your customer signs in there; **Back to GoDaddy** brings
+back our form, stepping the tab back when the sign-in took the whole tab, or
+closing the identity provider's window when it opened one. Leaving Google's
+page without signing in brings our form back by itself after a few seconds. If
+Google refuses to sign the browser in ("Couldn't sign you in"), the popup shows
+its own screen instead: "Google won't let this browser sign in", with **Use my
+GoDaddy password**, a link to set a password at the provider when it has a reset
+page, and another way to set it up. Only your customer goes there: the
 software that makes the changes never visits an identity provider's page.
 
 If no Google window appears (some pages use the browser's own account chooser,

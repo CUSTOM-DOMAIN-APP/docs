@@ -8906,7 +8906,7 @@ components:
       properties:
         step:
           type: string
-          enum: [sheet_shown, sheet_accepted, sheet_declined, code_shown, code_sent, push_shown, social_card_shown, social_try_anyway, social_declined, passkey_shown, overlay_shown, overlay_sent, handback_shown, fallback_manual, window_closed]
+          enum: [sheet_shown, sheet_accepted, sheet_declined, code_shown, code_sent, push_shown, social_card_shown, social_try_anyway, social_declined, social_refused, passkey_shown, overlay_shown, overlay_sent, handback_shown, fallback_manual, window_closed]
         detail:
           type: string
           maxLength: 64
@@ -9118,6 +9118,13 @@ components:
           items: { type: string, enum: [google, apple, facebook, amazon, microsoft, github] }
         passkey: { type: boolean, description: "The page asks for a passkey or a security key." }
         check: { type: boolean, description: "A CAPTCHA or a bot wall is showing." }
+        socialRefused:
+          type: string
+          enum: [google]
+          description: >-
+            The identity provider whose own page says it will not sign this
+            browser in (Google's "Couldn't sign you in"). The popup shows its
+            own screen instead, offering the provider's password.
         formError:
           type: string
           maxLength: 120
