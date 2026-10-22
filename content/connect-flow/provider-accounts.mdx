@@ -1,6 +1,6 @@
 ---
 title: Provider accounts
-description: "Connect a DNS provider or registrar account once, for some or all of its domains, with one time or continuous access, and see who on your team can manage it."
+description: "Connect a DNS provider or registrar account once, for some or all of its domains, with one time or continuous access, see who on your team can manage it, and find every change in the audit log."
 ---
 
 A provider account is a key for a DNS provider or registrar that the workspace
@@ -14,26 +14,43 @@ name a domain the key manages in `check_domain`, or the call answers `400`
 
 ## Access
 
-- **Continuous**: kept until you revoke it, and used for exactly three things:
-  putting back records it wrote that disappear, where the deployment has
-  automatic repair on ([monitoring](/docs/connect-flow/monitoring)), removing
-  records when a domain is [removed](/docs/connect-flow/offboarding), and
-  re-applying the records it wrote when you ask
-  (`POST /v1/connections/{id}:reapply`, which answers `via: "provider_account"`).
+- **Continuous**: kept until you revoke it. It keeps the records it wrote:
+  putting back records that disappear, where the deployment has automatic
+  repair on ([monitoring](/docs/connect-flow/monitoring)), removing records
+  when a domain is [removed](/docs/connect-flow/offboarding), and re-applying
+  them when you ask (`POST /v1/connections/{id}:reapply`, which answers
+  `via: "provider_account"`). Whoever may manage the account also uses it to
+  list the domains it reaches and connect more of them, and a
+  [nameserver move](/docs/guides/nameserver-migration) may use it. Each of
+  these is in the [audit log](#audit-log).
 - **One time**: used to connect the domains you choose, then deleted. It works
   for an hour at most: past the hour every use is refused with `409` and the
   key is deleted, whether or not the hourly cleanup got to it first. The
   account stays as the record of what it connected.
 
 Certificates renew without any DNS access, so both behave the same there.
+
+### Credentials that are used once
+
+Some providers' credentials are never kept, because they are an account login
+or a token that expires within hours or cannot be limited: ALL-INKL (the KAS
+login), Arsys (the Panel de Control password), Azure DNS and Google Cloud DNS
+(access tokens that expire within an hour), Binary Lane (a token that reaches
+the whole account), INWX, Loopia, Plesk and Subreg (logins), and Openprovider
+(a token that expires after 48 hours). They get one time access only:
+`"access": "continuous"` answers `422` `use_once_credential` when you connect
+the account, switch its access or give it a new key, and a connect that names
+no access gets one time access. The console offers them one time access only,
+and says why.
 Sign-ins get the same choice: `oauth:start` takes `"access": "continuous"` or
 `"one_time"`; continuous is offered where the deployment can keep that
 provider's sign-in.
 
 ## Defaults and limits
 
-When you leave them out, `access` is `continuous`, and `scope` is `selected`
-if you send `domains` and `all` if you do not. `POST /v1/provider-accounts/{id}/connect`
+When you leave them out, `access` is `continuous` (`one_time` for a
+[credential that is used once](#credentials-that-are-used-once)), and `scope`
+is `selected` if you send `domains` and `all` if you do not. `POST /v1/provider-accounts/{id}/connect`
 takes at most 200 domains per call (`400` beyond that).
 
 ## Scope
@@ -45,10 +62,15 @@ own list where it has one.
 ## Who can manage an account
 
 Anyone whose role operates applications may connect a key, read the accounts
-and revoke one. Changing an account's access, scope or domains, connecting
-domains with it and giving it a new key take an admin, an owner or the member
-who connected it, because the key reaches zones the others were never given;
-anyone else gets `403`. Each account says whether you may (`can_manage`).
+and revoke one. Changing an account's access, scope or domains, listing the
+domains its key reaches, connecting domains with it and giving it a new key take
+an admin, an owner or the member who connected it, because the key reaches zones
+the others were never given; anyone else gets `403`. Each account says whether
+you may (`can_manage`).
+
+A viewer reads the accounts without what identifies your customer at their
+provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
+them no `agent_key.account` (the customer number) and no `agent_key.session_id`.
 
 ## Endpoints (API key)
 
@@ -57,8 +79,8 @@ anyone else gets `403`. Each account says whether you may (`can_manage`).
 | `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
 | `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, plus kept sign-ins and Domain Connect authorizations grouped by provider. |
 | `PATCH /v1/provider-accounts/{id}` | Change label, access or scope. A domain taken out stays connected, without continuous access. |
-| `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. |
-| `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain in a zone the key does not reach fails alone (`zone_not_reached`). |
+| `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
+| `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
 | `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
 | `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. |
 
@@ -84,15 +106,19 @@ ways:
   or a teammate started in the console connects another domain of the same
   application with no second sign in and no second key: CustomDomain™ first
   reads that domain's records with the key, and only when the provider answers
-  is the domain added to the key's scope. A domain in another account at the
-  provider is refused with `400`, and needs its own sign-in. A key your
-  customer's sign-in made in the widget serves only the domain they agreed to.
+  is the domain connected; its zone joins the key's scope once the records are
+  written there. A domain in another account at the provider is refused with
+  `400`, and needs its own sign-in. "Started in the console" means the
+  console's own signed call: a sign-in your backend starts through the API, even
+  one that names the console in its headers, makes a key that serves its one
+  domain only. A key your customer's sign-in made in the widget serves only the
+  domain they agreed to.
 - **It says where it came from.** `origin` is `browser_agent`, and `agent_key`
   holds its record, never the key: the `name` it was made with (`CustomDomain`
   and your application's name), its `scopes` and `rights` (what it can do beyond
   DNS: `transfer`, `billing` or `account`), the provider's `account` identifier
-  when the page showed one (never an email address), the `session_id` that made
-  it, when it was checked (`verified_at`) and ends (`expires_at`), the last
+  when the page showed one (never an email address, and not shown to a
+  viewer), the `session_id` that made it (not shown to a viewer either), when it was checked (`verified_at`) and ends (`expires_at`), the last
   `notice`, the `reconnect_reason`, `reconnect_sent_at` and `renewed_at`,
   `old_key: "revoke_by_hand"` after a renewal, and the provider's `revoke_url`.
 - **It is renewed by a sign-in, not a pasted key.** Before its end, or once the
@@ -103,3 +129,19 @@ ways:
 - **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
+
+## Audit log
+
+Every change to a provider account, and every use of its key beyond the records
+it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
+**Activity** page), with who did it as the server knows them, never the key:
+
+| Event | When |
+| --- | --- |
+| `provider_account.created` | A key is kept: pasted, or made at a secure sign-in. |
+| `provider_account.updated` | Its label, access, scope or domains change, with the values before and after. |
+| `provider_account.domain_added` | A key made at a sign-in in the console starts serving another domain's zone. |
+| `provider_account.relinked` | A domain the application already had now uses this account. |
+| `provider_account.key_replaced` | It gets a new key: pasted, or made when someone signed in again. |
+| `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
+| `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |

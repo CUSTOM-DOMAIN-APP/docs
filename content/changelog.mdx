@@ -43,6 +43,14 @@ never change meaning or disappear without a new major version. See the
   designer now shows the setting (**DNS hosting: Off**, **Offered** or **Offered first**) with a link to change
   it, and `customProperties.managedDns.hide` is deprecated. See the
   [Widget and SDK reference](/docs/widget-sdk/reference#other-ways-to-finish).
+- **October 22, 2026: provider accounts keep only what may be kept, and leave a trail.** Logins and short lived
+  tokens (ALL-INKL, Arsys, Azure DNS, Binary Lane, Google Cloud DNS, INWX, Loopia, Openprovider, Plesk, Subreg)
+  get one time access only: continuous access answers `422` `use_once_credential`. Listing the domains an
+  account's key reaches takes whoever may manage the account, and a viewer no longer sees your customer's
+  number at their provider. A domain is linked to an account only once its records are written with it. Only
+  the console's own signed call makes a secure sign-in your workspace's, so a key a sign-in started through the
+  API serves its one domain. Every change and use of a kept key is in the audit log (`provider_account.*`,
+  `credential.used_for_nameservers`). See [Provider accounts](/docs/connect-flow/provider-accounts#audit-log).
 - **October 22, 2026: one secure sign-in per provider account, and IONOS's DNS page reads.** A lasting API key
   made at a secure sign-in you started in the console now connects your next domain of the same application at
   that provider: the connect page offers **Use the saved IONOS key** above the sign-in, CustomDomain™ checks with

@@ -164,7 +164,10 @@ the customer the permission is kept. A
 API key it made at the provider (never the sign-in itself), as a provider account
 that serves only the application whose domain it was made for, after one read
 only call proved it works; its `rights` say what it can do beyond DNS. Account
-passwords and tokens that expire within hours are never kept. Whatever is kept:
+passwords and tokens that expire within hours are never kept: the control plane
+refuses to keep them
+([credentials that are used once](/docs/connect-flow/provider-accounts#credentials-that-are-used-once)).
+Whatever is kept:
 
 - is **sealed at rest** with **AES-256-GCM** under the control plane's
   `GRANT_ENCRYPTION_KEY`;
@@ -174,6 +177,9 @@ passwords and tokens that expire within hours are never kept. Whatever is kept:
 - is used only to write, put back and remove the records of the domains it
   covers and, for [Domain maintenance](/docs/guides/nameserver-migration), to
   change their nameservers when the account is at the domain's registrar;
+- leaves a **trail**: the workspace's audit log records who kept, changed,
+  widened, moved, replaced or removed it, and each nameserver move that used it
+  ([provider account events](/docs/connect-flow/provider-accounts#audit-log));
 - is **revocable at any time** on the console's **Connected accounts** page
   (**Revoke** on an account, **Stop keeping** on a kept sign-in, **Remove** on a
   key made at sign-in), which deletes it and leaves the domains connected. A key
