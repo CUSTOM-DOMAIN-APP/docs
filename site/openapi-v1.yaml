@@ -8906,7 +8906,7 @@ components:
       properties:
         step:
           type: string
-          enum: [sheet_shown, sheet_accepted, sheet_declined, code_shown, code_sent, push_shown, social_card_shown, social_try_anyway, social_declined, passkey_shown, overlay_shown, overlay_sent, handback_shown, fallback_manual, window_closed]
+          enum: [sheet_shown, sheet_accepted, sheet_declined, code_shown, code_sent, push_shown, social_card_shown, social_try_anyway, social_declined, social_refused, passkey_shown, overlay_shown, overlay_sent, handback_shown, fallback_manual, window_closed]
         detail:
           type: string
           maxLength: 64
@@ -9017,15 +9017,21 @@ components:
             page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
         api_activation:
           type: object
-          required: [terms]
+          required: [kind]
           description: >-
             Present while the customer signs in (created, awaiting_sign_in) when
             the session will also turn the provider's API on for the account if
-            it is off (IONOS's free API access, ordered in its shop, never above
-            zero). The popup says so under Sign in and links the provider's
-            terms for it.
+            it is off. `order`: it opens the provider's free order for it
+            (IONOS's free API access, in its shop, never above zero), whose
+            terms and order the customer accepts and places themselves in the
+            live view (`handback.reason` `order`). `access`: it turns the
+            account's API access on and allows CustomDomain's address
+            (Namecheap), the terms and the password it asks for being the
+            customer's. The popup says so under Sign in, with the provider's
+            terms when known.
           properties:
-            terms: { type: string, format: uri, description: "The provider's terms for its API product." }
+            kind: { type: string, enum: [order, access] }
+            terms: { type: string, format: uri, description: "The provider's terms for its API product, when known." }
         error:
           type: object
           description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.
@@ -9112,6 +9118,13 @@ components:
           items: { type: string, enum: [google, apple, facebook, amazon, microsoft, github] }
         passkey: { type: boolean, description: "The page asks for a passkey or a security key." }
         check: { type: boolean, description: "A CAPTCHA or a bot wall is showing." }
+        socialRefused:
+          type: string
+          enum: [google]
+          description: >-
+            The identity provider whose own page says it will not sign this
+            browser in (Google's "Couldn't sign you in"). The popup shows its
+            own screen instead, offering the provider's password.
         formError:
           type: string
           maxLength: 120
@@ -9212,15 +9225,18 @@ components:
       description: >-
         Present while the agent has paused in the middle of its work and waits
         for the customer: the provider asks for a code (a re-authentication or a
-        step up), shows a check, or (`agreement`) shows the terms its API page
-        asks the account holder to accept before a key is made, which the agent
-        never accepts for them. `interactive` is true and `live_view_url`
+        step up), shows a check, (`agreement`) shows the terms its API page
+        asks the account holder to accept before a key is made, or (`order`)
+        is at the customer's part of the free order that turns the provider's
+        API on (IONOS's checkout: its terms box and Buy now, which can place a
+        temporary hold on their card). The agent never accepts terms or places
+        an order for them. `interactive` is true and `live_view_url`
         is the page's own view: the customer answers in the live view, and the
         keys go from their browser to the vendor, never through the control
         plane. Once the prompt is gone from the page the agent goes on. A
         password the provider asks for again keeps `hand_back`.
       properties:
-        reason: { type: string, enum: [code, check, agreement] }
+        reason: { type: string, enum: [code, check, agreement, order] }
     BrowserViewport:
       type: object
       required: [width, height]
