@@ -7,7 +7,7 @@ description: "Reference for the eight window.customdomain methods, window events
 
 `window.customdomain` exposes eight methods. The hosted script
 (`https://app.customdomain.ai/widget-assets/customdomain-sdk.js`) and the npm
-packages (`customdomain-js` and `@customdomain/react`, both 0.5.4) have all
+packages (`customdomain-js` and `@customdomain/react`, both 0.5.5) have all
 eight; `removeDomain()` reached npm in 0.5.2.
 
 | Method | Purpose |
@@ -26,7 +26,7 @@ eight; `removeDomain()` reached npm in 0.5.2.
 `registered`, `NSSupport`, `wildcardSupport`, `cnameFlattening`,
 `spfOverrideSupport`, `caaSupport`, `supportsSocialLogin`, `recordConflicts`
 (a `caa-blocks-letsencrypt` entry is a certificate advisory, not a record to replace;
-the REST answer also lists it in `advisories`, which these packages do not map yet),
+the REST answer also lists it in `advisories`, which the packages map since 0.5.5; advisories never count toward `willFallbackToManual`),
 `conflictTolerance`, `willFallbackToManual`, `apexSupported`, `apexMessage`, the
 Public Suffix List split of the domain (`subdomain`, `registrableDomain`,
 `publicSuffix`), `authoritativeDnsProvider`, plus the rail truth: `rails` (`{ oauth, domainConnect, apiKey, manual, cloudBrowser? }`, each
@@ -120,7 +120,7 @@ allow another connection; the end user only sees a neutral message) and
 | `apiBase` / `widgetBase` | `string` | Override the default control-plane (`https://api.customdomain.ai`) / widget (`https://app.customdomain.ai`) hosts (for example a staging environment). |
 | `iframeSandbox` | `string` | Advanced. Replaces the iframe's `sandbox` attribute. The default allows scripts, forms and popups that escape the sandbox so provider sign-in windows can open. |
 | `searchType` | `string` | Search mode for the buy-a-domain screen, such as `standard` or `ai`. |
-| `mode` | `"connect" \| "remove" \| "reconnect"` | `"remove"` opens the removal flow (what `removeDomain` sets; npm packages 0.5.2 or newer). `"reconnect"` opens straight on the sign-in that renews the domain's [lasting API key](/docs/guides/secure-sign-in#reconnect): one sign-in, a new key, no DNS change. A domain with no such key, or a provider whose key is turned off, gets a short notice instead. The hosted script and the npm packages pass `mode` through; the packages' types (0.5.4) name only `"connect"` and `"remove"`, so a TypeScript caller casts `"reconnect"` for now. |
+| `mode` | `"connect" \| "remove" \| "reconnect"` | `"remove"` opens the removal flow (what `removeDomain` sets; npm packages 0.5.2 or newer). `"reconnect"` opens straight on the sign-in that renews the domain's [lasting API key](/docs/guides/secure-sign-in#reconnect): one sign-in, a new key, no DNS change. A domain with no such key, or a provider whose key is turned off, gets a short notice instead. The hosted script and the npm packages pass `mode` through; the packages' types name `"reconnect"` since 0.5.5 (before, a TypeScript caller cast it). |
 | `connectionId` | `string` | The connection to remove or reconnect, when you kept its id. Otherwise the prefilled domain is looked up. Either way, mint the token for that domain and end user (`POST /v1/tokens` with `domain` and `end_user_ref`). |
 | `onSuccess` / `onClose` / `onStepChange` / `onError` / `onFallback` / `onRemoved` | fn | Callbacks (mirror the events above). |
 
