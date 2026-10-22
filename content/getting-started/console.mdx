@@ -99,7 +99,7 @@ and [Agents](/docs/agents/overview).
 
 Pointing a domain at a website needs the Growth plan: CustomDomain™ does not host
 websites, it serves your domain through its edge to a site hosted elsewhere
-(see [Domain routing](/docs/connect-flow/routing)). Once your own domain is
+(see [Where domains point](/docs/connect-flow/routing)). Once your own domain is
 connected, the last screen says so beside **Point it at my website**. Connecting
 the domain does not need it.
 
@@ -188,9 +188,15 @@ on.
 | **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
 | **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
-| **Domain routing** | Where customer domains send traffic. |
+| **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
+| **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
+
+Every page opens with one line on what it is for and a **Docs** link to the part of
+these docs that explains it. A **?** beside a word that decides what you do next
+(**Managed**, a root domain, a CAA record, an account's access) gives one plain line
+and a link. The words the console uses are listed in the [Glossary](/docs/concepts/glossary).
 
 ### API keys and widget tokens
 
@@ -232,7 +238,7 @@ what **Overview** and **Domains** lead with.
 
 | | My product's users | My clients | A domain of my own |
 | --- | --- | --- | --- |
-| **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Domain routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Domain routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Domain routing and Connected accounts. Widget and API & SDK are under **Integrate** |
+| **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Routing and Connected accounts. Widget and API & SDK are under **Integrate** |
 | **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
 | **Overview** | The go-live list, then the domains that need attention (when any do), your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts and the domains that need attention (when any do) |
 | **Domains** | Opens on **From your product (widget)**, or on **All** until a customer has connected one | Opens on **All** | Opens on **All** |
@@ -297,7 +303,7 @@ Each application has its own page: open it from **Applications** or from the
 switcher. Its summary counts the application's domains by status, and its
 **Domains** (the ones that need attention first, each opening its details),
 **API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
-it**, **Domain maintenance** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
+it**, **DNS hosting** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
@@ -305,17 +311,18 @@ can't be previewed here: its client secret was issued to whoever created it
 and was never stored in the console, so mint its tokens with `POST /v1/tokens`
 and that secret.
 
-#### Domain maintenance
+#### DNS hosting [#domain-maintenance]
 
-An application's **Settings** tab has a **Domain maintenance** section: your
+An application's **Settings** tab has a **DNS hosting** section (it was called
+**Domain maintenance**): your
 platform keeps your users' domains working for them (records stay correct,
 certificates renew, problems get fixed) once each user agrees in the widget. One
 setting where the user bought the domain changes, its *nameservers*, which say
 who runs the domain's DNS. The guide is
-[Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
+[the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
 A test mode application has none. The section has:
 
-- **Maintain your users' domains**, a switch, off by default. Nothing changes for
+- **Host your users' DNS**, a switch, off by default. Nothing changes for
   your users until you **Save**; once saved, each user is asked when they connect
   a domain.
 - **Before and after**: a user's domain as two parts. Where it is registered (paid
@@ -329,15 +336,15 @@ A test mode application has none. The section has:
   per line.
 - **Show it as the first choice**: users see it first, and adding records stays
   one tap away. Off, it is a quiet second choice.
-- **Domains you maintain**, under the section once it is on: how many are
-  maintained, being set up and need attention, the typical setup time, why some
+- **Hosted domains**, under the section once it is on: how many are
+  hosted, being set up and need attention, the typical setup time, why some
   stopped, and one row per domain (who runs it, its status in plain words, the
   records copied, when it was last checked), each opening the domain.
 
 The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
 `target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
 
-A maintained domain shows a **Domain maintenance** section on its **DNS** tab: its
+A hosted domain shows a **DNS hosting** section on its **DNS** tab: its
 status, three steps (**Copying settings**, **Waiting for the registrar**,
 **Live**), the next thing to do, and, when its settings could only be read from
 outside, what to check and **The records look right, continue**
@@ -459,8 +466,10 @@ page to send a customer whose domain is stuck.
 ## 6. Serve something
 
 Live means the edge terminates TLS and proxies the domain to your
-application's **origin**. If you haven't set one, the domain shows a "not
-configured" page: set it under **Domain routing**. Root-domain redirects
+application's **origin** (**Edge serving**). If you haven't set one, the domain shows a "not
+configured" page: set it under **Routing**, the page titled **Where domains
+point**, as the **Application address**, or point the domains straight at your own servers
+there instead. See [Where domains point](/docs/connect-flow/routing). Root-domain redirects
 (`www_redirect`) and per-path rules live on the connection's detail page.
 
 ## 7. See its traffic

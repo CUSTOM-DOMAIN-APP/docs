@@ -1,0 +1,143 @@
+---
+title: Glossary
+description: "The words the CustomDomain™ console uses, one name per thing, each with a plain definition and where to read more."
+---
+
+The console uses one name for each thing. This page lists them, in plain words, with
+the page that explains each one. A **?** beside a word in the console shows the same
+line and links here or to the page named.
+
+## Workspace
+
+Your team's space on CustomDomain™: its people, billing, applications and domains.
+The API calls it a tenant. See [The console at a glance](/docs/getting-started/console#the-console-at-a-glance).
+
+## Application
+
+One product or environment in your workspace, such as Production or Staging. Each
+has its own widget, API keys and domains. See
+[Applications](/docs/getting-started/console#applications).
+
+## Domain
+
+A web address you or your customers connect, such as `shop.acme.com`. The API calls
+each one a *connection* (`/v1/connections`). See [Connections](/docs/concepts/connections).
+
+## Routing
+
+Where an application's domains send visitors: through our edge to your site, or
+straight to your own servers. The console page is **Routing**, titled **Where domains
+point**. See [Where domains point](/docs/connect-flow/routing).
+
+## Edge serving
+
+We answer a domain's visitors over HTTPS and pass each request on to your
+application's address (its *origin*). It is one of the two routes, on the Growth
+plan. See [Serve customer domains from your app](/docs/guides/serve-customer-domains-from-your-app).
+
+## DNS hosting
+
+We run a domain's DNS for its owner, so its records stay right with nothing to type.
+The owner changes one setting where they bought the domain, its nameservers. In the
+console it is the **DNS hosting** card on a domain's DNS tab and the **DNS hosting**
+setting of an application, which offers it to your users. The API calls it managed
+DNS and nameserver migration. See [Managed DNS](/docs/dns/managed-dns) and the
+[nameserver migration guide](/docs/guides/nameserver-migration).
+
+## Nameservers
+
+One setting where a domain was bought (at its registrar) that says who runs its DNS.
+DNS hosting changes only this. The console shows nameservers under **Technical
+details**. See [what nameservers are](/docs/guides/nameserver-migration#what-nameservers-are).
+
+## DNS host
+
+The company that runs a domain's DNS records. Often not the one the domain was bought
+from. See [DNS providers](/docs/dns/providers).
+
+## Connected accounts
+
+DNS provider and registrar logins and keys we keep, encrypted, so we can set up and
+repair many domains for you. When you connect one you choose its **Access**
+(**Continuous** keeps it until you remove it; **One time** uses it now and deletes it)
+and **Which domains** it may change (all of them, or only the ones you choose). The
+API calls them provider accounts. See [Provider accounts](/docs/connect-flow/provider-accounts).
+
+## Managed
+
+A domain is managed when we keep a lasting sign-in or key for it and put its records
+back if someone changes them. See
+[Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
+
+## Ways to connect
+
+The six ways a domain's records get added, by the names the console and these docs use:
+
+| Name | What happens |
+| --- | --- |
+| **Sign in with** your provider | Approve access once at the DNS provider, in a popup, and we add the records. |
+| **One-click setup** | The provider shows the exact change and you approve it there (Domain Connect). |
+| **Secure sign-in** | You sign in to the provider in a secure window we run, approve the exact changes, and we add the records. |
+| **API key** | You make a key at the DNS provider and paste it once, so we can write the records. |
+| **Add the records** | You copy a few rows into your DNS provider's panel yourself, and we check them. |
+| **DNS hosting** | The owner points the domain's nameservers at us once, and we host every record. |
+
+### Sign in with the provider
+
+The console names the button for the provider: **Sign in with Cloudflare**, for
+example. See [Choose how to add the records](/docs/getting-started/console#4-choose-how-to-add-the-records).
+
+### One-click setup
+
+The provider's own page shows the change and you approve it. See
+[Choose how to add the records](/docs/getting-started/console#4-choose-how-to-add-the-records).
+
+### Secure sign-in
+
+See [Secure sign-in](/docs/guides/secure-sign-in).
+
+### API key
+
+A provider's key, not a CustomDomain™ API key. See [Provider setup](/docs/dns/provider-setup).
+
+### Add the records
+
+See [Bring your own records](/docs/dns/bring-your-own-records).
+
+## Root domain
+
+The domain with nothing in front, like `acme.com`. Some DNS providers point it with an
+ALIAS or ANAME record instead of a CNAME. See [Root domains](/docs/dns/root-domains).
+
+## CAA record
+
+A DNS record that says who may issue certificates for the domain. One that leaves out
+Let's Encrypt blocks HTTPS. See
+[Certificates at the root](/docs/dns/root-domains#certificates-at-the-root).
+
+## Certificate
+
+What lets browsers open the domain over HTTPS. We issue it and renew it for you. See
+[Certificates](/docs/connect-flow/certificates).
+
+## Monitoring
+
+We re-check live domains and tell you when their records change. See
+[Monitoring and services](/docs/connect-flow/monitoring).
+
+## Remove a domain
+
+We stop serving it and, where we still have access, take our records back out. See
+[Removing a domain](/docs/connect-flow/offboarding).
+
+## Names the console no longer uses
+
+| Old name | Now |
+| --- | --- |
+| Edge serving (the page) | **Routing**, titled **Where domains point**. **Edge serving** names only the route through our edge. |
+| Domain routing | **Routing** |
+| Domain maintenance, Maintain your users' domains, Managed DNS | **DNS hosting** |
+| Domains you maintain | **Hosted domains** |
+| Make this connection managed | **Make this domain managed** |
+| Organization, tenant | **Workspace** |
+| App | **Application** |
