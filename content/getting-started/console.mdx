@@ -176,8 +176,8 @@ The list follows what the workspace's owner or an admin said: a teammate you inv
 sees the same go-live list (without the trial row, which is for owners and admins).
 In a workspace for clients or for your own domain, a teammate sees the usual
 checklist until they answer the welcome too. Your customers' domains are on
-**Domains**, on the **From your product (widget)** tab, which is the tab it opens
-on.
+**Domains**, on the **From your product (widget)** tab; the list itself opens on
+**All**.
 
 ## The console at a glance
 
@@ -241,14 +241,15 @@ what **Overview** and **Domains** lead with.
 | **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Routing and Connected accounts. Widget and API & SDK are under **Integrate** |
 | **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
 | **Overview** | The go-live list, then the domains that need attention (when any do), your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts and the domains that need attention (when any do) |
-| **Domains** | Opens on **From your product (widget)**, or on **All** until a customer has connected one | Opens on **All** | Opens on **All** |
 | **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Add your domains", with a button to paste a list | "Connect your domain" |
 
 The counts on **Overview** include every domain of every application, read from the
-same list **Domains** shows, and each count is the number its filter lists there. In a
-workspace for your customers they open the **All** tab, so what you click is what you
-see. The first-run tour follows the same layout. A workspace that has not said who its
-domains are for gets the console as it has always been.
+same list **Domains** shows, and each count is the number its filter lists there.
+**Domains** opens on **All** whoever the domains are for, so a count on **Overview**
+opens the domains it counted, and a domain you look for is there whichever way it
+was connected. The source tabs narrow the list from there. The first-run tour
+follows the same layout. A workspace that has not said who its domains are for
+gets the console as it has always been.
 
 A domain **needs attention** when its setup failed or stopped making progress, when
 its records were changed at the provider, or when it is still being set up 48 hours
@@ -611,9 +612,11 @@ application):
 | **Added in the console** | Console | You or a teammate, here. |
 | **Via the API or agents** | API, Agent, MCP | Your server with an API key, an AI agent you authorized, or the MCP server. |
 
-The first visit explains the two paths with the same small diagram the
-**Connect a domain** question uses. Domains added before sources were
-recorded (September 2026) have no badge and are listed under **All** only.
+The list opens on **All**. The first visit explains the two paths with the same
+small diagram the **Connect a domain** question uses (on a phone, one line that
+opens it; the status, application and sort filters and **Export CSV** wait behind
+**Filters** there). Domains added before sources were recorded (September 2026)
+have no badge and are listed under **All** only.
 The API returns the same fact as `created_via` on every connection
 (`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). The
 **Overview** shows the split too, under the counts.
