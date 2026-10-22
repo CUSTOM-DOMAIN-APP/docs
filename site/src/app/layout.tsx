@@ -1,3 +1,8 @@
+/**
+ * Root layout of the docs site: the html and body shell, the Fumadocs RootProvider and the site-wide metadata
+ * (docs.customdomain.ai origin, title template). Pages override the metadata per route.
+ */
+
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
