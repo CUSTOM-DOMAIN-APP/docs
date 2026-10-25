@@ -1753,6 +1753,54 @@ paths:
                         detail: { type: string, description: "What needs doing, for people." }
                   truncated: { type: boolean, description: True when the workspace has more domains than one summary counts (2000). }
         '401': { $ref: '#/components/responses/Error' }
+  /connections/{id}/saved-access:
+    get:
+      operationId: getConnectionSavedAccess
+      summary: The kept keys that may act for the domain, for you
+      tags: [Provider accounts]
+      description: >-
+        The saved access resolver's answer for the connection's domain: the
+        workspace's kept provider keys that may write its records for the
+        caller, best first, with no sign in and no new key. The same answer
+        is `rails.saved_access` on `POST /domains:check`, and the console's
+        Connect page offers it first. Its rules, in order: the key is at the
+        domain's provider (`?provider=` asks about another than the one
+        detected), kept (`continuous`) and still working (a key that is only
+        nearing its end counts); an API key caller gets the workspace's keys
+        that serve the connection's application and that it may use (an
+        admin, an owner or the key's maker), never a key an end user's own
+        sign in made; a key whose scope holds the domain's zone is `ready`;
+        otherwise a key made at a secure sign in a member started in the
+        console may be offered with `ready: false`, after one read with it
+        showed it reaches the zone (at most 3 reads a call, each answer kept
+        10 minutes), and using it adds the zone to its scope. One entry per
+        provider account. An end user's widget token gets an empty list.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['domains:connect']
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - name: provider
+          in: query
+          required: false
+          schema: { type: string }
+          description: A provider id other than the one detected for the domain.
+      responses:
+        '200':
+          description: The saved access, best first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [saved_access]
+                properties:
+                  saved_access:
+                    type: array
+                    items: { $ref: '#/components/schemas/SavedAccess' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/monitor:
     get:
       operationId: getConnectionMonitor
@@ -2700,6 +2748,50 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+  /connections/{id}:use-saved-access:
+    post:
+      operationId: useConnectionSavedAccess
+      summary: Write the domain's records with a kept key
+      tags: [Provider accounts]
+      description: >-
+        Writes the connection's records with one of the kept keys
+        `GET /connections/{id}/saved-access` answers for it (`account_id`),
+        and links the key to the domain, so later repairs and the removal use
+        it. A key offered with `ready: false` takes the domain's zone into its
+        scope once the write worked (`provider_account.domain_added` in the
+        audit log). An account the resolver does not answer for this domain
+        and caller is `409` `saved_access_not_usable`. A write that fails
+        leaves the domain and the key as they were: `502`
+        `saved_access_write_failed`, with the provider's words. A domain kept
+        by an end user's own sign in key is left as it is (`409`).
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id]
+              properties:
+                account_id: { type: string }
+      responses:
+        '200':
+          description: The domain's outcome and the account after it
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result: { $ref: '#/components/schemas/AccountConnectResult' }
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
   /connections/{id}:retarget:
     post:
       operationId: retargetConnection
@@ -2870,6 +2962,14 @@ paths:
                     sign-in (`rails.oauth.managed` on the domain check).
                     `one_time` uses it for this write and drops it. Omitted,
                     the deployment's default applies (kept where it can be).
+                new_sign_in:
+                  type: boolean
+                  description: >-
+                    "Use another account." A connect sign-in for a domain that a
+                    saved key may already act for (`GET /connections/{id}/saved-access`)
+                    is refused with `409` `saved_access_available`, before anything
+                    is started; `true` signs in anyway. Never needed by an end
+                    user's widget token, which is never refused.
       responses:
         '200':
           description: The URL to open, and what it runs
@@ -2907,6 +3007,15 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `saved_access_available`: a connect sign-in for a domain that a
+            saved key may already act for. Use it
+            (`POST /connections/{id}:use-saved-access`), or send
+            `new_sign_in: true` to sign in with another account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '429':
           description: >-
             `provider_rate_limited`: the provider refused to start another
@@ -3025,6 +3134,15 @@ paths:
                     lasting API key CustomDomain™ made for this connection, for the key's
                     own provider, and changes no DNS record; the session ends `done` when
                     the new key is in place.
+                new_sign_in:
+                  type: boolean
+                  description: >-
+                    "Use another account." A connect for a domain that a saved
+                    key may already act for (`GET /connections/{id}/saved-access`)
+                    is refused with `409` `saved_access_available`, before a
+                    session row exists or a browser is paid for; `true` signs in
+                    anyway. A reconnect and a nameserver session are never
+                    refused, and neither is an end user's widget token.
                 widget_session_id:
                   type: string
                   description: >-
@@ -3066,9 +3184,10 @@ paths:
         '409':
           description: >-
             `browser_session_active`: a secure sign in is already running for
-            this domain, or `browser_reconnect_unavailable`: `mode: reconnect`
+            this domain, `browser_reconnect_unavailable`: `mode: reconnect`
             for a connection that has no lasting API key CustomDomain™ made, or
-            whose provider cannot make one now.
+            whose provider cannot make one now, or `saved_access_available`: a
+            kept key can already act for this domain (see `new_sign_in`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -6279,8 +6398,19 @@ paths:
         `DELETE /connections/{id}/grant`. A viewer reads them without
         `agent_key.account` (an end user's customer number at the provider)
         and `agent_key.session_id`.
+
+
+        `?provider=` keeps one provider's accounts. `?domain=` keeps the ones
+        that may act for that domain for the caller, best first, by the saved
+        access resolver's rules (see `GET /connections/{id}/saved-access`),
+        for `?application_id=` or the API key's own application (`404` for an
+        application of another workspace), and adds them as `saved_access`.
       security:
         - apiKey: []
+      parameters:
+        - { name: provider, in: query, required: false, schema: { type: string } }
+        - { name: domain, in: query, required: false, schema: { type: string } }
+        - { name: application_id, in: query, required: false, schema: { type: string } }
       responses:
         '200':
           description: The accounts
@@ -6509,13 +6639,7 @@ paths:
                 properties:
                   results:
                     type: array
-                    items:
-                      type: object
-                      properties:
-                        domain: { type: string }
-                        connection_id: { type: string }
-                        status: { type: string, enum: [connected, already, failed] }
-                        message: { type: string }
+                    items: { $ref: '#/components/schemas/AccountConnectResult' }
                   account: { $ref: '#/components/schemas/ProviderAccount' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
@@ -8433,6 +8557,22 @@ components:
           enum: [browser_agent]
           description: "`browser_agent` for a key the agent made after the end user signed in; absent for a key a person pasted."
         agent_key: { $ref: '#/components/schemas/AgentKey' }
+        owner_kind:
+          type: string
+          enum: [workspace, end_user]
+          description: >-
+            Whose key it is. `workspace`: a key the workspace holds (pasted, or
+            made at a secure sign in a member started in the console).
+            `end_user`: a key an end user's own sign in made (in the widget, or
+            started by an API key without the console's signed call); it acts
+            only for that end user, in its application, and the workspace can
+            narrow or remove it but never use, widen or list it.
+        end_user_ref:
+          type: string
+          description: The platform's id for that end user, when the sign in named one. Not shown to a viewer.
+        account_ref:
+          type: string
+          description: The provider account the key belongs to, as the provider names it (a customer number, a user name). Not shown to a viewer.
     ConnectionServices:
       type: object
       required: [connection_id, application_id, domain, status, access, services, active_count]
@@ -9344,6 +9484,44 @@ components:
               reason: { type: string, description: "Why a record that is not ours goes." }
         unchanged: { type: integer, description: "How many records on the page stay as they are." }
         approve_by: { type: string, format: date-time }
+    AccountConnectResult:
+      type: object
+      description: One domain's outcome of connecting with a kept key.
+      required: [domain, status]
+      properties:
+        domain: { type: string }
+        connection_id: { type: string }
+        status: { type: string, enum: [connected, already, failed] }
+        message: { type: string }
+    SavedAccess:
+      type: object
+      description: A kept provider key that may act for a domain, for the caller. Never the key.
+      required: [account_id, provider, provider_name, label, how, owner_kind, scope, zone, ready, status]
+      properties:
+        account_id: { type: string }
+        provider: { type: string }
+        provider_name: { type: string }
+        label: { type: string }
+        how:
+          type: string
+          enum: [api_key, secure_sign_in]
+          description: "How the key came: a person pasted it, or the agent made it at a secure sign in."
+        owner_kind: { type: string, enum: [workspace, end_user] }
+        scope: { type: string, enum: [all, selected] }
+        zone: { type: string, description: "The domain's zone at the provider." }
+        ready:
+          type: boolean
+          description: >-
+            True when the key's scope holds the zone. False: a read with the key
+            showed it reaches the zone, and using it adds the zone to its scope.
+        status:
+          type: string
+          enum: [active, needs_reconnect]
+          description: "`needs_reconnect` for a key that still works until its end date."
+        application_id: { type: string }
+        key_name: { type: string }
+        key_expires_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
     RailInfo:
       type: object
       required: [available]
@@ -9403,6 +9581,30 @@ components:
           description: >-
             Available `ovh_consent` rail only: the OVHcloud API regions this
             deployment can run the consent in, the default first.
+        key:
+          type: object
+          description: >-
+            Available `cloud_browser` rail only, and only when the sign in also
+            makes a lasting API key for the person's provider account (the
+            provider's key page is one the agent runs). The rail then leads
+            ahead of a pasted API key: nothing is typed, and the key is the one
+            the person would have had to find, name, scope and paste. Names what
+            that key can do and when it ends, so a surface can say so before it
+            asks.
+          required: [rights, ends_in_days]
+          properties:
+            rights:
+              type: array
+              items: { type: string, enum: [transfer, billing, account] }
+              description: >-
+                What the key can do beyond the domain's DNS records:
+                `transfer` (it can transfer the domain away), `billing` (it can
+                make charges), `account` (it has no scopes and holds every right
+                the provider's API gives the account). Empty for a key that
+                reaches DNS only.
+            ends_in_days:
+              type: [integer, 'null']
+              description: How long the key lives from the day it is made; null for a key with no end date.
     DomainCheck:
       type: object
       required: [domain, setup_type]
@@ -9513,14 +9715,69 @@ components:
               description: >-
                 The cloud browser sign in (see `POST /connections/{id}/browser:start`).
                 Present only while the deployment has it on; absent otherwise.
+            nameservers:
+              type: object
+              description: >-
+                The DNS hosting verdict: whether the application offers to host
+                the domain's DNS by moving its nameservers (`nameserver_migration`),
+                and where it stands among the other ways. Absent while the
+                application's setting is off.
+              required: [verdict, reason]
+              properties:
+                verdict:
+                  type: string
+                  enum: [offered, offered_first, recommended, unavailable]
+                  description: >-
+                    `offered`: after the other ways. `offered_first`: the
+                    application's setting is `prefer`. `recommended`: no
+                    automatic way works for this domain, so the move saves the
+                    person copying records. `unavailable`: offered, but not for
+                    this domain (`reason` says why).
+                reason:
+                  type: string
+                  description: >-
+                    `application_offers`, `application_prefers`, `no_automatic_way`,
+                    or for `unavailable` the reason of `nameserver_migration`
+                    (`registrar_locks_nameservers`, the reasons of `managed_dns`).
+            saved_access:
+              type: object
+              description: >-
+                The kept keys that may act for this domain for the caller, best
+                first (see `GET /connections/{id}/saved-access`): no sign in
+                and no new key. Present only when there is one, and then
+                `recommended_rail` is `saved_access`. Only an API key caller
+                has any; an end user's widget token never gets it.
+              required: [available, accounts]
+              properties:
+                available: { type: boolean }
+                accounts:
+                  type: array
+                  items: { $ref: '#/components/schemas/SavedAccess' }
+        also_provider:
+          type: object
+          description: >-
+            The second way, when the registrar and the nameservers name two
+            providers: a former Google Domains name (now Squarespace's) keeps
+            Google's `ns-cloud-*.googledomains.com` nameservers, which Google
+            Cloud DNS zones use too. `provider` is then the registrar's
+            (`squarespace`, found over RDAP, so its secure sign-in is offered)
+            and this is the nameservers' (`gcpdns`). Absent otherwise, and when
+            the registrar lookup answers nothing.
+          required: [provider, provider_name, reason]
+          properties:
+            provider: { type: string }
+            provider_name: { type: string }
+            reason: { type: string, enum: [former_google_domains] }
         recommended_rail:
           type: string
-          enum: [oauth, domain_connect, cloud_browser, api_key, manual]
+          enum: [saved_access, oauth, domain_connect, cloud_browser, api_key, manual]
           description: >-
-            The rail the server recommends, by precedence oauth →
+            The rail the server recommends: `saved_access` when the caller
+            already keeps a key that may act for the domain, else by precedence oauth →
             domain_connect → cloud_browser → api_key → manual (least typing for
             the end user first). `cloud_browser` is recommended only when it is
-            available and the API key rail is unavailable or carries a caveat.
+            available and the API key rail is unavailable, carries a caveat, or the
+            sign in makes the API key itself (`rails.cloud_browser.key`).
             Absent when `blocked_reason` is set. The console and the
             widget follow this field so the surfaces never disagree.
         end_user_automatic:

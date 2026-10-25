@@ -15,6 +15,19 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 25, 2026: a key you already keep is offered first, and a second sign-in no longer adds a second key.**
+  When the workspace already keeps a provider key that can act for a domain, the domain check lists it
+  (`rails.saved_access`, and `GET /v1/connections/{id}/saved-access`) and `POST /v1/connections/{id}:use-saved-access`
+  writes the records with it, with no new sign-in. A sign-in for such a domain now answers `409
+  saved_access_available` until you send `new_sign_in: true`. Each kept key now says whose it is (`owner_kind`):
+  a key your customer's own sign-in made acts only for that customer. A second secure sign-in for the same
+  provider account swaps its key into the existing account instead of adding one (GoDaddy keeps one key per
+  sign-in for now), and the account names the key it replaced and where to delete it. The secure sign-in now leads
+  a pasted API key wherever it makes the key itself, and says what that key can do and when it ends
+  (`rails.cloud_browser.key`); `rails.nameservers` says whether DNS hosting is offered, offered first or
+  recommended; and a domain bought at Google Domains, now Squarespace's, is offered Squarespace's secure
+  sign-in, with Google Cloud DNS as `also_provider`. The console calls the way **Secure sign-in** and the records
+  way **Add the records**.
 - **October 22, 2026: the console's numbers agree, and Needs attention means one thing.** **Overview** counts
   every application's domains, the same list **Domains** shows, and each count is what its filter lists there.
   **Needs attention** now also covers live domains whose certificate is failing or about to expire, whose
