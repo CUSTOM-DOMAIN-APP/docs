@@ -1025,6 +1025,18 @@ paths:
                       sync: { type: boolean }
                       async: { type: boolean }
                       provider: { type: string, description: provider name from DC discovery }
+                  also_provider:
+                    type: object
+                    description: >-
+                      The second way, as `domains:check` names it: for a former
+                      Google Domains name `provider_id` is `squarespace` (the
+                      registrar, found over RDAP) and this is `gcpdns`, whose
+                      nameservers it keeps. Absent otherwise.
+                    required: [provider, provider_name, reason]
+                    properties:
+                      provider: { type: string }
+                      provider_name: { type: string }
+                      reason: { type: string, enum: [former_google_domains] }
         '400': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/Error' }
 
@@ -2760,9 +2772,14 @@ paths:
         it. A key offered with `ready: false` takes the domain's zone into its
         scope once the write worked (`provider_account.domain_added` in the
         audit log). An account the resolver does not answer for this domain
-        and caller is `409` `saved_access_not_usable`. A write that fails
-        leaves the domain and the key as they were: `502`
-        `saved_access_write_failed`, with the provider's words. A domain kept
+        and caller is `409` `saved_access_not_usable`, and so is a key at
+        another provider than the one a live or propagating domain's DNS is
+        at, or a key whose scope does not hold such a domain yet (such a
+        domain is linked without a write, and a scope widens only after a
+        write). A write that fails links nothing and leaves the key's scope
+        as it was, and records the failure on the domain (its `error_code`
+        and `error_message`): `502` `saved_access_write_failed`, with the
+        provider's words. A domain kept
         by an end user's own sign in key is left as it is (`409`).
       security:
         - apiKey: []
@@ -6441,7 +6458,12 @@ paths:
                           type: array
                           items: { type: string }
                   keeping_available: { type: boolean, description: Whether this deployment can keep keys (GRANT_ENCRYPTION_KEY is set). }
+                  saved_access:
+                    type: array
+                    description: With `?domain=` only. The keys that may act for the domain for the caller, best first, as `GET /connections/{id}/saved-access` lists them.
+                    items: { $ref: '#/components/schemas/SavedAccess' }
         '401': { $ref: '#/components/responses/Error' }
+        '404': { description: "`?domain=` with an `application_id` (or an API key's own application) of another workspace, or none" }
   /provider-accounts/{id}:
     get:
       operationId: getProviderAccount
@@ -6593,7 +6615,9 @@ paths:
         write fails is not linked and keeps the access it had. A continuous
         account then keeps the linked domains in sync. A domain the
         application already serves is only linked (`provider_account.relinked`
-        in the audit log). A one time
+        in the audit log), and only to a key at the provider its DNS is at
+        whose scope already holds it; any other such domain is answered
+        `already` with the reason and left as it is. A one time
         account deletes its key once the domains are connected, even when the
         caller has gone away by then, and past its hour answers `409`. A
         domain in a zone the key does not reach fails alone

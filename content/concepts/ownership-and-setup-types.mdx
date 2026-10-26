@@ -69,9 +69,10 @@ instead:
   `cloud_browser` (the secure sign-in) → `api_key` → `manual` (least typing
   first). The secure sign-in leads a pasted API key wherever it makes the key
   itself (`rails.cloud_browser.key` is then set and names what the key can do
-  and when it ends), or the key way is unavailable or carries a caveat. A
-  caller that already keeps a key that can act for the domain gets
-  `saved_access` first, with `rails.saved_access` listing the keys. The
+  and when it ends), or the key way is unavailable or carries a caveat. An
+  API key caller whose workspace already keeps a key that can act for the
+  domain gets `saved_access` first, with `rails.saved_access` listing the keys;
+  an end user's widget token never gets it. The
   console and the widget follow it, within the ways each can show, so the
   surfaces agree.
 - **`rails.nameservers`**: when the application offers DNS hosting, the verdict
