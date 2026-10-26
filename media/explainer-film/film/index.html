@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CustomDomain™ — the human middleware</title>
+<style>
+  /* The brand's three faces (customdomain.ai/brand): Instrument Serif for display, Inter for the interface, Geist Mono for records. */
+  @font-face { font-family: 'Display'; src: url(../assets/fonts/InstrumentSerif-Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; }
+  @font-face { font-family: 'Display'; src: url(../assets/fonts/InstrumentSerif-Italic.woff2) format('woff2'); font-weight: 400; font-style: italic; }
+  @font-face { font-family: 'UI'; src: url(../assets/fonts/Inter.woff2) format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'Mono'; src: url(../assets/fonts/GeistMono.woff2) format('woff2'); font-weight: 100 900; }
+  :root {
+    /* console tokens, measured on customdomain.ai/brand. Monochrome warm stone; green marks a finished step and nothing else. */
+    --paper: #fafaf9; --ink: #1c1917; --card: #ffffff; --muted: #f5f5f4; --muted-fg: #78716c; --hair: #e7e5e4;
+    --input: #d6d3d1; --long: #44403c; --night: #0c0a09; --night-card: #1c1917; --night-muted: #292524; --night-fg2: #a8a29e;
+    --done: #16a34a;
+    --bg: var(--night); --accent: var(--done);
+  }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; overflow: hidden; background: var(--bg); transform-origin: 0 0;
+           font-family: 'UI', 'Helvetica Neue', Arial, sans-serif; color: var(--ink);
+           -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; font-feature-settings: 'cv11', 'ss01'; }
+  .scene { position: absolute; inset: 0; overflow: hidden; }
+  .abs { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .display { font-family: 'Display', Georgia, serif; font-weight: 400; letter-spacing: -0.015em; line-height: 0.98; white-space: nowrap; }
+  .display i, .display .it { font-style: italic; }
+  .mono { font-family: 'Mono', ui-monospace, monospace; }
+  .eyebrow { font-family: 'UI'; font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; white-space: nowrap; }
+  .line { position: absolute; overflow: hidden; padding: 0.1em 0.06em 0.22em; margin: -0.1em -0.06em 0; white-space: nowrap; }
+  .word { display: inline-block; }
+  .card { position: absolute; background: var(--card); border-radius: 12px;
+          box-shadow: 0 0 0 1px #e7e5e4, 0 1px 2px rgba(28,25,23,.04), 0 8px 24px -14px rgba(28,25,23,.10), 0 40px 90px -30px rgba(28,25,23,.28); }
+  .btn { position: absolute; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 6px;
+         background: var(--ink); color: var(--paper); font-weight: 500; white-space: nowrap; }
+  svg { display: block; }
+  body.play { display: block; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="lib/motion.js"></script>
+<script src="data.js"></script>
+<script src="core.js"></script>
+<script src="type.js"></script>
+<script src="film.js"></script>
+</body>
+</html>
