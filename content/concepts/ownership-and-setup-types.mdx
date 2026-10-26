@@ -66,8 +66,24 @@ instead:
 - **`caveat`**: a note on an *available* rail most users still can't use.
   Show it; don't treat it as unavailability.
 - **`recommended_rail`**: the server's pick, `oauth` → `domain_connect` →
-  `api_key` → `manual` (least typing first). The console and the widget
-  follow it, so all three surfaces agree.
+  `cloud_browser` (the secure sign-in) → `api_key` → `manual` (least typing
+  first). The secure sign-in leads a pasted API key wherever it makes the key
+  itself (`rails.cloud_browser.key` is then set and names what the key can do
+  and when it ends), or the key way is unavailable or carries a caveat. An
+  API key caller whose workspace already keeps a key that can act for the
+  domain gets `saved_access` first, with `rails.saved_access` listing the keys;
+  an end user's widget token never gets it. The
+  console and the widget follow it, within the ways each can show, so the
+  surfaces agree.
+- **`rails.nameservers`**: when the application offers DNS hosting, the verdict
+  on it for this domain: `offered`, `offered_first` (the application's setting
+  is `prefer`), `recommended` (no automatic way works) or `unavailable`, with a
+  `reason`. Absent while the setting is off.
+- **`also_provider`**: set when the registrar and the nameservers name two
+  providers. A domain that was bought at Google Domains is Squarespace's now
+  and keeps Google's nameservers, which Google Cloud DNS zones use too: `provider`
+  is `squarespace` (so its secure sign-in is offered) and `also_provider` is
+  Google Cloud DNS.
 - **`end_user_automatic`**: true only when the recommended rail is OAuth or
   one-click. This is the fact `supports_automatic` was always misread as.
 - **`blocked_reason`**: present when *no* rail can connect the domain:

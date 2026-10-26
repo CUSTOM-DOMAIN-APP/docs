@@ -30,7 +30,7 @@ the REST answer also lists it in `advisories`, which the packages map since 0.5.
 `conflictTolerance`, `willFallbackToManual`, `apexSupported`, `apexMessage`, the
 Public Suffix List split of the domain (`subdomain`, `registrableDomain`,
 `publicSuffix`), `authoritativeDnsProvider`, plus the rail truth: `rails` (`{ oauth, domainConnect, apiKey, manual, cloudBrowser? }`, each
-`{ available, reason?, caveat? }`), `recommendedRail`, `endUserAutomatic`,
+`{ available, reason?, caveat? }`; `cloudBrowser` also carries `key` when the secure sign-in makes an API key), `recommendedRail`, `endUserAutomatic`,
 `blockedReason`, `dashboardUrl`, `nameservers`. Branch on `rails` and
 `recommendedRail`, not on `supportsAutomatic`, which only means an adapter
 exists. See [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

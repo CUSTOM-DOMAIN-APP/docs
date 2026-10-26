@@ -130,6 +130,59 @@ ways:
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
 
+## Whose key it is, and saved access
+
+Every account says whose it is. `owner_kind` is `workspace` for a key your
+workspace holds (one you pasted, or one made at a sign-in you or a teammate
+started in the console) and `end_user` for a key your customer's own sign-in
+made. A key made by a customer acts only for that customer, in the application
+where they made it: you can narrow it or remove it, and you cannot use it, list
+the domains it reaches or widen it. `account_ref` is the provider account the
+key belongs to, and `end_user_ref` your id for the customer, when the sign-in
+named one. A viewer sees neither.
+
+**Saved access** answers "which kept key can act for this domain, for me" in one
+place, so a second domain at the same provider does not start a second sign-in:
+
+- `GET /v1/connections/{id}/saved-access` lists them, best first. A key is
+  listed when it is at the domain's provider, kept (continuous) and still
+  working, serves the connection's application, and you may use it. A key whose
+  scope already holds the domain's zone is `ready`. A key made at a sign-in
+  started in the console may also be listed with `ready: false`, after one read
+  with it showed it reaches the zone; using it adds the zone to its scope. At
+  most three such reads happen per call, and each answer is kept ten minutes.
+  There is one entry per provider account.
+- `POST /v1/connections/{id}:use-saved-access` with `{"account_id": "..."}`
+  writes the domain's records with that key and links it once the write worked.
+  A write that fails links nothing, leaves the key's scope as it was and
+  records the failure on the domain (`error_code` and `error_message`):
+  `502 saved_access_write_failed`, with the provider's words. An account that
+  cannot act for the domain is `409 saved_access_not_usable`.
+- `rails.saved_access` on `POST /v1/domains:check` is the same list for an API
+  key caller, and `recommended_rail` is then `saved_access`. An end user's
+  widget token never gets it, and no MCP tool uses a kept key: `discover-provider`
+  reports `rails.savedAccess` and tells the agent to point the person at the
+  domain's page in the console.
+- `GET /v1/provider-accounts?provider=&domain=` keeps the accounts that can act
+  for a domain.
+
+A secure sign-in or a provider sign-in for a domain that a saved key can already
+act for answers `409 saved_access_available` before anything starts. Send
+`new_sign_in: true` to sign in with another account. Your customers' widget
+sessions are not affected: saved access for returning customers is not offered
+yet.
+
+A second secure sign-in for a provider account you already hold a key for does
+not add a second row. Its key is swapped into the existing account, and the
+domain's zone joins that account's scope. The key it replaces still lives at the
+provider unless it was the same key, so the account shows `old_key:
+"revoke_by_hand"` with the provider's `revoke_url`; CustomDomain™ never revokes
+a key itself. If the write that follows the sign-in fails, the account keeps the
+new key (and `old_key`), the zone leaves its scope again unless the account
+covered it before, and the domain records the failure; an account other domains
+use is never removed for one failed write. GoDaddy is the exception for now: each
+sign-in there keeps its own key.
+
 ## Audit log
 
 Every change to a provider account, and every use of its key beyond the records
