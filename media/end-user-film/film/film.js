@@ -580,6 +580,8 @@
         btn: D(R(v, lx, 250, ww - 68, 58, { sw: 3 })), bt: label(G, lx, 264, 'Sign in', UI(24, 600) + `width:${ww - 68}px;text-align:center;`), fill: box(G, lx, 250, `width:${ww - 68}px;height:58px;border-radius:6px;background:${COL.ink}`, '', { o: 0 }),
         q: label(G, lx, 330, 'Allow CustomDomain™ to manage', UI(21, 500, COL.long)), q2: label(G, lx, 358, 'DNS for acme.shop?', UI(21, 500, COL.long)),
         ab: D(R(v, lx, 396, ww - 68, 58, { sw: 3 })), at: label(G, lx, 410, 'Allow', UI(24, 600) + `width:${ww - 68}px;text-align:center;`), afill: box(G, lx, 396, `width:${ww - 68}px;height:58px;border-radius:6px;background:${COL.ink}`, '', { o: 0 }) };
+      // a pressed button's ink fill sits under its label, so the label shows in paper while pressed
+      [[S.w1.fill, S.w1.bt], [S.w3.fill, S.w3.bt], [S.w3.afill, S.w3.at]].forEach(([f, l]) => G.insertBefore(f, l));
       S.bigCheck = D(checkMark(v, ww - 120, wh - 150, 3.2, COL.done, 7));
       S.cur = cursorEl(S.world, P(40, 46));
       S.wgeo = { wx, wy, ww, wh, lx, ws };
@@ -598,7 +600,7 @@
       S.lockT = label(S.world, bx + 92, by + 358, 'HTTPS certificate issued', UI(P(26, 24), 600));
       S.byT = label(S.world, bx, by + bh + 22, 'written by CustomDomain™, not by your customer', HAND(40, COL.ink));
       // --- live: the customer's site at their own domain, and the loop that keeps it so
-      const sk = P(0.85, 0.8), sw = 860 * sk, sh = 520 * sk, LC = P([1200, 495], [530, 840]), sx = OX[2] + LC[0] - sw / 2, sy = LC[1] - sh / 2;
+      const sk = P(0.85, 0.75), sw = 860 * sk, sh = 520 * sk, LC = P([1200, 495], [530, 840]), sx = OX[2] + LC[0] - sw / 2, sy = LC[1] - sh / 2;
       const q = (a, b2) => [sx + a * sk, sy + b2 * sk], Rq = (a, b2, w2, h2, o) => R(S.svg, sx + a * sk, sy + b2 * sk, w2 * sk, h2 * sk, o), Lq = (a, b2, c2, d2, o) => Ln(S.svg, ...q(a, b2), ...q(c2, d2), o);
       S.site = D(Rq(0, 0, 860, 520, { sw: 3.4 }), Lq(0, 66, 860, 66, { sw: 2.6 }), Rq(30, 16, 440, 36, { sw: 2.4 }),
         Lq(60, 140, 460, 140, { sw: 6 }), Lq(60, 186, 380, 186, { sw: 6 }), Lq(60, 250, 520, 250, { sw: 2.4, stroke: COL.soft }),
@@ -609,12 +611,12 @@
       // "Live": a green pill (green is for done, and this is the moment it is done)
       S.live = box(S.world, sx + sw - 170 * sk - 20, sy + 14 * sk, `display:flex;align-items:center;gap:8px;padding:6px 16px;border-radius:999px;background:${COL.done};${UI(22, 600, COL.paper)}transform-origin:50% 50%`, `<svg width="18" height="18" viewBox="0 0 20 20" style="position:static"><path d="M4 10.5l4 4 8-9" fill="none" stroke="${COL.paper}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Live`, { o: 0 });
       // the loop around the site, an orbiting dot on it; sized to clear the caption, the checklist and the rail
-      const lc = [OX[2] + LC[0], LC[1]], lr = P([580, 390], [420, 395]);
+      const lc = [OX[2] + LC[0], LC[1] + P(0, 13)], lr = P([580, 390], [420, 350]);
       S.loopC = lc; S.loopR = lr;
       S.loop = D(El(S.svg, lc[0], lc[1], lr[0] * 2, lr[1] * 2, { sw: 3, stroke: COL.done, rough: 0.6 }));
       S.orbit = box(S.world, 0, 0, `width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:${COL.done}`, '', { o: 0 });
       // what "kept" means, in the order the voice says it: a column under the caption (16:9), between the loop and the rail (9:16)
-      const kx = OX[2] + P(PAD, 150), ky = P(420, 1268), kd = P(72, 54);
+      const kx = OX[2] + P(PAD, 150), ky = P(420, 1238), kd = P(72, 54);
       S.keep = ['Checked every hour', 'Certificates renewed', 'Drift fixed'].map((s2, i) => ({ ck: D(checkMark(S.svg, kx, ky + i * kd + 6, 1)), txt: label(S.world, kx + 44, ky + i * kd, s2, UI(P(32, 28), 600)) }));
       S.OX = OX;
     },
@@ -627,7 +629,7 @@
       const plate = beatAt(t) < e('e5') - 0.6 ? [S4_END, e('e5') - 0.6] : beatAt(t) < e('e6') - 0.6 ? [e('e5') - 0.6, e('e6') - 0.6] : [e('e6') - 0.6, S5_END];
       const ps = 1 + 0.04 * ease.inOut(seg(t, plate[0], plate[1]));
       const zk = TALL ? 0 : ease.inOut(seg(t, Wd('e3', 'they') - 0.9, Wd('e3', 'they') - 0.1)) - ease.inOut(seg(t, e('e5') - 2.2, e('e5') - 1.0));
-      const z = 1 + 0.15 * zk, Zx = 600, Zy = 600, O1 = [W / 2 - cx, H * 0.45];     // screen = Z + z * (O1 + (cx,0) + ps * (p - O1) - Z)
+      const z = 1 + 0.15 * zk, Zx = 600, Zy = 890, O1 = [W / 2 - cx, H * 0.45];     // screen = Z + z * (O1 + (cx,0) + ps * (p - O1) - Z)
       put(S.world, { x: Zx + z * (O1[0] + cx - Zx) - z * ps * O1[0], y: Zy + z * (O1[1] - Zy) - z * ps * O1[1], s: z * ps, css: { 'transform-origin': '0px 0px' } });
       // rail stops fill as the customer does each thing; Live fills green
       const done = [Wd('e1', 'once'), Wd('e3', 'sign'), Wd('e3', 'approve'), Wd('e6', 'live')];
