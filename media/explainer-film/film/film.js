@@ -1,4 +1,4 @@
-// CustomDomain™ — "The human middleware". A problem-first explainer, 42 s at 120 bpm, 16:9 and 9:16.
+// CustomDomain™: "The human middleware". A problem-first explainer, 50.4 s at 100 bpm, 16:9 and 9:16.
 // Story: the finish line (hook) → the button you ship → the homework your customer gets → the registrar panel where it
 // dies → the three-actor gap (the insight) → CustomDomain™ removes the human → the real connect flow → proof → CTA.
 // Pure function of time: no timers, no Math.random, nothing mutated in run(). Springs from lib/motion.js only.
@@ -123,7 +123,7 @@
     S.bw = bw; S.by = by;
     S.track = box(R, PAD, by, `width:${bw}px;height:8px;border-radius:4px;background:${COL.nightMuted};transform-origin:0 0`, '', { o: 0 });
     S.fill = box(R, PAD, by, `width:${bw}px;height:8px;border-radius:4px;background:${COL.paper};transform-origin:0 0`, '', { o: 0 });
-    S.stops = [['Sign up', 0.02, -2], ['Build', 0.3, 0.9], ['Publish', 0.6, 2.4], ['Connect domain', 0.94, 99]];
+    S.stops = [['Sign up', 0.02, -2], ['Build', 0.3, 0.8], ['Publish', 0.6, 2.3], ['Connect domain', 0.94, 99]];
     S.labels = S.stops.map(([s, f], i) => {
       const e = box(R, PAD + bw * f, by + 32, `width:0;`, `<span class="lab" style="position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;font:400 ${P(24, 26)}px Mono;color:inherit;white-space:nowrap;transform:translateX(${i === 3 ? '-100%' : i === 0 ? '-12%' : '-50%'})"><span class="ok" style="display:inline-block;width:${i === 3 ? 0 : P(22, 24)}px;transform-origin:50% 50%">${ICON.check(P(22, 24), COL.paper, COL.night)}</span>${s}</span>`, { o: 0 });
       e.style.color = COL.fg2; e.ok = e.querySelector('.ok'); reg(e.ok);

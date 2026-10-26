@@ -1,6 +1,6 @@
 # CustomDomain™ explainer film: "The human middleware"
 
-A 42-second, problem-first explainer for CustomDomain™, in two cuts:
+A 50-second, problem-first explainer for CustomDomain™, in two cuts:
 
 | Cut | Format | For |
 |---|---|---|
@@ -11,16 +11,16 @@ The MP4s are delivered outside this repository (it keeps files under 300 KB); th
 
 Sound: an original score and UI sound effects, synthesized in code, mixed to -14 LUFS with true peak ≤ -1 dBTP. There is no voiceover. The story is carried by kinetic type, so the film works muted in a feed, as the brand's own 29-second intro film does.
 
-## The story (in beats at 120 bpm; 1 beat = 0.5 s)
+## The story (in beats at 100 bpm; 1 beat = 0.6 s)
 
-1. **0 to 4 s, the hook.** "Your customers fail at *the finish line.*" A sign-up progress bar ticks off Sign up, Build and Publish, then stalls at 91 % on "Connect domain": *Setup abandoned at DNS*.
-2. **4 to 8 s, the button you ship.** "You ship *Connect your domain.*" Your app's settings card turns into the records your customer must add ("up to 48 hours"). "Your customer gets *homework.*"
-3. **8 to 15 s, their registrar.** A zone editor they have never seen. Six real failure classes (host vs. full domain, the trailing dot, TTL 86400, an A record holding a hostname, a CNAME at the root, the stale record that still answers) are each flagged on the beat. The propagation clock races toward 48 h, the errors flood the frame, then: "One wrong character, and the setup *dies.*"
-4. **15 to 20 s, the insight.** "Your app and their DNS host agree *perfectly.* The bridge between them is *a person* in two tabs." The three-actor gap: the human node shakes, records fall out of the bridge, then the human is pulled out.
-5. **20 to 23 s, the turn.** The two systems snap together. Paper bursts from the junction, the tree grows, and "CustomDomain™ *closes the gap.*"
-6. **23 to 34 s, the real flow.** The connect widget, rebuilt from the live widget on customdomain.ai: detect → Cloudflare found → Authorize → Allow → A, CNAME and TXT written → ownership verified, HTTPS issued, published to the edge → live. Captions: "One button *for them.*" "They approve *once.*" "We write *the records.*" "We issue *HTTPS.*" "Their domain, *live.*" The camera pushes through to `https://everjust.co ✓ Live`.
-7. **34 to 38 s, proof.** "0 DNS panels your customer should *ever see.*" Then "Every provider they *already use.*", with 24 provider tiles and "150+ DNS providers · 40+ set up automatically".
-8. **38 to 42 s, CTA.** "Your customers should never *touch DNS.*" The lockup, then **Start free trial** and `customdomain.ai`. An iris closes on the tree, back to frame 0, so the film loops seamlessly.
+1. **0 to 4.8 s, the hook.** "Your customers fail at *the finish line.*" A sign-up progress bar ticks off Sign up, Build and Publish, then stalls at 91 % on "Connect domain": *Setup abandoned at DNS*.
+2. **4.8 to 9.6 s, the button you ship.** "You ship *Connect your domain.*" Your app's settings card turns into the records your customer must add ("up to 48 hours"). "Your customer gets *homework.*"
+3. **9.6 to 18 s, their registrar.** A zone editor they have never seen. Six real failure classes (host vs. full domain, the trailing dot, TTL 86400, an A record holding a hostname, a CNAME at the root, the stale record that still answers) are each flagged on the beat. The propagation clock races toward 48 h, the errors flood the frame, then: "One wrong character, and the setup *dies.*"
+4. **18 to 24 s, the insight.** "Your app and their DNS host agree *perfectly.* The bridge between them is *a person* in two tabs." The three-actor gap: the human node shakes, records fall out of the bridge, then the human is pulled out.
+5. **24 to 27.6 s, the turn.** The two systems snap together. Paper bursts from the junction, the tree grows, and "CustomDomain™ *closes the gap.*"
+6. **27.6 to 40.8 s, the real flow.** The connect widget, rebuilt from the live widget on customdomain.ai: detect → Cloudflare found → Authorize → Allow → A, CNAME and TXT written → ownership verified, HTTPS issued, published to the edge → live. Captions: "One button *for them.*" "They approve *once.*" "We write *the records.*" "We issue *HTTPS.*" "Their domain, *live.*" The camera pushes through to `https://everjust.co ✓ Live`.
+7. **40.8 to 45.6 s, proof.** "0 DNS panels your customer should *ever see.*" Then "Every provider they *already use.*", with 24 provider tiles and "150+ DNS providers · 40+ set up automatically".
+8. **45.6 to 50.4 s, CTA.** "Your customers should never *touch DNS.*" The lockup, then **Start free trial** and `customdomain.ai`. An iris closes on the tree, back to frame 0, so the film loops seamlessly.
 
 ## Brand
 
