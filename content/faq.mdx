@@ -1,27 +1,37 @@
 ---
 title: FAQ
-description: "Short answers to common questions about connecting domains: which providers auto-configure, how records get written, whether keys are stored, and apex domains."
+description: "Short answers to common questions about connecting domains: which providers connect automatically, how records get written, whether keys are stored, and apex domains."
 ---
 
 <Accordions type="multiple">
 
-<Accordion title="Which DNS providers auto-configure records?" id="which-dns-providers-auto-configure-records">
+<Accordion title="Which DNS providers connect automatically?" id="which-dns-providers-auto-configure-records">
 
-The hosted service writes the records for the customer at 74 DNS providers,
-through a sign-in, an API key or an access role (Cloudflare, Route 53, Google
-Cloud DNS, Azure DNS, GoDaddy, Namecheap, and more). `GET /v1/providers` lists
-every built-in adapter (77 on 2026-10-09). Three of them do not write for the
-hosted service: PowerDNS points at a server you run yourself, and XServer
-Domain and Muumuu Domain sign in only through the provider's MCP server, which
-is built but switched off for them. NameSilo, Glauca
-Digital and Domain Chief add provider-hosted one-click setup, a redirect with
-no token at all. More than 180 providers, registrars and domain platforms are
-known by name (`GET /v1/providers/census`). Any provider can be connected by
-adding the records by hand, and 135 providers and platforms have their own
-steps for that. See
-[DNS providers](/docs/dns/providers) for which way each one connects and
-[Provider setup](/docs/dns/provider-setup) for per-provider credential steps
-and eligibility gates.
+Of the 189 providers in the census on 2026-10-21 (`GET /v1/providers/census`),
+73 have an automatic path:
+
+- **6 sign in at the provider** (OAuth): Cloudflare, DigitalOcean, DNSimple,
+  Netlify, Vercel and WordPress.com.
+- **1 applies our template with one-click setup** (Domain Connect): NameSilo.
+  Glauca Digital and Domain Chief serve the same templates and are found through
+  Domain Connect rather than listed in the census.
+- **66 take a scoped API key** the customer pastes once, among them Amazon
+  Route 53, Google Cloud DNS, GoDaddy and Porkbun. One of the 66, PowerDNS, runs
+  on its owner's own server, which the hosted service does not write to.
+
+The other 116 are connected by hand: the connect flow shows the exact records and
+checks them automatically. Any provider, automatic or not, can be connected that
+way.
+
+Namecheap is one of the 116. Its API opens only to accounts that qualify and
+replaces the whole zone on each write, so its records are added by hand by
+default. An account that qualifies can paste an API key instead, and sign-in
+through Namecheap's MCP server is built but not switched on yet. See
+[Namecheap](/docs/providers/namecheap).
+
+See [Connection paths by provider](/docs/dns/providers) for which way each one
+connects and [Provider setup](/docs/dns/provider-setup) for per-provider
+credential steps and eligibility gates.
 
 </Accordion>
 
@@ -62,7 +72,7 @@ kept. See [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
 <Accordion title="Can I connect several domains on the same provider account at once?" id="can-i-connect-several-domains-on-the-same-provider-account-at-once">
 
-Yes, at providers whose API can list an account's domains, among them **Cloudflare, GoDaddy, Route 53, and Namecheap**. After you apply a key
+Yes, at providers whose API can list an account's domains, among them **Cloudflare, GoDaddy, Route 53 and Namecheap** (Namecheap for accounts that qualify for its API). After you apply a key
 to one domain, the console offers to list the account's other domains and connect
 them (all or a subset) in one step. See
 [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).

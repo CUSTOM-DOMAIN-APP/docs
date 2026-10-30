@@ -345,9 +345,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tenant_id, name]
+              required: [name]
               properties:
-                tenant_id: { type: string }
+                tenant_id:
+                  type: string
+                  description: >-
+                    Required with the management key, where it selects the
+                    tenant. Ignored with a tenant API key, which always creates
+                    the application in its own tenant.
                 name: { type: string }
                 environment: { $ref: '#/components/schemas/Environment' }
                 sandbox:

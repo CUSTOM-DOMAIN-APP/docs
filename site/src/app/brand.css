@@ -1,0 +1,128 @@
+/*
+ * The docs' brand rules on top of the kit tokens (tokens-docs.css): the three self-hosted faces (src/lib/fonts.ts
+ * defines --cd-face-*; the stacks keep the kit's fallbacks), the page title in Instrument Serif (the kit's one place
+ * for the serif in the docs), light code cards with a hairline and no resting shadow (BD-5), the API reference's
+ * method colors brought to the kit, and the wordmark. Rules here are unlayered, so they win over Fumadocs'
+ * utilities: keep them few and scoped to a class.
+ */
+
+:root {
+  --font-sans: var(--cd-face-sans, "Inter"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--cd-face-mono, "Geist Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cd-font-serif: var(--cd-face-serif, "Instrument Serif"), Georgia, "Times New Roman", serif;
+}
+
+/*
+ * The API reference (fumadocs-openapi and its playground) colors a few things with Tailwind palette steps: the
+ * method labels (*-600, and *-400 in dark), the "required" marks (red-400, also at 80%), the playground's response
+ * status (green-500 for a success, red-500 for an error), its input and OAuth error lines (red-400), the schema's
+ * "Deprecated" tag (yellow) and a repeated schema path (orange-400). Several fail WCAG AA on paper (green-600 3.0,
+ * red-600 4.49, red-400 2.6). On this brand color means a connection state, so the method labels and a success go
+ * to ink soft, and DELETE, an error and the required marks to the kit's warn, in light and in dark. Outside dark a
+ * -400 step only colors a required mark, an error line or a repeated path. Nothing else on the docs uses these steps.
+ */
+:root {
+  --color-green-600: #44403c;
+  --color-blue-600: #44403c;
+  --color-yellow-600: #44403c;
+  --color-orange-600: #44403c;
+  --color-green-500: #44403c;
+  --color-red-600: #b91c1c;
+  --color-red-500: #b91c1c;
+  --color-green-400: #44403c;
+  --color-blue-400: #44403c;
+  --color-yellow-400: #44403c;
+  --color-orange-400: #44403c;
+  --color-red-400: #b91c1c;
+}
+
+.dark {
+  --color-green-500: #d6d3d1;
+  --color-red-500: #f87171;
+  --color-green-400: #d6d3d1;
+  --color-blue-400: #d6d3d1;
+  --color-yellow-400: #d6d3d1;
+  --color-orange-400: #d6d3d1;
+  --color-red-400: #f87171;
+}
+
+/* The playground's required marks at full strength: at 80% the kit's warn falls under 4.5 on paper. */
+.text-red-400\/80 {
+  color: var(--color-red-400);
+}
+
+/* The page title: Instrument Serif 400, 32 px on a phone to 40 px on a desktop (--cd-size-docs-h1). */
+.cd-docs-title {
+  font-family: var(--cd-font-serif);
+  font-weight: 400;
+  font-size: var(--cd-size-docs-h1);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/* Section headings stay in Inter 600, balanced so a short last line does not dangle. */
+.prose :where(h2, h3, h4) {
+  text-wrap: balance;
+}
+
+/* Counts, limits and prices line up in tables. */
+.prose :where(td, th) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Code cards and callouts: the kit's light card with a 1 px line and no resting shadow. A Fumadocs callout has no
+   class of its own, only the --callout-color it sets inline. */
+figure.shiki,
+div[style*="--callout-color"] {
+  box-shadow: none;
+}
+
+/* Keywords and keys at Geist Mono's medium weight (src/lib/code-themes.ts marks them bold). The face is declared
+   400 to 500, and with synthesis off a bold request renders the 500 instance instead of a faked bold. */
+.shiki {
+  font-synthesis-weight: none;
+}
+
+.shiki code span {
+  font-weight: var(--shiki-light-font-weight, inherit);
+}
+
+.dark .shiki code span {
+  font-weight: var(--shiki-dark-font-weight, inherit);
+}
+
+/* The wordmark in the sidebar and the phone header (src/components/wordmark.tsx). */
+.cd-wordmark {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--color-fd-foreground);
+}
+
+.cd-wordmark__oak {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 8px;
+}
+
+.cd-wordmark__name {
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.cd-wordmark__name sup {
+  top: -0.6em;
+  margin-inline-start: 1px;
+  font-size: 0.55em;
+  font-weight: 500;
+}
+
+.cd-wordmark__docs {
+  margin-inline-start: 0.3em;
+  font-weight: 400;
+  color: var(--color-fd-muted-foreground);
+}
