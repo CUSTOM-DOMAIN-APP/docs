@@ -1,7 +1,8 @@
 /**
  * The docs page route (/docs/...): renders one Fumadocs page from the content source with its Markdown copy and
  * GitHub links, TechArticle and breadcrumb JSON-LD, and its metadata and social card. Every page in the source is
- * generated at build; an unknown slug returns a 404.
+ * generated at build; an unknown slug returns a 404. Machine fields (title, description, social tags, alt text and
+ * schema.org names) carry no ™ (D-2, lib/machine-text.ts). The visible title and description keep it.
  */
 
 import { notFound } from "next/navigation";
@@ -20,6 +21,7 @@ import {
 import { source } from "@/lib/source";
 import { pageDescription } from "@/lib/page-description";
 import { markdownPath } from "@/lib/markdown";
+import { machineText } from "@/lib/machine-text";
 import { getMDXComponents } from "@/components/mdx";
 import { openapi } from "@/lib/openapi";
 import { OpenAPIPage } from "@/lib/openapi-page";
@@ -67,14 +69,14 @@ export default async function Page({
     {
       "@context": "https://schema.org",
       "@type": "TechArticle",
-      headline: page.data.title,
-      description: description ?? undefined,
+      headline: machineText(page.data.title),
+      description: machineText(description) ?? undefined,
       url: pageUrl,
       mainEntityOfPage: pageUrl,
-      author: { "@type": "Organization", name: "CustomDomain™", url: "https://customdomain.ai" },
+      author: { "@type": "Organization", name: "CustomDomain", url: "https://customdomain.ai" },
       publisher: {
         "@type": "Organization",
-        name: "CustomDomain™",
+        name: "CustomDomain",
         url: "https://customdomain.ai",
         logo: { "@type": "ImageObject", url: "https://customdomain.ai/web/image/website/1/logo" },
       },
@@ -127,17 +129,20 @@ export async function generateMetadata({
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  const description = pageDescription(slug, page);
+  const description = machineText(pageDescription(slug, page));
   const canonical = `/docs/${(slug ?? []).join("/")}`;
+  // A page's own `metaTitle` is its whole <title>, used without the site suffix (source.config.ts).
+  const metaTitle = machineText(page.data.metaTitle);
+  const title = metaTitle ?? machineText(page.data.title);
   const image = {
     url: ogImagePath(page.slugs),
     width: 1200,
     height: 630,
-    alt: page.data.title,
+    alt: title,
   };
 
   return {
-    title: page.data.title,
+    title: metaTitle ? { absolute: metaTitle } : title,
     description,
     alternates: {
       canonical,
@@ -146,15 +151,15 @@ export async function generateMetadata({
     },
     openGraph: {
       type: "article",
-      siteName: "CustomDomain™ docs",
-      title: page.data.title,
+      siteName: "CustomDomain docs",
+      title,
       description,
       url: canonical,
       images: [image],
     },
     twitter: {
       card: "summary_large_image",
-      title: page.data.title,
+      title,
       description,
       images: [image.url],
     },

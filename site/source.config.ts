@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { defineDocs, defineConfig } from "fumadocs-mdx/config";
+import { defineDocs, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { stringifyComponent } from "./mdx-markdown";
 
@@ -18,6 +18,12 @@ import { stringifyComponent } from "./mdx-markdown";
 export const docs = defineDocs({
   dir: "../content",
   docs: {
+    // `metaTitle` (optional) is the page's whole <title>, written out in full and used as it is, without the
+    // " | CustomDomain docs" suffix the site template adds to `title`. It lets a page keep a short H1 and sidebar
+    // label while its search title says what the page answers (docs/dns/providers, docs/dns/email-dns).
+    schema: frontmatterSchema.extend({
+      metaTitle: frontmatterSchema.shape.title.optional(),
+    }),
     // Exposes page.data.getText("processed"): the page as Markdown, which the
     // /docs/<slug>.md route serves and the "Copy Markdown" button copies.
     // Heading ids are left out and components are written as plain Markdown
