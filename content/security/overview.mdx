@@ -162,8 +162,9 @@ Vercel and WordPress.com, and keeps a sign-in there unless the user unticks
 the customer the permission is kept. A
 [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) keeps the lasting
 API key it made at the provider (never the sign-in itself), as a provider account
-that serves only the application whose domain it was made for, after one read
-only call proved it works; its `rights` say what it can do beyond DNS. Account
+that serves the application whose domain it was made for and the ones an admin
+shares it with, after one read only call proved it works; its `rights` say what
+it can do beyond DNS. Account
 passwords and tokens that expire within hours are never kept: the control plane
 refuses to keep them
 ([credentials that are used once](/docs/connect-flow/provider-accounts#credentials-that-are-used-once)).
