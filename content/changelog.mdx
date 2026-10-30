@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: the key a secure sign-in makes is named before and after.** The domain check's
+  `rails.cloud_browser.key` now carries `name` (the name a key made now would get, such as "CustomDomain Acme
+  2026-10-30 1204") and `delete_url` (the provider's own page that deletes API keys), beside `rights` and
+  `ends_in_days`. A sign-in makes a key or may reuse one of ours, so look for a key that begins with that name. Once
+  a session keeps its key, the session view carries `kept_key` (`name`, `page`, `rights`, `expires_at`), so the last
+  screen can say which key was kept and where to remove it. Both fields are new and optional. One check is tighter: a
+  secure sign-in start whose `consent_version` is not an id that was issued (`cb-1` to `cb-4`) now answers
+  `422` with `consent_unknown`, before anything starts; the ids the widget and the popup send are unchanged. See
+  [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
 - **October 30, 2026: the widget designer shows every way to connect.** Under **Ways to connect**, the Design
   tab's preview now opens the screen of the secure sign-in, one-click setup, DNS hosting (offered first, its consent
   and its move) and reconnect, each on example data, so you can see what your customers meet for each way without a
