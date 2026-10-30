@@ -59,6 +59,26 @@ All of the account's domains (`"scope": "all"`, including ones added later), or
 a selected list (`"scope": "selected"`, `domains`) picked from the provider's
 own list where it has one.
 
+## Which providers list their domains
+
+Where a provider has a list call for it, the key is checked by listing, the console's **Connect more
+domains** shows the account's own list, and `POST /v1/provider-accounts/{id}/zones` returns it. A provider
+that cannot list answers that it cannot, and you name one domain the key manages instead (see
+[scope](#scope)).
+
+What each of DNSimple, OVHcloud, Vercel, Spaceship and Hostinger lists, and what happens when a key may not:
+
+| Provider | What the list holds | A key that may not list |
+| --- | --- | --- |
+| DNSimple | The zones of the account the key writes to: the only account an account token has, or the first account of a user token that reaches several. A secondary zone is left out, because DNSimple does not let you change its records. | A scoped token needs the right to read zones (`domains:*:read`). Without it, the key is checked with a domain you name. |
+| OVHcloud | Every DNS zone the key may read. | The key needs the right GET on `/domain/zone`. A key made with rights on `/domain/zone/*`, and a key from a secure sign-in, which is limited to one zone, may not have it, and is checked with a domain you name. An invalid or expired key is refused instead. |
+| Vercel | The domains of the team the key was installed on, or of your personal account for a token that names no team. | A token that may not list, or a personal token that finds no domain (it may be a team member's), is checked with a domain you name. |
+| Spaceship | Domains that are registered or in their first grace period. A domain still being registered, in its second grace period or in redemption is left out. | A key needs the `domains:read` scope. Without it, the key is checked with a domain you name. A sign-in through Spaceship's MCP server cannot list. |
+| Hostinger | Active domains. A domain that is pending, expired or suspended is left out. | Checked with a domain you name. |
+
+A key that the provider refuses (a wrong, revoked or expired key) is never treated as "cannot list": the
+call answers `422` `ProviderAuthenticationError` and the account is marked as needing a reconnect.
+
 ## Who can manage an account
 
 Anyone whose role operates applications may connect a key, read the accounts
