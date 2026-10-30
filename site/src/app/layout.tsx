@@ -1,7 +1,6 @@
 /**
  * Root layout of the docs site: the html and body shell, the Fumadocs RootProvider and the site-wide metadata
- * (docs.customdomain.ai origin, title template). Pages override the metadata per route. Machine fields name the
- * product without the ™ (D-2, see lib/machine-text.ts).
+ * (docs.customdomain.ai origin, title template). Pages override the metadata per route.
  */
 
 import type { Metadata } from "next";
@@ -11,6 +10,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://docs.customdomain.ai"),
+  // Machine fields name the product without the ™ (D-2, see lib/machine-text.ts).
   title: {
     default: "CustomDomain docs",
     template: "%s | CustomDomain docs",
