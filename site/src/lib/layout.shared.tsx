@@ -1,7 +1,13 @@
-import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+/**
+ * Shared nav and header options for the /docs route group: the title, the GitHub link and the links that
+ * Fumadocs' DocsLayout lists at the top of the sidebar (and the phone drawer). Deliberately plain (default
+ * Fumadocs chrome, no brand restyle); see site/README.md. The first link is "Sign in", or "Console" for a
+ * signed-in browser (src/components/auth-link.tsx, picked before first paint by src/lib/auth-hint.ts).
+ */
 
-/** Shared nav/header options for the /docs route group. Deliberately plain
- * (default Fumadocs chrome, no brand restyle); see site/README.md. */
+import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { AuthLink } from "@/components/auth-link";
+
 export function baseOptions(): BaseLayoutProps {
   return {
     githubUrl: "https://github.com/CUSTOM-DOMAIN-APP/docs",
@@ -10,7 +16,7 @@ export function baseOptions(): BaseLayoutProps {
       url: "/docs",
     },
     links: [
-      { text: "Console", url: "https://app.customdomain.ai", external: true, active: "none" },
+      { type: "custom", on: "menu", children: <AuthLink /> },
       { text: "Get an API key", url: "https://app.customdomain.ai/signup", external: true, active: "none" },
       { text: "Status", url: "https://status.customdomain.ai", external: true, active: "none" },
       {
