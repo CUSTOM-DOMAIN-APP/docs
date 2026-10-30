@@ -1,7 +1,7 @@
 /*
  * The docs' brand rules on top of the kit tokens (tokens-docs.css): the three self-hosted faces (src/lib/fonts.ts
- * defines --cd-face-*; the stacks keep the kit's fallbacks), the page title in Instrument Serif (the only serif in
- * the docs, DESIGN.md 3.2), light code cards with a hairline and no resting shadow (BD-5), the API reference's
+ * defines --cd-face-*; the stacks keep the kit's fallbacks), the page title in Instrument Serif (the kit's one place
+ * for the serif in the docs), light code cards with a hairline and no resting shadow (BD-5), the API reference's
  * method colors brought to the kit, and the wordmark. Rules here are unlayered, so they win over Fumadocs'
  * utilities: keep them few and scoped to a class.
  */
@@ -58,8 +58,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Code cards: the kit's light card with a 1 px line and no resting shadow. */
-figure.shiki {
+/* Code cards and callouts: the kit's light card with a 1 px line and no resting shadow. A Fumadocs callout has no
+   class of its own, only the --callout-color it sets inline. */
+figure.shiki,
+div[style*="--callout-color"] {
   box-shadow: none;
 }
 
