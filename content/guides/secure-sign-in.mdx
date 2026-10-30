@@ -454,8 +454,10 @@ not accept them, the session goes on to the DNS page.
   person pastes in the console, as a
   [provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in)
   that belongs to the application whose domain it was made for. No other
-  application can use it: connecting another application's domain with it is
-  refused with `403`. If writing the records then fails, our copy is deleted
+  application can use it until an admin
+  [shares it](/docs/connect-flow/provider-accounts#which-applications-may-use-it):
+  connecting another application's domain with it is refused with `403`. If
+  writing the records then fails, our copy is deleted
   again and the session goes on to the DNS page.
 - **Used again for your next domain.** When you connect another domain of the
   same application from the console, the connect page offers the saved key
