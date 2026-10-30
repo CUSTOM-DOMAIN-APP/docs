@@ -2800,7 +2800,8 @@ paths:
         grant is bound to and a key the resolver answers for that application.
         The response's `account` is then the viewer's view of it (no
         `account_ref`, `end_user_ref`, `agent_key.account` or
-        `agent_key.session_id`), and the audit log records `agent.acted` for
+        `agent_key.session_id`, and with the same limit on its `domains` as the
+        list), and the audit log records `agent.acted` for
         the grant. A token without `domains:connect` is `403`. An end user's
         widget token reaches the route but is given no saved access yet: `409`
         `saved_access_not_usable` for an account that exists.
@@ -6454,7 +6455,10 @@ paths:
         workspace's keys that serve the application its grant is bound to,
         never a key an end user's own sign in made, each as a viewer reads it
         (no `account_ref`, `end_user_ref`, `agent_key.account` or
-        `agent_key.session_id`) with only that application's connections,
+        `agent_key.session_id`) with only that application's connections and
+        only the `domains` that no other application of the workspace has
+        connected (a zone in which another application holds a domain is left
+        out, unless the grant's own application holds one in it too),
         `can_manage` false, and an empty `kept_access`. `?application_id=`
         may only repeat the grant's own application (`403` otherwise). A token
         without `domains:read` is `403`.

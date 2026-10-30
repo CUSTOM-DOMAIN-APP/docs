@@ -75,7 +75,8 @@ them no `agent_key.account` (the customer number) and no `agent_key.session_id`.
 A delegated agent token reads them the way a viewer does, with `domains:read`:
 `GET /v1/provider-accounts` lists only the keys that serve the application its
 grant is bound to, never a key a customer made at their own sign-in, with that
-application's connections only and an empty `kept_access`. `?application_id=`
+application's connections only, only the `domains` that no other application
+of your workspace has connected, and an empty `kept_access`. `?application_id=`
 may only repeat the grant's own application (`403` otherwise). It reads
 `GET /v1/connections/{id}/saved-access` with `domains:read` and uses a key with
 `POST /v1/connections/{id}:use-saved-access` and `domains:connect`, for a
