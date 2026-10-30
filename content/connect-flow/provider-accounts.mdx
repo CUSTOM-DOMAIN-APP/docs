@@ -72,13 +72,17 @@ A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
 them no `agent_key.account` (the customer number) and no `agent_key.session_id`.
 
+Sharing a key with another application is narrower still: only an admin or an
+owner may, not the member who connected the key. See
+[which applications may use it](#which-applications-may-use-it).
+
 ## Endpoints (API key)
 
 | Call | Does |
 | --- | --- |
 | `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
 | `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, plus kept sign-ins and Domain Connect authorizations grouped by provider. |
-| `PATCH /v1/provider-accounts/{id}` | Change label, access or scope. A domain taken out stays connected, without continuous access. |
+| `PATCH /v1/provider-accounts/{id}` | Change label, access or scope, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. |
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
 | `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
 | `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
@@ -101,7 +105,8 @@ ways:
 
 - **It belongs to one application.** `application_id` names the application
   whose domain it was made for. Connecting another application's domain with it
-  is refused with `403`.
+  is refused with `403`, unless an admin
+  [shared the key](#which-applications-may-use-it) with that application.
 - **It can serve the application's other domains.** A key made at a sign in you
   or a teammate started in the console connects another domain of the same
   application with no second sign in and no second key: CustomDomain™ first
@@ -129,6 +134,47 @@ ways:
 - **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
+
+## Which applications may use it
+
+A key made at a secure sign-in belongs to one application (`application_id`) and
+serves its domains alone. It serves another application of the workspace only
+when an admin shares it, so a workspace with two applications can sign in once
+for a provider account and use that key for both.
+
+Send `application_ids` to `PATCH /v1/provider-accounts/{id}`: the whole list of
+**other** applications that may use the key, besides its own.
+
+```json
+{ "application_ids": ["app_marketing"] }
+```
+
+- **Who may.** An admin or an owner. The member who connected the key manages it,
+  and still gets `403` here. Anyone else gets `403` too.
+- **Which keys.** A key bound to one application. A key your customer's own
+  sign-in made is never shared (`403`): it acts only for that customer in their
+  application. A key you pasted that is not bound to an application already
+  serves every one, so naming an application answers `422`
+  `serves_every_application`.
+- **Which applications.** Each must belong to your workspace, or the call
+  answers `404`. The key's own application always serves, so naming it, naming an
+  application twice or sending a blank changes nothing. At most 100 per call.
+- **It replaces the set.** Leave an application out to take the key back from it,
+  and send `[]` to share with none. The answer's `application_ids` is the list
+  now in force.
+- **What a share allows.** The shared application's domains can use the key like
+  its own: the saved-access list offers it for the second application's domains
+  (and never for a third), `POST /v1/provider-accounts/{id}/connect` takes
+  that application's id, a second secure sign-in for the same provider account
+  from the shared application swaps its key into the shared account instead of
+  adding a second one, and reconnecting a domain of the shared application renews
+  the key in the same account.
+- **What taking it back does.** The domains of that application that were using
+  the key stay connected, without continuous access, and each records
+  `access_revoked` with the reason `unshared` on its timeline.
+- **Audited.** Each application shared writes `provider_account.shared` and each
+  taken out `provider_account.unshared`, with the applications the key served
+  before and after and the ones that changed.
 
 ## Whose key it is, and saved access
 
@@ -172,8 +218,9 @@ act for answers `409 saved_access_available` before anything starts. Send
 sessions are not affected: saved access for returning customers is not offered
 yet.
 
-A second secure sign-in for a provider account you already hold a key for does
-not add a second row. Its key is swapped into the existing account, and the
+A second secure sign-in for a provider account you already hold a key for, from
+the application the key belongs to or one it is shared with, does not add a
+second row. Its key is swapped into the existing account, and the
 domain's zone joins that account's scope. The key it replaces still lives at the
 provider unless it was the same key, so the account shows `old_key:
 "revoke_by_hand"` with the provider's `revoke_url`; CustomDomain™ never revokes
@@ -196,5 +243,7 @@ it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
 | `provider_account.domain_added` | A key made at a sign-in in the console starts serving another domain's zone. |
 | `provider_account.relinked` | A domain the application already had now uses this account. |
 | `provider_account.key_replaced` | It gets a new key: pasted, or made when someone signed in again. |
+| `provider_account.shared` | An admin or an owner lets another application use the key. Names the applications it serves before and after, and the ones just shared (`application_ids`). |
+| `provider_account.unshared` | An admin or an owner takes that back. Same fields. |
 | `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
 | `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |
