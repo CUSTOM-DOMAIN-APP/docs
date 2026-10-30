@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: a key serves another application only when an admin shares it.** A key made at a secure
+  sign-in belongs to one application. `PATCH /v1/provider-accounts/{id}` now takes `application_ids`, the other
+  applications of your workspace that may use it, and the account answers with the same list. Only an admin or an
+  owner can share a key (not the member who connected it), a key your customer's own sign-in made is never shared,
+  and an application that is not yours is refused. Each change is in the audit log as `provider_account.shared` or
+  `provider_account.unshared`. The saved-access list offers a shared key for the second application's domains and
+  never for another, a second sign-in from the shared application reuses the shared key's account instead of adding
+  one, and taking an application out of the list detaches its domains from the key (they stay connected, without
+  continuous access). See [Provider accounts](/docs/connect-flow/provider-accounts#which-applications-may-use-it).
 - **October 30, 2026: a setting for returning end users' saved access, and a read-out for the secure sign-in.**
   `PATCH /v1/applications/{id}` takes a new `end_user_saved_access` (`true` or `false`, never `null`), alone or
   with `name` and `nameserver_migration`. It decides whether an end user who signed in securely for one domain
