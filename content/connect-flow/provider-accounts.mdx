@@ -59,6 +59,30 @@ All of the account's domains (`"scope": "all"`, including ones added later), or
 a selected list (`"scope": "selected"`, `domains`) picked from the provider's
 own list where it has one.
 
+## Which providers list their domains
+
+Where a provider has a list call for it, the key is checked by listing, the console's **Connect more
+domains** shows the account's own list, and `POST /v1/provider-accounts/{id}/zones` returns it. These
+providers list: Amazon Route 53, Azion, Binary Lane, Cloudflare, cPanel hosts and o2switch, DigitalOcean,
+DirectAdmin, 101domain, Domeneshop, Epik, Exoscale, Gandi, Gcore, GoDaddy, Hetzner, hosting.de, Huawei
+Cloud DNS, INWX, IONOS and united-domains, Joker.com, Loopia, Metaname, Mythic Beasts, NameBright,
+Namecheap, Name.com, netcup, NS1, Plesk, Porkbun, Scaleway, Subreg, webnames.ca, Websupport, WEDOS and
+Zone.ee. A provider that is not named here answers that it cannot list, and you name one domain the key
+manages instead (see [scope](#scope)).
+
+What each of the most recent five lists, and what happens when a key may not:
+
+| Provider | What the list holds | A key that may not list |
+| --- | --- | --- |
+| Porkbun | Active domains with API Access turned on. A domain without API Access is left out, because Porkbun would refuse a change to it. | Checked with a domain you name. |
+| Hetzner | The project's primary zones. A secondary zone is left out: its records come from another nameserver and the API refuses to change them. | Checked with a domain you name. |
+| DigitalOcean | Every domain in the account. | A token with custom scopes needs `domain:read`. Without it, the key is checked with a domain you name. |
+| Name.com | Every domain in the account. | Checked with a domain you name. If two-step verification blocks API access, the key is refused instead, and Name.com's API Access setting has to be switched on. |
+| Gandi | The domains of the token's personal organization, which is all Gandi's list call returns. | Checked with a domain you name, and also when the list comes back empty, because an empty list cannot be told from a token whose domains sit in another organization. |
+
+A key that the provider refuses (a wrong, revoked or expired key) is never treated as "cannot list": the
+call answers `422` `ProviderAuthenticationError` and the account is marked as needing a reconnect.
+
 ## Who can manage an account
 
 Anyone whose role operates applications may connect a key, read the accounts
