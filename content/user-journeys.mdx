@@ -18,9 +18,9 @@ The completeness map: every user-facing flow and the surface that implements it.
 | # | As a customer, I want to… | Surface / path |
 | --- | --- | --- |
 | C1 | Enter my domain and have its DNS provider detected | Widget → Domain analysis (`POST /v1/domains:check`) |
-| C2 | Connect automatically when possible | Widget → OAuth (`oauth:start` → callback) or one-click setup (`domainconnect:start`) |
+| C2 | Connect automatically when possible | Widget → sign in with the provider (`oauth:start` → callback), one-click setup (`domainconnect:start`) or secure sign-in (`browser:start`) |
 | C3 | Get exact records to add when manual | Widget → Manual config from `GET /v1/connections/{id}/records` (copy buttons) |
-| C4 | Enter a scoped provider credential to auto-write | Widget → API-token apply (`POST /v1/connections/{id}/apply`) |
+| C4 | Enter a scoped provider credential to auto-write | Not in the widget, which asks for no key; the console and the API take an API key (`POST /v1/connections/{id}/apply`) |
 | C5 | See progress until my domain is live | Widget → In progress (polls status) → Success |
 | C6 | Recover from errors / switch to manual | Widget → Error screen (retry / switch) |
 | C7 | Not lose my place accidentally | Widget → exit-confirm + session-expired overlays |
@@ -82,8 +82,10 @@ A person approves what the agent may do first: see
 
 ## Coverage note
 
-The `setup_type` values `automatic` and `manual` (plus the OAuth, one-click
-setup, and API-token rails) are the paths the **widget** drives today; `async` additionally
+The `setup_type` values `automatic` and `manual` (plus the sign-in, one-click
+setup and secure sign-in rails, and DNS hosting where the application offers it)
+are the paths the **widget** drives today, and the API key way belongs to the
+console and the API; `async` additionally
 powers [managed connections](/docs/connect-flow/managed-connections), and `mcp`
 covers agent-driven setup through the [MCP server](/docs/mcp/overview). A connection
 can be disconnected with `DELETE /v1/connections/{id}` (reverting a managed template

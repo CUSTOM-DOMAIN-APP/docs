@@ -7,6 +7,26 @@ A provider account is a key for a DNS provider or registrar that the workspace
 connects once. CustomDomain™ checks the key before keeping anything, keeps it
 encrypted (`GRANT_ENCRYPTION_KEY`), and never returns it.
 
+## Where an account's key comes from
+
+An account holds a key that reached the workspace in one of three ways, which are
+three of the six [ways to connect](/docs/concepts/glossary#ways-to-connect):
+
+- **An API key** you paste, through `POST /v1/provider-accounts` or the console's
+  **Remember this key** box. See [Provider setup](/docs/dns/provider-setup).
+- **A provider sign-in that is kept**, where the deployment keeps that provider's
+  sign-in. The hosted service does at some providers (see
+  [Managed sign-ins](/docs/connect-flow/managed-connections#managed-sign-in-grants)).
+  These are listed with the accounts, grouped by provider.
+- **A secure sign-in** at a provider that offers no sign-in a third party can use,
+  where our software makes a lasting API key after your customer signs in. See
+  [Keys made at a secure sign-in](#keys-made-at-a-secure-sign-in), and
+  [GoDaddy](/docs/dns/provider-setup#godaddy) and
+  [Namecheap](/docs/dns/provider-setup#namecheap) for two of them.
+
+One-click setup and adding the records by hand leave no account, since there is no
+key to keep.
+
 The key is checked by listing the provider's domains. A provider that cannot
 list them is asked for one of the selected domains instead; with scope `all`,
 name a domain the key manages in `check_domain`, or the call answers `400`
@@ -181,7 +201,20 @@ a key itself. If the write that follows the sign-in fails, the account keeps the
 new key (and `old_key`), the zone leaves its scope again unless the account
 covered it before, and the domain records the failure; an account other domains
 use is never removed for one failed write. GoDaddy is the exception for now: each
-sign-in there keeps its own key.
+sign-in there keeps its own key ([why and what it means](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
+
+## DNS hosting uses an account at the registrar
+
+[DNS hosting](/docs/dns/managed-dns) changes a domain's nameservers at its
+registrar. Where the workspace keeps an account at that registrar, a
+[nameserver move](/docs/guides/nameserver-migration#how-the-nameservers-change) can
+use its key to make the change, so nobody signs in again: only for the domains the
+account is given for ([scope](#scope)), and a key made at a secure sign-in only for
+domains of the application it was made for. Each use is in the
+[audit log](#audit-log) as `credential.used_for_nameservers`. Without such an
+account the move goes through a secure sign-in at the registrar, or the person sets
+the nameservers by hand. An account at the company that runs the domain's DNS,
+when it is not the registrar, is never used for the change.
 
 ## Audit log
 

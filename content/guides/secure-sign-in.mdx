@@ -464,6 +464,14 @@ not accept them, the session goes on to the DNS page.
   key's domains and writes the records: no sign-in and no new key. A domain in
   another account at the provider still needs its own sign-in. A key made when
   your customer signed in through the widget serves only their domain.
+- **One key per provider account.** A second sign-in for a provider account the
+  workspace already keeps a key for swaps its new key into that
+  [provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access)
+  instead of adding another. GoDaddy is the exception for now: each sign-in there
+  keeps its own key ([what that means](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
+- **It can also move a domain's nameservers.** A key kept this way counts as a
+  connected account for [DNS hosting](/docs/dns/managed-dns), for the application's
+  domains only ([provider accounts](/docs/connect-flow/provider-accounts#dns-hosting-uses-an-account-at-the-registrar)).
 
 ### What you see
 

@@ -1,12 +1,15 @@
 ---
 title: Apply records & go live
-description: "Apply a connection's DNS records with OAuth sign-in, one-click setup or an API token, or by hand, then watch propagation reach live and the certificate issue."
+description: "Apply a domain's records by provider sign-in, one-click setup, secure sign-in, an API key, by hand or DNS hosting, then watch it go live with its certificate."
 ---
 
 Once a connection exists, get its [desired records](/docs/connect-flow/create-a-connection#response)
-into the customer's DNS via one of the four
-[rails](/docs/connect-flow/overview#the-four-rails). All of them move the
-connection `pending → propagating → live`.
+into the customer's DNS by one of the six
+[ways to connect](/docs/connect-flow/overview#the-four-rails): sign in with the
+provider (Rail C below), one-click setup (Rail A), [secure sign-in](#secure-sign-in),
+an API key (Rail B), [add the records](#manual) by hand, or
+[DNS hosting](#dns-hosting). All of them move the connection
+`pending → propagating → live`.
 
 ## Rail C: OAuth into the provider (flagship)
 
@@ -183,6 +186,28 @@ A workspace that has not subscribed yet connects its first ten domains, or the
 number an operator set, without a card; the rest of a list come back `failed`
 with the reason, one by one, until its trial starts.
 
+## Secure sign-in
+
+For a provider that offers no sign-in a third party can use, the customer signs in
+to the provider in a temporary browser: `POST /v1/connections/{id}/browser:start`
+starts the session, and the widget or the console opens it. A person is always
+there, so an API key or an agent cannot start one. Where the provider allows it,
+our software makes a lasting API key on the provider's own API page, and the
+domain then goes on as an API key connection (Rail B), the key kept as a
+[provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in);
+otherwise the changes are made on the provider's DNS page once the customer
+approves them. See [Secure sign-in](/docs/guides/secure-sign-in).
+
+## DNS hosting
+
+The sixth way writes no record into the provider's DNS. The domain's owner changes
+its nameservers once, where the domain was bought, and CustomDomain™ hosts the zone
+and writes every record in it: `POST /v1/connections/{id}/managed-dns`, and
+`POST /v1/connections/{id}/nameservers:migrate` for the move. Your application
+decides whether its customers are offered it. See
+[Managed DNS](/docs/dns/managed-dns) and the
+[nameserver migration guide](/docs/guides/nameserver-migration).
+
 ## Manual
 
 If no automatic rail is available, show the records from
@@ -236,6 +261,8 @@ encrypted, unless the person chooses one-time use. Sign in with Azure
 DNS and the sign-ins through Dynadot's and Unstoppable Domains' MCP servers
 run as well, and each of those is used once. OVHcloud's consent and the other
 MCP server sign-ins are built but not switched on yet, and the Google Cloud
-sign-in is held until Google verifies the app.
+sign-in is held until Google verifies the app. Secure sign-in runs at Namecheap,
+GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship and Hostinger, for the
+workspaces it is switched on for.
 Read `rails` on the pre-flight rather than memorizing this list; see
 [Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user).

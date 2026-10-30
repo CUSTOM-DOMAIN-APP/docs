@@ -384,7 +384,8 @@ platform's own subdomain (`www.<name>.vercel.app`). Both used to sit on
 ## 4. Choose how to add the records
 
 The options shown are the truth for *your* provider, straight from the server.
-The recommended one is open; the others are closed one-line rows under
+They are the [ways to connect](/docs/concepts/glossary#ways-to-connect) that fit
+the domain. The recommended one is open; the others are closed one-line rows under
 **Other ways to connect**, in this order:
 
 1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
@@ -402,7 +403,7 @@ The recommended one is open; the others are closed one-line rows under
    there, the provider sends you back here. GoDaddy, IONOS, Aruba,
    Squarespace, Cloudflare and Vercel are *not* offered this, on purpose: they
    have not onboarded our templates.
-3. **Sign in to the provider** (secure sign-in): at Namecheap, GoDaddy, IONOS,
+3. **Secure sign-in**: at Namecheap, GoDaddy, IONOS,
    Name.com, Squarespace, Hover, Spaceship and Hostinger, where neither of the
    two above runs. **Open secure sign in** opens the provider's own sign-in in a
    secure window; you approve the exact changes and we add the records. See
@@ -415,8 +416,15 @@ The recommended one is open; the others are closed one-line rows under
    GoDaddy account that holds a domain can create a Personal Access Token;
    Namecheap's API needs an eligible account and our server's IP on its
    allowlist. Route 53 offers an access role first, with no key to paste.
-5. **Add the records by hand**: the exact rows to copy, with a link to your
+5. **Add the records** by hand: the exact rows to copy, with a link to your
    provider's DNS panel. Then **Check now**.
+6. **DNS hosting**: you change the domain's nameservers once, where it was
+   bought, and CustomDomain™ writes every record after that. It is not a row on
+   this page: it is the **DNS hosting** card at the foot of the domain's **DNS**
+   tab, and the application's **DNS hosting** setting decides whether your
+   customers are offered it in the widget ([above](#domain-maintenance)). The
+   domain check reports the same verdict as `rails.nameservers`. See
+   [Managed DNS](/docs/dns/managed-dns).
 
 Not the one with DNS access? Under the records, **Send these records to a
 teammate** emails them to whoever is. Replies go to you.

@@ -3,19 +3,24 @@ title: Managed DNS
 description: "Point a domain's nameservers at CustomDomain™ once and every later record is written for you. How DNS hosting works, the API and the limits."
 ---
 
-When a domain's DNS provider offers no sign-in, one-click or API rail, the
-only other way to connect it is to type records into the provider's panel by
-hand, and that is where most connections stall. **Managed DNS** replaces the
-typing with one change the domain's owner makes once: set the domain's
-nameservers to CustomDomain™'s. From then on CustomDomain™ hosts the whole
-zone, and every record, now and later, is written automatically.
+When a domain's DNS provider offers no sign-in, one-click setup, secure sign-in or
+API key that fits, the only other way to connect it is to add the records in the
+provider's panel by hand, and that is where most connections stall. **Managed DNS**
+replaces the typing with one change the domain's owner makes once: set the
+domain's nameservers to CustomDomain™'s. From then on CustomDomain™ hosts the whole
+zone, and every record, now and later, is written automatically. The console and
+the widget call it **DNS hosting**, the sixth of the
+[ways to connect](/docs/concepts/glossary#ways-to-connect); the API calls it
+managed DNS and, for the move itself, nameserver migration.
 
 Managed DNS is rolling out gradually, so
 `POST /v1/domains:check` tells you whether it is available for a domain.
 
 **Your end users are offered it only when your application turns it on.** One
 setting decides every DNS hosting offer the widget makes: the application's
-**Domain maintenance** (`nameserver_migration`). With it on, the widget asks
+**DNS hosting** setting (`nameserver_migration`, which the
+[nameserver migration guide](/docs/guides/nameserver-migration) calls Domain
+maintenance). With it on, the widget asks
 each end user once, with their consent, and moves their nameservers either to
 CustomDomain™ or to a DNS host of your own (Cloudflare, Amazon Route 53, Google
 Cloud DNS, Azure DNS, or your own nameservers); see
