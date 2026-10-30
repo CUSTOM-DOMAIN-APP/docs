@@ -15,6 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: DNSimple, OVHcloud, Vercel, Spaceship and Hostinger list their domains.** A key at one of
+  these is now checked by listing the account's domains, and **Connect more domains**
+  (`POST /v1/provider-accounts/{id}/zones`) shows them, so you no longer type each one. DNSimple lists the
+  account the key writes to, Vercel the team a key was installed on, Spaceship its registered domains and
+  Hostinger its active ones. A key a provider refuses still asks you to reconnect, and a key that may not list
+  (an OVHcloud key without the right on `/domain/zone`, for one) falls back to checking one domain you name. See
+  [which providers list their domains](/docs/connect-flow/provider-accounts#which-providers-list-their-domains).
 - **October 30, 2026: a key serves another application only when an admin shares it.** A key made at a secure
   sign-in belongs to one application. `PATCH /v1/provider-accounts/{id}` now takes `application_ids`, the other
   applications of your workspace that may use it, and the account answers with the same list. Only an admin or an
