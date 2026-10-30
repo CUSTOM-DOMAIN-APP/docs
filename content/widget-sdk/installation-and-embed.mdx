@@ -156,7 +156,7 @@ The options in the example above:
     endUserRef: { type: "string", description: "Your id for this customer. Stored on the connection as end_user_ref, shown in the console, and sent with every webhook as user_id." },
     wwwRedirect: { type: "boolean", description: "Root domains only. true connects the root and www and redirects the root to www; false connects the root alone; unset lets the user choose." },
     onSuccess: { type: "(result) => void", description: "When the domain reaches live: { jobId, domain, setupType, provider, success: true }." },
-    onFallback: { type: "(detail) => void", description: "Once per analysis, when the user is routed to a non-automatic screen: { reason, provider?, screen, message? }." },
+    onFallback: { type: "(detail) => void", description: "Once per domain, when the user goes to the records (no automatic way, or they chose Add the records): { reason, provider?, screen, message? }." },
     onClose: { type: "(detail) => void", description: "When the modal closes: { lastStatus, error?, shared?, manualScreenDisabled? }." },
     onStepChange: { type: "(detail) => void", description: "On every screen change: { step, domain?, provider?, user?, error? }." },
     onError: { type: "(err: CustomDomainError) => void", description: "When the widget shows an error: { code, message, details?, status? }." },

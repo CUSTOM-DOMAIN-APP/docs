@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: the widget's connect screen is one card, with the other ways under it.** The widget now opens
+  the way the domain check recommends (`recommended_rail`) as one card named as the console names it, **Sign in with** the
+  provider's name, **One-click setup** or **Secure sign-in**, marked **Recommended** when there is another way, and lists
+  the rest under **Other ways to connect**: **Add the records**, and **DNS hosting** where your application turns it
+  on. A sign-in the customer cancels, or that fails, keeps the card with one line instead of dropping to the records,
+  and the records screen has a **Back** to the card. The copy is in all 13 languages. **`onFallback` timing changes:**
+  `customdomain:fallback` now fires when the customer goes to the records, once per domain: where no way connects
+  automatically (the same four reasons as before), and when they choose **Add the records** over an open card, with
+  the new reason `chose_records`. A cancelled or failed sign-in no longer drops to the records, so it fires nothing.
+  If your code treats a `MANUAL_CONFIGURATION` step as the signal that someone left the automatic path, read this
+  event instead.
 - **October 30, 2026: cookies are off until you accept them.** Optional analytics and marketing cookies, and the
   session recording that is part of analytics, no longer run for a visitor who has not chosen. One line at the
   bottom of customdomain.ai and the console asks first ("With your OK, we use analytics and marketing cookies and
