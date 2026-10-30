@@ -126,7 +126,10 @@ A delegated agent token reads them the way a viewer does, with `domains:read`:
 grant is bound to, never a key a customer made at their own sign-in, with that
 application's connections only, only the `domains` that no other application
 of your workspace has connected, and an empty `kept_access`. `?application_id=`
-may only repeat the grant's own application (`403` otherwise). It reads
+may only repeat the grant's own application (`403` otherwise). Its answers
+never say which member of your workspace made a key: `made_by.by` and
+`created_by` are left out, in the list and in the account that `:use-saved-access`
+returns, and `made_by.how` stays. It reads
 `GET /v1/connections/{id}/saved-access` with `domains:read` and uses a key with
 `POST /v1/connections/{id}:use-saved-access` and `domains:connect`, for a
 connection of that application; the audit log records the use as `agent.acted`
@@ -221,7 +224,9 @@ Every account says how its key was made and by whom, in `made_by`:
   widget or one your backend started for them through the API).
 - `by` is the member's e-mail, `a customer` for a key your customer's sign-in
   made (never their id), the API key's name for a key an API call pasted, or
-  absent when it was not recorded.
+  absent when it was not recorded. A delegated agent token's answer always
+  leaves it out, because an agent has no need to know which person made a key;
+  `how` stays.
 
 `?owner=workspace` keeps the keys your workspace holds (pasted, or made at a
 sign-in started in the console); `?owner=end_user` keeps the keys your
