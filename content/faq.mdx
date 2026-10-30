@@ -7,7 +7,7 @@ description: "Short answers to common questions about connecting domains: which 
 
 <Accordion title="Which DNS providers connect automatically?" id="which-dns-providers-auto-configure-records">
 
-Of the 189 providers in the census on 2026-10-21 (`GET /v1/providers/census`),
+Of the 210 providers in the census on 2026-10-30 (`GET /v1/providers/census`),
 73 have an automatic path:
 
 - **6 sign in at the provider** (OAuth): Cloudflare, DigitalOcean, DNSimple,
@@ -19,11 +19,11 @@ Of the 189 providers in the census on 2026-10-21 (`GET /v1/providers/census`),
   Route 53, Google Cloud DNS, GoDaddy and Porkbun. One of the 66, PowerDNS, runs
   on its owner's own server, which the hosted service does not write to.
 
-The other 116 are connected by hand: the connect flow shows the exact records and
+The other 137 are connected by hand: the connect flow shows the exact records and
 checks them automatically. Any provider, automatic or not, can be connected that
 way.
 
-Namecheap is one of the 116. Its API opens only to accounts that qualify and
+Namecheap is one of the 137. Its API opens only to accounts that qualify and
 replaces the whole zone on each write, so its records are added by hand by
 default. An account that qualifies can paste an API key instead, and sign-in
 through Namecheap's MCP server is built but not switched on yet. See

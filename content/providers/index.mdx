@@ -3,18 +3,18 @@ title: Connect a domain by DNS provider
 description: "Step by step guides to connect a custom domain from each supported DNS provider, with the exact DNS records and how each provider's setup works end to end."
 ---
 
-CustomDomain™ knows more than 180 DNS hosts, registrars and domain platforms, among them every one of the 100 largest registrars (by domains under management in ICANN's registry reports for May 2026). How a domain connects depends on what its provider offers: some support one click sign in, some take a scoped API key, and the rest use a guided flow where the app shows the exact records and verifies them for you.
+CustomDomain™ knows more than 200 DNS hosts, registrars and domain platforms, among them every one of the 100 largest registrars (by domains under management in ICANN's registry reports for May 2026). How a domain connects depends on what its provider offers: some support one click sign in, some take a scoped API key, and the rest use a guided flow where the app shows the exact records and verifies them for you.
 
 ## How providers break down
 
-The census routes every provider it lists to the best setup that provider supports. On 2026-10-21 it lists 189:
+The census routes every provider it lists to the best setup that provider supports. On 2026-10-30 it lists 210:
 
 - **6 one-click sign-in (OAuth):** you sign in to the provider and approve; no records to copy.
 - **1 one-click setup (Domain Connect):** you approve the change at the provider itself.
 - **66 automatic (API key):** you paste a scoped key once and the app writes the records.
-- **116 guided manual:** the app shows the exact records to add and verifies them automatically.
+- **137 guided manual:** the app shows the exact records to add and verifies them automatically.
 
-Most of the 116 are registrars, hosts and site builders that give no third party a way to change DNS, which is the honest shape of the ecosystem rather than a gap in one product. A few providers also have a second way in besides the one the census lists: Porkbun takes an approval at Porkbun instead of a key, Amazon Route 53 an access role, and Namecheap an API key for accounts that qualify. Glauca Digital and Domain Chief, which serve our one-click templates, are found through Domain Connect rather than listed in the census. Every provider with a built-in adapter is in the census, Azure DNS and Akamai Cloud (Linode) among them; one of the 66, PowerDNS, runs on its owner's own server, which the hosted service does not write to. [DNS providers](/docs/dns/providers) has the full picture, including the sign-ins that are built but not switched on yet.
+Most of the 137 are registrars, hosts and site builders that give no third party a way to change DNS, which is the honest shape of the ecosystem rather than a gap in one product. A few providers also have a second way in besides the one the census lists: Porkbun takes an approval at Porkbun instead of a key, Amazon Route 53 an access role, and Namecheap an API key for accounts that qualify. Glauca Digital and Domain Chief, which serve our one-click templates, are found through Domain Connect rather than listed in the census. Every provider with a built-in adapter is in the census, Azure DNS and Akamai Cloud (Linode) among them; one of the 66, PowerDNS, runs on its owner's own server, which the hosted service does not write to. [DNS providers](/docs/dns/providers) has the full picture, including the sign-ins that are built but not switched on yet.
 
 Whichever path applies, the app issues and renews TLS automatically and monitors for drift after the domain goes live.
 
