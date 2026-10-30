@@ -2,7 +2,8 @@
  * The docs page route (/docs/...): renders one Fumadocs page from the content source with its Markdown copy and
  * GitHub links, TechArticle and breadcrumb JSON-LD, and its metadata and social card. Every page in the source is
  * generated at build; an unknown slug returns a 404. Machine fields (title, description, social tags, alt text and
- * schema.org names) carry no ™ (D-2, lib/machine-text.ts). The visible title and description keep it.
+ * schema.org names) carry no ™ (D-2, lib/machine-text.ts). The visible title and description keep it. The title is
+ * set in the brand serif through the cd-docs-title class (src/app/brand.css).
  */
 
 import { notFound } from "next/navigation";
@@ -92,7 +93,7 @@ export default async function Page({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsTitle className="cd-docs-title">{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{description}</DocsDescription>
       <div className="flex flex-row flex-wrap items-center gap-2 border-b pb-6">
         <MarkdownCopyButton markdownUrl={markdownUrl} />

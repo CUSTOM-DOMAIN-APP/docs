@@ -33,9 +33,20 @@ deployment and the follow-ups still open.
   components that resolve against this spec. `openapi-v1.yaml` here is a
   **vendored copy** of `apps/app/openapi-v1.yaml` in the product repo, not a
   new canonical location; see `../DEPLOYMENT.md` for how the two are kept in step.
-- `src/lib/layout.shared.tsx`: nav/header options (deliberately plain: default
-  Fumadocs chrome and no brand restyle, because this is a minimal scaffold, not
-  a redesign).
+- `src/lib/layout.shared.tsx`: nav/header options: the wordmark
+  (`src/components/wordmark.tsx`), the sidebar links and the "Sign in" or
+  "Console" pair.
+- Theme: Fumadocs' own chrome on the brand kit. `src/app/tokens-docs.css` is the
+  kit's `--color-fd-*` mapping, light and dark, copied unchanged from the brand
+  kit's token build (`build_tokens.py` writes it from `tokens.json`, the one
+  token file the website, the docs and the console share). To change a color,
+  change the token and copy the rebuilt file over this one; do not edit it here.
+  `src/app/brand.css` holds the few docs rules on top: the font stacks, the page
+  title in Instrument Serif, light code cards and the wordmark.
+  `src/lib/fonts.ts` self-hosts Inter, Geist Mono and Instrument Serif from
+  `src/fonts/` (licenses beside them), so the site requests no font from Google.
+  `src/lib/code-themes.ts` is the syntax theme for MDX code blocks and the API
+  reference samples.
 - `next.config.ts`: `output: "standalone"` for the Docker image, plus
   `outputFileTracingRoot`/`turbopack.root` pinned to the repo root (required
   because content lives one level above `site/`; see the comments in that file
