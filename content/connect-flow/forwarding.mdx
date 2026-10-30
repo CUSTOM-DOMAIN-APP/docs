@@ -28,7 +28,7 @@ request and no certificate on the origin side is required for the old hostname
 
 ## Enabling it (edge-served)
 
-Forwarding is part of the Power feature set and is driven by the control plane:
+Forwarding is part of edge serving and is driven by the control plane:
 the redirect target (`redirect_to`) and the apex→www flag (`www_redirect`) are
 attributes of the connection. Set them with `POST /v1/connections/{id}/power`
 (or `POST /v1/connections/{id}/power:repower` to change a connection that is
@@ -43,8 +43,8 @@ curl -X POST https://api.customdomain.ai/v1/connections/<ID>/power:repower \
 
 Send `"redirect_to": ""` to clear a redirect. The edge picks up the intent
 within one ask-cache TTL, with no redeploy. When neither is set, the domain is
-proxied to its origin as usual. Power is included on Growth, Premium and
-Enterprise; on Starter and Startup these calls return `402` with the code
+proxied to its origin as usual. Edge serving is included on the Edge, Scale and
+Enterprise plans; on Starter and Pro these calls return `402` with the code
 `plan_upgrade_required`.
 
 ## The redirect template (provider-written)

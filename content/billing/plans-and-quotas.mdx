@@ -8,23 +8,31 @@ description: "The plan catalog and entitlements, trials and subscriptions, how m
 The public catalog is returned by `GET /v1/plans` (along with a
 `billing: { configured, mode, trial_days }` block).
 
-Entitlements gate which products a tenant may use. **Enforced today:** `Power`
-(serving domains through the CustomDomain™ edge: the `/v1/connections/{id}/power*`
-surface, the application's default origin, and an `application_url` sent with
-`POST /v1/connections`) and `Secure` (the `/v1/ssl*` surface); an unentitled
-tenant gets `402 plan_upgrade_required`. `WhiteLabel`
+Entitlements gate what a tenant may use. Each is a key on the plan's
+`entitlements` object; this page names each by what it does, with the key in
+code. **Enforced today:** edge serving (`Power`: serving domains through the
+CustomDomain™ edge, which is the `/v1/connections/{id}/power*` surface, the
+application's default origin, and an `application_url` sent with
+`POST /v1/connections`) and certificates (`Secure`: the `/v1/ssl*` surface); an
+unentitled tenant gets `402 plan_upgrade_required`. `WhiteLabel`
 (widget branding) is enforced by dropping the branding, as described below.
-`Connect` is included on every plan and needs no gate. `Monitor` is listed as an entitlement on Premium and Enterprise, but nothing
+DNS setup (`Connect`) is included on every plan and needs no gate. Drift monitoring (`Monitor`) is listed as an entitlement on Scale and Enterprise, but nothing
 enforces it: every connection that has `monitor` on (the default) is monitored, on every plan. The deployment-level
 `MONITOR_ALERTS_ENABLED` flag governs alert delivery for everyone.
 
-| Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
-| --- | --- | --- | --- | --- | --- | --- |
-| `starter` | $10/mo | 10 | 1 | **yes** | Connect | self-serve, 14 day free trial |
-| `startup` | $149/mo | 600 | 50 | no | Connect | self-serve, 14 day free trial |
-| `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
-| `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (listed, not enforced) | contact sales |
-| `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
+| Plan | ID | Price | Domains / year (sold) | Domains / month | Refused at quota? | Includes | Motion |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Starter | `starter` | $10/mo | 10 | 1 | **yes** | DNS setup (`Connect`) | self-serve, 14 day free trial |
+| Pro | `startup` | $149/mo | 600 | 50 | no | DNS setup | self-serve, 14 day free trial |
+| Edge | `growth` | $649/mo | 600 | 50 | no | DNS setup · Edge serving (`Power`) · Certificates (`Secure`) | self-serve, 14 day free trial |
+| Scale | `premium` | demo-gated | 12,000 | 1,000 | no | + Drift monitoring (`Monitor`, listed, not enforced) | contact sales |
+| Enterprise | `enterprise` | custom | 12,000+ | 1,000 | no | + white-label (`WhiteLabel`) | contact sales |
+
+The plan's name is a display name (`name` on `GET /v1/plans`, `plan_name` on
+usage and billing reads). Its ID is what the API, webhooks, checkout and your
+code use, and IDs never change when a name does: on November 9, 2026 the names
+moved to the ones above and every ID stayed the same (see the
+[changelog](/docs/changelog)). Key on the ID, never on the name.
 
 Prices and both domain columns above are transcribed from `GET /v1/plans`
 (`price_cents`, `domains_per_year`, `domains_per_month`). If this table and that
@@ -39,7 +47,7 @@ see [The Free plan's retirement](#the-free-plans-retirement).
 
 A tier is **sold** annually but **metered** monthly: the meter counts domain
 connections per UTC calendar month, and the quota gate compares against
-`domains_per_month`, which is `ceil(domains_per_year / 12)`. Startup's 600/year
+`domains_per_month`, which is `ceil(domains_per_year / 12)`. Pro's 600/year
 is therefore **50 in any one month**, and Starter's 10/year is **1/month**.
 Ceiling division means the annualized entitlement never shrinks below what was
 sold (Starter's 1/month is 12/year effective).
@@ -310,7 +318,7 @@ derived from the authenticated credential, never a query parameter, and
   "used": 412,
   "mode": "live",
   "plan": "growth",
-  "plan_name": "Growth",
+  "plan_name": "Edge",
   "quota": 50,
   "limit": 50,
   "metered": true,
