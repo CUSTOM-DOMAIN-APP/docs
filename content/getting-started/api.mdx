@@ -98,22 +98,33 @@ For records only you know (SES DKIM, verification `TXT`), follow with
 
 ### Apply (optional) [#3-apply-optional]
 
-If you hold a provider credential for the zone, write the records yourself:
+If you hold a provider credential for the zone, write the records yourself.
+The body takes `credential` as an object with the scoped `token`, used once and
+never stored, and `records`, the set to write: send the `records` from step 2.
 
 ```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/connections/<ID>/apply \
   -H "Authorization: Bearer cd_live_..." -H "Content-Type: application/json" \
-  -d '{"provider":"cloudflare","credential":"<scoped token>"}'
+  -d '{
+    "provider": "cloudflare",
+    "credential": { "token": "<scoped token>" },
+    "records": [ { "type": "CNAME", "host": "shop", "value": "edge.customdomain.ai", "ttl": 3600 } ]
+  }'
 ```
 
 ```js tab="Node"
-const res = await fetch(`https://api.customdomain.ai/v1/connections/${connectionId}/apply`, {
+const res = await fetch(`https://api.customdomain.ai/v1/connections/${connection.id}/apply`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ provider: "cloudflare", credential: process.env.CLOUDFLARE_TOKEN }),
+  body: JSON.stringify({
+    provider: "cloudflare",
+    credential: { token: process.env.CLOUDFLARE_TOKEN },
+    // The records from step 2, in the fields apply accepts (it refuses unknown ones).
+    records: connection.records.map(({ type, host, value, ttl, priority }) => ({ type, host, value, ttl, priority })),
+  }),
 });
 if (!res.ok) console.error(res.status, await res.json()); // { code, title, details }
 ```

@@ -33,6 +33,14 @@ never change meaning or disappear without a new major version. See the
   `details`. Removing a domain and reading its monitoring, services or timeline keep answering
   `403 forbidden`. See [Secure sign-in](/docs/guides/secure-sign-in#who-can-start-it) and
   [Widget tokens](/docs/authentication/widget-tokens).
+- **October 30, 2026: cookies are off until you accept them.** Optional analytics and marketing cookies, and the
+  session recording that is part of analytics, no longer run for a visitor who has not chosen. One line at the
+  bottom of customdomain.ai and the console asks first ("With your OK, we use analytics and marketing cookies and
+  record sessions."), with **Accept** and **Reject**, which count the same, and **Settings**, where each category
+  can be allowed on its own. Your choice still applies across the website, these docs and the console, and is
+  saved to your account when you are signed in. A no you gave before still stands, and a yes you gave before is asked
+  again. Global Privacy Control or Do Not Track still turns them off, with no question. See the
+  [Cookie Policy](https://app.customdomain.ai/cookies).
 - **October 25, 2026: a key you already keep is offered first, and a second sign-in no longer adds a second key.**
   When the workspace already keeps a provider key that can act for a domain, the domain check lists it
   (`rails.saved_access`, and `GET /v1/connections/{id}/saved-access`) and `POST /v1/connections/{id}:use-saved-access`
