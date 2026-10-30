@@ -79,9 +79,16 @@ The answer is `201`:
 }
 ```
 
-Keep the `id` and the `client_secret`. The secret is shown only in this response,
-and step 5 uses it to open the widget. A workspace holds up to 3 test mode
-applications; a fourth is refused with `409 sandbox_limit`.
+Keep the `id`, and put the `client_secret` in an environment variable now. The
+secret is shown only in this response, and step 5 reads it from there to open the
+widget:
+
+```bash
+export CUSTOMDOMAIN_CLIENT_SECRET="sk_..."
+```
+
+A workspace holds up to 3 test mode applications. A fourth is refused with
+`409 sandbox_limit`.
 
 </Step>
 
@@ -202,7 +209,9 @@ token, and only that token reaches the browser. Mint one for a second name:
 ```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/tokens \
   -H "Content-Type: application/json" \
-  -d '{"application_id":"app_...","client_secret":"sk_...","domain":"shop.acme.test"}'
+  -d @- <<EOF
+{"application_id":"app_...","client_secret":"$CUSTOMDOMAIN_CLIENT_SECRET","domain":"shop.acme.test"}
+EOF
 ```
 
 ```js tab="Node"
