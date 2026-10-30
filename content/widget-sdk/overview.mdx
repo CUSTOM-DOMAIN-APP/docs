@@ -34,10 +34,18 @@ window `CustomEvent`s, so you can integrate imperatively or declaratively.
 
 - **Enter domain** → validates the domain.
 - **Domain analysis** → detects the DNS provider and setup type (`domains:check`).
-- **Setup** → the best available way: sign in with the provider, a one-click
-  (Domain Connect) redirect, a [secure sign-in](/docs/guides/secure-sign-in) where
-  it is offered, or the exact records to add (add the records), with a live check
-  of each record.
+- **Connect** → one open card for the way CustomDomain™ recommends for this
+  domain's DNS host, the same way the console leads with: **Sign in with** the
+  provider's name (authorize at the provider), **One-click setup** (a Domain
+  Connect redirect) or [**Secure sign-in**](/docs/guides/secure-sign-in) where it
+  is offered. The card is marked **Recommended** when there is another way, and the
+  other ways are rows under **Other ways to connect**: **Add the records**, and
+  **DNS hosting** where your application turns it on. A sign-in the customer
+  cancels, or that fails, keeps the card with one line saying so, so they can
+  try again or pick another way. **Add the records** opens the records screen:
+  the exact records to add, with a live check of each record, and a **Back** to
+  the card. When no way connects automatically for the host, the records screen
+  is the first screen.
 - **Other ways to finish** (on the records screen) → hand a ready prompt to an
   AI assistant, or email the instructions to whoever manages DNS. Where your
   application turns it on, the end user can instead let your platform keep the

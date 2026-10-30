@@ -34,24 +34,35 @@ A person is always there. Only two callers may start a secure sign-in:
 
 1. **The widget**, in your customer's browser, with a
    [widget token](/docs/authentication/widget-tokens) minted for the domain and
-   the customer's `end_user_ref`. A token bound to no domain, or to another one,
-   cannot start it, so its domain check answers `available: false` with
-   `caller_cannot_start` and the widget shows the manual setup.
+   the customer's `end_user_ref`. A token bound to no domain, or only to other
+   domains, cannot start it: its domain check answers `available: false` with
+   `token_not_bound`, a start with it is refused with `403 token_not_bound`, and
+   the widget shows the manual setup. The fix is a token for this domain: mint
+   it with `domain` and `end_user_ref` (the widget's `getToken` is where your
+   page hands it one). A token for a domain another customer connected is
+   refused with `403 token_wrong_end_user`. Both answers carry a plain `title`
+   for the person and what to mint in `details`.
 2. **The console**, from a domain's Connect page. It is offered there as the
    widget offers it, only when neither a sign-in of the provider's own nor
    one-click setup runs. When the server recommends it, **Sign in to GoDaddy**
-   (with the provider's name) is the one open card, with **Open secure sign in**;
+   (with the provider's name) is the one open card, with **Open secure sign-in**;
    an API key and the records by hand are closed rows under **Other ways to
    connect**.
 
 An AI agent, the MCP server and a plain API call are refused with
-`403 browser_customer_present_only`, and their domain check never offers it.
+`403 browser_customer_present_only`, and their domain check never offers it
+(`caller_cannot_start`).
 
 ## What your customer sees
 
 The examples below use Namecheap as the provider and `acme.com` as the domain.
-In the widget the sign-in screen has **Open secure sign in** and **Set up
-manually instead**. On a computer the sign-in opens in a popup the size of every
+In the widget the sign-in screen is one card named **Secure sign-in**, with the
+button **Open secure sign-in**, and under **Other ways to connect** the row **Add
+the records**. If your customer closes the window or the sign-in does not work,
+the card stays, with one line ("You didn't finish signing in. You can try again."
+or "That sign-in didn't work. You can try again."), and the popup, which says why
+in its own window, is left open. **Add the records** opens the records screen,
+which has a **Back** to the card. On a computer the sign-in opens in a popup the size of every
 other provider sign-in (680 by 760, centered over the page). On a phone or a
 tablet it opens as a sheet over the page, and the sheet follows the visible part
 of the screen, so the keyboard never covers a field.
@@ -383,6 +394,21 @@ GoDaddy and is not in use.") with a link to the provider's page to delete it.
 Your console's **Activity** page records it too, as "An API key we made is still
 in your GoDaddy account", with the same name and link. The key itself is never
 shown or kept.
+
+You can tell your customer which key it is, and where to delete it, both before
+the sign-in and after. Before it, the [domain check](/docs/api-reference/domains/checkDomain)
+answers `rails.cloud_browser.key` with `name` (the name a key made now would
+get, such as "CustomDomain Acme 2026-10-30 1204": your application's name, then
+the day and minute), `delete_url` (the provider's own page that lists and
+deletes API keys), `rights` and `ends_in_days`. A sign-in makes a key, or may
+reuse one of ours the account already has, and each session names its key from
+the minute it starts, so look for a key that begins with that name, not for that
+exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
+so its `key` has no `name`. After the sign-in, the session's view
+([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
+`kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
+its `rights` and `expires_at` (left out for a key with no end date). A key that
+was made and not kept is `left_key` instead, never both.
 
 IONOS's API is off for an account until the account signs up for it, a free
 product in IONOS's shop under IONOS's API terms. When IONOS's key page says it is

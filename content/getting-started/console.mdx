@@ -198,6 +198,15 @@ these docs that explains it. A **?** beside a word that decides what you do next
 (**Managed**, a root domain, a CAA record, an account's access) gives one plain line
 and a link. The words the console uses are listed in the [Glossary](/docs/concepts/glossary).
 
+### Navigation
+
+**Settings → General → Navigation** picks which menu everyone in the workspace sees.
+**Classic** is the menu this page describes. **New (preview)** puts search first, shows
+fewer menu items, and on a phone adds a bar along the bottom of the screen; every page
+is still there, one tap away. An owner or admin chooses it for the whole workspace: it
+changes at once for them and on the next page load for everyone else. While we hold a
+workspace on the classic menu, the card says so and the choice waits.
+
 ### API keys and widget tokens
 
 Open **API & SDK**. Every workspace has a **default key** at the top of the page,
@@ -223,7 +232,9 @@ live** and that endpoint would stop working. See
 
 Optional surfaces (the activity log, DNS monitoring, buying domains, the MCP
 server and agent access) are off until you need them: switch them on under
-**Settings → Features**. A workspace that already used one keeps it on, and
+**Settings → Features**. Owners and admins can switch them on; a member or viewer
+who opens a page that is off is told who can, with a link to that feature's docs,
+and is not offered a button. A workspace that already used one keeps it on, and
 agent access switches on by itself when you approve an agent. Each switch shows or
 hides a page and nothing else: **DNS monitoring** shows the **Monitor** page, and
 every live domain is checked, with alerts on drift, whether it is on or off. **Buy
@@ -405,7 +416,7 @@ the domain. The recommended one is open; the others are closed one-line rows und
    have not onboarded our templates.
 3. **Secure sign-in**: at Namecheap, GoDaddy, IONOS,
    Name.com, Squarespace, Hover, Spaceship and Hostinger, where neither of the
-   two above runs. **Open secure sign in** opens the provider's own sign-in in a
+   two above runs. **Open secure sign-in** opens the provider's own sign-in in a
    secure window; you approve the exact changes and we add the records. See
    [Secure sign-in](/docs/guides/secure-sign-in).
 4. **API key**: paste a scoped provider credential, one labeled field per part,
@@ -642,13 +653,30 @@ more), and pick the steps of a checklist. Each screen says which status it
 reports to your code. Look at the widget in light or dark, on a computer or a
 phone, and in any language it speaks.
 
+Under **Ways to connect** is the screen a person gets for each way a domain can
+be connected, so you can see them all without a domain that needs each one:
+
+| Screen | What the person sees |
+| --- | --- |
+| **Secure sign-in** | A provider with no sign-in of its own (the example is IONOS): **Open secure sign-in**, which opens a window we run where they sign in. |
+| **One-click setup** | A provider that applies the change itself after one approval (the example is NameSilo): **Continue at** the provider. |
+| **DNS hosting: offered first** | Your DNS hosting setting is **Offered first**, so the question comes before the records: the consent below. |
+| **DNS hosting: consent** | What they agree to before we run their domain's DNS: the nameservers now, and **Yes, set it up**. |
+| **DNS hosting: moving** | The steps while it moves (copy settings, security check, make the change, live), here waiting for a sign-in where they bought the domain. |
+| **Reconnect** | One sign-in that renews the access we keep for a domain. |
+
+Their buttons only say that this is a preview: no window opens and nothing is
+sent. A link to the Design tab can name one of these screens with `stage=`
+(`secure-sign-in`, `one-click`, `dns-hosting-first`, `dns-hosting`,
+`dns-hosting-move` or `reconnect`), so another page can open the preview on it.
+
 | Group | What you set |
 | --- | --- |
 | **Brand** | The name in the first heading ("Connect your domain to …"), the logo, a separate logo for dark mode (or a light plate behind a logo drawn for light pages, which the designer offers in one click when a logo would be hard to see on the dark surface), the logo's size (16 to 48 pixels, 32 by default), and whether "Powered by CustomDomain™" shows. |
 | **Colors** | The brand color for buttons, links and focus rings. Text on it is chosen to be readable, and it is lifted in dark mode when it would vanish. An optional background and text color, used in both light and dark. |
 | **Shape and type** | One corner radius (buttons, fields, cards and the pop-up follow it in proportion), a system font, the pop-up's width on a computer, and its shadow. |
 | **Behavior** | Light, dark or match the device; the confetti; the close button; the progress steps. |
-| **Screens and options** | "Set up manually instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with **Change in Settings** to its [Domain maintenance](#domain-maintenance) section: that setting, not the widget, decides whether users are offered DNS hosting. |
+| **Screens and options** | "Add the records instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with **Change in Settings** to its [Domain maintenance](#domain-maintenance) section: that setting, not the widget, decides whether users are offered DNS hosting. |
 
 **Each application has its own look.** The designer edits the application
 chosen in the sidebar. **Save** gives that application a look of its own.

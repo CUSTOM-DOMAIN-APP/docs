@@ -15,6 +15,60 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: the accounts list says what needs you, how each key was made and who holds its limit.**
+  `GET /v1/provider-accounts` now lists the accounts that need you first (`needs_you.reason`: `refused`,
+  `expired`, `expiring`, `one_time_window` or `no_domains`), then the most recently used. Every account says how
+  its key was made and by whom (`made_by`: `pasted`, `console_sign_in` or `widget_sign_in`, with the member's
+  e-mail or `a customer`, never a customer's id) and who holds its limit (`enforced_by`: `provider` for
+  Cloudflare, Porkbun and Route 53, `customdomain` for every other provider). The list takes `owner`, `q`,
+  `limit` and `cursor`, and `end_user_keys` counts the keys your customers' own sign-ins made. See
+  [Provider accounts](/docs/connect-flow/provider-accounts#what-needs-you).
+- **October 30, 2026: five more providers list their domains.** A key at Porkbun, Hetzner, DigitalOcean,
+  Name.com or Gandi is now checked by listing the account's domains, and **Connect more domains**
+  (`POST /v1/provider-accounts/{id}/zones`) shows them, so you no longer type each one. Porkbun lists its active
+  domains with API Access on, Hetzner its primary zones, and Gandi the domains of the token's personal
+  organization. A key a provider refuses still asks you to reconnect, and a key that may not list falls back to
+  checking one domain you name. See [which providers list their domains](/docs/connect-flow/provider-accounts#which-providers-list-their-domains).
+- **October 30, 2026: the widget's connect screen is one card, with the other ways under it.** The widget now opens
+  the way the domain check recommends (`recommended_rail`) as one card named as the console names it, **Sign in with** the
+  provider's name, **One-click setup** or **Secure sign-in**, marked **Recommended** when there is another way, and lists
+  the rest under **Other ways to connect**: **Add the records**, and **DNS hosting** where your application turns it
+  on. A sign-in the customer cancels, or that fails, keeps the card with one line instead of dropping to the records,
+  and the records screen has a **Back** to the card. The copy is in all 13 languages. **`onFallback` timing changes:**
+  `customdomain:fallback` now fires when the customer goes to the records, once per domain: where no way connects
+  automatically (the same four reasons as before), and when they choose **Add the records** over an open card, with
+  the new reason `chose_records`. A cancelled or failed sign-in no longer drops to the records, so it fires nothing.
+  If your code treats a `MANUAL_CONFIGURATION` step as the signal that someone left the automatic path, read this
+  event instead.
+- **October 30, 2026: the key a secure sign-in makes is named before and after.** The domain check's
+  `rails.cloud_browser.key` now carries `name` (the name a key made now would get, such as "CustomDomain Acme
+  2026-10-30 1204") and `delete_url` (the provider's own page that deletes API keys), beside `rights` and
+  `ends_in_days`. A sign-in makes a key or may reuse one of ours, so look for a key that begins with that name. Once
+  a session keeps its key, the session view carries `kept_key` (`name`, `page`, `rights`, `expires_at`), so the last
+  screen can say which key was kept and where to remove it. Both fields are new and optional. One check is tighter: a
+  secure sign-in start whose `consent_version` is not an id that was issued (`cb-1` to `cb-4`) now answers
+  `422` with `consent_unknown`, before anything starts; the ids the widget and the popup send are unchanged. See
+  [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
+- **October 30, 2026: the widget designer shows every way to connect.** Under **Ways to connect**, the Design
+  tab's preview now opens the screen of the secure sign-in, one-click setup, DNS hosting (offered first, its consent
+  and its move) and reconnect, each on example data, so you can see what your customers meet for each way without a
+  domain that needs it. Their buttons say that this is a preview and open nothing. A link to the Design tab can name
+  a screen with `stage=` to open the preview on it. See
+  [Design the widget](/docs/getting-started/console#design-the-widget).
+- **October 30, 2026: the domain check and the secure sign-in say one thing about a widget token.**
+  A widget token bound to no domain, or only to other domains, now reads `rails.cloud_browser.reason:
+  token_not_bound` on `POST /v1/domains:check` (it was `caller_cannot_start`, which stays for an agent, a
+  plain API call and a role that cannot write), and `POST /v1/connections/{id}/browser:start` and `:resume`
+  refuse the same token with `403 token_not_bound` instead of `403 forbidden`, so you can mint a token for
+  the domain and try again. A token for a domain another customer connected is refused with
+  `403 token_wrong_end_user`. Both answers carry a plain `title` for the person and what to mint in
+  `details`. Removing a domain and reading its monitoring, services or timeline keep answering
+  `403 forbidden`. See [Secure sign-in](/docs/guides/secure-sign-in#who-can-start-it) and
+  [Widget tokens](/docs/authentication/widget-tokens).
+- **October 30, 2026: pick the console's menu per workspace.** **Settings → General → Navigation** lets an owner
+  or admin keep the **Classic** menu or try the **New (preview)** one for the whole workspace: search first,
+  fewer menu items, and a bar along the bottom on phones. Every page stays one tap away either way. See
+  [Navigation](/docs/getting-started/console#navigation).
 - **October 30, 2026: the docs name the six ways to connect, and GoDaddy and Namecheap say what runs.** Pages that
   listed four ways now use the glossary's six names: **Sign in with** your provider, **One-click setup**, **Secure
   sign-in**, **API key**, **Add the records** and **DNS hosting**. [Provider setup](/docs/dns/provider-setup#godaddy)

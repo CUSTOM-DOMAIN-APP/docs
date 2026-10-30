@@ -27,6 +27,10 @@ info:
     OAuth endpoints under the Agents tag, lets an AI assistant act for one
     application within the scopes a person approved in the console; each route
     that accepts it lists the scopes it needs.
+
+
+    A `429` (`rate_limited`) from the request limiter carries a `Retry-After`
+    header: the seconds to wait before the next request.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -675,8 +679,11 @@ paths:
         Accepts the invite and returns the member with a member-scoped API key
         for the inviter's tenant. The token is the capability, so no API key is
         needed; when `email` is supplied it must match the invited email. The
-        token is spent on success. A pending invite whose link has lapsed is
-        refused with 410 `invite_expired`.
+        token is spent on success, once. A second accept that races the first,
+        or one racing a resend that replaced the link, is refused with 409. A
+        repeat after the accept has finished finds no invite and answers 404,
+        as does a link for an invite that was removed. A pending invite whose
+        link has lapsed is refused with 410 `invite_expired`.
       security: []
       requestBody:
         required: true
@@ -704,12 +711,17 @@ paths:
                       api_key: { type: string, description: 'Member-scoped API key for the inviter''s tenant; shown once.' }
         '400': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
   /members/{id}:
     patch:
       operationId: updateMemberRole
       summary: Change a member's role (owner-protected)
       tags: [Members]
+      description: >-
+        Demoting the tenant's last owner is refused with 400, also when two
+        demotions or removals of owners race each other. A 409 means the
+        member's role changed after this request read it; reload and retry.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -732,14 +744,17 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
     delete:
       operationId: removeMember
       summary: Remove a member or revoke a pending invite (owner-protected)
       tags: [Members]
       description: >-
-        Removing a member revokes their member-scoped API key at once. Revoking
+        Removing a member revokes their member-scoped API keys at once, on every
+        application of the workspace (the console key and any key they minted). Revoking
         a pending invite stops its link working; a preview of that link then
-        reports `revoked`.
+        reports `revoked`. The last owner cannot be removed (400), and a 409
+        means the member's role changed after this request read it.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -749,6 +764,7 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /members/{id}/invite:
     get:
       operationId: getMemberInvite
@@ -781,7 +797,8 @@ paths:
         7 days and returns it as `invite_token`; send the invitee a link built
         from it. The previous link stops working at once, and a preview of it
         reports `replaced`. Requires admin or owner (`member:manage`). A member
-        who already joined is a 409.
+        who already joined, or an invite accepted or replaced while this
+        request ran, is a 409.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -971,8 +988,10 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '429':
           description: >-
-            `rate_limited`: too many token requests, either from this address
-            or for this `application_id`. Retry shortly.
+            `rate_limited`: too many token requests from this address, or too
+            many failed ones (unknown application or wrong secret) for this
+            `application_id`. A request with the right secret is limited only
+            by its address. Retry shortly.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1076,8 +1095,24 @@ paths:
         application when it is omitted.
 
 
+        `rails.cloud_browser` (the secure sign-in) is offered only to a caller
+        that could start it, with the reason the start would refuse it with: a
+        widget token bound to no domain, or only to other domains, reads
+        `available: false` with `token_not_bound` (mint one with `domain` and
+        `end_user_ref`), and an agent, a plain API call without the console or
+        a role that cannot write connections reads `caller_cannot_start`.
+
+
         A delegated agent token needs `domains:read` or `domains:connect` and
         checks for its own application; naming another application is a `403`.
+
+
+        Where the secure sign-in also makes a lasting API key,
+        `rails.cloud_browser.key` names it before the person signs in: `name` is
+        the name a key made now would get (a sign-in makes or reuses a key, so
+        look for a key named like it), `delete_url` is the provider's own page
+        that deletes keys, and `rights` and `ends_in_days` say what it can do and
+        when it ends.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2781,10 +2816,12 @@ paths:
         another provider than the one a live or propagating domain's DNS is
         at, or a key whose scope does not hold such a domain yet (such a
         domain is linked without a write, and a scope widens only after a
-        write). A write that fails links nothing and leaves the key's scope
+        write). A test mode domain is refused (`403` `sandbox_not_allowed`). A
+        write that fails links nothing and leaves the key's scope
         as it was, and records the failure on the domain (its `error_code`
         and `error_message`): `502` `saved_access_write_failed`, with the
-        provider's words. A domain kept
+        provider's words. Records written but a key that could not be linked
+        is `500` `saved_access_link_failed`: try again. A domain kept
         by an end user's own sign in key is left as it is (`409`).
       security:
         - apiKey: []
@@ -2813,7 +2850,9 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
         '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:retarget:
     post:
       operationId: retargetConnection
@@ -3083,7 +3122,8 @@ paths:
         provider stopped accepting it): the agent makes a new key with the same
         scopes, checks it and swaps it in, and changes no DNS record. A
         connection without such a key is refused with
-        `browser_reconnect_unavailable`. A reconnect link
+        `browser_reconnect_unavailable`, and a `provider` other than the key's
+        own is a `400`. A reconnect link
         (`POST /connections/{id}:reconnect-link`) opens the hosted page in this
         mode.
 
@@ -3093,13 +3133,17 @@ paths:
         popup trades it at `POST /browser-sessions:redeem`. Only an end user's
         widget token (bound to the domain and to the end user) or the console
         may start one: an agent, the MCP server and a plain API key are refused
-        with `browser_customer_present_only`. The request must carry an `Origin`
-        header on the server's return origin allowlist. A browser sends one (the
-        widget and the popup do), and the console's server must add it to the
-        call it makes for a customer. A request with no `Origin` at all, such as
-        a server to server call, is refused with `browser_customer_present_only`
-        and a message that says the header is missing; an `Origin` that is not
-        on the list is refused the same way.
+        with `browser_customer_present_only`. A widget token bound to no domain,
+        or only to other domains, is refused with `token_not_bound`, the same
+        word the domain check gave it in `rails.cloud_browser.reason`, and a
+        token for a domain another end user connected with
+        `token_wrong_end_user`; both say what to mint in `details`. The request
+        must carry an `Origin` header on the server's return origin allowlist. A
+        browser sends one (the widget and the popup do), and the console's
+        server must add it to the call it makes for a customer. A request with
+        no `Origin` at all, such as a server to server call, is refused with
+        `browser_customer_present_only` and a message that says the header is
+        missing; an `Origin` that is not on the list is refused the same way.
 
 
         A record set an integrator supplied, and any type or value the
@@ -3108,6 +3152,11 @@ paths:
         offered only for a provider that has no sign in of its own, and only
         while the deployment has it on (`rails.cloud_browser` on the domain
         check).
+
+
+        `consent_version` must be the id of a consent text that was issued
+        (`cb-1` to `cb-4`). Any other id of the right shape is refused with
+        `422` `consent_unknown` before a session or a browser exists.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3126,7 +3175,15 @@ paths:
                   description: Web origin the popup posts its result to; must be on the server's allowlist.
                 consent_version:
                   type: string
-                  description: The id of the consent text the customer was shown, stored with the session.
+                  enum: [cb-1, cb-2, cb-3, cb-4]
+                  description: >-
+                    The id of the consent text the customer was shown, stored
+                    with the session. Only an id that was ever issued is
+                    accepted (`cb-1` and `cb-2` the widget's earlier consent
+                    lines, `cb-3` the popup's own sign in form, `cb-4` the kept
+                    key notice); any other id is refused with `422`
+                    `consent_unknown`. A value that is not shaped like an id
+                    (1 to 32 of `[A-Za-z0-9._-]`) is a `400`.
                 locale:
                   type: string
                   description: The language the popup reads in, a plain code such as `en`. Defaults to `en`.
@@ -3186,7 +3243,7 @@ paths:
                     type: string
                     format: uri
                     description: The popup page, with `#c=<bootstrap code>&l=<locale>` in its fragment.
-                  vendor: { type: string, description: "The browser hosting company, shown to the customer." }
+                  vendor: { type: string, description: "The browser hosting company the session runs on, shown to the customer: `Browserbase`, or `Kernel` for a provider whose sign in runs there (Network Solutions)." }
                   expires_at: { type: string, format: date-time, description: "The latest the session can end." }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
@@ -3194,11 +3251,19 @@ paths:
           description: >-
             `browser_customer_present_only` (an agent, the MCP server, a plain API
             key, a request with no `Origin` header, or an `Origin` that is not on
-            the return origin allowlist) or
+            the return origin allowlist),
+            `token_not_bound` (the widget token is bound to no domain, or only to
+            other domains: mint one with `domain` and `end_user_ref`; the domain
+            check gave this caller the same word in `rails.cloud_browser.reason`),
+            `token_wrong_end_user` (the widget token is bound to the domain but
+            another end user connected it: mint one with this domain's
+            `end_user_ref`), `forbidden` (a role that cannot write connections),
             `browser_provider_not_allowed` (the rail is not offered for this
             provider or workspace, or the provider has a sign in of its own), or
             `workspace_suspended` (CustomDomain™ support suspended the workspace;
-            see the `ForbiddenOrSuspended` response).
+            see the `ForbiddenOrSuspended` response). The `title` of a
+            `token_not_bound` or `token_wrong_end_user` answer is a plain line
+            for the person; `details` says what to mint.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3217,6 +3282,9 @@ paths:
           description: >-
             `browser_unsupported_records`: the record set cannot be written
             through the provider's page. `types` names what is in the way.
+            `consent_unknown`: `consent_version` is shaped like an id but is
+            not one that was ever issued (`cb-1` to `cb-4`); nothing was
+            started.
           content:
             application/json:
               schema:
@@ -3310,13 +3378,14 @@ paths:
                     type: string
                     format: uri
                     description: The popup page, with `#c=<new bootstrap code>&l=<locale>` in its fragment.
-                  vendor: { type: string, description: "The browser hosting company, shown to the customer." }
+                  vendor: { type: string, description: "The browser hosting company the session runs on, shown to the customer: `Browserbase`, or `Kernel` for a provider whose sign in runs there (Network Solutions)." }
                   expires_at: { type: string, format: date-time, description: "The latest the session can end now." }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403':
           description: >-
-            `browser_customer_present_only` (as for `browser:start`), or
+            `browser_customer_present_only`, `token_not_bound`,
+            `token_wrong_end_user` and `forbidden` (as for `browser:start`), or
             `workspace_suspended`.
           content:
             application/json:
@@ -3395,6 +3464,13 @@ paths:
         not polled for 90 seconds before approval is ended and its browser
         released. The response is `Cache-Control: no-store`, because the view
         can carry the live view address, which anyone holding can drive.
+
+
+        Once the session has kept a lasting API key for the connection, the view
+        carries `kept_key`: the key's `name`, the provider's `page` that deletes
+        keys, its `rights` and when it ends (`expires_at`), so the last screen
+        can say which key was kept and where to remove it. A key that was made
+        and not kept is `left_key` instead.
       security:
         - browserSession: []
       parameters:
@@ -3736,6 +3812,105 @@ paths:
           description: '`browser_rate_limited`: switched less than ten seconds ago.'
           headers:
             Retry-After: { schema: { type: integer }, description: Seconds until it is taken again. }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:idp:
+    post:
+      operationId: idpBrowserSession
+      summary: Sign in with an identity provider through the vendor's managed sign in
+      tags: [Cloud browser]
+      description: >-
+        On a session whose vendor never shows its page (`no_live_page`: Kernel),
+        the customer pressed our form's "Continue with Google" or "Continue with
+        Apple". The control plane opens the vendor's managed sign in of a profile
+        of this session's own to the identity provider's site, and the view's
+        `idp` carries the connection and its single use `handoff_code`: the popup
+        renders the vendor's form, which talks to the vendor from the customer's
+        browser (no password, code or approval passes through CustomDomain™). On
+        success the remote browser is released and made again on the signed in
+        profile, back on the provider's sign in page (`idp.state` `finishing`),
+        and the popup forwards the customer's press of the provider's own button
+        over the relay; the identity provider asks the customer to confirm the
+        account (the one page the popup frames on such a session), and the sign
+        in notice carries on as usual. Allowed only in `awaiting_sign_in`, with
+        no step running (a failed one may be tried again), for a kind the
+        provider's form offers.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string, enum: [google, apple], description: "The identity provider." }
+      responses:
+        '202':
+          description: The step started; the view's `idp` says where it stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [awaiting_sign_in] }
+        '400': { $ref: '#/components/responses/Error' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the session is not waiting for the customer, a step is running, or this sign in is not offered for the provider.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:idp-cancel:
+    post:
+      operationId: idpCancelBrowserSession
+      summary: Leave the identity provider's sign in for the provider's own form
+      tags: [Cloud browser]
+      description: >-
+        Ends the identity provider step (`idp`) wherever it stands: the vendor's
+        connection is deleted, and the customer is back on our form for the
+        provider's own password. A browser already made again on the signed in
+        profile stays, on the provider's sign in page. No body.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '202':
+          description: Back to the sign in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [awaiting_sign_in] }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: no identity provider step is on the session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -4121,7 +4296,8 @@ paths:
         the control plane stores that server-side under an opaque token and returns
         the absolute `link` (ends `/share/{token}`) and a `job_id`. Every domain the
         link targets must be one the calling token may act on: a share link never
-        widens a domain-bound token's reach. The link's server-side prefill is read
+        widens a domain-bound token's reach, so such a token must name a `domain`
+        or `domains` (`400` otherwise). The link's server-side prefill is read
         back by `GET /share/{token}`, which the teammate's widget bootstraps from
         instead of a URL that carries the config in the clear. The share token
         EXPIRES 30 days after it is minted.
@@ -4170,9 +4346,10 @@ paths:
                   type: object
                   additionalProperties: true
                   description: >-
-                    Arbitrary widget config to resume. Served back verbatim by
-                    `GET /share/{token}`, stamped with the normalized domain
-                    target(s).
+                    Arbitrary widget config to resume. Served back by
+                    `GET /share/{token}`, with its `domain` and `domains` keys
+                    replaced by the normalized targets from `domain` and
+                    `domains` above.
                 recipient_email:
                   type: string
                   format: email
@@ -5581,8 +5758,10 @@ paths:
         Stripe, never trusted from the caller: it must belong to the caller's
         workspace (another workspace's session is a `404`) and be complete and
         paid (a trial's "no payment required" counts); otherwise `confirmed` is
-        false and nothing changes. Idempotent with the webhook. Requires
-        `billing:manage`.
+        false and nothing changes. A paid second checkout for a workspace whose
+        subscription still bills is held for review: `confirmed` is false,
+        nothing changes, and the billing view shows the subscription that still
+        bills. Idempotent with the webhook. Requires `billing:manage`.
       security:
         - apiKey: []
       requestBody:
@@ -5822,7 +6001,8 @@ paths:
       tags: [Secure]
       description: >-
         Drops the mirror row and clears `secure_root_domain`; the edge stops
-        managing the certificate on its next reconcile.
+        managing the certificate on its next reconcile. A row another
+        application tracks for the same domain is left in place.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5863,6 +6043,10 @@ paths:
         Creates/updates the mirror row as `pending` + managed. The edge performs
         the actual ACME issuance on first handshake and reports back. Optionally
         sets `secure_root_domain` so the edge also secures the registrable apex.
+        A domain has one certificate row. Returns 409 when another application
+        tracks that row, unless this connection is the one the edge serves and
+        the row's application serves nothing for the domain, in which case this
+        connection takes the row over.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5886,6 +6070,7 @@ paths:
                   certificate: { $ref: '#/components/schemas/Certificate' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/ssl:renew:
     post:
@@ -5919,7 +6104,11 @@ paths:
       description: >-
         Mirrors the status + validity window of an external certificate for
         display (`managed=false`, so the edge does not ACME-renew it). Private
-        key material is an edge concern and is not handled here.
+        key material is an edge concern and is not handled here. Returns 409
+        when another application tracks the domain's certificate row, unless
+        this connection is the one the edge serves and the row's application
+        serves nothing for the domain, in which case this connection takes the
+        row over.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5946,6 +6135,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /ssl:
     get:
@@ -6413,26 +6603,64 @@ paths:
       tags: [Provider accounts]
       description: >-
         The workspace's provider accounts with their access mode, the domains
-        they cover, when they were last used and when they expire, and
-        whether the caller may manage each one (`can_manage`); and, in
-        `kept_access`, the sign-ins and Domain Connect authorizations kept per
-        domain, grouped by provider. A kept sign-in is stopped per domain with
-        `DELETE /connections/{id}/grant`. A viewer reads them without
-        `agent_key.account` (an end user's customer number at the provider)
-        and `agent_key.session_id`.
+        they cover, when they were last used and when they expire, whether
+        the caller may manage each one (`can_manage`), what needs the person
+        (`needs_you`), how each key was made and by whom (`made_by`) and who
+        enforces its limit (`enforced_by`); and, in `kept_access`, the
+        sign-ins and Domain Connect authorizations kept per domain, grouped
+        by provider. A kept sign-in is stopped per domain with `DELETE
+        /connections/{id}/grant`. A viewer reads them without
+        `agent_key.account` (an end user's customer number at the provider),
+        `agent_key.session_id`, `account_ref` and `end_user_ref`.
 
 
-        `?provider=` keeps one provider's accounts. `?domain=` keeps the ones
-        that may act for that domain for the caller, best first, by the saved
-        access resolver's rules (see `GET /connections/{id}/saved-access`),
-        for `?application_id=` or the API key's own application (`404` for an
-        application of another workspace), and adds them as `saved_access`.
+        The accounts that need the person come first (`needs_you`), then the
+        most recently used, the never used last, newest first.
+        `end_user_keys` counts the keys your customers' own sign-ins made,
+        and how many customers they belong to, so a console can show them as
+        one row; it counts them before `owner`, `q` and paging apply.
+
+
+        `?provider=` keeps one provider's accounts. `?owner=workspace` keeps
+        the keys the workspace holds (pasted, or made at a sign-in a member
+        started in the console); `?owner=end_user` the keys your customers'
+        own sign-ins made. `?q=` keeps the accounts whose label, scope
+        domain or linked domain holds the text, and, for a member, whose
+        `account_ref`, `agent_key.account` or `end_user_ref` does; a viewer
+        never matches those. `?limit=` (1 to 200) and `?cursor=` (the previous
+        answer's `next_cursor`) page the list; without `limit` the answer
+        holds every account. `?domain=` keeps the ones that may act for that
+        domain for the caller, best first, by the saved access resolver's
+        rules (see `GET /connections/{id}/saved-access`), for
+        `?application_id=` or the API key's own application (`404` for an
+        application of another workspace), adds them as `saved_access`, and
+        answers them in full: `limit` and `cursor` with it are `400`.
       security:
         - apiKey: []
       parameters:
         - { name: provider, in: query, required: false, schema: { type: string } }
         - { name: domain, in: query, required: false, schema: { type: string } }
         - { name: application_id, in: query, required: false, schema: { type: string } }
+        - name: owner
+          in: query
+          required: false
+          schema: { type: string, enum: [workspace, end_user] }
+          description: Whose keys to list. Without it, every account.
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+          description: Text to search for in the label, the domains and, for a member, the provider account and end user ids.
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+          description: The page size. Without it, every account.
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: The previous answer's `next_cursor`.
       responses:
         '200':
           description: The accounts
@@ -6463,10 +6691,21 @@ paths:
                           type: array
                           items: { type: string }
                   keeping_available: { type: boolean, description: Whether this deployment can keep keys (GRANT_ENCRYPTION_KEY is set). }
+                  end_user_keys:
+                    type: object
+                    description: The keys your customers' own sign-ins made (`owner_kind` `end_user`), counted before `owner`, `q` and paging apply, so a console can show them as one row.
+                    required: [keys, end_users]
+                    properties:
+                      keys: { type: integer, description: How many such keys the workspace holds. }
+                      end_users: { type: integer, description: How many customers they belong to (distinct `end_user_ref`; a key with no ref counts as a key only). }
+                  next_cursor:
+                    type: string
+                    description: With `?limit=` only, when more accounts remain. Send it as `?cursor=` for the next page.
                   saved_access:
                     type: array
                     description: With `?domain=` only. The keys that may act for the domain for the caller, best first, as `GET /connections/{id}/saved-access` lists them.
                     items: { $ref: '#/components/schemas/SavedAccess' }
+        '400': { description: "`owner` is not `workspace` or `end_user`, `limit` is not a whole number from 1 to 200, `cursor` is not one this endpoint returned, or `limit` or `cursor` with `?domain=`" }
         '401': { $ref: '#/components/responses/Error' }
         '404': { description: "`?domain=` with an `application_id` (or an API key's own application) of another workspace, or none" }
   /provider-accounts/{id}:
@@ -8531,8 +8770,59 @@ components:
         status: { type: string }
     ProviderAccount:
       type: object
-      required: [id, kind, provider, provider_name, label, access, scope, domains, credential_held, status, connections, uses, can_manage, created_at]
+      required: [id, kind, provider, provider_name, label, access, scope, domains, credential_held, status, connections, uses, can_manage, made_by, enforced_by, created_at]
       properties:
+        needs_you:
+          type: object
+          description: >-
+            Why the account needs the person; absent when nothing does. The
+            list puts these accounts first.
+          required: [reason]
+          properties:
+            reason:
+              type: string
+              enum: [refused, expired, expiring, one_time_window, no_domains]
+              description: >-
+                `refused`: the provider refused the key; reconnect it or
+                remove the account. `expired`: the key reached its end, or a
+                one time window passed with the key unused. `expiring`: a key
+                made at a sign-in ends within 30 days (`until`).
+                `one_time_window`: a one time key waits for its domains to be
+                connected, until `until`. `no_domains`: a continuous key the
+                workspace holds that no domain uses.
+            until:
+              type: string
+              format: date-time
+              description: When the key ends (`expiring`) or the one time window closes (`one_time_window`).
+        made_by:
+          type: object
+          description: How the key was made and by whom.
+          required: [how]
+          properties:
+            how:
+              type: string
+              enum: [pasted, console_sign_in, widget_sign_in]
+              description: >-
+                `pasted`: a person pasted the key. `console_sign_in`: made at
+                a secure sign-in a member started in the console.
+                `widget_sign_in`: made at your customer's own sign-in, in the
+                widget or one your backend started for them through the API.
+            by:
+              type: string
+              description: >-
+                A member's e-mail, `a customer` for a key your customer's
+                sign-in made (never their id), an API key's name, or absent
+                when it was not recorded.
+        enforced_by:
+          type: string
+          enum: [provider, customdomain]
+          description: >-
+            Who holds the key to the account's scope. `provider`: the key
+            itself reaches only the zones it was made for (a Cloudflare API
+            token's zone resources, Porkbun's per domain API access, an IAM
+            policy on Route 53). `customdomain`: the key reaches the whole
+            account at the provider, and CustomDomain™ uses it only for the
+            domains in the scope.
         id: { type: string }
         kind: { type: string, enum: [api_key] }
         provider: { type: string }
@@ -9170,8 +9460,12 @@ components:
         customer signs in it is the live view of the newest tab of the remote
         browser on the provider's hosts or a social sign in host of the
         provider (a sign in popup), and the first tab's again once that one
-        closes. It is always that tab's own view, so the debugging socket its
-        `wss` parameter names is that tab's too.
+        closes. On Browserbase it is always that tab's own view, so the
+        debugging socket its `wss` parameter names is that tab's too. On Kernel
+        (`vendor` is `Kernel`) the live view is on a host of the session's own
+        browser (`https://<host>.kernel.sh:8443/browser/live/...`, which
+        `live_view_origin` names) and shows the browser's active tab; the key
+        relay's socket is then `relay_socket`.
       properties:
         id: { type: string }
         state:
@@ -9184,7 +9478,23 @@ components:
         site: { type: string, description: "The provider's registrable domain, for example namecheap.com. The popup shows it beside a lock while the customer signs in." }
         interactive: { type: boolean, description: "True when the customer may type in the live view." }
         live_view_url: { type: string, format: uri }
-        live_view_origin: { type: string }
+        live_view_origin: { type: string, description: "The origin of `live_view_url`: the vendor's one pinned origin on Browserbase, the session browser's own host on Kernel." }
+        relay_socket:
+          type: string
+          description: >-
+            Only while the person is in control (`awaiting_sign_in`, a hand back,
+            `manual_assist`) and only when the session's vendor lets the person's
+            own browser type into the page through a socket of its own (`Kernel`):
+            a browser level debugging socket,
+            `wss://<host>.kernel.sh:8443/browser/cdp?jwt=...`. A bearer like the
+            live view; never in a terminal state. Absent on Browserbase, whose
+            live view URL carries its own socket.
+        relay_target:
+          type: string
+          description: >-
+            With `relay_socket`: the vendor's id of the tab the live view shows,
+            for the key relay to attach to. Absent when it is not known yet; the
+            popup then picks the first tab on the provider's site.
         deadline:
           type: string
           format: date-time
@@ -9258,6 +9568,27 @@ components:
           properties:
             name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21\"." }
             page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
+        kept_key:
+          type: object
+          required: [rights]
+          description: >-
+            The lasting API key the cloud browser made at the provider and
+            CustomDomain kept for the connection, once it is kept (the session
+            has recorded `key_connected`). Present from then on, in every state,
+            so the popup's last screen can name it: what to look for on the
+            provider's key page and where to delete it later. Never the key
+            itself. A key that was made and not kept is `left_key`, never this.
+          properties:
+            name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21 1528\". Absent for a provider whose key is the account's own and has no name of its own (Namecheap)." }
+            page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
+            rights:
+              type: array
+              items: { type: string, enum: [transfer, billing, account] }
+              description: >-
+                What the key can do beyond the domain's DNS records, as
+                `rails.cloud_browser.key.rights`: empty for a key that reaches
+                DNS only.
+            expires_at: { type: string, format: date-time, description: "When the key ends. Absent for a key with no end date." }
         api_activation:
           type: object
           required: [kind]
@@ -9315,6 +9646,43 @@ components:
         signals: { $ref: '#/components/schemas/BrowserSignals' }
         handback: { $ref: '#/components/schemas/BrowserHandback' }
         form: { $ref: '#/components/schemas/BrowserSignInForm' }
+        no_live_page:
+          type: boolean
+          description: >-
+            The session's vendor never shows its page in the popup (Kernel): a
+            human check, a social sign in and the backup page are the popup's
+            own screens, and only the identity provider's own confirmation,
+            during the `idp` step, is framed. The relay still types for our
+            form. Absent (false) on Browserbase.
+        idp:
+          type: object
+          required: [provider, domain, state]
+          description: >-
+            In `awaiting_sign_in` on a `no_live_page` session: the identity
+            provider step (`POST :idp`). While its `state` is `starting` or
+            `form` the customer is in the vendor's form, not in the remote
+            browser: `form`, `signals`, `signed_in_detected`, `check`,
+            `interactive` and the relay are absent. `finishing`: the remote
+            browser was made again on the signed in profile and is back on the
+            provider's sign in page with a fresh `relay_socket` and `form`; the
+            popup forwards the customer's press of the provider's own button.
+            `failed`: `error_code` says why (the vendor's own codes such as
+            `credentials_invalid`, `account_locked`, `unsupported_auth_method`,
+            `captcha_blocked`, or the step's `vendor_error`, `expired`,
+            `social_timeout`, `cancelled`); the customer tries again (`:idp`)
+            or uses the password (`:idp-cancel`).
+          properties:
+            provider: { type: string, enum: [google, apple] }
+            domain: { type: string, description: "The identity provider's site, for example google.com." }
+            connection_id: { type: string, description: "The vendor's connection, opaque." }
+            handoff_code:
+              type: string
+              description: >-
+                Only while `state` is `form`: the vendor's single use bearer,
+                which the popup exchanges in the customer's browser for a token
+                of its own. Never logged or stored.
+            state: { type: string, enum: [starting, form, finishing, failed] }
+            error_code: { type: string, description: "With `failed`: a short machine word." }
     BrowserSignals:
       type: object
       required: [host, hostVerified]
@@ -9442,6 +9810,7 @@ components:
             github: { type: string }
         passkeyAlt: { type: string, description: "The selector of the provider's \"use another way\" control on a passkey prompt." }
         emailLink: { type: boolean, description: "The provider may email a sign in link instead of a code." }
+        keyTyped: { type: boolean, description: "The provider's page takes a value only from real key events (its submit stays disabled after a text insert), so the popup types each character as a key." }
         continue:
           type: string
           description: >-
@@ -9462,6 +9831,13 @@ components:
             own hosts, for the popup to open in a new tab of the customer's own
             browser (never in the cloud browser), so the reset email's link
             opens there too. Absent when it was not seen.
+        consent:
+          type: string
+          description: >-
+            The accept button of the provider's cookie banner, for the popup to
+            press from the customer's browser before a social button the banner
+            can cover (the `idp` step's `finishing`); the agent presses the same
+            one later. Absent for a provider with no banner on record.
     BrowserHandback:
       type: object
       required: [reason]
@@ -9558,7 +9934,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported, caller_cannot_start]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported, caller_cannot_start, token_not_bound]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -9582,10 +9958,17 @@ components:
             failed in recent sessions and the rail is paused), `vendor_unavailable`
             (the browser vendor failed to create sessions and the rail is paused),
             `monthly_cap` (the monthly browser minutes are used),
-            `sign_in_not_wired` (the sign in token cannot be signed) and
+            `sign_in_not_wired` (the sign in token cannot be signed),
             `site_not_supported` (the provider keeps each account on one
             country site, and the site of the visitor's country is one the
-            rail does not serve yet).
+            rail does not serve yet), `caller_cannot_start` (this caller could
+            never start the secure sign in: an agent, a plain API call without
+            the console, or a role that cannot write connections) and
+            `token_not_bound` (the caller's widget token is not bound to this
+            domain: it is bound to no domain, or only to others. Mint one with
+            `domain` and `end_user_ref`; the widget's `getToken` is where its
+            host hands it one. `browser:start` refuses the same token with
+            `403 token_not_bound`).
         caveat:
           type: string
           description: >-
@@ -9622,6 +10005,28 @@ components:
             asks.
           required: [rights, ends_in_days]
           properties:
+            name:
+              type: string
+              description: >-
+                The name a key made now would get at the provider ("CustomDomain
+                Weldon 2026-10-21 1528"): the application's name, cut to the
+                provider's key page's length and punctuation, then the day and
+                minute (UTC) of this check. It is the name the agent types, so a
+                person can find the key on the provider's page afterwards. A
+                sign in **makes or reuses** a key (it may find one of its own in
+                the account and use that instead of making another), and the
+                session names a new key from its own start, so this is the name
+                to look for, not a promise of the minute. The session's
+                `kept_key` names the key that was kept. Absent for a provider
+                whose key is the account's own and has no name of its own
+                (Namecheap: its API access is turned on and no key is made).
+            delete_url:
+              type: string
+              format: uri
+              description: >-
+                The provider's own page that lists and deletes its API keys, for
+                a person who wants the key gone (most providers offer no API to
+                delete one). Absent when none is known.
             rights:
               type: array
               items: { type: string, enum: [transfer, billing, account] }

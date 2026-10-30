@@ -88,7 +88,17 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
   `client_secret` in the body, which is why it must run server-side only. A
   wrong or unknown secret is `401`.
 - `domain` binds the token to one hostname: a domain-bound token may only act on
-  that host. `domains` (a list) allows several hosts in one session.
+  that host. `domains` (a list) allows several hosts in one session. Two things
+  need the binding: the [secure sign-in](/docs/guides/secure-sign-in)
+  (`POST /v1/connections/{id}/browser:start`) and removing the domain take a
+  token bound to the domain and, when a customer connected it, to that
+  customer's `end_user_ref`. The secure sign-in refuses a token bound to no
+  domain, or only to other domains, with `403 token_not_bound` (its domain check
+  says the same in `rails.cloud_browser.reason`, so the widget never offers a
+  sign-in it cannot start), and a token for a domain another customer connected
+  with `403 token_wrong_end_user`. Removing the domain, and reading its
+  monitoring, services or timeline, answer `403 forbidden` to the same tokens,
+  which the widget reports as `SessionError`.
 - `end_user_email` (optional) is the end user's address for
   [end user notices](/docs/connect-flow/end-user-notices). It is never put in
   the token; a connection created with the token takes it.

@@ -79,6 +79,30 @@ All of the account's domains (`"scope": "all"`, including ones added later), or
 a selected list (`"scope": "selected"`, `domains`) picked from the provider's
 own list where it has one.
 
+## Which providers list their domains
+
+Where a provider has a list call for it, the key is checked by listing, the console's **Connect more
+domains** shows the account's own list, and `POST /v1/provider-accounts/{id}/zones` returns it. These
+providers list: Amazon Route 53, Azion, Binary Lane, Cloudflare, cPanel hosts and o2switch, DigitalOcean,
+DirectAdmin, 101domain, Domeneshop, Epik, Exoscale, Gandi, Gcore, GoDaddy, Hetzner, hosting.de, Huawei
+Cloud DNS, INWX, IONOS and united-domains, Joker.com, Loopia, Metaname, Mythic Beasts, NameBright,
+Namecheap, Name.com, netcup, NS1, Plesk, Porkbun, Scaleway, Subreg, webnames.ca, Websupport, WEDOS and
+Zone.ee. A provider that is not named here answers that it cannot list, and you name one domain the key
+manages instead (see [scope](#scope)).
+
+What each of the most recent five lists, and what happens when a key may not:
+
+| Provider | What the list holds | A key that may not list |
+| --- | --- | --- |
+| Porkbun | Active domains with API Access turned on. A domain without API Access is left out, because Porkbun would refuse a change to it. | Checked with a domain you name. |
+| Hetzner | The project's primary zones. A secondary zone is left out: its records come from another nameserver and the API refuses to change them. | Checked with a domain you name. |
+| DigitalOcean | Every domain in the account. | A token with custom scopes needs `domain:read`. Without it, the key is checked with a domain you name. |
+| Name.com | Every domain in the account. | Checked with a domain you name. If two-step verification blocks API access, the key is refused instead, and Name.com's API Access setting has to be switched on. |
+| Gandi | The domains of the token's personal organization, which is all Gandi's list call returns. | Checked with a domain you name, and also when the list comes back empty, because an empty list cannot be told from a token whose domains sit in another organization. |
+
+A key that the provider refuses (a wrong, revoked or expired key) is never treated as "cannot list": the
+call answers `422` `ProviderAuthenticationError` and the account is marked as needing a reconnect.
+
 ## Who can manage an account
 
 Anyone whose role operates applications may connect a key, read the accounts
@@ -97,7 +121,7 @@ them no `agent_key.account` (the customer number) and no `agent_key.session_id`.
 | Call | Does |
 | --- | --- |
 | `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
-| `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, plus kept sign-ins and Domain Connect authorizations grouped by provider. |
+| `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, [what needs you](#what-needs-you) first, plus kept sign-ins and Domain Connect authorizations grouped by provider. `?owner=workspace` or `end_user`, `?q=`, `?limit=` and `?cursor=` filter, search and page the list; `end_user_keys` counts your customers' keys. |
 | `PATCH /v1/provider-accounts/{id}` | Change label, access or scope. A domain taken out stays connected, without continuous access. |
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
 | `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
@@ -149,6 +173,60 @@ ways:
 - **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
+
+## What needs you
+
+`GET /v1/provider-accounts` lists the accounts that need someone first, each
+with `needs_you.reason`, then the most recently used, the never used last,
+newest first:
+
+| `needs_you.reason` | What it means | What to do |
+| --- | --- | --- |
+| `refused` | The provider refused the key. | Give the account a new key, or sign in again for a key made at a sign-in, or remove it. |
+| `expired` | The key reached its end, or a one time key's hour passed with the key unused. | Sign in again, give it a new key, or remove it. |
+| `expiring` | A key made at a sign-in ends within 30 days (`until` says when). | Sign in again before then. |
+| `one_time_window` | A one time key waits for its domains to be connected, until `until`. | Connect the domains now. |
+| `no_domains` | A continuous key the workspace holds that no domain uses. | Connect domains with it, or remove it. |
+
+An account that needs nothing has no `needs_you`.
+
+## How a key was made and who added it
+
+Every account says how its key was made and by whom, in `made_by`:
+
+- `how` is `pasted` (a person pasted the key), `console_sign_in` (made at a
+  [secure sign-in](/docs/guides/secure-sign-in) you or a teammate started in
+  the console) or `widget_sign_in` (made at your customer's own sign-in, in the
+  widget or one your backend started for them through the API).
+- `by` is the member's e-mail, `a customer` for a key your customer's sign-in
+  made (never their id), the API key's name for a key an API call pasted, or
+  absent when it was not recorded.
+
+`?owner=workspace` keeps the keys your workspace holds (pasted, or made at a
+sign-in started in the console); `?owner=end_user` keeps the keys your
+customers' own sign-ins made. `end_user_keys` counts those keys and the
+customers they belong to (distinct `end_user_ref`), before `owner`, `q` and
+paging apply, so a console can show them as one row. `?q=` keeps the accounts
+whose label, scope domain or linked domain holds the text and, for a member,
+whose `account_ref`, `agent_key.account` or `end_user_ref` does; a viewer never
+matches those, as they are not shown one. `?limit=` (1 to 200) and `?cursor=`
+(the previous answer's `next_cursor`) page the list; without `limit` the answer
+holds every account. `?domain=` answers the resolver's order in full, so
+`limit` and `cursor` with it are `400`.
+
+## Who enforces the limit
+
+A key is held to the account's scope either by the provider or by
+CustomDomain™, and `enforced_by` says which:
+
+- `provider`: the key itself reaches only the zones it was made for. A
+  Cloudflare API token names its zones, Porkbun switches API access on per
+  domain, and an IAM policy names the Route 53 hosted zones an access key may
+  change.
+- `customdomain`: the key reaches the whole account at the provider (GoDaddy,
+  IONOS, Namecheap, Name.com and the rest), and CustomDomain™ uses it only for
+  the domains in the scope. Narrowing the scope changes what CustomDomain™
+  does with the key, not what the key could do.
 
 ## Whose key it is, and saved access
 

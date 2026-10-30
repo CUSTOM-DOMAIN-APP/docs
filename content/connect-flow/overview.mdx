@@ -44,6 +44,15 @@ All six end the same way: the desired records land in DNS (for DNS hosting, in t
 zone CustomDomain™ hosts once its nameservers answer), the connection moves
 `pending → propagating → live`, and the edge serves the domain.
 
+The check names its pick as `recommended_rail`, and the widget opens that way as
+its one card, with the others as rows under **Other ways to connect** (**Add the
+records**, and **DNS hosting** when `rails.nameservers` says the application
+offers it). It follows the pick within what it can show: it has no API token way,
+so a pick of `api_key` opens the secure sign-in where the check offers it and the
+records otherwise, and a pick it cannot show gives way to the next one in the
+check's own order. A sign-in the customer cancels, or that fails, keeps the card;
+the records screen has a **Back** to it.
+
 ## Resuming an abandoned setup
 
 A setup that was started but not finished isn't lost. In the console, the
