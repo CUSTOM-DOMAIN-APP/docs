@@ -16,7 +16,7 @@ The source of truth for docs.customdomain.ai, the guides that teach a developer 
 | **Who it's for** | Developers integrating custom domains, and anyone debugging a stuck connection |
 | **Live at** | [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) · uptime at [status.customdomain.ai](https://status.customdomain.ai) |
 | **Stack** | MDX · Fumadocs 16 · Next.js 16 · React 19 · Tailwind 4 · Docker on the production host |
-| **Status** | Live · `site/` reads `content/` directly · a merge to `main` goes live at the next product deploy |
+| **Status** | Live · `site/` reads `content/` directly · a merge to `main` goes live at the next docs deploy |
 
 [CustomDomain™](https://customdomain.ai) lets a platform's users connect a domain they already
 own in one click. This repository holds everything the documentation site renders: the concepts,
@@ -103,14 +103,15 @@ which lists every page with a description so a client can fetch exactly what it 
 ## Build and deploy
 
 `docs.customdomain.ai` is served by the renderer in [`site/`](site/), built as a Docker container
-on the production host from a sibling checkout of this repo. Every product deploy refreshes that
-checkout to this repo's `main` and rebuilds the container, as a separate step that cannot fail
-the product deploy. Nothing in this repo triggers a deploy by itself, so a change merged here
-goes live at the next product deploy, not at merge time. `app.customdomain.ai/docs*` permanently
+on the production host from a sibling checkout of this repo. The docs deploy
+(`scripts/deploy-docs-local.sh` in the product repo) moves that checkout to this repo's `main`
+and rebuilds only the container; a product deploy rebuilds it from the checkout as it is and
+never moves it. Nothing in this repo triggers a deploy by itself, so a change merged here goes
+live at the next docs deploy, not at merge time. `app.customdomain.ai/docs*` permanently
 redirects (308) here. The full path is in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 Two things worth knowing before you file a bug about stale content. A merged fix appears at the
-next product deploy, which can be some time after the merge. And `content/providers/*.mdx` is
+next docs deploy, which can be some time after the merge. And `content/providers/*.mdx` is
 **generated** from the product repo's provider enrichment data: a hand edit there is correct for
 the live site until the next generation run overwrites it, so a fix to those pages needs the same
 fix in the generator.
