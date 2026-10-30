@@ -13,7 +13,7 @@ idea what to send back. It answers `421 Misdirected Request`.
 request to it. That target is called the **origin**, and setting it is the whole
 of this guide.
 
-Edge serving is available on Growth and above.
+Edge serving is available on the Edge plan and above.
 
 ## What actually happens to a request
 
@@ -158,7 +158,7 @@ hostname. Almost always one of:
 - No default is set and the domain has no origin of its own.
 - The origin was set on a *different* application than the one the domain is
   connected to.
-- Power was turned off for this domain and never turned back on.
+- Edge serving was turned off for this domain and never turned back on.
 
 Check what we think the state is:
 
@@ -185,7 +185,7 @@ response cannot be used to map private address space from the outside.
 
 ### `402 Payment Required`
 
-Edge serving is Growth and above. The API returns this rather than silently doing
+Edge serving is on the Edge plan and above. The API returns this rather than silently doing
 nothing.
 
 ### Everything returns the same tenant

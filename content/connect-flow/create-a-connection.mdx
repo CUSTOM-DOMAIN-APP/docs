@@ -30,7 +30,7 @@ Optional body fields:
 
 | Field | Meaning |
 | --- | --- |
-| `application_url` | The [Power](/docs/connect-flow/routing) origin the edge proxies this connection to. Validated before anything is written (absolute `http` or `https`, no private or loopback addresses). Power is part of the Growth plan and up: on a plan without it the create is refused with `402 plan_upgrade_required` and nothing is stored. |
+| `application_url` | The [edge serving](/docs/connect-flow/routing) origin the edge proxies this connection to. Validated before anything is written (absolute `http` or `https`, no private or loopback addresses). Edge serving is part of the Edge plan and up: on a plan without it the create is refused with `402 plan_upgrade_required` and nothing is stored. |
 | `www_redirect` | Also write the `www` record and redirect it. Defaults to `false`. |
 | `override_spf` | Replace an existing SPF record instead of merging into it. Honoured only when the provider's `spf_override_support` capability is `true`; otherwise the existing record is merged. Defaults to `false`. |
 | `validate_dmarc` | Accepted and echoed back, not acted on yet. Defaults to `false`. |
