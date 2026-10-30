@@ -412,6 +412,13 @@ paths:
       operationId: getApplication
       summary: Get an application
       tags: [Applications]
+      description: >-
+        Returns the application with its settings. `end_user_saved_access` says
+        whether a returning end user may reuse the access their own secure
+        sign-in kept (change it with `PATCH /applications/{id}`), and
+        `secure_sign_in` says whether the secure sign-in can run for the
+        workspace at all (read only). Every answer that carries an application
+        has both: the list, the create and the update too.
       security:
         - managementKey: []
         - apiKey: []
@@ -426,15 +433,26 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     patch:
       operationId: updateApplication
-      summary: Rename an application or set its nameserver migration
+      summary: Rename an application or change its settings
       tags: [Applications]
       description: >-
-        Send `name`, `nameserver_migration` or both. `nameserver_migration`
-        sets whether the application offers to move an end user's
-        nameservers and where to (`{"mode": "off"}` clears it). A `dns_host`
-        target names a connected provider account of the workspace with
-        continuous access at a DNS host whose API creates zones; only this
+        Send any of `name`, `nameserver_migration` and `end_user_saved_access`
+        (at least one); everything is checked before anything is saved.
+
+
+        `nameserver_migration` sets whether the application offers to move an
+        end user's nameservers and where to (`{"mode": "off"}` clears it). A
+        `dns_host` target names a connected provider account of the workspace
+        with continuous access at a DNS host whose API creates zones; only this
         application's migrations ever use it.
+
+
+        `end_user_saved_access` sets whether a returning end user may reuse the
+        access their own secure sign-in kept (`true` is the default; see the
+        `Application` schema). It takes `true` or `false`, never `null`. A test
+        mode application keeps no saved access, so `true` is refused for it with
+        `400`. Needs a key that may write the application (a viewer's key is a
+        `403`).
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -454,6 +472,12 @@ paths:
                   properties:
                     mode: { type: string, enum: ['off', offer, prefer] }
                     target: { $ref: '#/components/schemas/NameserverTarget' }
+                end_user_saved_access:
+                  type: boolean
+                  description: >-
+                    Whether a returning end user may reuse the access their own
+                    secure sign-in kept, for their next domain in this
+                    application, after one tap of consent.
       responses:
         '200':
           description: Application
@@ -7846,7 +7870,38 @@ components:
             created. Omitted (treated as `false`) on a live application.
         nameserver_migration:
           $ref: '#/components/schemas/NameserverMigrationSetting'
+        end_user_saved_access:
+          type: boolean
+          default: true
+          description: >-
+            A returning end user may reuse the access their own secure sign-in
+            kept, for their next domain in this application, after one tap of
+            consent. On by default; set it with `PATCH /applications/{id}`. The
+            access is that end user's own: bound to them and to this
+            application, never usable by your team or by another end user.
+            Always `false` for a test mode application, whose sign-ins are
+            simulated and keep nothing.
+        secure_sign_in:
+          $ref: '#/components/schemas/SecureSignInStatus'
         created_at: { type: string, format: date-time }
+    SecureSignInStatus:
+      type: object
+      required: [available]
+      description: >-
+        Whether the secure sign-in (the widget's cloud browser way to connect)
+        can run for this application's workspace at all, for any provider.
+        Read only: it follows how this deployment is set up, not a setting of
+        the application. Whether it runs for one domain is the `cloud_browser`
+        entry of that domain's `rails`.
+      properties:
+        available: { type: boolean }
+        reason:
+          type: string
+          enum: [switched_off, not_enabled_for_workspace]
+          description: >-
+            Present when `available` is `false`. `switched_off`: this
+            deployment has the secure sign-in off. `not_enabled_for_workspace`:
+            it is on for a pilot list of workspaces, and this one is not on it.
     ConnectionRouting:
       type: object
       required: [mode, set_at]
