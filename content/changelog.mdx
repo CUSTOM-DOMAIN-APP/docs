@@ -15,6 +15,12 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: five more providers list their domains.** A key at Porkbun, Hetzner, DigitalOcean,
+  Name.com or Gandi is now checked by listing the account's domains, and **Connect more domains**
+  (`POST /v1/provider-accounts/{id}/zones`) shows them, so you no longer type each one. Porkbun lists its active
+  domains with API Access on, Hetzner its primary zones, and Gandi the domains of the token's personal
+  organization. A key a provider refuses still asks you to reconnect, and a key that may not list falls back to
+  checking one domain you name. See [which providers list their domains](/docs/connect-flow/provider-accounts#which-providers-list-their-domains).
 - **October 30, 2026: the widget's connect screen is one card, with the other ways under it.** The widget now opens
   the way the domain check recommends (`recommended_rail`) as one card named as the console names it, **Sign in with** the
   provider's name, **One-click setup** or **Secure sign-in**, marked **Recommended** when there is another way, and lists

@@ -136,10 +136,12 @@ or pick a subset, then connects them without re-entering the key.
 
 Listing is supported for providers whose keys can read the whole account,
 including Cloudflare, GoDaddy, Amazon Route 53, Namecheap, IONOS, NS1,
-Scaleway and cPanel hosts, and for many other API providers. A provider that
-can't enumerate an account's domains (or would need a broader key than the
-records do) answers `list_not_supported` and degrades to connecting one domain
-at a time.
+Scaleway, cPanel hosts, Porkbun, Hetzner, DigitalOcean, Name.com and Gandi, and
+for many other API providers (the
+[full list](/docs/connect-flow/provider-accounts#which-providers-list-their-domains)
+is with provider accounts). A provider that can't enumerate an account's
+domains (or would need a broader key than the records do) answers
+`list_not_supported` and degrades to connecting one domain at a time.
 
 Two control-plane endpoints back it:
 
