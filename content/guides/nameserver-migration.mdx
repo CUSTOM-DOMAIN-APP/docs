@@ -431,7 +431,23 @@ move created.
 | `GET /v1/connections/{id}/nameservers` | An API key, a widget token, or an agent token with `domains:read`. |
 | `POST /v1/connections/{id}/nameservers:rollback` with an optional `rollback_target` | An API key; a widget token (it may choose where, but not send a key); an agent token with `domains:connect`. |
 | `GET /v1/applications/{id}/nameserver-migrations?limit=&since=` | An API key: one application's moves and their `stats`. |
+| `GET /v1/connections?dns_hosting=hosted`, `moving` or `any` | An API key, an app-scoped token or an agent token with `domains:read`: the domains whose DNS CustomDomain™ runs ([below](#find-hosted-domains)). Any other value is `400`. |
 | `POST /v1/connections/{id}/browser:start` with `"purpose": "nameservers"` | The widget or the console: the secure sign-in session of the `agent` path, once the move waits for it (`waiting_for: browser_session`). |
+
+### Find the domains that are hosted [#find-hosted-domains]
+
+Every connection carries `dns_hosting` (`state` `none`, `moving`, `hosted` or
+`failed`, and `by`, `provider`, `zone` and `since` once there is something to
+say), on the connection list and on `GET /v1/connections/{id}`. Ask the list for
+the domains whose DNS CustomDomain™ runs with `?dns_hosting=hosted`; `moving`
+keeps those being set up or moved, and `any` keeps hosted, moving and failed. A
+page is always full and `next_cursor` keeps walking the matching rows.
+
+This finds a domain whose DNS is hosted by a move, and also one whose zone you
+started with [managed DNS](/docs/dns/managed-dns) and never moved: the list of
+moves above holds moves only. A subdomain counts when its parent domain is hosted
+(`shop.acme.com` under `acme.com`). A move that was rolled back, or that failed
+for any reason but the domain's nameservers moving away again, is not hosting.
 
 Start a move from your server through the customer's connected registrar
 account:

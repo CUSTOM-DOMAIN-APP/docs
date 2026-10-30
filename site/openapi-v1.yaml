@@ -1306,6 +1306,13 @@ paths:
         the database and surface as a 500).
 
 
+        Every row carries `dns_hosting`: who runs the domain's DNS. To find the
+        domains CustomDomain runs the DNS for, ask for `?dns_hosting=hosted`; the
+        filter is applied in the database, so a page is full and `next_cursor`
+        keeps walking the matching rows. A `dns_hosting` outside the enum is
+        rejected with **400**. Test mode connections never match it.
+
+
         A delegated agent token needs `domains:read`.
       security:
         - apiKey: []
@@ -1317,6 +1324,16 @@ paths:
           in: query
           required: false
           schema: { $ref: '#/components/schemas/ConnectionStatus' }
+        - name: dns_hosting
+          in: query
+          required: false
+          description: >-
+            Keep only the connections by who runs their DNS. `hosted`: the
+            nameservers point at a zone we run, so the domain's DNS is served
+            from it. `moving`: the zone is being set up or the nameservers are
+            being moved. `any`: every domain with DNS hosting in play (hosted,
+            moving or failed). Omit for all connections.
+          schema: { $ref: '#/components/schemas/ConnectionDnsHostingFilter' }
         - name: limit
           in: query
           required: false
@@ -1417,6 +1434,13 @@ paths:
         mode** (the control plane holds a durable, encrypted async grant so it can
         re-apply / revert the template server-side without re-consent); `false`
         (omitted on the wire) for the default use-once connection.
+
+
+        `dns_hosting` says who runs the domain's DNS, and `reach` how
+        CustomDomain reaches it to write records (a kept account, a kept
+        sign-in, one-click setup, DNS hosting, or nothing). `reach` is for the
+        platform's own servers (an API key, an `app`-scoped token or an agent
+        token); an end user's `connect`-scoped token reads `dns_hosting` only.
 
 
         A delegated agent token needs `domains:read` and reads only connections
@@ -8927,6 +8951,109 @@ components:
             Set while the domain is being removed: the records are being taken
             out and the connection is deleted when that finishes. The domain no
             longer serves from this moment. Omitted otherwise.
+        dns_hosting:
+          $ref: '#/components/schemas/ConnectionDnsHosting'
+    ConnectionDnsHostingFilter:
+      type: string
+      enum: [hosted, moving, any]
+      description: >-
+        `hosted`: served from a zone we run. `moving`: being set up or moved.
+        `any`: hosted, moving or failed.
+    ConnectionDnsHosting:
+      type: object
+      description: >-
+        Who runs the domain's DNS: a zone CustomDomain hosts, or a move to one.
+        It is read from the managed DNS zone the connection is linked to and the
+        workspace's nameserver moves, never from the connection itself, so it is
+        on the list and on `GET /connections/{id}` and nowhere else a connection
+        appears. A linked zone decides first (`active` is hosted,
+        `awaiting_delegation` is moving, `failed` is failed). Without one, a
+        nameserver move of the workspace on the domain or a parent of it decides
+        (`active` is hosted, a move still under way is moving, one that failed
+        because the domain's nameservers moved away again is failed; a rolled
+        back or otherwise failed move counts for nothing). A test mode
+        connection is always `none`.
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [none, moving, hosted, failed]
+          description: >-
+            `none`: nothing of ours runs this domain's DNS (no other field is
+            set). `moving`: the zone is being set up or the nameservers are being
+            moved, and the domain is not served from it yet. `hosted`: the
+            nameservers point at the zone, which is what the world resolves.
+            `failed`: the zone never became active, or the domain moved its
+            nameservers away again; someone has to look.
+        by:
+          type: string
+          enum: [customdomain, dns_host, custom]
+          description: >-
+            Who runs the DNS: CustomDomain's own managed DNS (`customdomain`),
+            our account at a DNS host we integrate with (`dns_host`; `provider`
+            names it), or the platform's own list of nameservers (`custom`).
+            Omitted when `state` is `none`.
+        provider:
+          type: string
+          description: The DNS host's provider id when `by` is `dns_host`, for example `cloudflare`.
+        zone:
+          type: string
+          description: >-
+            The zone that is hosted or being set up: the connection's domain or
+            a parent of it (`acme.com` for `shop.acme.com`).
+        since:
+          type: string
+          format: date-time
+          description: >-
+            When the domain reached this state: the zone's activation for
+            `hosted`, the start of the move for `moving`, the failure for
+            `failed`.
+    ConnectionReach:
+      type: object
+      description: >-
+        How CustomDomain reaches this domain's DNS to write records, from the
+        access we keep (the order we use it: a zone we host, a kept sign-in or
+        Domain Connect authorization, a connected account, the Route 53 role)
+        and the domain's DNS hosting. A domain whose DNS is hosted is reached by
+        the hosting, whoever runs the zone: an old sign-in or account at the
+        previous DNS provider no longer writes anywhere that serves it.
+      required: [kind, can_reapply, managed_possible]
+      properties:
+        kind:
+          type: string
+          enum: [account, sign_in, domain_connect, dns_hosting, route53_role, none]
+          description: >-
+            `account`: a provider account kept for the workspace (`account_id`,
+            `label`, `provider`). `sign_in`: a kept sign-in at the DNS provider
+            (`provider`). `domain_connect`: a kept one-click setup authorization
+            at the DNS provider (`provider`). `dns_hosting`: the DNS is hosted
+            by us (see `dns_hosting`). `route53_role`: the Route 53 access role,
+            which may change records but not delete them. `none`: nothing is
+            kept, so the next change needs a person at the DNS provider.
+        account_id:
+          type: string
+          description: The provider account (`GET /provider-accounts/{id}`) when `kind` is `account`.
+        label:
+          type: string
+          description: The account's label when `kind` is `account`.
+        provider:
+          type: string
+          description: The DNS provider id the kept access is at.
+        can_reapply:
+          type: boolean
+          description: >-
+            Whether `POST /connections/{id}:reapply` can write the domain's
+            records now through this access. `false` for a zone not serving yet,
+            a domain hosted at a DNS host we run, the Route 53 role and `none`.
+        managed_possible:
+          type: boolean
+          description: >-
+            Whether this deployment can offer the Domain Connect sign-in that
+            keeps access to the domain at its DNS provider: the one-click rail
+            is configured with a client for the domain's provider, and the
+            domain's records are ours (not a record set you supplied). It reads
+            stored facts only; the provider's own answer comes when setup
+            starts. When `false`, do not offer that upgrade.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }
@@ -8955,6 +9082,8 @@ components:
                 `PUT /connections/{id}/end-user-email`. Omitted otherwise.
             credential:
               $ref: '#/components/schemas/ConnectionCredential'
+            reach:
+              $ref: '#/components/schemas/ConnectionReach'
     ConnectionCredential:
       type: object
       description: >-

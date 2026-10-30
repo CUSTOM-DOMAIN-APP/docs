@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: connections say who runs their DNS.** Every connection on `GET /v1/connections` and
+  `GET /v1/connections/{id}` now carries `dns_hosting`: `state` (`none`, `moving`, `hosted` or `failed`) and, once
+  there is hosting, `by` (`customdomain`, `dns_host` or `custom`), `provider`, `zone` and `since`. Ask the list for
+  the domains CustomDomain™ runs with `?dns_hosting=hosted` (also `moving` and `any`): a domain whose zone you
+  started with [managed DNS](/docs/dns/managed-dns) and never moved is found too, and a subdomain counts when its
+  parent domain is hosted. The detail read adds `reach` for your own servers: how CustomDomain™ writes the domain's
+  DNS (`account`, `sign_in`, `domain_connect`, `dns_hosting`, `route53_role` or `none`), whether `:reapply` can
+  write now, and whether one-click setup can be offered for the domain's provider. The MCP's `list-connections`
+  takes `dnsHosting` and every row carries it. Additive: nothing that was there changed.
 - **October 30, 2026: cookies are off until you accept them.** Optional analytics and marketing cookies, and the
   session recording that is part of analytics, no longer run for a visitor who has not chosen. One line at the
   bottom of customdomain.ai and the console asks first ("With your OK, we use analytics and marketing cookies and

@@ -18,6 +18,13 @@ _openapi:
           `false` (omitted on the wire) for the default use-once connection.
 
 
+          `dns_hosting` says who runs the domain's DNS, and `reach` how
+          CustomDomain reaches it to write records (a kept account, a kept
+          sign-in, one-click setup, DNS hosting, or nothing). `reach` is for the
+          platform's own servers (an API key, an `app`-scoped token or an agent
+          token); an end user's `connect`-scoped token reads `dns_hosting` only.
+
+
           A delegated agent token needs `domains:read` and reads only
           connections of its own application; another application's connection
           answers `404`.
