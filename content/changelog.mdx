@@ -15,6 +15,18 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server (now 23 tools) has three more:
+  `list-provider-accounts` lists the provider accounts your workspace has connected, never a key, with `provider`,
+  `domain` and `applicationId` to narrow it; `find-saved-access` lists the saved keys that may write one connected
+  domain's records (`GET /v1/connections/{id}/saved-access`); and `use-saved-access` writes them with one
+  (`POST /v1/connections/{id}:use-saved-access`) after the person said yes (`confirm: true`), answering
+  `saved_access_not_usable` for a key that cannot act for the domain and `saved_access_write_failed` when the provider
+  refused the write. A delegated agent token now reaches the three routes: `domains:read` for the two reads and
+  `domains:connect` for the use, only for the keys that serve the application its grant is bound to, never a key a
+  customer made at their own sign-in, and read as a viewer reads them (no account number, customer id or sign-in
+  session id). What it does is in the audit log under the agent's grant. The saved access read now needs
+  `domains:read` for an agent token, where it needed `domains:connect` and always answered an empty list. See
+  [the MCP tools](/docs/mcp/overview) and [Provider accounts](/docs/connect-flow/provider-accounts).
 - **October 30, 2026: cookies are off until you accept them.** Optional analytics and marketing cookies, and the
   session recording that is part of analytics, no longer run for a visitor who has not chosen. One line at the
   bottom of customdomain.ai and the console asks first ("With your OK, we use analytics and marketing cookies and

@@ -72,6 +72,16 @@ A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
 them no `agent_key.account` (the customer number) and no `agent_key.session_id`.
 
+A delegated agent token reads them the way a viewer does, with `domains:read`:
+`GET /v1/provider-accounts` lists only the keys that serve the application its
+grant is bound to, never a key a customer made at their own sign-in, with that
+application's connections only and an empty `kept_access`. `?application_id=`
+may only repeat the grant's own application (`403` otherwise). It reads
+`GET /v1/connections/{id}/saved-access` with `domains:read` and uses a key with
+`POST /v1/connections/{id}:use-saved-access` and `domains:connect`, for a
+connection of that application; the audit log records the use as `agent.acted`
+under the agent's grant.
+
 ## Endpoints (API key)
 
 | Call | Does |
@@ -160,9 +170,10 @@ place, so a second domain at the same provider does not start a second sign-in:
   cannot act for the domain is `409 saved_access_not_usable`.
 - `rails.saved_access` on `POST /v1/domains:check` is the same list for an API
   key caller, and `recommended_rail` is then `saved_access`. An end user's
-  widget token never gets it, and no MCP tool uses a kept key: `discover-provider`
-  reports `rails.savedAccess` and tells the agent to point the person at the
-  domain's page in the console.
+  widget token never gets it. An AI agent uses the same two routes through the
+  [MCP tools](/docs/mcp/overview) `find-saved-access` and `use-saved-access`
+  (and `list-provider-accounts` for the accounts): `discover-provider` reports
+  `rails.savedAccess` and says so.
 - `GET /v1/provider-accounts?provider=&domain=` keeps the accounts that can act
   for a domain.
 
@@ -197,4 +208,5 @@ it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
 | `provider_account.relinked` | A domain the application already had now uses this account. |
 | `provider_account.key_replaced` | It gets a new key: pasted, or made when someone signed in again. |
 | `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
+| `agent.acted` | An agent used a saved key for a domain (`used a saved key`), under the agent's grant. |
 | `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |

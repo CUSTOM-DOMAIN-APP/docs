@@ -1792,10 +1792,17 @@ paths:
         showed it reaches the zone (at most 3 reads a call, each answer kept
         10 minutes), and using it adds the zone to its scope. One entry per
         provider account. An end user's widget token gets an empty list.
+
+
+        A delegated agent token reads it with `domains:read` (the MCP's
+        `find-saved-access`), for a connection of the application its grant is
+        bound to (another application's is `404`). It gets the workspace's keys
+        that serve that application, never a key an end user's own sign in
+        made, and a token without `domains:read` is `403`.
       security:
         - widgetJWT: []
         - apiKey: []
-        - agentToken: ['domains:connect']
+        - agentToken: ['domains:read']
       parameters:
         - { $ref: '#/components/parameters/Id' }
         - name: provider
@@ -2786,8 +2793,21 @@ paths:
         and `error_message`): `502` `saved_access_write_failed`, with the
         provider's words. A domain kept
         by an end user's own sign in key is left as it is (`409`).
+
+
+        A delegated agent token uses a saved key with `domains:connect` (the
+        MCP's `use-saved-access`), for a connection of the application its
+        grant is bound to and a key the resolver answers for that application.
+        The response's `account` is then the viewer's view of it (no
+        `account_ref`, `end_user_ref`, `agent_key.account` or
+        `agent_key.session_id`), and the audit log records `agent.acted` for
+        the grant. A token without `domains:connect` is `403`. An end user's
+        widget token reaches the route but is given no saved access yet: `409`
+        `saved_access_not_usable` for an account that exists.
       security:
         - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -6427,8 +6447,20 @@ paths:
         access resolver's rules (see `GET /connections/{id}/saved-access`),
         for `?application_id=` or the API key's own application (`404` for an
         application of another workspace), and adds them as `saved_access`.
+
+
+        A delegated agent token lists with `domains:read` (the MCP's
+        `list-provider-accounts`), and sees less than an API key: only the
+        workspace's keys that serve the application its grant is bound to,
+        never a key an end user's own sign in made, each as a viewer reads it
+        (no `account_ref`, `end_user_ref`, `agent_key.account` or
+        `agent_key.session_id`) with only that application's connections,
+        `can_manage` false, and an empty `kept_access`. `?application_id=`
+        may only repeat the grant's own application (`403` otherwise). A token
+        without `domains:read` is `403`.
       security:
         - apiKey: []
+        - agentToken: ['domains:read']
       parameters:
         - { name: provider, in: query, required: false, schema: { type: string } }
         - { name: domain, in: query, required: false, schema: { type: string } }
@@ -6468,6 +6500,7 @@ paths:
                     description: With `?domain=` only. The keys that may act for the domain for the caller, best first, as `GET /connections/{id}/saved-access` lists them.
                     items: { $ref: '#/components/schemas/SavedAccess' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { description: "An agent token without `domains:read`, or `?application_id=` naming another application than the agent grant's" }
         '404': { description: "`?domain=` with an `application_id` (or an API key's own application) of another workspace, or none" }
   /provider-accounts/{id}:
     get:
