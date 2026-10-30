@@ -27,6 +27,10 @@ info:
     OAuth endpoints under the Agents tag, lets an AI assistant act for one
     application within the scopes a person approved in the console; each route
     that accepts it lists the scopes it needs.
+
+
+    A `429` (`rate_limited`) from the request limiter carries a `Retry-After`
+    header: the seconds to wait before the next request.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -675,8 +679,11 @@ paths:
         Accepts the invite and returns the member with a member-scoped API key
         for the inviter's tenant. The token is the capability, so no API key is
         needed; when `email` is supplied it must match the invited email. The
-        token is spent on success. A pending invite whose link has lapsed is
-        refused with 410 `invite_expired`.
+        token is spent on success, once. A second accept that races the first,
+        or one racing a resend that replaced the link, is refused with 409. A
+        repeat after the accept has finished finds no invite and answers 404,
+        as does a link for an invite that was removed. A pending invite whose
+        link has lapsed is refused with 410 `invite_expired`.
       security: []
       requestBody:
         required: true
@@ -704,12 +711,17 @@ paths:
                       api_key: { type: string, description: 'Member-scoped API key for the inviter''s tenant; shown once.' }
         '400': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
   /members/{id}:
     patch:
       operationId: updateMemberRole
       summary: Change a member's role (owner-protected)
       tags: [Members]
+      description: >-
+        Demoting the tenant's last owner is refused with 400, also when two
+        demotions or removals of owners race each other. A 409 means the
+        member's role changed after this request read it; reload and retry.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -732,14 +744,17 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
     delete:
       operationId: removeMember
       summary: Remove a member or revoke a pending invite (owner-protected)
       tags: [Members]
       description: >-
-        Removing a member revokes their member-scoped API key at once. Revoking
+        Removing a member revokes their member-scoped API keys at once, on every
+        application of the workspace (the console key and any key they minted). Revoking
         a pending invite stops its link working; a preview of that link then
-        reports `revoked`.
+        reports `revoked`. The last owner cannot be removed (400), and a 409
+        means the member's role changed after this request read it.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -749,6 +764,7 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /members/{id}/invite:
     get:
       operationId: getMemberInvite
@@ -781,7 +797,8 @@ paths:
         7 days and returns it as `invite_token`; send the invitee a link built
         from it. The previous link stops working at once, and a preview of it
         reports `replaced`. Requires admin or owner (`member:manage`). A member
-        who already joined is a 409.
+        who already joined, or an invite accepted or replaced while this
+        request ran, is a 409.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -971,8 +988,10 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '429':
           description: >-
-            `rate_limited`: too many token requests, either from this address
-            or for this `application_id`. Retry shortly.
+            `rate_limited`: too many token requests from this address, or too
+            many failed ones (unknown application or wrong secret) for this
+            `application_id`. A request with the right secret is limited only
+            by its address. Retry shortly.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1074,6 +1093,14 @@ paths:
         application. An API key checks for `application_id`, which must be an
         application in the key's tenant (404 otherwise), or for the key's own
         application when it is omitted.
+
+
+        `rails.cloud_browser` (the secure sign-in) is offered only to a caller
+        that could start it, with the reason the start would refuse it with: a
+        widget token bound to no domain, or only to other domains, reads
+        `available: false` with `token_not_bound` (mint one with `domain` and
+        `end_user_ref`), and an agent, a plain API call without the console or
+        a role that cannot write connections reads `caller_cannot_start`.
 
 
         A delegated agent token needs `domains:read` or `domains:connect` and
@@ -2781,10 +2808,12 @@ paths:
         another provider than the one a live or propagating domain's DNS is
         at, or a key whose scope does not hold such a domain yet (such a
         domain is linked without a write, and a scope widens only after a
-        write). A write that fails links nothing and leaves the key's scope
+        write). A test mode domain is refused (`403` `sandbox_not_allowed`). A
+        write that fails links nothing and leaves the key's scope
         as it was, and records the failure on the domain (its `error_code`
         and `error_message`): `502` `saved_access_write_failed`, with the
-        provider's words. A domain kept
+        provider's words. Records written but a key that could not be linked
+        is `500` `saved_access_link_failed`: try again. A domain kept
         by an end user's own sign in key is left as it is (`409`).
       security:
         - apiKey: []
@@ -2813,7 +2842,9 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
         '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:retarget:
     post:
       operationId: retargetConnection
@@ -3083,7 +3114,8 @@ paths:
         provider stopped accepting it): the agent makes a new key with the same
         scopes, checks it and swaps it in, and changes no DNS record. A
         connection without such a key is refused with
-        `browser_reconnect_unavailable`. A reconnect link
+        `browser_reconnect_unavailable`, and a `provider` other than the key's
+        own is a `400`. A reconnect link
         (`POST /connections/{id}:reconnect-link`) opens the hosted page in this
         mode.
 
@@ -3093,13 +3125,17 @@ paths:
         popup trades it at `POST /browser-sessions:redeem`. Only an end user's
         widget token (bound to the domain and to the end user) or the console
         may start one: an agent, the MCP server and a plain API key are refused
-        with `browser_customer_present_only`. The request must carry an `Origin`
-        header on the server's return origin allowlist. A browser sends one (the
-        widget and the popup do), and the console's server must add it to the
-        call it makes for a customer. A request with no `Origin` at all, such as
-        a server to server call, is refused with `browser_customer_present_only`
-        and a message that says the header is missing; an `Origin` that is not
-        on the list is refused the same way.
+        with `browser_customer_present_only`. A widget token bound to no domain,
+        or only to other domains, is refused with `token_not_bound`, the same
+        word the domain check gave it in `rails.cloud_browser.reason`, and a
+        token for a domain another end user connected with
+        `token_wrong_end_user`; both say what to mint in `details`. The request
+        must carry an `Origin` header on the server's return origin allowlist. A
+        browser sends one (the widget and the popup do), and the console's
+        server must add it to the call it makes for a customer. A request with
+        no `Origin` at all, such as a server to server call, is refused with
+        `browser_customer_present_only` and a message that says the header is
+        missing; an `Origin` that is not on the list is refused the same way.
 
 
         A record set an integrator supplied, and any type or value the
@@ -3186,7 +3222,7 @@ paths:
                     type: string
                     format: uri
                     description: The popup page, with `#c=<bootstrap code>&l=<locale>` in its fragment.
-                  vendor: { type: string, description: "The browser hosting company, shown to the customer." }
+                  vendor: { type: string, description: "The browser hosting company the session runs on, shown to the customer: `Browserbase`, or `Kernel` for a provider whose sign in runs there (Network Solutions)." }
                   expires_at: { type: string, format: date-time, description: "The latest the session can end." }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
@@ -3194,11 +3230,19 @@ paths:
           description: >-
             `browser_customer_present_only` (an agent, the MCP server, a plain API
             key, a request with no `Origin` header, or an `Origin` that is not on
-            the return origin allowlist) or
+            the return origin allowlist),
+            `token_not_bound` (the widget token is bound to no domain, or only to
+            other domains: mint one with `domain` and `end_user_ref`; the domain
+            check gave this caller the same word in `rails.cloud_browser.reason`),
+            `token_wrong_end_user` (the widget token is bound to the domain but
+            another end user connected it: mint one with this domain's
+            `end_user_ref`), `forbidden` (a role that cannot write connections),
             `browser_provider_not_allowed` (the rail is not offered for this
             provider or workspace, or the provider has a sign in of its own), or
             `workspace_suspended` (CustomDomain™ support suspended the workspace;
-            see the `ForbiddenOrSuspended` response).
+            see the `ForbiddenOrSuspended` response). The `title` of a
+            `token_not_bound` or `token_wrong_end_user` answer is a plain line
+            for the person; `details` says what to mint.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3310,13 +3354,14 @@ paths:
                     type: string
                     format: uri
                     description: The popup page, with `#c=<new bootstrap code>&l=<locale>` in its fragment.
-                  vendor: { type: string, description: "The browser hosting company, shown to the customer." }
+                  vendor: { type: string, description: "The browser hosting company the session runs on, shown to the customer: `Browserbase`, or `Kernel` for a provider whose sign in runs there (Network Solutions)." }
                   expires_at: { type: string, format: date-time, description: "The latest the session can end now." }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403':
           description: >-
-            `browser_customer_present_only` (as for `browser:start`), or
+            `browser_customer_present_only`, `token_not_bound`,
+            `token_wrong_end_user` and `forbidden` (as for `browser:start`), or
             `workspace_suspended`.
           content:
             application/json:
@@ -4121,7 +4166,8 @@ paths:
         the control plane stores that server-side under an opaque token and returns
         the absolute `link` (ends `/share/{token}`) and a `job_id`. Every domain the
         link targets must be one the calling token may act on: a share link never
-        widens a domain-bound token's reach. The link's server-side prefill is read
+        widens a domain-bound token's reach, so such a token must name a `domain`
+        or `domains` (`400` otherwise). The link's server-side prefill is read
         back by `GET /share/{token}`, which the teammate's widget bootstraps from
         instead of a URL that carries the config in the clear. The share token
         EXPIRES 30 days after it is minted.
@@ -4170,9 +4216,10 @@ paths:
                   type: object
                   additionalProperties: true
                   description: >-
-                    Arbitrary widget config to resume. Served back verbatim by
-                    `GET /share/{token}`, stamped with the normalized domain
-                    target(s).
+                    Arbitrary widget config to resume. Served back by
+                    `GET /share/{token}`, with its `domain` and `domains` keys
+                    replaced by the normalized targets from `domain` and
+                    `domains` above.
                 recipient_email:
                   type: string
                   format: email
@@ -5581,8 +5628,10 @@ paths:
         Stripe, never trusted from the caller: it must belong to the caller's
         workspace (another workspace's session is a `404`) and be complete and
         paid (a trial's "no payment required" counts); otherwise `confirmed` is
-        false and nothing changes. Idempotent with the webhook. Requires
-        `billing:manage`.
+        false and nothing changes. A paid second checkout for a workspace whose
+        subscription still bills is held for review: `confirmed` is false,
+        nothing changes, and the billing view shows the subscription that still
+        bills. Idempotent with the webhook. Requires `billing:manage`.
       security:
         - apiKey: []
       requestBody:
@@ -5822,7 +5871,8 @@ paths:
       tags: [Secure]
       description: >-
         Drops the mirror row and clears `secure_root_domain`; the edge stops
-        managing the certificate on its next reconcile.
+        managing the certificate on its next reconcile. A row another
+        application tracks for the same domain is left in place.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5863,6 +5913,10 @@ paths:
         Creates/updates the mirror row as `pending` + managed. The edge performs
         the actual ACME issuance on first handshake and reports back. Optionally
         sets `secure_root_domain` so the edge also secures the registrable apex.
+        A domain has one certificate row. Returns 409 when another application
+        tracks that row, unless this connection is the one the edge serves and
+        the row's application serves nothing for the domain, in which case this
+        connection takes the row over.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5886,6 +5940,7 @@ paths:
                   certificate: { $ref: '#/components/schemas/Certificate' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/ssl:renew:
     post:
@@ -5919,7 +5974,11 @@ paths:
       description: >-
         Mirrors the status + validity window of an external certificate for
         display (`managed=false`, so the edge does not ACME-renew it). Private
-        key material is an edge concern and is not handled here.
+        key material is an edge concern and is not handled here. Returns 409
+        when another application tracks the domain's certificate row, unless
+        this connection is the one the edge serves and the row's application
+        serves nothing for the domain, in which case this connection takes the
+        row over.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5946,6 +6005,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /ssl:
     get:
@@ -9170,8 +9230,12 @@ components:
         customer signs in it is the live view of the newest tab of the remote
         browser on the provider's hosts or a social sign in host of the
         provider (a sign in popup), and the first tab's again once that one
-        closes. It is always that tab's own view, so the debugging socket its
-        `wss` parameter names is that tab's too.
+        closes. On Browserbase it is always that tab's own view, so the
+        debugging socket its `wss` parameter names is that tab's too. On Kernel
+        (`vendor` is `Kernel`) the live view is on a host of the session's own
+        browser (`https://<host>.kernel.sh:8443/browser/live/...`, which
+        `live_view_origin` names) and shows the browser's active tab; the key
+        relay's socket is then `relay_socket`.
       properties:
         id: { type: string }
         state:
@@ -9184,7 +9248,23 @@ components:
         site: { type: string, description: "The provider's registrable domain, for example namecheap.com. The popup shows it beside a lock while the customer signs in." }
         interactive: { type: boolean, description: "True when the customer may type in the live view." }
         live_view_url: { type: string, format: uri }
-        live_view_origin: { type: string }
+        live_view_origin: { type: string, description: "The origin of `live_view_url`: the vendor's one pinned origin on Browserbase, the session browser's own host on Kernel." }
+        relay_socket:
+          type: string
+          description: >-
+            Only while the person is in control (`awaiting_sign_in`, a hand back,
+            `manual_assist`) and only when the session's vendor lets the person's
+            own browser type into the page through a socket of its own (`Kernel`):
+            a browser level debugging socket,
+            `wss://<host>.kernel.sh:8443/browser/cdp?jwt=...`. A bearer like the
+            live view; never in a terminal state. Absent on Browserbase, whose
+            live view URL carries its own socket.
+        relay_target:
+          type: string
+          description: >-
+            With `relay_socket`: the vendor's id of the tab the live view shows,
+            for the key relay to attach to. Absent when it is not known yet; the
+            popup then picks the first tab on the provider's site.
         deadline:
           type: string
           format: date-time
@@ -9442,6 +9522,7 @@ components:
             github: { type: string }
         passkeyAlt: { type: string, description: "The selector of the provider's \"use another way\" control on a passkey prompt." }
         emailLink: { type: boolean, description: "The provider may email a sign in link instead of a code." }
+        keyTyped: { type: boolean, description: "The provider's page takes a value only from real key events (its submit stays disabled after a text insert), so the popup types each character as a key." }
         continue:
           type: string
           description: >-
@@ -9558,7 +9639,7 @@ components:
         available: { type: boolean }
         reason:
           type: string
-          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported, caller_cannot_start]
+          enum: [unknown_provider, provider_has_no_oauth, oauth_client_not_registered, not_discovered, template_not_onboarded, redirect_unavailable, rail_disabled, custom_routing, no_adapter, unregistered, platform_subdomain, provider_not_listed, not_enabled_for_workspace, oauth_available, script_unhealthy, vendor_unavailable, monthly_cap, sign_in_not_wired, site_not_supported, caller_cannot_start, token_not_bound]
           description: >-
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
@@ -9582,10 +9663,17 @@ components:
             failed in recent sessions and the rail is paused), `vendor_unavailable`
             (the browser vendor failed to create sessions and the rail is paused),
             `monthly_cap` (the monthly browser minutes are used),
-            `sign_in_not_wired` (the sign in token cannot be signed) and
+            `sign_in_not_wired` (the sign in token cannot be signed),
             `site_not_supported` (the provider keeps each account on one
             country site, and the site of the visitor's country is one the
-            rail does not serve yet).
+            rail does not serve yet), `caller_cannot_start` (this caller could
+            never start the secure sign in: an agent, a plain API call without
+            the console, or a role that cannot write connections) and
+            `token_not_bound` (the caller's widget token is not bound to this
+            domain: it is bound to no domain, or only to others. Mint one with
+            `domain` and `end_user_ref`; the widget's `getToken` is where its
+            host hands it one. `browser:start` refuses the same token with
+            `403 token_not_bound`).
         caveat:
           type: string
           description: >-

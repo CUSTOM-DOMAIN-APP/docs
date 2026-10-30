@@ -44,13 +44,18 @@ _openapi:
           the popup trades it at `POST /browser-sessions:redeem`. Only an end
           user's widget token (bound to the domain and to the end user) or the
           console may start one: an agent, the MCP server and a plain API key
-          are refused with `browser_customer_present_only`. The request must
-          carry an `Origin` header on the server's return origin allowlist. A
-          browser sends one (the widget and the popup do), and the console's
-          server must add it to the call it makes for a customer. A request with
-          no `Origin` at all, such as a server to server call, is refused with
-          `browser_customer_present_only` and a message that says the header is
-          missing; an `Origin` that is not on the list is refused the same way.
+          are refused with `browser_customer_present_only`. A widget token bound
+          to no domain, or only to other domains, is refused with
+          `token_not_bound`, the same word the domain check gave it in
+          `rails.cloud_browser.reason`, and a token for a domain another end
+          user connected with `token_wrong_end_user`; both say what to mint in
+          `details`. The request must carry an `Origin` header on the server's
+          return origin allowlist. A browser sends one (the widget and the popup
+          do), and the console's server must add it to the call it makes for a
+          customer. A request with no `Origin` at all, such as a server to
+          server call, is refused with `browser_customer_present_only` and a
+          message that says the header is missing; an `Origin` that is not on
+          the list is refused the same way.
 
 
           A record set an integrator supplied, and any type or value the

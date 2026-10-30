@@ -15,6 +15,16 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: the domain check and the secure sign-in say one thing about a widget token.**
+  A widget token bound to no domain, or only to other domains, now reads `rails.cloud_browser.reason:
+  token_not_bound` on `POST /v1/domains:check` (it was `caller_cannot_start`, which stays for an agent, a
+  plain API call and a role that cannot write), and `POST /v1/connections/{id}/browser:start` and `:resume`
+  refuse the same token with `403 token_not_bound` instead of `403 forbidden`, so you can mint a token for
+  the domain and try again. A token for a domain another customer connected is refused with
+  `403 token_wrong_end_user`. Both answers carry a plain `title` for the person and what to mint in
+  `details`. Removing a domain and reading its monitoring, services or timeline keep answering
+  `403 forbidden`. See [Secure sign-in](/docs/guides/secure-sign-in#who-can-start-it) and
+  [Widget tokens](/docs/authentication/widget-tokens).
 - **October 30, 2026: pick the console's menu per workspace.** **Settings → General → Navigation** lets an owner
   or admin keep the **Classic** menu or try the **New (preview)** one for the whole workspace: search first,
   fewer menu items, and a bar along the bottom on phones. Every page stays one tap away either way. See

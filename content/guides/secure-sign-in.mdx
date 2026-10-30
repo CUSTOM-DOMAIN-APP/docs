@@ -34,9 +34,14 @@ A person is always there. Only two callers may start a secure sign-in:
 
 1. **The widget**, in your customer's browser, with a
    [widget token](/docs/authentication/widget-tokens) minted for the domain and
-   the customer's `end_user_ref`. A token bound to no domain, or to another one,
-   cannot start it, so its domain check answers `available: false` with
-   `caller_cannot_start` and the widget shows the manual setup.
+   the customer's `end_user_ref`. A token bound to no domain, or only to other
+   domains, cannot start it: its domain check answers `available: false` with
+   `token_not_bound`, a start with it is refused with `403 token_not_bound`, and
+   the widget shows the manual setup. The fix is a token for this domain: mint
+   it with `domain` and `end_user_ref` (the widget's `getToken` is where your
+   page hands it one). A token for a domain another customer connected is
+   refused with `403 token_wrong_end_user`. Both answers carry a plain `title`
+   for the person and what to mint in `details`.
 2. **The console**, from a domain's Connect page. It is offered there as the
    widget offers it, only when neither a sign-in of the provider's own nor
    one-click setup runs. When the server recommends it, **Sign in to GoDaddy**
@@ -45,7 +50,8 @@ A person is always there. Only two callers may start a secure sign-in:
    connect**.
 
 An AI agent, the MCP server and a plain API call are refused with
-`403 browser_customer_present_only`, and their domain check never offers it.
+`403 browser_customer_present_only`, and their domain check never offers it
+(`caller_cannot_start`).
 
 ## What your customer sees
 
