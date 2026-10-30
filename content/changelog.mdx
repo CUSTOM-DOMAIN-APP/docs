@@ -15,14 +15,19 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-- **October 30, 2026: cookies are off until you accept them.** Optional analytics and marketing cookies, and the
-  session recording that is part of analytics, no longer run for a visitor who has not chosen. One line at the
-  bottom of customdomain.ai and the console asks first ("With your OK, we use analytics and marketing cookies and
-  record sessions."), with **Accept** and **Reject**, which count the same, and **Settings**, where each category
-  can be allowed on its own. Your choice still applies across the website, these docs and the console, and is
-  saved to your account when you are signed in. A no you gave before still stands, and a yes you gave before is asked
-  again. Global Privacy Control or Do Not Track still turns them off, with no question. See the
-  [Cookie Policy](https://app.customdomain.ai/cookies).
+{/* Draft (consent version 4, decision D-18): the date of the first entry is when this ships. The main session sets it; if that is after October 30, keep the October 30 opt in entry this one replaced (git history of this file) under its own date. Counsel signs off on the notice wording first. */}
+
+- **October 30, 2026: cookies are on by default outside the EEA, the UK and Switzerland.** Optional analytics and
+  marketing cookies, and the session recording that is part of analytics, are on for a visitor who has not chosen,
+  unless they are in the European Economic Area, the UK or Switzerland. A notice at the bottom of customdomain.ai and
+  the console says so ("We use analytics and marketing cookies and record sessions. Turn them off in Settings."), with
+  **Settings**, where each category can be turned off, and **OK**. In the European Economic Area, the UK and
+  Switzerland nothing optional runs until you accept: the bar asks first, with **Accept** and **Reject**, which count
+  the same, and **Settings**. We tell which applies from the country of your connection, or from your device's time
+  zone when that is not known. Your choice still applies across the website, these docs and the console, and is saved
+  to your account when you are signed in. Any no you gave before still stands. Global Privacy Control turns them off
+  everywhere, with no question; Do Not Track no longer does. This replaces the bar that asked everyone first, shipped
+  earlier the same day. See the [Cookie Policy](https://app.customdomain.ai/cookies).
 - **October 25, 2026: a key you already keep is offered first, and a second sign-in no longer adds a second key.**
   When the workspace already keeps a provider key that can act for a domain, the domain check lists it
   (`rails.saved_access`, and `GET /v1/connections/{id}/saved-access`) and `POST /v1/connections/{id}:use-saved-access`
