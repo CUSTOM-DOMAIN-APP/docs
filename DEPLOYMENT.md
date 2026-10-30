@@ -20,28 +20,30 @@ how the container is built, and when a change merged here goes live.
 
 ## When a change goes live
 
-This repo has no deploy workflow of its own. A change reaches the live site in
-three steps:
+This repo has no deploy workflow of its own, and a merge here is not live until it
+is published. Two things touch the docs on the production host:
 
-1. The change merges to `main` here.
-2. The next product deploy runs `infra/scripts/deploy-host.sh` on the production
-   host. Early in the script it refreshes a sibling checkout of this repo to
-   `origin/main` (a shallow fetch and hard reset, or a fresh clone when the
-   checkout is missing).
-3. After it rebuilds the core product stack, the same script rebuilds and
-   restarts the `docs` container from that checkout
-   (`docker compose --profile docs up -d --build docs`).
+1. **The docs deploy** (`scripts/deploy-docs-local.sh` in the product repo, run by
+   hand from a machine with the production deploy credentials). It refreshes the
+   host's checkout of this repo to `origin/main` (or `--ref <sha>`), rebuilds only
+   the `docs` container, waits for it to be healthy, then checks the public pages.
+   It tags the running image as a rollback image first and puts the previous
+   checkout and image back if the build or the health check fails. This is the
+   only way a merged change here goes live.
+2. **The product deploy** (`infra/scripts/deploy-host.sh`). It clones this repo
+   when the host has no checkout and rebuilds the `docs` container as a best effort
+   step at the end, but it never moves an existing checkout: the checkout stays at
+   the commit the docs deploy last published, so a docs rollback with `--ref`
+   survives the next product deploy. A product deploy alone therefore rebuilds the
+   docs that are already live and publishes nothing new from here.
 
-Product deploys run after CI passes on the product repo's `main`, and can also be
-started by hand. So a merge here goes live at the next product deploy of any
-kind, not at merge time. If a docs fix is urgent, ask for a product deploy.
+So after a merge, ask for a docs deploy (`scripts/deploy-docs-local.sh --check`,
+then `scripts/deploy-docs-local.sh`); the product repo's
+`docs/operations/LOCAL-CI-CD.md`, section "Docs only deploy", has the options.
 
-The docs step is best effort and never blocks the product. The checkout refresh
-and the docs rebuild are each guarded, and a failure in either is logged without
-failing the product deploy. If the refresh fails, the container is rebuilt from
-the checkout already on the host, so the live site can lag `main` until the next
-successful refresh. The `docs` service sits in its own compose profile precisely
-so that a docs build failure cannot abort the core deploy.
+The docs step of the product deploy never blocks the product. The `docs` service
+sits in its own compose profile precisely so that a docs build failure cannot abort
+the core deploy (a 2026-07 incident turned a docs failure into a site-wide 525).
 
 ## How the container is built
 
