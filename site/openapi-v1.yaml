@@ -1078,6 +1078,14 @@ paths:
 
         A delegated agent token needs `domains:read` or `domains:connect` and
         checks for its own application; naming another application is a `403`.
+
+
+        Where the secure sign-in also makes a lasting API key,
+        `rails.cloud_browser.key` names it before the person signs in: `name` is
+        the name a key made now would get (a sign-in makes or reuses a key, so
+        look for a key named like it), `delete_url` is the provider's own page
+        that deletes keys, and `rights` and `ends_in_days` say what it can do and
+        when it ends.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3108,6 +3116,11 @@ paths:
         offered only for a provider that has no sign in of its own, and only
         while the deployment has it on (`rails.cloud_browser` on the domain
         check).
+
+
+        `consent_version` must be the id of a consent text that was issued
+        (`cb-1` to `cb-4`). Any other id of the right shape is refused with
+        `422` `consent_unknown` before a session or a browser exists.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3126,7 +3139,15 @@ paths:
                   description: Web origin the popup posts its result to; must be on the server's allowlist.
                 consent_version:
                   type: string
-                  description: The id of the consent text the customer was shown, stored with the session.
+                  enum: [cb-1, cb-2, cb-3, cb-4]
+                  description: >-
+                    The id of the consent text the customer was shown, stored
+                    with the session. Only an id that was ever issued is
+                    accepted (`cb-1` and `cb-2` the widget's earlier consent
+                    lines, `cb-3` the popup's own sign in form, `cb-4` the kept
+                    key notice); any other id is refused with `422`
+                    `consent_unknown`. A value that is not shaped like an id
+                    (1 to 32 of `[A-Za-z0-9._-]`) is a `400`.
                 locale:
                   type: string
                   description: The language the popup reads in, a plain code such as `en`. Defaults to `en`.
@@ -3217,6 +3238,9 @@ paths:
           description: >-
             `browser_unsupported_records`: the record set cannot be written
             through the provider's page. `types` names what is in the way.
+            `consent_unknown`: `consent_version` is shaped like an id but is
+            not one that was ever issued (`cb-1` to `cb-4`); nothing was
+            started.
           content:
             application/json:
               schema:
@@ -3395,6 +3419,13 @@ paths:
         not polled for 90 seconds before approval is ended and its browser
         released. The response is `Cache-Control: no-store`, because the view
         can carry the live view address, which anyone holding can drive.
+
+
+        Once the session has kept a lasting API key for the connection, the view
+        carries `kept_key`: the key's `name`, the provider's `page` that deletes
+        keys, its `rights` and when it ends (`expires_at`), so the last screen
+        can say which key was kept and where to remove it. A key that was made
+        and not kept is `left_key` instead.
       security:
         - browserSession: []
       parameters:
@@ -9258,6 +9289,27 @@ components:
           properties:
             name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21\"." }
             page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
+        kept_key:
+          type: object
+          required: [rights]
+          description: >-
+            The lasting API key the cloud browser made at the provider and
+            CustomDomain kept for the connection, once it is kept (the session
+            has recorded `key_connected`). Present from then on, in every state,
+            so the popup's last screen can name it: what to look for on the
+            provider's key page and where to delete it later. Never the key
+            itself. A key that was made and not kept is `left_key`, never this.
+          properties:
+            name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21 1528\". Absent for a provider whose key is the account's own and has no name of its own (Namecheap)." }
+            page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
+            rights:
+              type: array
+              items: { type: string, enum: [transfer, billing, account] }
+              description: >-
+                What the key can do beyond the domain's DNS records, as
+                `rails.cloud_browser.key.rights`: empty for a key that reaches
+                DNS only.
+            expires_at: { type: string, format: date-time, description: "When the key ends. Absent for a key with no end date." }
         api_activation:
           type: object
           required: [kind]
@@ -9622,6 +9674,28 @@ components:
             asks.
           required: [rights, ends_in_days]
           properties:
+            name:
+              type: string
+              description: >-
+                The name a key made now would get at the provider ("CustomDomain
+                Weldon 2026-10-21 1528"): the application's name, cut to the
+                provider's key page's length and punctuation, then the day and
+                minute (UTC) of this check. It is the name the agent types, so a
+                person can find the key on the provider's page afterwards. A
+                sign in **makes or reuses** a key (it may find one of its own in
+                the account and use that instead of making another), and the
+                session names a new key from its own start, so this is the name
+                to look for, not a promise of the minute. The session's
+                `kept_key` names the key that was kept. Absent for a provider
+                whose key is the account's own and has no name of its own
+                (Namecheap: its API access is turned on and no key is made).
+            delete_url:
+              type: string
+              format: uri
+              description: >-
+                The provider's own page that lists and deletes its API keys, for
+                a person who wants the key gone (most providers offer no API to
+                delete one). Absent when none is known.
             rights:
               type: array
               items: { type: string, enum: [transfer, billing, account] }

@@ -384,6 +384,21 @@ Your console's **Activity** page records it too, as "An API key we made is still
 in your GoDaddy account", with the same name and link. The key itself is never
 shown or kept.
 
+You can tell your customer which key it is, and where to delete it, both before
+the sign-in and after. Before it, the [domain check](/docs/api-reference/domains/checkDomain)
+answers `rails.cloud_browser.key` with `name` (the name a key made now would
+get, such as "CustomDomain Acme 2026-10-30 1204": your application's name, then
+the day and minute), `delete_url` (the provider's own page that lists and
+deletes API keys), `rights` and `ends_in_days`. A sign-in makes a key, or may
+reuse one of ours the account already has, and each session names its key from
+the minute it starts, so look for a key that begins with that name, not for that
+exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
+so its `key` has no `name`. After the sign-in, the session's view
+([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
+`kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
+its `rights` and `expires_at` (left out for a key with no end date). A key that
+was made and not kept is `left_key` instead, never both.
+
 IONOS's API is off for an account until the account signs up for it, a free
 product in IONOS's shop under IONOS's API terms. When IONOS's key page says it is
 off, our software opens that free order for your customer, so they never go into
