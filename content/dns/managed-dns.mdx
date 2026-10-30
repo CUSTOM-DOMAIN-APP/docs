@@ -166,6 +166,46 @@ The response, and every other managed DNS response, is the zone:
 DNS was never started for the connection. Poll it while `status` is
 `awaiting_delegation`.
 
+### Find the domains you host
+
+Every connection carries `dns_hosting`, on `GET /v1/connections` and on
+`GET /v1/connections/{id}`:
+
+```json
+"dns_hosting": { "state": "hosted", "by": "customdomain", "zone": "acme.com", "since": "2026-10-01T09:00:00Z" }
+```
+
+`state` is `hosted` (the nameservers point at the zone, so it is what the world
+resolves), `moving` (the zone is being set up, or the nameservers are being
+moved), `failed` (the zone never became active, or the domain moved its
+nameservers away again) or `none`, which carries nothing else. `by` is
+`customdomain` for managed DNS here, `dns_host` for your own account at a DNS
+host (`provider` names it) and `custom` for your own nameservers. `zone` is the
+domain or the parent domain that is hosted: `shop.acme.com` is hosted when
+`acme.com` is.
+
+A zone you started with the call above counts as soon as it is active, with no
+move to a registrar through `nameservers:migrate`. To list the domains you
+host, filter the connection list:
+
+```bash
+curl "https://api.customdomain.ai/v1/connections?dns_hosting=hosted" \
+  -H "Authorization: Bearer cd_live_…"
+```
+
+`hosted` keeps the domains served from a zone we run, `moving` those being set
+up or moved, and `any` every domain with hosting in play (hosted, moving or
+failed). The filter pages like the unfiltered list: follow `next_cursor`. Any
+other value is a `400`. Another account's zone never counts, and a test mode
+connection is never hosted.
+
+On the detail read, an API key (and an app-scoped or agent token) also gets
+`reach`, which says how CustomDomain™ writes the domain's DNS: `kind` is
+`account`, `sign_in`, `domain_connect`, `dns_hosting`, `route53_role` or `none`,
+with `can_reapply` (whether `:reapply` can write now) and `managed_possible`
+(whether the one-click sign-in can be offered for the domain's provider here).
+A hosted domain is reached by its hosting, whoever runs the zone.
+
 ### Import a zone file or add records
 
 ```bash
