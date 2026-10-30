@@ -1,14 +1,18 @@
 /*
- * Global styles of the docs site: Tailwind, the Fumadocs black theme and presets, and the two rules that show
- * "Sign in" or "Console" in the sidebar. Both links are prerendered (src/components/auth-link.tsx); the head
- * script in src/lib/auth-hint.ts adds cd-signed-in to <html> before first paint when the console's hint cookie
- * is set, so exactly one shows and nothing moves.
+ * Global styles of the docs site: Tailwind, Fumadocs' color registration and presets, the brand kit's color
+ * tokens (tokens-docs.css, light and dark) and the docs brand rules (brand.css), plus the two rules that show
+ * "Sign in" or "Console" in the sidebar. Fumadocs' default-colors.css only registers the --color-fd-* names so
+ * the fd utilities exist; tokens-docs.css sets every value, unlayered, so it wins over the framework's @theme.
+ * Both auth links are prerendered (src/components/auth-link.tsx); the head script in src/lib/auth-hint.ts adds
+ * cd-signed-in to <html> before first paint when the console's hint cookie is set, so exactly one shows.
  */
 
 @import "tailwindcss";
-@import "fumadocs-ui/css/black.css";
+@import "fumadocs-ui/css/lib/default-colors.css";
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-openapi/css/preset.css";
+@import "./tokens-docs.css";
+@import "./brand.css";
 
 html:not(.cd-signed-in) .cd-auth-in {
   display: none !important;

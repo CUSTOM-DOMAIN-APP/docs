@@ -1,9 +1,16 @@
+/**
+ * Fumadocs MDX config for the docs site: the content collection (../content, read in place), its frontmatter
+ * schema and processed Markdown, the brand code themes for every code block, and git based "last updated"
+ * dates that stay blank on a shallow clone rather than show a wrong date.
+ */
+
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { defineDocs, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { stringifyComponent } from "./mdx-markdown";
+import { codeThemes } from "./src/lib/code-themes";
 
 // Fumadocs MDX collection config. `dir` points at the repo's real content/
 // directory (one level up from this app), so there is no copy or sync step:
@@ -81,6 +88,12 @@ function readGitDates(): Map<string, Date> {
 }
 
 export default defineConfig({
+  // Code blocks use the brand kit's two code themes (src/lib/code-themes.ts) in place of Fumadocs' GitHub
+  // themes. Only `themes` is set: every other default (the line highlight, diff and focus notations, the
+  // title and icon) stays as Fumadocs ships it.
+  mdxOptions: {
+    rehypeCodeOptions: { themes: codeThemes },
+  },
   plugins: [
     lastModified({
       versionControl: async (filePath) => {
