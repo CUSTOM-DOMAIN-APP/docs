@@ -131,7 +131,10 @@ Additional conditional fields ride connection events:
 
 - `user_id`: the connection's `end_user_ref`, echoed so integrators can
   associate lifecycle events with the originating tenant or end user. Omitted
-  when the connection was created without an `end_user_ref`.
+  when the connection was created without an `end_user_ref`. A connection made
+  from the console's **Try it live** carries `console:<member id>` here, a
+  prefix the console reserves for its own tests and never one of your
+  customers, so a receiver can skip it.
 - `updated_objects`: the records a write actually created or changed. Present on
   `connection.applied` and `connection.records.updated` only; the events that just
   observe a connection never claim to have written anything.
