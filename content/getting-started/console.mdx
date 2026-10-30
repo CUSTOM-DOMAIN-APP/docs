@@ -151,12 +151,12 @@ not when you visited a page, and each row says what was checked:
 | Row | Done when |
 | --- | --- |
 | **Start your free trial** (owners and admins) | Billing is set up and a trial or a plan is running. A card starts the 14 day trial and nothing is charged until it ends. Creating API keys needs it |
-| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live. A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in test mode on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
-| **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count |
+| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live, including one you connect from [**Try it live**](#try-it-live). A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in test mode on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
+| **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count: it is the console's own, minted for you and not for a customer |
 | **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Growth plan) |
 | **Get told when a domain goes live** | A webhook delivery was answered with a success status |
 | **Make the widget yours** (optional) | A look was saved, for the workspace or for an application |
-| **Connect your first customer** | A real customer connected a domain through your widget, which is a connection that carries the customer id your server passed when it minted the token |
+| **Connect your first customer** | A real customer connected a domain through your widget, which is a connection that carries the customer id your server passed when it minted the token. A domain you connect from **Try it live** carries the console's own id for you (`console:<member>`), so it never counts as a customer, however many you try |
 
 Test mode is a separate application you switch to from the application switcher, marked
 **Test mode** wherever it appears. It needs no card, it is not counted or billed, and
@@ -186,7 +186,7 @@ checklist until they answer the welcome too. Your customers' domains are on
 | **Overview** | The setup checklist and how your customers' domains are doing. |
 | **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
 | **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
-| **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and Try it live. |
+| **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
@@ -704,6 +704,44 @@ Earlier uploads stay available at their URLs (your 20 most recent, and any an
 application still uses), because a widget you already shipped keeps the logo
 URL it was pasted with until you update its code. You can still paste the URL of
 a logo you host yourself (HTTPS) instead.
+
+## Try it live
+
+**Widget → Try it live** opens the real widget, the one your customers get, over
+the console page, with the look you saved and a short-lived token the console
+mints for you. Everything it connects is real: the domain shows under
+**Domains** and counts as one of your domains.
+
+Type a domain you own in **Domain to try** and press **Open the widget**. The
+token is then bound to that domain, and the widget starts on it, so the whole
+flow runs as it does for a customer who arrived with a domain: the provider is
+found, and where the DNS host offers it, the
+[secure sign-in](/docs/guides/secure-sign-in) is offered (**Open secure
+sign-in**), which only runs for a token bound to the domain and to the person
+using it. Nothing changes at your DNS host until you approve it. Leave the field
+empty and the widget opens on its first screen, as before.
+
+Every token minted here is the console's own: it carries `console:<your member
+id>` as its `end_user_ref`, a prefix the console reserves for its tests and no
+customer id starts with. That is what keeps a test apart from a customer:
+
+- The go-live list's **Run your first connection** row is done when the domain
+  is live, and **Connect your first customer** never is, however many domains
+  you try. The owner's nudges count customers the same way.
+- Wherever the console names who a domain is for (**Domains** and its client
+  filter, the recent domains on the Overview, search, and the top of the domain's
+  own page), the domain is labelled **Try it live (your member id)** where a
+  customer's domain shows the customer's id.
+- An API key the secure sign-in makes at the DNS host belongs to that test's end
+  user (**Connected accounts** says so), never to the workspace, so a test never
+  widens a key your customers' domains are served with. See
+  [The API key a secure sign-in made](#provider-api-key).
+- A webhook for the domain carries `user_id: "console:<member id>"`, which your
+  receiver can skip.
+
+A test minted here does not prove **Mint widget tokens on your server**: that
+row needs your backend's own route. In test mode the same card connects made up
+`.test` names and counts for nothing; see [Test mode](/docs/guides/test-mode).
 
 ## What the console is *not*
 
