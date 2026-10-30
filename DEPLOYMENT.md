@@ -107,3 +107,16 @@ Each is a deliberate decision for a human, and none blocks a docs change.
    dependency) if a generator is added to `site/`. Both change together when the
    API changes. No check compares them with the product today, so a missed copy
    shows up only as a stale reference page.
+
+   **Known differences from the product spec (2026-10-30).** `site/openapi-v1.yaml`
+   is the product's spec at `53d9abba` (release batch 1b) plus two edits the product
+   has not taken yet, so the two files are not byte for byte equal. (1)
+   `createApplication` is `required: [name]`, and `tenant_id` says it is required
+   only with the management key and ignored with a tenant API key (docs #82; the
+   control plane creates the application in the key's own tenant). (2) Five
+   descriptions that name the product write CustomDomain™: the `dns_hosting` text of
+   the connection list, the `reach` text of the connection detail, the
+   `ConnectionDnsHosting` schema and its `by` field, and `ConnectionReach`. Until
+   the product spec carries the same edits, a straight copy of its file undoes them:
+   re-apply them, or confirm the product has them, before you commit the next
+   vendored copy.

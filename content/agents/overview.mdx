@@ -66,8 +66,8 @@ A grant carries one or more scopes; each MCP tool requires exactly one:
 
 | Scope | Grants |
 | --- | --- |
-| `domains:read` | Observe only: availability, suggestions, connection, certificate and order status, diagnosis, provider discovery, listings, billing standing. |
-| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, and email setup. It does not remove a domain. |
+| `domains:read` | Observe only: availability, suggestions, connection, certificate, order and nameserver move status, diagnosis, provider discovery, listings, billing standing, the connected provider accounts and which saved keys may act for a domain. |
+| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, email setup, move its nameservers or move them back, and write a domain's records with a saved key. It does not remove a domain. |
 | `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. |
 | `domains:purchase` | **Spends money**: registers a domain. Isolated on its own scope, and requires a saved card and a monthly spend cap. Purchases through MCP are off on the hosted service. |
 {/* NEW SCOPES GO HERE: add one row per new scope directly above this line, and trim the matching words from the domains:connect row. This marker stays; the docs sync test reads it. */}

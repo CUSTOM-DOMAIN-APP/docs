@@ -349,9 +349,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tenant_id, name]
+              required: [name]
               properties:
-                tenant_id: { type: string }
+                tenant_id:
+                  type: string
+                  description: >-
+                    Required with the management key, where it selects the
+                    tenant. Ignored with a tenant API key, which always creates
+                    the application in its own tenant.
                 name: { type: string }
                 environment: { $ref: '#/components/schemas/Environment' }
                 sandbox:
@@ -1361,7 +1366,7 @@ paths:
 
 
         Every row carries `dns_hosting`: who runs the domain's DNS. To find the
-        domains CustomDomain runs the DNS for, ask for `?dns_hosting=hosted`; the
+        domains CustomDomain™ runs the DNS for, ask for `?dns_hosting=hosted`; the
         filter is applied in the database, so a page is full and `next_cursor`
         keeps walking the matching rows. A `dns_hosting` outside the enum is
         rejected with **400**. Test mode connections never match it.
@@ -1491,7 +1496,7 @@ paths:
 
 
         `dns_hosting` says who runs the domain's DNS, and `reach` how
-        CustomDomain reaches it to write records (a kept account, a kept
+        CustomDomain™ reaches it to write records (a kept account, a kept
         sign-in, one-click setup, DNS hosting, or nothing). `reach` is for the
         platform's own servers (an API key, an `app`-scoped token or an agent
         token); an end user's `connect`-scoped token reads `dns_hosting` only.
@@ -9385,7 +9390,7 @@ components:
     ConnectionDnsHosting:
       type: object
       description: >-
-        Who runs the domain's DNS: a zone CustomDomain hosts, or a move to one.
+        Who runs the domain's DNS: a zone CustomDomain™ hosts, or a move to one.
         It is read from the managed DNS zone the connection is linked to and the
         workspace's nameserver moves, never from the connection itself, so it is
         on the list and on `GET /connections/{id}` and nowhere else a connection
@@ -9412,7 +9417,7 @@ components:
           type: string
           enum: [customdomain, dns_host, custom]
           description: >-
-            Who runs the DNS: CustomDomain's own managed DNS (`customdomain`),
+            Who runs the DNS: CustomDomain™'s own managed DNS (`customdomain`),
             our account at a DNS host we integrate with (`dns_host`; `provider`
             names it), or the platform's own list of nameservers (`custom`).
             Omitted when `state` is `none`.
@@ -9434,7 +9439,7 @@ components:
     ConnectionReach:
       type: object
       description: >-
-        How CustomDomain reaches this domain's DNS to write records, from the
+        How CustomDomain™ reaches this domain's DNS to write records, from the
         access we keep (the order we use it: a zone we host, a kept sign-in or
         Domain Connect authorization, a connected account, the Route 53 role)
         and the domain's DNS hosting. A domain whose DNS is hosted is reached by
