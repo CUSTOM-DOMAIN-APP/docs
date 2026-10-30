@@ -17,7 +17,10 @@ _openapi:
           Stripe, never trusted from the caller: it must belong to the caller's
           workspace (another workspace's session is a `404`) and be complete and
           paid (a trial's "no payment required" counts); otherwise `confirmed`
-          is false and nothing changes. Idempotent with the webhook. Requires
+          is false and nothing changes. A paid second checkout for a workspace
+          whose subscription still bills is held for review: `confirmed` is
+          false, nothing changes, and the billing view shows the subscription
+          that still bills. Idempotent with the webhook. Requires
           `billing:manage`.
 ---
 

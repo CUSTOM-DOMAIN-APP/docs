@@ -3815,6 +3815,105 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:idp:
+    post:
+      operationId: idpBrowserSession
+      summary: Sign in with an identity provider through the vendor's managed sign in
+      tags: [Cloud browser]
+      description: >-
+        On a session whose vendor never shows its page (`no_live_page`: Kernel),
+        the customer pressed our form's "Continue with Google" or "Continue with
+        Apple". The control plane opens the vendor's managed sign in of a profile
+        of this session's own to the identity provider's site, and the view's
+        `idp` carries the connection and its single use `handoff_code`: the popup
+        renders the vendor's form, which talks to the vendor from the customer's
+        browser (no password, code or approval passes through CustomDomain™). On
+        success the remote browser is released and made again on the signed in
+        profile, back on the provider's sign in page (`idp.state` `finishing`),
+        and the popup forwards the customer's press of the provider's own button
+        over the relay; the identity provider asks the customer to confirm the
+        account (the one page the popup frames on such a session), and the sign
+        in notice carries on as usual. Allowed only in `awaiting_sign_in`, with
+        no step running (a failed one may be tried again), for a kind the
+        provider's form offers.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string, enum: [google, apple], description: "The identity provider." }
+      responses:
+        '202':
+          description: The step started; the view's `idp` says where it stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [awaiting_sign_in] }
+        '400': { $ref: '#/components/responses/Error' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: the session is not waiting for the customer, a step is running, or this sign in is not offered for the provider.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:idp-cancel:
+    post:
+      operationId: idpCancelBrowserSession
+      summary: Leave the identity provider's sign in for the provider's own form
+      tags: [Cloud browser]
+      description: >-
+        Ends the identity provider step (`idp`) wherever it stands: the vendor's
+        connection is deleted, and the customer is back on our form for the
+        provider's own password. A browser already made again on the signed in
+        profile stays, on the provider's sign in page. No body.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      responses:
+        '202':
+          description: Back to the sign in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [awaiting_sign_in] }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: no identity provider step is on the session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /connect/oauth/callback:
     get:
       operationId: oauthCallback
@@ -9547,6 +9646,43 @@ components:
         signals: { $ref: '#/components/schemas/BrowserSignals' }
         handback: { $ref: '#/components/schemas/BrowserHandback' }
         form: { $ref: '#/components/schemas/BrowserSignInForm' }
+        no_live_page:
+          type: boolean
+          description: >-
+            The session's vendor never shows its page in the popup (Kernel): a
+            human check, a social sign in and the backup page are the popup's
+            own screens, and only the identity provider's own confirmation,
+            during the `idp` step, is framed. The relay still types for our
+            form. Absent (false) on Browserbase.
+        idp:
+          type: object
+          required: [provider, domain, state]
+          description: >-
+            In `awaiting_sign_in` on a `no_live_page` session: the identity
+            provider step (`POST :idp`). While its `state` is `starting` or
+            `form` the customer is in the vendor's form, not in the remote
+            browser: `form`, `signals`, `signed_in_detected`, `check`,
+            `interactive` and the relay are absent. `finishing`: the remote
+            browser was made again on the signed in profile and is back on the
+            provider's sign in page with a fresh `relay_socket` and `form`; the
+            popup forwards the customer's press of the provider's own button.
+            `failed`: `error_code` says why (the vendor's own codes such as
+            `credentials_invalid`, `account_locked`, `unsupported_auth_method`,
+            `captcha_blocked`, or the step's `vendor_error`, `expired`,
+            `social_timeout`, `cancelled`); the customer tries again (`:idp`)
+            or uses the password (`:idp-cancel`).
+          properties:
+            provider: { type: string, enum: [google, apple] }
+            domain: { type: string, description: "The identity provider's site, for example google.com." }
+            connection_id: { type: string, description: "The vendor's connection, opaque." }
+            handoff_code:
+              type: string
+              description: >-
+                Only while `state` is `form`: the vendor's single use bearer,
+                which the popup exchanges in the customer's browser for a token
+                of its own. Never logged or stored.
+            state: { type: string, enum: [starting, form, finishing, failed] }
+            error_code: { type: string, description: "With `failed`: a short machine word." }
     BrowserSignals:
       type: object
       required: [host, hostVerified]
@@ -9695,6 +9831,13 @@ components:
             own hosts, for the popup to open in a new tab of the customer's own
             browser (never in the cloud browser), so the reset email's link
             opens there too. Absent when it was not seen.
+        consent:
+          type: string
+          description: >-
+            The accept button of the provider's cookie banner, for the popup to
+            press from the customer's browser before a social button the banner
+            can cover (the `idp` step's `finishing`); the agent presses the same
+            one later. Absent for a provider with no banner on record.
     BrowserHandback:
       type: object
       required: [reason]

@@ -18,16 +18,17 @@ _openapi:
           real sign in page, so CustomDomain™ never receives them, and the sign
           in itself is never stored. Where the deployment turned it on for the
           provider, the agent then makes a lasting API key on the provider's own
-          API page (named `CustomDomain` and the application's name, with
-          every domain scope the page offers, transfer and billing included,
-          and the longest expiry the provider offers), checks it with one read only call, keeps it encrypted for
-          this application only, and writes the records through the provider's
-          API; the domain is then monitored and repaired like any connected
-          provider account, and the connection's `credential` shows the key's
-          record (never the key). Otherwise, or when making the key fails, our
-          software reads the provider's DNS page for this one domain, shows the
-          customer the exact changes, and makes them only after the customer
-          approves. A session never runs without the customer present.
+          API page (named `CustomDomain` and the application's name, with every
+          domain scope the page offers, transfer and billing included, and the
+          longest expiry the provider offers), checks it with one read only
+          call, keeps it encrypted for this application only, and writes the
+          records through the provider's API; the domain is then monitored and
+          repaired like any connected provider account, and the connection's
+          `credential` shows the key's record (never the key). Otherwise, or
+          when making the key fails, our software reads the provider's DNS page
+          for this one domain, shows the customer the exact changes, and makes
+          them only after the customer approves. A session never runs without
+          the customer present.
 
 
           With `mode: reconnect`, the session is the end user's sign in that
@@ -35,7 +36,8 @@ _openapi:
           provider stopped accepting it): the agent makes a new key with the
           same scopes, checks it and swaps it in, and changes no DNS record. A
           connection without such a key is refused with
-          `browser_reconnect_unavailable`. A reconnect link (`POST
+          `browser_reconnect_unavailable`, and a `provider` other than the key's
+          own is a `400`. A reconnect link (`POST
           /connections/{id}:reconnect-link`) opens the hosted page in this mode.
 
 
