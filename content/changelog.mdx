@@ -23,6 +23,14 @@ never change meaning or disappear without a new major version. See the
   saved to your account when you are signed in. A no you gave before still stands, and a yes you gave before is asked
   again. Global Privacy Control or Do Not Track still turns them off, with no question. See the
   [Cookie Policy](https://app.customdomain.ai/cookies).
+- **October 30, 2026: the accounts list says what needs you, how each key was made and who holds its limit.**
+  `GET /v1/provider-accounts` now lists the accounts that need you first (`needs_you.reason`: `refused`,
+  `expired`, `expiring`, `one_time_window` or `no_domains`), then the most recently used. Every account says how
+  its key was made and by whom (`made_by`: `pasted`, `console_sign_in` or `widget_sign_in`, with the member's
+  e-mail or `a customer`, never a customer's id) and who holds its limit (`enforced_by`: `provider` for
+  Cloudflare, Porkbun and Route 53, `customdomain` for every other provider). The list takes `owner`, `q`,
+  `limit` and `cursor`, and `end_user_keys` counts the keys your customers' own sign-ins made. See
+  [Provider accounts](/docs/connect-flow/provider-accounts#what-needs-you).
 - **October 25, 2026: a key you already keep is offered first, and a second sign-in no longer adds a second key.**
   When the workspace already keeps a provider key that can act for a domain, the domain check lists it
   (`rails.saved_access`, and `GET /v1/connections/{id}/saved-access`) and `POST /v1/connections/{id}:use-saved-access`
