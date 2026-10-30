@@ -38,9 +38,9 @@ deployment and the follow-ups still open.
   "Console" pair.
 - Theme: Fumadocs' own chrome on the brand kit. `src/app/tokens-docs.css` is the
   kit's `--color-fd-*` mapping, light and dark, copied unchanged from the brand
-  kit's token build (`build_tokens.py` writes it from `tokens.json`, the one
-  token file the website, the docs and the console share). To change a color,
-  change the token and copy the rebuilt file over this one; do not edit it here.
+  kit's token build (`build_tokens.py` writes it from `tokens.json`, the brand
+  kit's one token source). To change a color, change the token and copy the
+  rebuilt file over this one; do not edit it here.
   `src/app/brand.css` holds the few docs rules on top: the font stacks, the page
   title in Instrument Serif, light code cards and the wordmark.
   `src/lib/fonts.ts` self-hosts Inter, Geist Mono and Instrument Serif from

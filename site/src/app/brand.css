@@ -13,10 +13,13 @@
 }
 
 /*
- * The API reference's method labels and "required" marks use Tailwind palette colors (fumadocs-openapi), and
- * two of them fail WCAG AA on paper (green-600 3.0, red-600 4.49). On this brand color means a connection state,
- * so the method words go to ink soft and the red marks to the kit's warn, in light and in dark. Nothing else on
- * the docs uses these palette steps.
+ * The API reference (fumadocs-openapi and its playground) colors a few things with Tailwind palette steps: the
+ * method labels (*-600, and *-400 in dark), the "required" marks (red-400, also at 80%), the playground's response
+ * status (green-500 for a success, red-500 for an error), its input and OAuth error lines (red-400), the schema's
+ * "Deprecated" tag (yellow) and a repeated schema path (orange-400). Several fail WCAG AA on paper (green-600 3.0,
+ * red-600 4.49, red-400 2.6). On this brand color means a connection state, so the method labels and a success go
+ * to ink soft, and DELETE, an error and the required marks to the kit's warn, in light and in dark. Outside dark a
+ * -400 step only colors a required mark, an error line or a repeated path. Nothing else on the docs uses these steps.
  */
 :root {
   --color-green-600: #44403c;
@@ -26,6 +29,16 @@
   --color-green-500: #44403c;
   --color-red-600: #b91c1c;
   --color-red-500: #b91c1c;
+  --color-green-400: #44403c;
+  --color-blue-400: #44403c;
+  --color-yellow-400: #44403c;
+  --color-orange-400: #44403c;
+  --color-red-400: #b91c1c;
+}
+
+.dark {
+  --color-green-500: #d6d3d1;
+  --color-red-500: #f87171;
   --color-green-400: #d6d3d1;
   --color-blue-400: #d6d3d1;
   --color-yellow-400: #d6d3d1;
@@ -33,9 +46,9 @@
   --color-red-400: #f87171;
 }
 
-.dark {
-  --color-green-500: #d6d3d1;
-  --color-red-500: #f87171;
+/* The playground's required marks at full strength: at 80% the kit's warn falls under 4.5 on paper. */
+.text-red-400\/80 {
+  color: var(--color-red-400);
 }
 
 /* The page title: Instrument Serif 400, 32 px on a phone to 40 px on a desktop (--cd-size-docs-h1). */

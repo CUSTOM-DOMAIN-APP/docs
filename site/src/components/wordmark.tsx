@@ -27,7 +27,7 @@ export function Wordmark() {
       <span className="cd-wordmark__name">
         CustomDomain<sup aria-hidden="true">™</sup>
       </span>
-      {/* The leading space keeps the accessible name "CustomDomain docs"; the flex gap does the visual spacing. */}
+      {/* The leading space keeps the accessible name "CustomDomain docs"; the margin in brand.css does the visual spacing. */}
       <span className="cd-wordmark__docs">{" "}docs</span>
     </span>
   );
