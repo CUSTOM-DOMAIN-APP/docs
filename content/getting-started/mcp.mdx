@@ -65,10 +65,12 @@ to it: a command, or a few fields to fill in.
    what public DNS shows and what is missing. Once the person has fixed it,
    `recheck-connection` runs the check now. `check-certificate-status` reads the
    HTTPS certificate; certificates renew on their own.
-5. `list-connections { status?, limit?, cursor? }` lists the connected domains
-   with their status (every application in the workspace when you use an API
-   key). A page that was cut says `truncated: true`; call again with
-   `nextCursor` as `cursor`.
+5. `list-connections { status?, dnsHosting?, limit?, cursor? }` lists the
+   connected domains with their status (every application in the workspace when
+   you use an API key). Each row carries `dnsHosting`, who runs the domain's DNS,
+   and `dnsHosting: "hosted"` (or `moving`, or `any`) keeps only the domains
+   CustomDomain™ runs. A page that was cut says `truncated: true`; call again
+   with `nextCursor` as `cursor`.
 
 When a connect fails with `billing_required`, `check-billing-status` says why and
 where an owner fixes it.
