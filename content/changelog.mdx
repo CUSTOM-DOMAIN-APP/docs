@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: the accounts list says what needs you, how each key was made and who holds its limit.**
+  `GET /v1/provider-accounts` now lists the accounts that need you first (`needs_you.reason`: `refused`,
+  `expired`, `expiring`, `one_time_window` or `no_domains`), then the most recently used. Every account says how
+  its key was made and by whom (`made_by`: `pasted`, `console_sign_in` or `widget_sign_in`, with the member's
+  e-mail or `a customer`, never a customer's id) and who holds its limit (`enforced_by`: `provider` for
+  Cloudflare, Porkbun and Route 53, `customdomain` for every other provider). The list takes `owner`, `q`,
+  `limit` and `cursor`, and `end_user_keys` counts the keys your customers' own sign-ins made. See
+  [Provider accounts](/docs/connect-flow/provider-accounts#what-needs-you).
 - **October 30, 2026: five more providers list their domains.** A key at Porkbun, Hetzner, DigitalOcean,
   Name.com or Gandi is now checked by listing the account's domains, and **Connect more domains**
   (`POST /v1/provider-accounts/{id}/zones`) shows them, so you no longer type each one. Porkbun lists its active

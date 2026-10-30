@@ -6504,26 +6504,64 @@ paths:
       tags: [Provider accounts]
       description: >-
         The workspace's provider accounts with their access mode, the domains
-        they cover, when they were last used and when they expire, and
-        whether the caller may manage each one (`can_manage`); and, in
-        `kept_access`, the sign-ins and Domain Connect authorizations kept per
-        domain, grouped by provider. A kept sign-in is stopped per domain with
-        `DELETE /connections/{id}/grant`. A viewer reads them without
-        `agent_key.account` (an end user's customer number at the provider)
-        and `agent_key.session_id`.
+        they cover, when they were last used and when they expire, whether
+        the caller may manage each one (`can_manage`), what needs the person
+        (`needs_you`), how each key was made and by whom (`made_by`) and who
+        enforces its limit (`enforced_by`); and, in `kept_access`, the
+        sign-ins and Domain Connect authorizations kept per domain, grouped
+        by provider. A kept sign-in is stopped per domain with `DELETE
+        /connections/{id}/grant`. A viewer reads them without
+        `agent_key.account` (an end user's customer number at the provider),
+        `agent_key.session_id`, `account_ref` and `end_user_ref`.
 
 
-        `?provider=` keeps one provider's accounts. `?domain=` keeps the ones
-        that may act for that domain for the caller, best first, by the saved
-        access resolver's rules (see `GET /connections/{id}/saved-access`),
-        for `?application_id=` or the API key's own application (`404` for an
-        application of another workspace), and adds them as `saved_access`.
+        The accounts that need the person come first (`needs_you`), then the
+        most recently used, the never used last, newest first.
+        `end_user_keys` counts the keys your customers' own sign-ins made,
+        and how many customers they belong to, so a console can show them as
+        one row; it counts them before `owner`, `q` and paging apply.
+
+
+        `?provider=` keeps one provider's accounts. `?owner=workspace` keeps
+        the keys the workspace holds (pasted, or made at a sign-in a member
+        started in the console); `?owner=end_user` the keys your customers'
+        own sign-ins made. `?q=` keeps the accounts whose label, scope
+        domain or linked domain holds the text, and, for a member, whose
+        `account_ref`, `agent_key.account` or `end_user_ref` does; a viewer
+        never matches those. `?limit=` (1 to 200) and `?cursor=` (the previous
+        answer's `next_cursor`) page the list; without `limit` the answer
+        holds every account. `?domain=` keeps the ones that may act for that
+        domain for the caller, best first, by the saved access resolver's
+        rules (see `GET /connections/{id}/saved-access`), for
+        `?application_id=` or the API key's own application (`404` for an
+        application of another workspace), adds them as `saved_access`, and
+        answers them in full: `limit` and `cursor` with it are `400`.
       security:
         - apiKey: []
       parameters:
         - { name: provider, in: query, required: false, schema: { type: string } }
         - { name: domain, in: query, required: false, schema: { type: string } }
         - { name: application_id, in: query, required: false, schema: { type: string } }
+        - name: owner
+          in: query
+          required: false
+          schema: { type: string, enum: [workspace, end_user] }
+          description: Whose keys to list. Without it, every account.
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+          description: Text to search for in the label, the domains and, for a member, the provider account and end user ids.
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+          description: The page size. Without it, every account.
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: The previous answer's `next_cursor`.
       responses:
         '200':
           description: The accounts
@@ -6554,10 +6592,21 @@ paths:
                           type: array
                           items: { type: string }
                   keeping_available: { type: boolean, description: Whether this deployment can keep keys (GRANT_ENCRYPTION_KEY is set). }
+                  end_user_keys:
+                    type: object
+                    description: The keys your customers' own sign-ins made (`owner_kind` `end_user`), counted before `owner`, `q` and paging apply, so a console can show them as one row.
+                    required: [keys, end_users]
+                    properties:
+                      keys: { type: integer, description: How many such keys the workspace holds. }
+                      end_users: { type: integer, description: How many customers they belong to (distinct `end_user_ref`; a key with no ref counts as a key only). }
+                  next_cursor:
+                    type: string
+                    description: With `?limit=` only, when more accounts remain. Send it as `?cursor=` for the next page.
                   saved_access:
                     type: array
                     description: With `?domain=` only. The keys that may act for the domain for the caller, best first, as `GET /connections/{id}/saved-access` lists them.
                     items: { $ref: '#/components/schemas/SavedAccess' }
+        '400': { description: "`owner` is not `workspace` or `end_user`, `limit` is not a whole number from 1 to 200, `cursor` is not one this endpoint returned, or `limit` or `cursor` with `?domain=`" }
         '401': { $ref: '#/components/responses/Error' }
         '404': { description: "`?domain=` with an `application_id` (or an API key's own application) of another workspace, or none" }
   /provider-accounts/{id}:
@@ -8622,8 +8671,59 @@ components:
         status: { type: string }
     ProviderAccount:
       type: object
-      required: [id, kind, provider, provider_name, label, access, scope, domains, credential_held, status, connections, uses, can_manage, created_at]
+      required: [id, kind, provider, provider_name, label, access, scope, domains, credential_held, status, connections, uses, can_manage, made_by, enforced_by, created_at]
       properties:
+        needs_you:
+          type: object
+          description: >-
+            Why the account needs the person; absent when nothing does. The
+            list puts these accounts first.
+          required: [reason]
+          properties:
+            reason:
+              type: string
+              enum: [refused, expired, expiring, one_time_window, no_domains]
+              description: >-
+                `refused`: the provider refused the key; reconnect it or
+                remove the account. `expired`: the key reached its end, or a
+                one time window passed with the key unused. `expiring`: a key
+                made at a sign-in ends within 30 days (`until`).
+                `one_time_window`: a one time key waits for its domains to be
+                connected, until `until`. `no_domains`: a continuous key the
+                workspace holds that no domain uses.
+            until:
+              type: string
+              format: date-time
+              description: When the key ends (`expiring`) or the one time window closes (`one_time_window`).
+        made_by:
+          type: object
+          description: How the key was made and by whom.
+          required: [how]
+          properties:
+            how:
+              type: string
+              enum: [pasted, console_sign_in, widget_sign_in]
+              description: >-
+                `pasted`: a person pasted the key. `console_sign_in`: made at
+                a secure sign-in a member started in the console.
+                `widget_sign_in`: made at your customer's own sign-in, in the
+                widget or one your backend started for them through the API.
+            by:
+              type: string
+              description: >-
+                A member's e-mail, `a customer` for a key your customer's
+                sign-in made (never their id), an API key's name, or absent
+                when it was not recorded.
+        enforced_by:
+          type: string
+          enum: [provider, customdomain]
+          description: >-
+            Who holds the key to the account's scope. `provider`: the key
+            itself reaches only the zones it was made for (a Cloudflare API
+            token's zone resources, Porkbun's per domain API access, an IAM
+            policy on Route 53). `customdomain`: the key reaches the whole
+            account at the provider, and CustomDomain™ uses it only for the
+            domains in the scope.
         id: { type: string }
         kind: { type: string, enum: [api_key] }
         provider: { type: string }
