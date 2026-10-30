@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 30, 2026: a setting for returning end users' saved access, and a read-out for the secure sign-in.**
+  `PATCH /v1/applications/{id}` takes a new `end_user_saved_access` (`true` or `false`, never `null`), alone or
+  with `name` and `nameserver_migration`. It decides whether an end user who signed in securely for one domain
+  may reuse the access their own sign-in kept for their next domain in the same application, after one tap of
+  consent. It is on by default for every application, and a test mode application always reads `false`. Every
+  application answer now carries it, and also `secure_sign_in` (`available`, and `reason` of `switched_off` or
+  `not_enabled_for_workspace`), a read-only line on whether the secure sign-in can run for your workspace at all.
+  Nothing in the connect flow reads the setting yet; the saved access itself follows.
 - **October 30, 2026: Try it live on a domain you own, as a test that is never a customer.** The console's
   **Widget → Try it live** has a **Domain to try** field. A domain typed there binds the token to it and opens
   the widget on it, so the secure sign-in is offered where the DNS host has one. Every token the console mints
