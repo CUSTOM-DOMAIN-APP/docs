@@ -1,0 +1,35 @@
+---
+title: "Brief: pricing and plans"
+description: "CustomDomain™ plans, prices and domain allowances as GET /v1/plans returns them, the first ten free domains and the 14 day free trial."
+---
+
+These figures were read from `GET https://api.customdomain.ai/v1/plans` on
+2026-10-31. If this page and that endpoint disagree, the endpoint is right.
+
+| Plan | Price | Domains a year | Domains a month | Includes |
+| --- | --- | --- | --- | --- |
+| Starter | $10 a month | 10 | 1 | Connect |
+| Startup | $149 a month | 600 | 50 | Connect |
+| Growth | $649 a month | 600 | 50 | Connect, serving through the edge (Power), certificates (Secure) |
+| Premium | No public price (sales) | 12,000 | 1,000 | Growth's, plus Monitor (listed, not enforced) |
+| Enterprise | Custom (sales) | 12,000 or more | 1,000 | Premium's, plus white-label |
+
+- **A new workspace's first ten domains are free**, with no card. A card is asked
+  for when you create an API key, create an application or connect an eleventh
+  domain, and that starts a **14 day free trial**. Canceling before it ends costs
+  nothing.
+- **Starter, Startup and Growth** are bought in the console through Stripe
+  Checkout. Premium and Enterprise start with a demo.
+- **The allowance is metered by month**: the yearly number divided by 12, rounded
+  up. No plan above Starter is ever refused a connection at its allowance; a
+  connection past it is recorded and shown, not blocked.
+- **Connected domains keep working** whatever the billing state: traffic,
+  certificate renewals and monitoring carry on.
+- **Not on any plan:** SSO, SCIM and uptime monitoring.
+
+## Read next
+
+- [Plans & quotas](/docs/billing/plans-and-quotas): trials, billing states, overage
+  and checkout in full.
+- [Evaluate CustomDomain™](/docs/for-ai-agents/evaluate): what each plan's features
+  do and do not cover.

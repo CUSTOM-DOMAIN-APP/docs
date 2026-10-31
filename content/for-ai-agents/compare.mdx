@@ -1,0 +1,57 @@
+---
+title: "Brief: compare with alternatives"
+description: "How to compare CustomDomain™ with another custom-domain vendor or a build of your own: the questions that separate them, and where CustomDomain™ fits and does not."
+---
+
+There are three choices: build it yourself, use CustomDomain™, or use another
+vendor. The full checklist is
+[Choosing a custom-domain solution](/docs/guides/choosing-a-custom-domain-solution);
+this is the short form.
+
+## Build it yourself when
+
+- your customers are technical and expect to edit DNS themselves,
+- you can require a subdomain, so the root domain problem never comes up, and
+- your volume stays low enough that certificate rate limits never bind.
+
+## Questions that separate vendors
+
+- **For what share of your customers does the user type nothing?** Every vendor
+  reaches every provider by showing the records to type. Ask how many providers have
+  a one-click rail (Domain Connect or a sign-in at the provider), and how good the
+  manual path is, since that is the common case for everyone. For calibration, the
+  Domain Connect project lists nine live DNS provider implementations on its own
+  site, and the CustomDomain™ census lists 217 providers (2026-10-31), 144 of them
+  connected by hand.
+- **Root domains, conflicts and CAA:** does it connect a root domain, warn about a
+  record it would replace, and catch a CAA record that would block the certificate,
+  before the user starts?
+- **Email:** does it merge SPF into the one existing record rather than add a
+  second?
+- **After go-live:** what notices that a customer's records changed, and how do you
+  hear about it?
+- **Integration:** an API you drive from your backend, a widget you can brand, an
+  OpenAPI document the running service serves, and agent access a person approves
+  and can revoke.
+- **Credentials:** does the vendor hold DNS credentials, and what happens to a
+  customer's grant when they leave you?
+- **Pricing:** model it at ten times today's number of domains.
+
+## Where CustomDomain™ fits
+
+- **A fit** when you want the connect flow as infrastructure you drive from an API,
+  embed as a widget or hand to an AI agent, and you care about what happens after
+  the domain is live.
+- **Not a fit** if you need one-click coverage at providers that have no automated
+  rail (nobody can offer that), or if your customers are all technical and you can
+  require a subdomain.
+- **What it has:** a REST API whose OpenAPI document the service serves
+  (`GET https://api.customdomain.ai/v1/openapi.json`), the `customdomain-js` widget,
+  a hosted MCP server with access a person approves, SPF merging, a pre-flight that
+  reports conflicting records, and DNS record drift monitoring. It has no uptime
+  monitoring, and drift alerts are not delivered on the hosted service yet.
+
+## Read next
+
+- [Evaluate CustomDomain™](/docs/for-ai-agents/evaluate): what it is and its limits.
+- [Connection paths by provider](/docs/dns/providers): how each provider connects.

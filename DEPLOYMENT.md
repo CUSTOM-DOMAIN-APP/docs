@@ -71,6 +71,32 @@ docker build -f site/Dockerfile -t docs-site .
 docker run -p 3000:3000 docs-site
 ```
 
+### The one setting: `DOCS_AGENT_SURFACE`
+
+The "For AI agents" page, its seven briefs (`/agents/brief/<name>.md`), the optional
+context link (`/agents/context/...`) and the matching section of both `llms.txt`
+files follow one setting, read in `site/src/lib/agent-surface.ts`:
+
+| Value | What is served |
+|---|---|
+| `on` (the default) | The page, the briefs, the context link and the `llms.txt` section |
+| `briefs` | The page, the briefs and the `llms.txt` section, without the context link or its paragraphs |
+| `off` | None of it: the `/agents/*` addresses answer `404`, and links to the page go to the AI agents use case page |
+
+The pages are built with the setting, so it is a **build** argument as well as a
+runtime variable: set `build.args.DOCS_AGENT_SURFACE` on the `docs` service in the
+product repo's compose file (the Dockerfile copies it into the runtime environment),
+then run a docs deploy. An environment variable alone, without a rebuild, changes the
+`/agents/*` answers but not the pages. The compose file sets nothing today, so the
+default applies; changing `AGENT_SURFACE_DEFAULT` in `agent-surface.ts` is the other
+way to flip it. Markdown by `Accept` and the `Link` header do not depend on it.
+
+Three pages mention the "For AI agents" page in their text: `content/index.mdx`,
+`content/use-cases/ai-agents.mdx` and the changelog. With `off`, their links land on
+the AI agents use case page, but the sentences still describe the briefs, so take
+those two sentences out of `index.mdx` and `use-cases/ai-agents.mdx` in the same
+change (the changelog entry stays as history).
+
 ## DNS and the old `/docs` route
 
 `docs.customdomain.ai` is a proxied `CNAME` to `app.customdomain.ai` in the
@@ -117,3 +143,15 @@ Each is a deliberate decision for a human, and none blocks a docs change.
    `git show <sha>:apps/app/openapi-v1.yaml | cmp - site/openapi-v1.yaml` before
    you commit the next vendored copy, and read `git diff` of the file for a docs
    correction the product spec lacks.
+4. **`Vary: Accept` on HTML pages.** A docs page answers with HTML or, to a request
+   whose `Accept` prefers `text/markdown`, with its Markdown. The Markdown answer says
+   `Vary: Accept` and `Cache-Control: private`, so no shared cache keeps it and a
+   browser is never served Markdown, even through a cache that ignores `Vary` (as
+   Cloudflare does unless the zone's Cache Rules Vary setting is on). The HTML answer
+   cannot say `Vary: Accept`, because Next.js replaces the `Vary` header on every page
+   with its own list, and it carries Next's `Cache-Control: s-maxage=31536000`.
+   Nothing caches docs HTML today (`cf-cache-status: DYNAMIC`). If docs HTML is ever
+   cached at the edge, an agent that asked for Markdown could get the cached HTML
+   instead (harmless, but it defeats the negotiation): add `Vary: Accept` in the
+   `docs.customdomain.ai` block of the product repo's `infra/Caddyfile`, or turn that
+   Cloudflare setting on for `accept`.

@@ -1,0 +1,51 @@
+---
+title: "Brief: troubleshoot a domain that is not live"
+description: "What each CustomDomain™ connection status means, the mistakes that keep a domain from going live, and the calls that diagnose and recheck it."
+---
+
+## Read the status first
+
+Every connection carries its own diagnosis: `error_code` and `error_message` on
+`GET /v1/connections/{id}`, on every list and on the webhook events. The status is
+one of four:
+
+| Status | Means | What happens next |
+| --- | --- | --- |
+| `pending` | The records are not in public DNS yet | Checked every five seconds at first, then every 15 minutes, then every six hours after three days (with `error_code` `setup_incomplete`), with no deadline. It goes live the moment the records appear |
+| `propagating` | A rail wrote the records and DNS is being watched | It fails after 24 hours (`propagation_timeout`) if they never resolve, usually a wrong value or a proxy in the way |
+| `live` | Every record resolves to its expected value | A domain served through the CustomDomain™ edge gets its certificate on the first request |
+| `failed` | Records a rail wrote never resolved within 24 hours (`propagation_timeout`) | Not final: a recheck, creating the same domain again, or real traffic at the edge revives it |
+
+A provider that refuses a write does not make a connection `failed`: it keeps its
+status, and `error_code` says `dns_write_failed` with the provider's reason.
+
+## The mistakes that block a connection
+
+- **The full hostname typed in the Name field.** Most panels append the domain, so
+  `www.acme.com` becomes `www.acme.com.acme.com`. Type `www`, or `@` for the root.
+- **Cloudflare's proxy is on** (orange cloud). Public DNS then shows Cloudflare's
+  addresses instead of the record. Switch the row to DNS only.
+- **An old record is still there.** A leftover `A` or `AAAA` record at the same name
+  keeps sending some visitors to the previous host.
+- **A conflicting record**: a `CNAME` cannot sit beside other records at a name, and
+  a `CAA` record can refuse Let's Encrypt.
+- **The records were added at the wrong place.** They belong at the provider that
+  serves the domain's nameservers (`dig NS your-domain.com`), which is not always the
+  registrar.
+- **A hosting platform's subdomain** (`something.vercel.app`, `*.netlify.app`,
+  `*.github.io`) cannot be connected: the platform owns its DNS.
+
+## The calls that help
+
+- `GET /v1/connections/{id}/diagnose` (MCP: `diagnose-connection`): each record,
+  whether public DNS has it, and what answers instead.
+- `POST /v1/connections/{id}:recheck` (MCP: `recheck-connection`): check now
+  instead of waiting.
+- MCP `check-certificate-status`: the HTTPS certificate's issuer, expiry and any
+  renewal error.
+
+## Read next
+
+- [Troubleshooting](/docs/troubleshooting): every code and symptom in full.
+- [Root domains](/docs/dns/root-domains): why the root needs a different record at
+  some providers.
