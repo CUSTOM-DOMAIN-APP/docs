@@ -6733,8 +6733,9 @@ paths:
         The workspace's provider accounts with their access mode, the domains
         they cover, when they were last used and when they expire, whether
         the caller may manage each one (`can_manage`), what needs the person
-        (`needs_you`), how each key was made and by whom (`made_by`) and who
-        enforces its limit (`enforced_by`); and, in `kept_access`, the
+        (`needs_you`), what the last check of its key found (`health`), how
+        each key was made and by whom (`made_by`) and who enforces its limit
+        (`enforced_by`); and, in `kept_access`, the
         sign-ins and Domain Connect authorizations kept per domain, grouped
         by provider. A kept sign-in is stopped per domain with `DELETE
         /connections/{id}/grant`. A viewer reads them without
@@ -7157,6 +7158,70 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '503': { $ref: '#/components/responses/Error' }
+  /provider-accounts/{id}:check:
+    post:
+      operationId: checkProviderAccount
+      summary: Check an account's key now
+      tags: [Provider accounts]
+      description: >-
+        Reads the account's key against its provider right now: the same one
+        cheap call as the daily check (the provider's domain list where it
+        gives one, else a read of one domain the account covers), and its
+        verdict is recorded the same way. Nothing is written at the provider.
+        The answer is the account, with its `health`, and `result`: `ok` (the
+        provider accepted the key), `refused` (the provider refused it: the
+        account is now `needs_reconnect`, with a timeline event for each domain
+        it covers and an inbox item, once), or `unreachable` (the provider
+        could not be asked or answered with an error that is not a refusal;
+        `message` says what, and the failure counts toward the backoff and
+        toward `needs_you` `check_failed`).
+
+
+        A pasted key the provider had refused that works again returns to
+        `active`, recorded in the audit log as `provider_account.updated`
+        (`status` before and after, `via` `check_now`). A key a secure
+        sign-in made keeps its status: it is renewed by signing in again.
+
+
+        Takes the workspace's API key and an admin, an owner or the member who
+        connected the account (`403` otherwise). A key an end user's own
+        sign-in made is never used for it (`403`), and a one time key is used
+        once and never checked (`409`). An account whose provider cannot list
+        its domains and which covers none answers `409` `nothing_to_check`.
+        One check a minute for an account: a second answers `429`
+        `rate_limited` with `Retry-After: 60`.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The account after the check, and what the check found.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account, result]
+                properties:
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+                  result:
+                    type: string
+                    enum: [ok, refused, unreachable]
+                    description: What the check found.
+                  message:
+                    type: string
+                    description: For `unreachable`, the provider's own words, on one line.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { description: "The account holds no key, it is a one time account, nothing could be read the key against (`nothing_to_check`), or it changed while it was checked" }
+        '429':
+          description: "`rate_limited`: this account's key was checked less than a minute ago."
+          headers:
+            Retry-After: { schema: { type: integer }, description: "Seconds until the key can be checked again." }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /providers/{provider}/zones:list:
     post:
@@ -9000,12 +9065,16 @@ components:
           properties:
             reason:
               type: string
-              enum: [refused, expired, expiring, one_time_window, no_domains]
+              enum: [refused, expired, check_failed, expiring, one_time_window, no_domains]
               description: >-
                 `refused`: the provider refused the key; reconnect it or
                 remove the account. `expired`: the key reached its end, or a
-                one time window passed with the key unused. `expiring`: a key
-                made at a sign-in ends within 30 days (`until`).
+                one time window passed with the key unused. `check_failed`:
+                the daily check of the key failed three times in a row
+                without the provider refusing it (a timeout, a server error,
+                a domain the key no longer reads); the key may still work, and
+                `POST /provider-accounts/{id}:check` tries it now. `expiring`:
+                a key made at a sign-in ends within 30 days (`until`).
                 `one_time_window`: a one time key waits for its domains to be
                 connected, until `until`. `no_domains`: a continuous key the
                 workspace holds that no domain uses.
@@ -9013,6 +9082,33 @@ components:
               type: string
               format: date-time
               description: When the key ends (`expiring`) or the one time window closes (`one_time_window`).
+        health:
+          type: object
+          description: >-
+            What the last check of the key found. The lifecycle sweep reads
+            each continuous account's key once a day, and
+            `POST /provider-accounts/{id}:check` does it on request. Absent for
+            a one time account and for one that holds no key. It names no one
+            and no domain, so a delegated agent token reads it as a member
+            does.
+          required: [state, failures]
+          properties:
+            state:
+              type: string
+              enum: [ok, failing, refused, unchecked]
+              description: >-
+                `ok`: the last check worked. `failing`: the last check or more
+                reached no verdict (the account joins `needs_you` as
+                `check_failed` from the third in a row). `refused`: the
+                provider refused the key. `unchecked`: no check has run yet.
+            checked_at:
+              type: string
+              format: date-time
+              description: When the key was last read against its provider; absent until then.
+            failures:
+              type: integer
+              minimum: 0
+              description: How many checks in a row reached no verdict. The daily check backs off after each (1, 4, 12, 24, then 48 hours).
         made_by:
           type: object
           description: How the key was made and by whom.

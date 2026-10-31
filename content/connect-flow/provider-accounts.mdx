@@ -182,6 +182,7 @@ owner may, not the member who connected the key. See
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
 | `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
 | `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
+| `POST /v1/provider-accounts/{id}:check` | [Check now](#health-checks): read the key against its provider and answer `{ account, result }`. Once a minute for an account. |
 | `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. |
 
 A key the provider refuses marks the account `needs_reconnect` and each of its
@@ -241,11 +242,84 @@ newest first:
 | --- | --- | --- |
 | `refused` | The provider refused the key. | Give the account a new key, or sign in again for a key made at a sign-in, or remove it. |
 | `expired` | The key reached its end, or a one time key's hour passed with the key unused. | Sign in again, give it a new key, or remove it. |
+| `check_failed` | The daily [health check](#health-checks) of the key failed three times in a row without the provider refusing it (a timeout, a server error, a domain the key no longer reads). The key may still work. | Press Check now (`POST /v1/provider-accounts/{id}:check`) to try it. If it keeps failing, check the provider's status and that the account still holds its domains. |
 | `expiring` | A key made at a sign-in ends within 30 days (`until` says when). | Sign in again before then. |
 | `one_time_window` | A one time key waits for its domains to be connected, until `until`. | Connect the domains now. |
 | `no_domains` | A continuous key the workspace holds that no domain uses. | Connect domains with it, or remove it. |
 
 An account that needs nothing has no `needs_you`.
+
+## Health checks
+
+A key that stops working should be found when it stops, not weeks later when
+something happens to use it. Once a day CustomDomain™ reads each continuous
+account's key with one cheap call: the provider's list of domains where it gives
+one, else a read of one domain the account covers. The check writes nothing at
+the provider, and it does not count as using the key, so **last used** does not
+move.
+
+Every account the check applies to answers `health`:
+
+| `health.state` | What it means |
+| --- | --- |
+| `ok` | The last check worked. `checked_at` says when. |
+| `failing` | The last check, or more, could not reach a verdict. `failures` counts them in a row. From the third the account is in [what needs you](#what-needs-you) as `check_failed`. |
+| `refused` | The provider refused the key. The account is `needs_reconnect`. |
+| `unchecked` | No check has run yet. A key connected before the checks began waits for its first one, within a day. |
+
+A one time account, and an account that holds no key, has no `health`. A
+viewer and a delegated agent token read it as a member does: it names no one and
+no domain.
+
+What a check finds:
+
+- **The provider accepts the key.** The failures are forgotten and the next
+  check is a day later, give or take two hours, so a thousand accounts do not
+  all fall due at once.
+- **The provider refuses the key.** The account becomes `needs_reconnect`, each
+  domain it covers records it on its timeline, and the workspace gets one inbox
+  item. A key made at a secure sign-in also asks your customer to sign in again.
+  A refused key is not checked again until you give the account a new key or
+  press Check now. When the provider refuses to list the domains, CustomDomain™
+  reads one domain before it calls the key refused, so a key made without the
+  right to list is not flagged.
+- **Anything else goes wrong** (a timeout, a server error, a rate limit, or a
+  domain the key cannot read, which can mean only that this domain is out of the
+  key's reach). The check tries again after 1 hour, then 4, 12 and 24 hours, then
+  every 48 hours, and from the third failure in a row the account is in [what
+  needs you](#what-needs-you) as `check_failed`. The key stays active: a failing
+  check does not stop repairs.
+
+A key your customer's own sign-in made is never listed, because its account
+holds domains you were never given: it is read through a domain it connected.
+Giving an account a new key, reconnecting it, or making a one time key continuous
+starts its checks over, a day from then.
+
+### Check now
+
+`POST /v1/provider-accounts/{id}:check` runs the same check on request and
+records what it finds the same way. It takes the workspace's API key and an
+admin, an owner or the member who connected the account; a widget token or an
+agent token is refused. It answers the account and a `result`:
+
+```json
+{ "account": { "id": "pacct_...", "status": "active", "health": { "state": "ok", "failures": 0 } }, "result": "ok" }
+```
+
+- `ok`: the provider accepted the key. A pasted key that the provider had
+  refused and that works again returns to `active`, and the change is in the
+  [audit log](#audit-log). A key made at a secure sign-in keeps its status,
+  because it is renewed by signing in again.
+- `refused`: the provider refused the key, and the account is now
+  `needs_reconnect`.
+- `unreachable`: the provider could not be asked, or answered with an error that
+  is not a refusal. `message` says what. The failure counts toward the backoff.
+
+An account's key can be checked once a minute: a second call answers `429`
+`rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
+`403`, a one time key `409`, and an account whose provider cannot list its
+domains and which covers none answers `409` `nothing_to_check` (connect a domain
+with it first).
 
 ## How a key was made and who added it
 
@@ -406,7 +480,7 @@ it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
 | Event | When |
 | --- | --- |
 | `provider_account.created` | A key is kept: pasted, or made at a secure sign-in. |
-| `provider_account.updated` | Its label, access, scope or domains change, with the values before and after. |
+| `provider_account.updated` | Its label, access, scope or domains change, with the values before and after. Also when Check now finds that a refused pasted key works again and returns it to `active` (`status` before and after, `via: check_now`). |
 | `provider_account.domain_added` | A key made at a sign-in in the console starts serving another domain's zone. |
 | `provider_account.relinked` | A domain the application already had now uses this account. |
 | `provider_account.key_replaced` | It gets a new key: pasted, or made when someone signed in again. |
