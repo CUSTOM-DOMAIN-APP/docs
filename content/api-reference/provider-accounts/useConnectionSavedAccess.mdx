@@ -45,7 +45,8 @@ _openapi:
           when the provider answered with an error); a use refused before
           anything was sent, such as one with no records to write, leaves no
           row. A token without `domains:connect` is `403`. An end user's widget
-          token reaches the route but is given no saved access yet: `409`
+          token reaches the route but may not use a key yet, though `GET
+          /connections/{id}/saved-access` offers it its own: `409`
           `saved_access_not_usable` for an account that exists.
 ---
 

@@ -26,7 +26,27 @@ _openapi:
           offered with `ready: false`, after one read with it showed it reaches
           the zone (at most 3 reads a call, each answer kept 10 minutes), and
           using it adds the zone to its scope. One entry per provider account.
-          An end user's widget token gets an empty list.
+
+          An end user's widget token (scope `connect`) gets that end user's own
+          keys, and only theirs, when all of these hold: the token is bound to
+          the connection's domain and was minted with the end user's
+          `end_user_ref` (not one of the install samples' `user_42` and
+          `customer_123`); the application allows it (`end_user_saved_access` on
+          the application, never in test mode); the e-mail that tells the end
+          user their key was reused can be sent (the `end_user_contact` flag is
+          on, an address was given for the token at mint or is held for the
+          domain's connection, and the application's end user mail has a live
+          sender); and the key is the end user's own, in this application, made
+          at a sign in that same token vouched for, and not held at GoDaddy for
+          now. Any other widget token gets an empty list, and a token bound to
+          no domain, or to another end user than the connection's, is refused
+          with `403` `token_not_bound` or `token_wrong_end_user`, as
+          `browser:start` refuses it. An end user's entry carries `from_domain`,
+          the newest domain of theirs the key already serves, the neutral label
+          `<Provider> key` and no `key_name` or `application_id`. It only offers
+          the key: `POST /connections/{id}:use-saved-access` and the `409`
+          `saved_access_available` of the sign in routes do not apply to an end
+          user's token yet.
 
           A delegated agent token reads it with `domains:read` (the MCP's
           `find-saved-access`), for a connection of the application its grant is

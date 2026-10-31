@@ -1131,6 +1131,18 @@ paths:
         checks for its own application; naming another application is a `403`.
 
 
+        `rails.saved_access` lists the kept keys that may act for the domain for
+        the caller, and `recommended_rail` is then `saved_access`. An API key
+        gets the workspace's keys. A widget token bound to the domain that
+        names the end user (`end_user_ref`) gets that end user's own keys, and
+        only when the application allows it (`end_user_saved_access`), the
+        e-mail that tells them of the reuse can be sent and the key was made
+        at a sign in their own token vouched for, never at GoDaddy for now (see
+        `GET /connections/{id}/saved-access`); a miss, for any reason, leaves
+        the other rails as they were, so the end user signs in. The offer is
+        read only: an end user's token cannot use the key yet.
+
+
         Where the secure sign-in also makes a lasting API key,
         `rails.cloud_browser.key` names it before the person signs in: `name` is
         the name a key made now would get (a sign-in makes or reuses a key, so
@@ -1898,7 +1910,29 @@ paths:
         console may be offered with `ready: false`, after one read with it
         showed it reaches the zone (at most 3 reads a call, each answer kept
         10 minutes), and using it adds the zone to its scope. One entry per
-        provider account. An end user's widget token gets an empty list.
+        provider account.
+
+
+        An end user's widget token (scope `connect`) gets that end user's own
+        keys, and only theirs, when all of these hold: the token is bound to
+        the connection's domain and was minted with the end user's
+        `end_user_ref` (not one of the install samples' `user_42` and
+        `customer_123`); the application allows it (`end_user_saved_access` on
+        the application, never in test mode); the e-mail that tells the end
+        user their key was reused can be sent (the `end_user_contact` flag is
+        on, an address was given for the token at mint or is held for the
+        domain's connection, and the application's end user mail has a live
+        sender); and the key is the end user's own, in this application, made
+        at a sign in that same token vouched for, and not held at GoDaddy for
+        now. Any other widget token gets an empty list, and a token bound to
+        no domain, or to another end user than the connection's, is refused
+        with `403` `token_not_bound` or `token_wrong_end_user`, as
+        `browser:start` refuses it. An end user's entry carries `from_domain`,
+        the newest domain of theirs the key already serves, the neutral label
+        `<Provider> key` and no `key_name` or `application_id`. It only
+        offers the key: `POST /connections/{id}:use-saved-access` and the
+        `409` `saved_access_available` of the sign in routes do not apply to an
+        end user's token yet.
 
 
         A delegated agent token reads it with `domains:read` (the MCP's
@@ -1935,7 +1969,15 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/SavedAccess' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            An agent token without `domains:read`, a widget token for another
+            domain (`forbidden`), or an end user's token that is bound to no
+            domain (`token_not_bound`) or to another end user than the
+            connection's (`token_wrong_end_user`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/monitor:
     get:
@@ -2947,7 +2989,8 @@ paths:
         answer (its detail says when the provider answered with an error); a
         use refused before anything was sent, such as one with no records to
         write, leaves no row. A token without `domains:connect` is `403`. An end user's
-        widget token reaches the route but is given no saved access yet: `409`
+        widget token reaches the route but may not use a key yet, though
+        `GET /connections/{id}/saved-access` offers it its own: `409`
         `saved_access_not_usable` for an account that exists.
       security:
         - apiKey: []
@@ -3158,7 +3201,9 @@ paths:
                     saved key may already act for (`GET /connections/{id}/saved-access`)
                     is refused with `409` `saved_access_available`, before anything
                     is started; `true` signs in anyway. Never needed by an end
-                    user's widget token, which is never refused.
+                    user's widget token, which is never refused (it may be
+                    offered its own key by the domain check, but that is not
+                    a refusal yet).
       responses:
         '200':
           description: The URL to open, and what it runs
@@ -10263,7 +10308,7 @@ components:
         account_id: { type: string }
         provider: { type: string }
         provider_name: { type: string }
-        label: { type: string, description: "The account's label. A delegated agent token reads `<Provider> key` for a key made for another application and shared with its own." }
+        label: { type: string, description: "The account's label. A delegated agent token reads `<Provider> key` for a key made for another application and shared with its own, and an end user's token always reads `<Provider> key`." }
         how:
           type: string
           enum: [api_key, secure_sign_in]
@@ -10280,10 +10325,18 @@ components:
           type: string
           enum: [active, needs_reconnect]
           description: "`needs_reconnect` for a key that still works until its end date."
-        application_id: { type: string, description: "The application the key is bound to. A delegated agent token's answer leaves it out for a key made for another application." }
-        key_name: { type: string, description: "The name an agent key was made with. A delegated agent token's answer leaves it out for every key." }
+        application_id: { type: string, description: "The application the key is bound to. A delegated agent token's answer leaves it out for a key made for another application, and an end user's token's answer for every key." }
+        key_name: { type: string, description: "The name an agent key was made with. A delegated agent token's and an end user's token's answers leave it out for every key." }
         key_expires_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
+        from_domain:
+          type: string
+          description: >-
+            Only on an end user's own key, in an end user's token's answer: the
+            newest domain of that end user the key already serves (a live or
+            propagating connection of theirs in this application, not the
+            domain asked about), as the widget words it in "Use your GoDaddy
+            access from shop.example.com". Left out when there is none.
     RailInfo:
       type: object
       required: [available]
@@ -10536,8 +10589,11 @@ components:
                 The kept keys that may act for this domain for the caller, best
                 first (see `GET /connections/{id}/saved-access`): no sign in
                 and no new key. Present only when there is one, and then
-                `recommended_rail` is `saved_access`. Only an API key caller
-                has any; an end user's widget token never gets it.
+                `recommended_rail` is `saved_access`. An API key caller has
+                the workspace's keys; an end user's widget token has that end
+                user's own, under the conditions of
+                `GET /connections/{id}/saved-access`; a delegated agent
+                token never gets the block.
               required: [available, accounts]
               properties:
                 available: { type: boolean }

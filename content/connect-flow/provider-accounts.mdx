@@ -359,7 +359,9 @@ place, so a second domain at the same provider does not start a second sign-in:
   cannot act for the domain is `409 saved_access_not_usable`.
 - `rails.saved_access` on `POST /v1/domains:check` is the same list for an API
   key caller, and `recommended_rail` is then `saved_access`. An end user's
-  widget token never gets it. An AI agent uses the same two routes through the
+  widget token gets it only for that customer's own keys, under the rules in
+  [A returning customer's own key](#a-returning-customers-own-key). An AI agent
+  uses the same two routes through the
   [MCP tools](/docs/mcp/overview) `find-saved-access` and `use-saved-access`
   (and `list-provider-accounts` for the accounts): `discover-provider` reports
   `rails.savedAccess` and says so.
@@ -369,8 +371,41 @@ place, so a second domain at the same provider does not start a second sign-in:
 A secure sign-in or a provider sign-in for a domain that a saved key can already
 act for answers `409 saved_access_available` before anything starts. Send
 `new_sign_in: true` to sign in with another account. Your customers' widget
-sessions are not affected: saved access for returning customers is not offered
-yet.
+sessions are not refused this way: a customer's own saved key is offered to them,
+but the offer is not a refusal.
+
+### A returning customer's own key
+
+A key your customer made at their own secure sign-in is reused only for that
+customer, in the application where they made it, and never for anyone else:
+not for another customer, not for you or a teammate, and not for an AI agent.
+When the customer comes back with another domain, `rails.saved_access` on the
+check and `GET /v1/connections/{id}/saved-access` can offer them their own key
+instead of a new sign-in, and only when all of this holds:
+
+- the widget token is bound to the domain and was minted with your id for the
+  customer (`end_user_ref`). A sample's `user_42` or `customer_123` does not
+  count: it is a placeholder, so one customer could otherwise be offered
+  another's key;
+- the application's **Use their saved access** setting is on
+  (`end_user_saved_access`, on by default; a test mode application never offers
+  a key). Turn it off with `PATCH /v1/applications/{id}`;
+- the customer can be told by email that their key was reused: the
+  [end user notices](/docs/connect-flow/end-user-notices) feature is on, you
+  gave their address when you minted the token (`end_user_email`) or the
+  connection holds one, and the application's mail can be sent. Without the
+  email, nothing is offered;
+- the key was made at a sign-in that same token started for that customer, and
+  one read with it shows it reaches the new domain;
+- the key is not at GoDaddy. Reuse there is held until GoDaddy gives written
+  permission ([why](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
+
+The entry names the provider and `from_domain`, a domain of theirs the key
+already serves, and nothing else about the key: no key name, no label, no
+application. Any miss leaves the customer on the usual sign-in. For now it is
+an offer only: a customer's token cannot yet write a domain's records with the
+key (`409 saved_access_not_usable`), and the sign-in is not refused. The tap of
+consent for each domain, and the email after each use, come with that step.
 
 A second secure sign-in for a provider account you already hold a key for, from
 the application the key belongs to or one it is shared with, does not add a

@@ -51,6 +51,18 @@ _openapi:
           checks for its own application; naming another application is a `403`.
 
 
+          `rails.saved_access` lists the kept keys that may act for the domain for
+          the caller, and `recommended_rail` is then `saved_access`. An API key
+          gets the workspace's keys. A widget token bound to the domain that names
+          the end user (`end_user_ref`) gets that end user's own keys, and only
+          when the application allows it (`end_user_saved_access`), the e-mail
+          that tells them of the reuse can be sent and the key was made at a sign
+          in their own token vouched for, never at GoDaddy for now (see `GET
+          /connections/{id}/saved-access`); a miss, for any reason, leaves the
+          other rails as they were, so the end user signs in. The offer is read
+          only: an end user's token cannot use the key yet.
+
+
           Where the secure sign-in also makes a lasting API key,
           `rails.cloud_browser.key` names it before the person signs in: `name`
           is the name a key made now would get (a sign-in makes or reuses a key,
