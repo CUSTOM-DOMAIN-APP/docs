@@ -242,7 +242,7 @@ newest first:
 | --- | --- | --- |
 | `refused` | The provider refused the key. | Give the account a new key, or sign in again for a key made at a sign-in, or remove it. |
 | `expired` | The key reached its end, or a one time key's hour passed with the key unused. | Sign in again, give it a new key, or remove it. |
-| `check_failed` | The daily [health check](#health-checks) of the key failed three times in a row without the provider refusing it (a timeout, a server error, a domain the key no longer reads). The key may still work. | Press Check now (`POST /v1/provider-accounts/{id}:check`) to try it. If it keeps failing, check the provider's status and that the account still holds its domains. |
+| `check_failed` | The daily [health check](#health-checks) of the key failed three times in a row without the provider refusing it (a timeout, a server error, a domain the key no longer reads). The key may still work. | Call Check now (`POST /v1/provider-accounts/{id}:check`) to try it. If it keeps failing, check the provider's status and that the account still holds its domains. |
 | `expiring` | A key made at a sign-in ends within 30 days (`until` says when). | Sign in again before then. |
 | `one_time_window` | A one time key waits for its domains to be connected, until `until`. | Connect the domains now. |
 | `no_domains` | A continuous key the workspace holds that no domain uses. | Connect domains with it, or remove it. |
@@ -280,7 +280,7 @@ What a check finds:
   domain it covers records it on its timeline, and the workspace gets one inbox
   item. A key made at a secure sign-in also asks your customer to sign in again.
   A refused key is not checked again until you give the account a new key or
-  press Check now. When the provider refuses to list the domains, CustomDomain™
+  call Check now. When the provider refuses to list the domains, CustomDomain™
   reads one domain before it calls the key refused, so a key made without the
   right to list is not flagged.
 - **Anything else goes wrong** (a timeout, a server error, a rate limit, or a
@@ -293,6 +293,7 @@ What a check finds:
 A key your customer's own sign-in made is never listed and is checked with one
 read of a zone it already serves, because its account holds domains you were
 never given.
+
 Giving an account a new key, reconnecting it, or making a one time key continuous
 starts its checks over, a day from then.
 
@@ -321,6 +322,10 @@ An account's key can be checked once a minute: a second call answers `429`
 `403` (the daily check reads it, as above), a one time key `409`, and an account whose provider cannot list its
 domains and which covers none answers `409` `nothing_to_check` (connect a domain
 with it first).
+
+An account that changed while its key was being checked (its key was replaced, or
+someone edited it in that moment) also answers `409`. Nothing is recorded for it
+and the minute is not used up, so call Check now again at once.
 
 ## How a key was made and who added it
 

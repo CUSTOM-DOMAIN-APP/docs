@@ -21,7 +21,7 @@ never change meaning or disappear without a new major version. See the
   day, not weeks later when something happens to use it. A key the provider refuses marks the account
   `needs_reconnect`, as before. Any other failure (a timeout, a server error, a rate limit) tries again after 1 hour,
   then 4, 12 and 24 hours, then every 48 hours, and from the third in a row the account answers `needs_you.reason`
-  `check_failed` (the key may still work). Every account that holds a key answers `health` (`state` `ok`, `failing`,
+  `check_failed` (the key may still work). Every continuous account that holds a key answers `health` (`state` `ok`, `failing`,
   `refused` or `unchecked`, with `checked_at` and `failures`). `POST /v1/provider-accounts/{id}:check` is Check now:
   it runs the same check on request, once a minute for an account, for the workspace's API key and an admin, an owner
   or the member who connected the account. It answers the account and a `result` of `ok`, `refused` or
