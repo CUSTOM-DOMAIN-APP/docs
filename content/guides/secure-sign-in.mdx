@@ -34,24 +34,35 @@ A person is always there. Only two callers may start a secure sign-in:
 
 1. **The widget**, in your customer's browser, with a
    [widget token](/docs/authentication/widget-tokens) minted for the domain and
-   the customer's `end_user_ref`. A token bound to no domain, or to another one,
-   cannot start it, so its domain check answers `available: false` with
-   `caller_cannot_start` and the widget shows the manual setup.
+   the customer's `end_user_ref`. A token bound to no domain, or only to other
+   domains, cannot start it: its domain check answers `available: false` with
+   `token_not_bound`, a start with it is refused with `403 token_not_bound`, and
+   the widget shows the manual setup. The fix is a token for this domain: mint
+   it with `domain` and `end_user_ref` (the widget's `getToken` is where your
+   page hands it one). A token for a domain another customer connected is
+   refused with `403 token_wrong_end_user`. Both answers carry a plain `title`
+   for the person and what to mint in `details`.
 2. **The console**, from a domain's Connect page. It is offered there as the
    widget offers it, only when neither a sign-in of the provider's own nor
    one-click setup runs. When the server recommends it, **Sign in to GoDaddy**
-   (with the provider's name) is the one open card, with **Open secure sign in**;
+   (with the provider's name) is the one open card, with **Open secure sign-in**;
    an API key and the records by hand are closed rows under **Other ways to
    connect**.
 
 An AI agent, the MCP server and a plain API call are refused with
-`403 browser_customer_present_only`, and their domain check never offers it.
+`403 browser_customer_present_only`, and their domain check never offers it
+(`caller_cannot_start`).
 
 ## What your customer sees
 
 The examples below use Namecheap as the provider and `acme.com` as the domain.
-In the widget the sign-in screen has **Open secure sign in** and **Set up
-manually instead**. On a computer the sign-in opens in a popup the size of every
+In the widget the sign-in screen is one card named **Secure sign-in**, with the
+button **Open secure sign-in**, and under **Other ways to connect** the row **Add
+the records**. If your customer closes the window or the sign-in does not work,
+the card stays, with one line ("You didn't finish signing in. You can try again."
+or "That sign-in didn't work. You can try again."), and the popup, which says why
+in its own window, is left open. **Add the records** opens the records screen,
+which has a **Back** to the card. On a computer the sign-in opens in a popup the size of every
 other provider sign-in (680 by 760, centered over the page). On a phone or a
 tablet it opens as a sheet over the page, and the sheet follows the visible part
 of the screen, so the keyboard never covers a field.
@@ -384,6 +395,21 @@ Your console's **Activity** page records it too, as "An API key we made is still
 in your GoDaddy account", with the same name and link. The key itself is never
 shown or kept.
 
+You can tell your customer which key it is, and where to delete it, both before
+the sign-in and after. Before it, the [domain check](/docs/api-reference/domains/checkDomain)
+answers `rails.cloud_browser.key` with `name` (the name a key made now would
+get, such as "CustomDomain Acme 2026-10-30 1204": your application's name, then
+the day and minute), `delete_url` (the provider's own page that lists and
+deletes API keys), `rights` and `ends_in_days`. A sign-in makes a key, or may
+reuse one of ours the account already has, and each session names its key from
+the minute it starts, so look for a key that begins with that name, not for that
+exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
+so its `key` has no `name`. After the sign-in, the session's view
+([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
+`kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
+its `rights` and `expires_at` (left out for a key with no end date). A key that
+was made and not kept is `left_key` instead, never both.
+
 IONOS's API is off for an account until the account signs up for it, a free
 product in IONOS's shop under IONOS's API terms. When IONOS's key page says it is
 off, our software opens that free order for your customer, so they never go into
@@ -454,8 +480,10 @@ not accept them, the session goes on to the DNS page.
   person pastes in the console, as a
   [provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in)
   that belongs to the application whose domain it was made for. No other
-  application can use it: connecting another application's domain with it is
-  refused with `403`. If writing the records then fails, our copy is deleted
+  application can use it until an admin
+  [shares it](/docs/connect-flow/provider-accounts#which-applications-may-use-it):
+  connecting another application's domain with it is refused with `403`. If
+  writing the records then fails, our copy is deleted
   again and the session goes on to the DNS page.
 - **Used again for your next domain.** When you connect another domain of the
   same application from the console, the connect page offers the saved key
@@ -464,6 +492,14 @@ not accept them, the session goes on to the DNS page.
   key's domains and writes the records: no sign-in and no new key. A domain in
   another account at the provider still needs its own sign-in. A key made when
   your customer signed in through the widget serves only their domain.
+- **One key per provider account.** A second sign-in for a provider account the
+  workspace already keeps a key for swaps its new key into that
+  [provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access)
+  instead of adding another. GoDaddy is the exception for now: each sign-in there
+  keeps its own key ([what that means](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
+- **It can also move a domain's nameservers.** A key kept this way counts as a
+  connected account for [DNS hosting](/docs/dns/managed-dns), for the application's
+  domains only ([provider accounts](/docs/connect-flow/provider-accounts#dns-hosting-uses-an-account-at-the-registrar)).
 
 ### What you see
 
@@ -509,7 +545,10 @@ it:
   customer's address on the connection, CustomDomain™ emails it on your behalf
   instead and answers `emailed: true`. The console's **Send reconnect link** and
   **Copy reconnect link** do the same. A connection with no such key answers
-  `409 not_reconnectable`.
+  `409 not_reconnectable`. Only your API key makes a link: it signs in as your
+  customer, so a widget token (whatever end user it is bound to) and an AI
+  agent's token are refused with `403`, whatever their scopes, and no link is
+  made.
 - **The widget**, in your own product: `open({ mode: "reconnect", connectionId })`
   with a [widget token](/docs/authentication/widget-tokens) minted for the domain
   and your customer's `end_user_ref`, as for any connect
@@ -657,7 +696,7 @@ so you can read what a session did. Every route is in the
 | Call | What it does |
 | --- | --- |
 | `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
-| `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). An API key, a widget token or an agent token with `domains:connect` may call it. |
+| `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). Only an API key may call it: a widget token and an agent token get `403`, because the link signs in as your customer. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
 | `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, `agreement` for a provider's API terms, or `order` for the free order that turns the provider's API on, whose terms and Buy now are your customer's), `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |

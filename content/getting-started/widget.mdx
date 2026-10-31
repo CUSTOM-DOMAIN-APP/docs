@@ -44,9 +44,10 @@ connect flow and nothing else.
 
 Mint it with the domain and your customer's `end_user_ref` too
 (`"end_user_ref":"user_42"` beside `domain`) where you can. Some providers can be
-signed in through a secure sign in, a temporary browser where your customer signs
-in to the provider (offered to selected workspaces for now), and it runs only
-for a token bound to the domain and the end user. If your platform asks the
+signed in through a [secure sign-in](/docs/guides/secure-sign-in), a temporary
+browser where your customer signs in to the provider (offered to selected
+workspaces for now), and it runs only for a token bound to the domain and the end
+user. If your platform asks the
 customer for the domain first, mint the token after that. A token minted before
 the domain is known still runs the whole flow; the widget then shows the manual
 setup for those providers instead.
@@ -98,11 +99,19 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 | Vercel | **Install CustomDomain™ on Vercel**, on the team that owns the domain | nothing |
 | Porkbun | **Approve access at Porkbun** (API access must be on for the domain) | nothing |
 | NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider, which sends them back when they approve | nothing |
-| GoDaddy, Namecheap, Name.com, IONOS, OVHcloud, Route 53, a site builder or shop that sold the domain (Shopify, Wix, Squarespace, Canva and more), everything else | **Add these records**, with *why* the automatic rails aren't available, the Name to type in their panel, step-by-step instructions for their provider (135 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where your application turns on [Domain maintenance](/docs/guides/nameserver-migration)) let you keep the domain working for them | the records (about two minutes), or nothing |
+| GoDaddy, Namecheap, Name.com, IONOS, Squarespace, Hover, Spaceship, Hostinger | **Secure sign-in** (offered to selected workspaces for now, and only where the token is bound to the domain and the end user): they sign in to the provider in a secure window and approve the exact changes. Where the provider allows it, a lasting API key is made and kept, so the domain stays connected through the provider's API. Where no key can be made, our software makes the changes on the provider's DNS page once they approve them. If the sign-in does not finish, or secure sign-in is not on for the workspace, the modal shows the records, as in the next row | their provider login, and a code if the provider asks for one (we never see the password) |
+| OVHcloud, Route 53, Network Solutions, Wix, a site builder or shop that sold the domain (Shopify, Canva and more), everything else | **Add the records**, with *why* the automatic ways aren't available, the Name to type in their panel, step-by-step instructions for their provider (135 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where your application turns on [DNS hosting](/docs/dns/managed-dns)) let you keep the domain working for them by moving its nameservers | the records (about two minutes), or nothing |
 | Unknown provider | a provider picker, then the records | the records |
 
 This table is what `POST /v1/domains:check` returns as `rails`; the widget
-reads it live, so you never have to maintain it.
+reads it live, so you never have to maintain it. Which of the OAuth sign-ins
+(DigitalOcean, Linode and Azure DNS among them) the hosted service has on is
+confirmed per provider; see
+[Managed connections](/docs/connect-flow/managed-connections). The widget shows
+five of the [six ways to connect](/docs/concepts/glossary#ways-to-connect): a
+sign-in with the provider, one-click setup, secure sign-in, the records to add,
+and DNS hosting where your application offers it. The other way, an API key, is
+for the console and the API.
 
 </Step>
 

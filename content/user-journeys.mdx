@@ -18,9 +18,9 @@ The completeness map: every user-facing flow and the surface that implements it.
 | # | As a customer, I want to… | Surface / path |
 | --- | --- | --- |
 | C1 | Enter my domain and have its DNS provider detected | Widget → Domain analysis (`POST /v1/domains:check`) |
-| C2 | Connect automatically when possible | Widget → OAuth (`oauth:start` → callback) or one-click setup (`domainconnect:start`) |
+| C2 | Connect automatically when possible | Widget → sign in with the provider (`oauth:start` → callback), one-click setup (`domainconnect:start`) or secure sign-in (`browser:start`) |
 | C3 | Get exact records to add when manual | Widget → Manual config from `GET /v1/connections/{id}/records` (copy buttons) |
-| C4 | Enter a scoped provider credential to auto-write | Widget → API-token apply (`POST /v1/connections/{id}/apply`) |
+| C4 | Enter a scoped provider credential to auto-write | Not in the widget, which asks for no key; the console and the API take an API key (`POST /v1/connections/{id}/apply`) |
 | C5 | See progress until my domain is live | Widget → In progress (polls status) → Success |
 | C6 | Recover from errors / switch to manual | Widget → Error screen (retry / switch) |
 | C7 | Not lose my place accidentally | Widget → exit-confirm + session-expired overlays |
@@ -49,7 +49,7 @@ The completeness map: every user-facing flow and the surface that implements it.
 ## AI-agent journeys (MCP)
 
 An agent drives domains through the [MCP server](/docs/mcp/overview), hosted at
-`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API with twenty tools.
+`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API with twenty-three tools.
 A person approves what the agent may do first: see
 [Agent access](/docs/agents/overview).
 
@@ -69,6 +69,7 @@ A person approves what the agent may do first: see
 | M12 | Find out whether the workspace may connect new domains | `check-billing-status` |
 | M13 | List the domain purchases | `list-domain-orders` |
 | M14 | Move a domain's nameservers to the application's DNS host, follow the move, and move them back (the person confirms first) | `migrate-nameservers` → `check-nameserver-status` / `rollback-nameservers` |
+| M15 | Use a key the workspace already keeps instead of starting a new sign-in (the person confirms first, and the grant needs `domains:connect`) | `list-provider-accounts` / `find-saved-access` → `use-saved-access` → `check-connection-status` |
 {/* NEW TOOLS GO HERE: add one row per new tool directly above this line. This marker stays; the docs sync test reads the one in mcp/overview.mdx. */}
 
 ## Platform-operator journeys
@@ -82,8 +83,10 @@ A person approves what the agent may do first: see
 
 ## Coverage note
 
-The `setup_type` values `automatic` and `manual` (plus the OAuth, one-click
-setup, and API-token rails) are the paths the **widget** drives today; `async` additionally
+The `setup_type` values `automatic` and `manual` (plus the sign-in, one-click
+setup and secure sign-in rails, and DNS hosting where the application offers it)
+are the paths the **widget** drives today, and the API key way belongs to the
+console and the API; `async` additionally
 powers [managed connections](/docs/connect-flow/managed-connections), and `mcp`
 covers agent-driven setup through the [MCP server](/docs/mcp/overview). A connection
 can be disconnected with `DELETE /v1/connections/{id}` (reverting a managed template

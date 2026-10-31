@@ -11,27 +11,34 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          Starts connecting `domain` under the calling application and
-          returns the connection plus its authoritative desired record
-          set. Idempotent: if the app already has a non-failed
-          connection for the domain, that existing connection is
-          replayed with `200`. A domain another application already
-          serves live is refused with `409 domain_already_connected`
-          before anything is written: move it by disconnecting it there
-          first. When the ownership TXT flow is on the claim is accepted
-          instead, and the ownership challenge decides it. Callable from
-          the widget (a widget JWT) or straight from your server with an
-          API key, in which case the connection is created on the key's
+          Starts connecting `domain` under the calling application and returns
+          the connection plus its authoritative desired record set. Idempotent:
+          if the app already has a non-failed connection for the domain, that
+          existing connection is replayed with `200`.
+
+          A domain another application already serves live is refused with `409
+          domain_already_connected` before anything is written: move it by
+          disconnecting it there first. When the ownership TXT flow is on the
+          claim is accepted instead, and the ownership challenge decides it.
+
+          Callable from the widget (a widget JWT) or straight from your server
+          with an API key, in which case the connection is created on the key's
           application, or on `application_id` when that names another
-          application of the same tenant. A delegated agent token needs
-          `domains:connect` and creates the connection on its own
-          application. A workspace with no subscription yet connects its
-          first ten domains, or the number an operator set, without one
-          (`first_domain_free` and `free_domains` on the billing reads):
-          a retry of the last of them is still replayed with `200`, and
-          the next domain is refused with `402 billing_required` until
-          the workspace starts its trial. A domain that is still waiting
-          for its records can be removed with `DELETE
+          application of the same tenant.
+
+          A delegated agent token needs `domains:connect` and creates the
+          connection on its own application. Its answer, a replayed connection
+          included, carries no `end_user_ref`, the platform's id for its end
+          user. It cannot set the end user's e-mail address: a body with a
+          non-empty `end_user_email` is refused with `403`, and the platform's
+          API key sets it.
+
+          A workspace with no subscription yet connects its first ten domains,
+          or the number an operator set, without one (`first_domain_free` and
+          `free_domains` on the billing reads): a retry of the last of them is
+          still replayed with `200`, and the next domain is refused with `402
+          billing_required` until the workspace starts its trial. A domain that
+          is still waiting for its records can be removed with `DELETE
           /connections/{id}`, which frees its place at once.
 ---
 

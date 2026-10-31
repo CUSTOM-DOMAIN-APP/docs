@@ -19,9 +19,10 @@ server, or connect a domain of your own in the console with no code.
 ### Detect the provider
 
 A domain is entered in the widget, the console, the API or an agent.
-`POST /v1/domains:check` finds where its DNS is hosted and which ways in can run
-there: a sign-in with the provider, the provider's one-click setup, a scoped API
-key, or records added by hand.
+`POST /v1/domains:check` finds where its DNS is hosted and which of the six
+[ways to connect](/docs/concepts/glossary#ways-to-connect) can run there: a
+sign-in with the provider, the provider's one-click setup, a secure sign-in, a
+scoped API key, the records added by hand, or DNS hosting.
 
 </Step>
 
@@ -76,7 +77,7 @@ TLS there ([Where domains point](/docs/connect-flow/routing)).
   <Card title="Widget" href="/docs/widget-sdk/overview" description="customdomain-js and @customdomain/react: the connect modal, in your branding." />
   <Card title="REST API" href="/docs/api-reference" description="Every /v1 endpoint, its parameters, responses and errors." />
   <Card title="Webhooks" href="/docs/webhooks/overview" description="Signed events when a domain goes live or fails, and when its certificate is issued or renewed." />
-  <Card title="MCP server" href="/docs/mcp/overview" description="Twenty tools at https://mcp.customdomain.ai/mcp, with scoped agent access." />
+  <Card title="MCP server" href="/docs/mcp/overview" description="Twenty-three tools at https://mcp.customdomain.ai/mcp, with scoped agent access." />
 </Cards>
 
 ## When something is stuck
@@ -97,7 +98,7 @@ served as Markdown at its own URL plus `.md` (this one is
 `<link rel="alternate" type="text/markdown">`.
 
 Agents can also drive the product directly through the hosted
-[MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`: twenty
+[MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`: twenty-three
 tools for searching, connecting and managing domains. A human owner can also
 delegate scoped, revocable access to an agent via OAuth; see
 [Agent access](/docs/agents/overview). An installable

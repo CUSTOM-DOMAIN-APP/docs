@@ -13,7 +13,7 @@ domain at the edge) and a **status**.
 The status machine is deliberately small:
 
 ```
-                 apply a rail (OAuth / one-click setup / API token)
+                 apply a way (sign in / one-click / secure sign-in / API key)
   pending ─────────────────────────────────────────────▶ propagating ──▶ live
      │                                                          │
      └──────────── manual: records seen in public DNS ─────────┘        │
@@ -30,9 +30,11 @@ The status machine is deliberately small:
 | `live` | Every desired record resolves to its intended value (see the note under Propagation to live on which types are value-checked). Re-applying records to a live connection moves it back to `propagating`. The edge serves TLS for the host (only when the record set includes an edge record; an email-only set is verified but never served). |
 | `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`). Only the poller sets it. **Not terminal.** See Retrying. |
 
-There is no separate ownership-challenge step. Control is proven **by the rail
-itself**: an OAuth authorization, a one-click setup apply, or a scoped API token
-each demonstrate the customer controls the zone. In the manual flow, the poller
+There is no separate ownership-challenge step. Control is proven **by the way
+itself**: a sign-in with the provider, a one-click setup apply, a secure sign-in
+to the account that holds the domain, or a scoped API key each demonstrate the
+customer controls the zone, and with DNS hosting the owner changes the domain's
+nameservers at its registrar. In the manual flow, the poller
 simply waits for the records to appear: a `pending` connection has no
 deadline (after 72 hours it is merely re-checked less often, with an honest
 `setup_incomplete` diagnosis).

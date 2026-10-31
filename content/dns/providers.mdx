@@ -1,11 +1,13 @@
 ---
 title: Connection paths by provider
 metaTitle: How CustomDomain chooses a connection path
-description: "How CustomDomain™ picks the way in for each domain: sign-in at the provider, one-click setup, an access role, an API key, or exact records added by hand."
+description: "How CustomDomain™ picks the way in for each domain: provider sign-in, one-click setup, secure sign-in, an API key, records added by hand or DNS hosting."
 ---
 
 When a customer enters a domain, we look up its nameservers to see who hosts its
-DNS, then offer the easiest way in that works at that provider, in this order:
+DNS, then offer the easiest way in that works at that provider. There are six
+[ways to connect](/docs/concepts/glossary#ways-to-connect), and the first five are
+offered in this order:
 
 1. **Sign in with the provider** (OAuth) or **approve access at the provider**:
    one click and nothing to paste. Whether the sign-in is kept afterwards
@@ -13,19 +15,31 @@ DNS, then offer the easiest way in that works at that provider, in this order:
 2. **One-click setup** (Domain Connect): the provider applies our signed
    template after the customer approves it on the provider's site, then sends
    the customer back.
-3. **An access role** (Amazon Route 53): the customer lets our AWS account
-   change the zone, with no secret to paste.
+3. **Secure sign-in**: for a provider that offers no sign-in a third party can
+   use. The customer signs in to the provider in a temporary browser, and where
+   the provider allows it our software makes a lasting API key there; otherwise
+   it edits the provider's DNS page for that one domain once the customer
+   approves the exact changes. Offered to selected workspaces for now (see
+   [With secure sign-in](#with-secure-sign-in)).
 4. **An API key**: the customer creates a scoped credential at the provider and
-   pastes it; we write the records for them.
-5. **Add the records by hand**: the exact rows to copy, with provider-specific
-   steps and a link to the provider's DNS page. This works at every provider.
+   pastes it; we write the records for them. At Amazon Route 53 an **access
+   role** comes first: the customer lets our AWS account change the zone, with no
+   secret to paste.
+5. **Add the records**: the exact rows to copy, with provider-specific steps and a
+   link to the provider's DNS page. This works at every provider.
+
+The sixth, **DNS hosting**, is offered beside these rather than after them: the
+domain's owner changes its nameservers once, where the domain was bought, and
+CustomDomain™ hosts the zone and writes every record. Your customers are offered it
+only when your application turns it on. See [Managed DNS](/docs/dns/managed-dns).
 
 CustomDomain™ knows more than 200 DNS hosts, registrars and domain platforms,
 among them every one of the 100 largest registrars (by domains under
 management in ICANN's registry reports for May 2026), and names most of them
 from the domain's nameservers. Knowing a provider is not the same as writing
 its records: most registrars give no third party a way to change DNS, so for
-them the fifth way, with that provider's own steps, is the way in. The tables
+them adding the records, with that provider's own steps (or a secure sign-in where
+one is offered), is the way in. The tables
 below are what the hosted service offers as of 2026-10-09. On 2026-10-31 the
 census lists 217: 73 have an automatic path (6 provider OAuth, 1 Domain
 Connect, 66 scoped API key) and the other 144 are connected by hand. The
@@ -93,8 +107,25 @@ not onboarded our templates, so the console does not offer a one-click button
 that would end on the provider's error page. Cloudflare and Vercel answer too
 and serve none of our templates, and WordPress.com has not onboarded them
 either; for those three, the sign-in is the one-click path. Until each provider
-onboards the templates, GoDaddy and IONOS connect with an API key, and Aruba
-and Squarespace take the records by hand.
+onboards the templates, GoDaddy and IONOS connect with secure sign-in, where it is
+offered, or an API key; Squarespace connects with secure sign-in, where it is
+offered, or by hand; and Aruba takes the records by hand.
+
+## With secure sign-in
+
+Secure sign-in is for providers that offer no sign-in a third party can use. The
+hosted service has it on at eight of them, for the workspaces it is switched on
+for: Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship and
+Hostinger. At six of them it also makes a lasting API key on the provider's own API
+page (Namecheap, GoDaddy, Name.com, Spaceship, Hostinger, and IONOS's US site), and
+the domain is then connected through the provider's API like any other key. At the
+others, and wherever no key can be made, our software edits the provider's DNS page
+for that one domain once the customer approves the changes. Network Solutions and
+Wix are not offered yet. `POST /v1/domains:check` says per domain whether it runs
+(`rails.cloud_browser`), and where it makes a key, `rails.cloud_browser.key` says
+what the key can do beyond DNS (`rights`) and when it ends. See [Secure sign-in](/docs/guides/secure-sign-in#which-providers), and
+[GoDaddy](/docs/dns/provider-setup#godaddy) and
+[Namecheap](/docs/dns/provider-setup#namecheap) for those two.
 
 ## With an API key
 
@@ -104,8 +135,8 @@ the credential is created, and lists the steps; see
 
 | Provider | What you create | Before you start |
 | --- | --- | --- |
-| GoDaddy | Personal Access Token with `domains.domain:read` and `domains.dns:update` | Any account that holds a domain can create one. One-click setup is waiting on GoDaddy's onboarding. |
-| Namecheap | API key (and your username) | Only accounts with 20 or more domains, a $50 balance, or $50 spent in the last 2 years; whitelist `34.192.32.132`. Not for domains on Namecheap hosting DNS. |
+| GoDaddy | Personal Access Token with `domains.domain:read` and `domains.dns:update` | Any account that holds a domain can create one. One-click setup is waiting on GoDaddy's onboarding. Secure sign-in makes the token for you, where it is offered. |
+| Namecheap | API key (and your username) | Only accounts with 20 or more domains, a $50 balance, or $50 spent in the last 2 years; whitelist `34.192.32.132`. Not for domains on Namecheap hosting DNS. Secure sign-in turns the API on for you, where it is offered. |
 | Amazon Route 53 | IAM access key (plus the session token for temporary `ASIA` keys) | The access role above is the recommended alternative. |
 | Alibaba Cloud DNS | RAM AccessKey ID and secret (plus an STS security token for temporary credentials) | The domain must already be a zone in Alibaba Cloud DNS. |
 | 101domain | API key with the DNS read and DNS write scopes | Only the account's primary user can make one. The domain must use 101domain's nameservers. |

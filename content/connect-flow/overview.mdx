@@ -1,6 +1,6 @@
 ---
 title: How the connect flow works
-description: "How a domain goes from create to apply to live, and the four rails that write its DNS: OAuth sign-in, one-click setup, an API token, or records added by hand."
+description: "How a domain goes from create to apply to live, and the six ways in: provider sign-in, one-click setup, secure sign-in, an API key, the records or DNS hosting."
 ---
 
 Connecting a domain is a short pipeline on top of the
@@ -16,29 +16,42 @@ Connecting a domain is a short pipeline on top of the
    and you receive a `connection.live` [webhook](/docs/webhooks/overview).
 4. [**Offboarding**](/docs/connect-flow/offboarding): how a domain is removed.
 
-## The four rails
+## The ways to connect [#the-four-rails]
 
-A connection reaches `live` through one of four rails. The best available one is
-chosen from `POST /v1/domains:check`; the widget drives them automatically.
+A domain reaches `live` through one of six ways, by the names the console, the
+widget and these docs share (see the [glossary](/docs/concepts/glossary#ways-to-connect)).
+Five of them are rails that write the domain's records. The sixth, DNS hosting,
+moves the domain's DNS to CustomDomain™, which then writes every record. The best
+way that can finish for the domain is chosen from `POST /v1/domains:check` (its
+`rails` and `recommended_rail`); the widget drives them automatically.
 
-| Rail | Endpoint | How it applies records |
-| --- | --- | --- |
-| **OAuth into provider** (flagship, "Mode C") | `POST /v1/connections/{id}/oauth:start` → `GET /v1/connect/oauth/callback` | Customer authorizes with their DNS provider in a popup; the callback writes records with the access token, used **once** unless the sign-in is kept as a [managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants). |
-| **One-click setup** (sync + async) | `POST /v1/connections/{id}/domainconnect:start` | Returns a provider-hosted apply URL; the provider applies a signed template. No server-to-server token. |
-| **API token** (BYO) | `POST /v1/connections/{id}/apply` | You pass a scoped provider token in the request; it writes the records **once** and is discarded afterwards. To keep a key, connect it as a [provider account](/docs/connect-flow/provider-accounts) (the console's [remember box](/docs/dns/provider-setup#remembering-a-key-optional) does this). |
-| **Manual** | (none, just the record set) | Customer copies the records from `GET /v1/connections/{id}/records`; the poller waits for them to appear. |
+| Way | Rail | Endpoint | How it applies records |
+| --- | --- | --- | --- |
+| **Sign in with** your provider (OAuth, flagship, "Mode C") | `oauth` | `POST /v1/connections/{id}/oauth:start` → `GET /v1/connect/oauth/callback` | Customer authorizes with their DNS provider in a popup; the callback writes records with the access token, used **once** unless the sign-in is kept as a [managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants). |
+| **One-click setup** (sync + async) | `domain_connect` | `POST /v1/connections/{id}/domainconnect:start` | Returns a provider-hosted apply URL; the provider applies a signed template. No server-to-server token. |
+| **Secure sign-in** | `cloud_browser` | `POST /v1/connections/{id}/browser:start` | For a provider with no sign-in a third party can use (GoDaddy, Namecheap, IONOS and more). The customer signs in to the provider in a temporary browser. Where the provider allows it, a lasting API key is made there and kept as a [provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in), and the records are written and kept correct through the provider's API; otherwise they are added on the provider's own DNS page once the customer approves them. A person is always there: the widget and the console start it, never an API key or an agent. Offered to selected workspaces for now. See [Secure sign-in](/docs/guides/secure-sign-in). |
+| **API key** (BYO) | `api_key` | `POST /v1/connections/{id}/apply` | You pass a scoped provider token in the request; it writes the records **once** and is discarded afterwards. To keep a key, connect it as a [provider account](/docs/connect-flow/provider-accounts) (the console's [remember box](/docs/dns/provider-setup#remembering-a-key-optional) does this). |
+| **Add the records** (manual) | `manual` | (none, just the record set) | Customer copies the records from `GET /v1/connections/{id}/records`; the poller waits for them to appear. |
+| **DNS hosting** | `rails.nameservers` | `POST /v1/connections/{id}/managed-dns`, `POST /v1/connections/{id}/nameservers:migrate` | The domain's owner changes its nameservers once, where it was bought, to CustomDomain™'s. CustomDomain™ hosts the zone and writes every record, now and later. Offered only where your application turns DNS hosting on; the domain check says `offered`, `offered_first`, `recommended` or `unavailable`. See [Managed DNS](/docs/dns/managed-dns). |
 
-All four converge on the same outcome: the desired records land in DNS, the
-connection moves `pending → propagating → live`, and the edge serves the domain.
+The server's pick runs in this order: sign in, one-click setup, secure sign-in,
+API key, then the records by hand. DNS hosting is offered beside them by the
+application's setting, and the console and the widget follow what the check says
+within the ways each can show (see
+[Rail truth](/docs/concepts/ownership-and-setup-types#rail-truth-what-to-actually-tell-the-user)).
 
-For a provider with no sign-in a third party can use,
-[secure sign-in](/docs/guides/secure-sign-in) (offered to selected workspaces for
-now) lets the customer sign in to the provider in a temporary browser. Where the
-provider allows it, a lasting API key is then made there and kept as a
-[provider account](/docs/connect-flow/provider-accounts#keys-made-at-a-secure-sign-in),
-and the records are written and kept correct through the provider's API;
-otherwise they are added on the provider's own DNS page once the customer
-approves them.
+All six end the same way: the desired records land in DNS (for DNS hosting, in the
+zone CustomDomain™ hosts once its nameservers answer), the connection moves
+`pending → propagating → live`, and the edge serves the domain.
+
+The check names its pick as `recommended_rail`, and the widget opens that way as
+its one card, with the others as rows under **Other ways to connect** (**Add the
+records**, and **DNS hosting** when `rails.nameservers` says the application
+offers it). It follows the pick within what it can show: it has no API token way,
+so a pick of `api_key` opens the secure sign-in where the check offers it and the
+records otherwise, and a pick it cannot show gives way to the next one in the
+check's own order. A sign-in the customer cancels, or that fails, keeps the card;
+the records screen has a **Back** to it.
 
 ## Resuming an abandoned setup
 

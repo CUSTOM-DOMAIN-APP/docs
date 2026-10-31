@@ -38,7 +38,7 @@ Optional body fields:
 | `monitor` | Drift [monitoring](/docs/connect-flow/monitoring). On unless you send `false`. |
 | `batch_id` | Groups the domains connected in one multi-domain session. |
 | `end_user_ref` | Your own id for the end user, shown as "Connected by" in the console. A widget token's end user must match. |
-| `end_user_email` | The end user's email address, so a [Move](/docs/connect-flow/end-user-notices) emails them the new records. Wins over one given when the token was minted. |
+| `end_user_email` | The end user's email address, so a [Move](/docs/connect-flow/end-user-notices) emails them the new records. Wins over one given when the token was minted. Only an API key replaces an address the connection already has: a widget token's create keeps the stored one, a widget token bound to another end user stores none, and a delegated agent token that sends one is refused with `403`. |
 | `application_id` | API key callers only: create on another application of the same workspace. A widget or agent token can only name its own. |
 
 Unknown fields are rejected with `400`. A workspace without an active or
@@ -72,6 +72,9 @@ The response is the connection plus its authoritative desired record set:
 - `records` is the same set you can re-fetch any time from
   `GET /v1/connections/{id}/records`. Before a rail writes records, the default
   edge `CNAME` is synthesized server-side.
+- An API key reads `end_user_ref` and `end_user_email` back. A delegated agent
+  token's answer carries no `end_user_ref`, a replayed connection included, and it
+  reads none on the connection list and the connection read either.
 
 ## Supplying your own records
 

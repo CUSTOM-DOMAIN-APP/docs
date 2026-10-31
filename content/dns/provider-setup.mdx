@@ -14,7 +14,15 @@ directly, you send the parts joined into one `credential.token` with the matchin
 
 Where a provider offers it, signing in with the provider, approving access at the
 provider, one-click setup or a Route 53 access role needs no key at all; see
-[DNS providers](/docs/dns/providers).
+[DNS providers](/docs/dns/providers). Two more ways need no key pasted either.
+[Secure sign-in](/docs/guides/secure-sign-in) (offered to selected workspaces for
+now) has your customer sign in to the provider in a secure window, and where the
+provider allows it our software makes the key itself, as it does at
+[GoDaddy](#godaddy) and [Namecheap](#namecheap). [DNS hosting](/docs/dns/managed-dns)
+asks the domain's owner to change one setting where the domain was bought, its
+nameservers, and writes every record after that with no key. An API key is the
+fourth of the [six ways](/docs/concepts/glossary#ways-to-connect) to connect, and
+this page is about it.
 
 > Give every credential the least it needs: permission to read and edit DNS
 > records on the zone. Never reuse an account-wide admin key.
@@ -35,8 +43,8 @@ list.
 
 | Provider | `provider` | How to create the credential | Before you start |
 | --- | --- | --- | --- |
-| **GoDaddy** | `godaddy` | [Personal Access Token page](https://developer.godaddy.com/en/personal-access-token): **+ Generate Token**, tick only `domains.domain:read` and `domains.dns:update`, set a short expiration, **Generate Token**, copy it (shown once). | Any GoDaddy account that holds a domain can create one. See [GoDaddy](#godaddy). |
-| **Namecheap** | `namecheap` | [API Access](https://ap.www.namecheap.com/settings/tools/apiaccess/): switch API Access on, copy the API key, add `34.192.32.132` under Whitelisted IPs. Your API username is your Namecheap username. | See [Namecheap](#namecheap). |
+| **GoDaddy** | `godaddy` | [Personal Access Token page](https://developer.godaddy.com/en/personal-access-token): **+ Generate Token**, tick only `domains.domain:read` and `domains.dns:update`, set a short expiration, **Generate Token**, copy it (shown once). | Any GoDaddy account that holds a domain can create one. Or use secure sign-in, which makes the token for you. See [GoDaddy](#godaddy). |
+| **Namecheap** | `namecheap` | [API Access](https://ap.www.namecheap.com/settings/tools/apiaccess/): switch API Access on, copy the API key, add `34.192.32.132` under Whitelisted IPs. Your API username is your Namecheap username. | Only accounts that qualify. Or use secure sign-in, which turns the API on for you. See [Namecheap](#namecheap). |
 | Alibaba Cloud DNS | `alidns` | [RAM console](https://ram.console.alibabacloud.com/users) (China site: ram.console.aliyun.com): a RAM user with `AliyunDNSFullAccess`, then create an AccessKey and copy the ID and secret. | The domain must be a zone in Alibaba Cloud DNS; on the International site a domain registered elsewhere needs a paid Public Zone instance. |
 | 101domain | `domain101` | [My Account](https://my.101domain.com/): **Developer Tools**, **API and MCP**; make a key with the DNS read and DNS write scopes (lasts a year at most) and copy it. | Only the account's primary user, with two-factor authentication on, can make a key. The domain must use 101domain's nameservers (ns1, ns2 and ns5.101domain.com). |
 | ALL-INKL.COM | `allinkl` | Your KAS login and password (the login looks like `w0123456`), plus the current one-time code if the KAS login uses two-factor authentication. | Used once and never stored. |
@@ -152,27 +160,112 @@ check fails, the sign-in says which account you used and what to change.
 
 ## GoDaddy
 
-GoDaddy's API documentation grants domain management access to any account that
-holds at least one domain (or is on a plan with management access) and
-recommends Personal Access Tokens; the older key and secret pairs (`sso-key`) are
-deprecated for the Domains API. Create a token with only
-`domains.domain:read` and `domains.dns:update` and a short expiration. GoDaddy's
-one-click setup (Domain Connect) is waiting on GoDaddy to onboard our templates,
-and GoDaddy has no sign-in for third parties, so a token or adding the records by
-hand are the ways in today. Root domains need A records: GoDaddy has no ALIAS.
+GoDaddy offers no OAuth sign-in to third parties and has not onboarded our
+one-click templates (Domain Connect), so there is no "Sign in with GoDaddy" of the
+usual kind. Four ways in run today, and the console and the widget show the ones
+that fit the domain, the recommended one first:
+
+- **Secure sign-in.** Your customer signs in to GoDaddy in a temporary browser and
+  enters the code GoDaddy texts when the token is made. Our software makes a
+  Personal Access Token on GoDaddy's developer page, CustomDomain™ checks it and
+  keeps it, and the domain is connected through GoDaddy's API. If no token can be
+  made, the same session edits the domain's DNS page once your customer approves
+  the exact changes. It is offered to selected workspaces, and the domain check
+  says whether it runs for a domain (`rails.cloud_browser`). See
+  [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
+- **A token you make yourself.** GoDaddy's API documentation grants domain
+  management access to any account that holds at least one domain (or is on a plan
+  with management access) and recommends Personal Access Tokens; the older key and
+  secret pairs (`sso-key`) are deprecated for the Domains API. Create a token with
+  only `domains.domain:read` and `domains.dns:update` and a short expiration.
+- **The records by hand.** It works on every GoDaddy account.
+- **DNS hosting.** The owner changes the domain's nameservers at GoDaddy to
+  CustomDomain™'s once, and every record is written after that (see
+  [Managed DNS](/docs/dns/managed-dns)). GoDaddy's API reads and changes
+  nameservers, so a connected GoDaddy key or a secure sign-in can make that change
+  for the owner; going back to GoDaddy's own DNS is done by secure sign-in or by
+  hand. Your customers are offered it only where your application turns DNS
+  hosting on (the [nameserver migration guide](/docs/guides/nameserver-migration)
+  calls that setting Domain maintenance).
+
+Root domains need A records: GoDaddy has no ALIAS.
+
+### The key a secure sign-in makes at GoDaddy
+
+The token carries GoDaddy's whole Domains and DNS group, which is more than the two
+scopes you tick when you make one yourself: DNS, nameservers and transfers. Its
+`rights` say what it reaches beyond the domain's DNS records, `transfer` here: it
+can also transfer the domain away from GoDaddy. The groups for GoDaddy's other
+products (Commerce, Email and Hosting) are never ticked. The console says it in a
+sentence on the domain's key card.
+
+The token lasts one year, the longest GoDaddy offers, so it is watched. Thirty and
+seven days before its end your application gets `credential.expiring`, and your
+customer is sent a reconnect link when you gave us their address; see
+[When the key ends, and reconnecting](/docs/guides/secure-sign-in#reconnect).
+
+### Reuse of GoDaddy keys is held for now
+
+At other providers, a second secure sign-in for an account the workspace already
+keeps a key for swaps its new key into that
+[provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access)
+instead of adding another. At GoDaddy that is held for now: each sign-in keeps its
+own key. A second sign-in for the same GoDaddy account therefore leaves two
+tokens at GoDaddy, each named with the day and minute it was made so you can tell
+them apart on GoDaddy's token page, and the one you stop using is deleted there by
+hand, since no provider has an API that revokes a key.
+
+The hold also keeps GoDaddy keys out of any reuse beyond your own team. Saved
+access for returning customers is not offered at any provider yet, and when it is,
+GoDaddy is left out of it. A GoDaddy key a teammate made at a sign-in started in the
+console still connects your next domain of the same application, as at any other
+provider.
 
 ## Namecheap
 
-- Namecheap only turns the API on for accounts with **20 or more domains**, a
-  **balance of $50** or more, or **$50 spent in the last 2 years**.
-- Switch API access on under **Profile**, **Tools**, **Namecheap API Access**
-  and copy the API key. Your API username is your Namecheap username.
-- **Whitelist `34.192.32.132`**: Namecheap rejects every request from an
-  address that is not on the list.
-- Domains on Namecheap **hosting** nameservers are edited in cPanel's Zone
-  Editor, not through this API; add those records by hand.
-- Namecheap's API replaces the whole zone on each write. The adapter reads the
-  zone and writes it back with only our records changed.
+Namecheap has no sign-in switched on for third parties (sign-in through its MCP
+server is built but not switched on yet, see [below](#signing-in-with-the-provider)),
+and its API opens only to some accounts, so which way in runs depends on the
+account. The console and the widget show the ones that fit the domain, the
+recommended one first:
+
+- **Secure sign-in.** Your customer signs in to Namecheap in a temporary browser.
+  Where the account qualifies for the API, our software turns Namecheap's API
+  access on if it is off, adds `34.192.32.132` to the allowed list, and
+  CustomDomain™ keeps the account's own key; Namecheap shows its API terms and asks
+  for the account password, and both are your customer's to answer in the window.
+  For an account that does not qualify, the same session edits the domain's DNS
+  page once your customer approves the exact changes, and a domain whose DNS is
+  somewhere else ends the session with a message saying so. It is offered to
+  selected workspaces, and the domain check says whether it runs for a domain
+  (`rails.cloud_browser`). See [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
+- **An API key you make yourself.** Namecheap only turns the API on for accounts
+  with **20 or more domains**, a **balance of $50** or more, or **$50 spent in the
+  last 2 years**. Switch API access on under **Profile**, **Tools**, **Namecheap
+  API Access** and copy the API key; your API username is your Namecheap username.
+  **Whitelist `34.192.32.132`**: Namecheap rejects every request from an address
+  that is not on the list.
+- **The records by hand.** Domains on Namecheap **hosting** nameservers are edited
+  in cPanel's Zone Editor, not through this API; add those records by hand.
+- **DNS hosting.** The owner changes the domain's nameservers at Namecheap to
+  CustomDomain™'s once, and every record is written after that (see
+  [Managed DNS](/docs/dns/managed-dns)). Namecheap's API reads and changes
+  nameservers and can put a domain back on Namecheap's own DNS (BasicDNS), so a
+  connected Namecheap key or a secure sign-in can do the registrar side. Your
+  customers are offered it only where your application turns DNS hosting on.
+
+Namecheap's API replaces the whole zone on each write. The adapter reads the zone
+and writes it back with only our records changed.
+
+### The key a secure sign-in keeps at Namecheap
+
+The key is the account's own, not one made for us. Namecheap's keys have no scopes,
+so it holds every right Namecheap's API gives the account, transfers and renewals
+included where the API offers them: its `rights` say `account`. It has no end date,
+so it is never renewed. Because it is the account's own key, a second secure sign-in
+for the same account never leaves an older key behind at Namecheap. To end the
+access, remove the account in **Connected accounts** (that deletes our copy) and
+switch API access off where it was switched on.
 
 ## Remembering a key (optional)
 
@@ -233,6 +326,15 @@ Vercel (the CustomDomain™ integration) and WordPress.com. It offers Porkbun's 
 registration, and the sign-in through Dynadot's and Unstoppable Domains' own
 MCP servers.
 
+That list says which sign-ins the product has and the hosted service is set up
+for. Whether the hosted service has each provider's OAuth app registered is
+confirmed one provider at a time, so do not promise a sign-in for DigitalOcean,
+Linode (Akamai Cloud) or Azure DNS from this page alone: `POST /v1/domains:check`
+says whether a sign-in runs for a domain (`rails.oauth.available`, with `reason`
+`oauth_client_not_registered` when the app is not registered), and the console and
+the widget follow it. Where a sign-in is not on, the provider's other ways in
+apply.
+
 Built, but not yet switched on for the hosted service:
 
 - **Sign in with Google Cloud**, held until Google verifies the app. Connect
@@ -245,8 +347,13 @@ Built, but not yet switched on for the hosted service:
   Dynadot and Unstoppable Domains, and adds the others once the provider
   approves CustomDomain™ and a live test passes.
 
-Until a sign-in is on, API keys, one-click setup and adding records by hand
-cover the same providers.
+Until a sign-in is on, an API key, one-click setup, secure sign-in where it is
+offered and adding the records by hand cover the same providers.
+
+[Secure sign-in](/docs/guides/secure-sign-in) is not one of these sign-ins. It
+needs no app registered with the provider, because your customer signs in on the
+provider's own pages in a temporary browser, and it exists for providers that offer
+no sign-in a third party can use, GoDaddy and Namecheap among them.
 
 A sign-in is used once and dropped unless it is kept. CustomDomain™
 keeps sign-ins at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,

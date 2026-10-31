@@ -117,9 +117,17 @@ the customer controls the zone:
   async ([managed](/docs/connect-flow/managed-connections)) variant additionally
   leaves a durable, encrypted grant, used only to re-apply or revert that same
   template;
-- an **API token** is a scoped credential only the zone owner can mint;
+- a **secure sign-in** happens in the customer's own session at the provider, and
+  the changes can be made only in the account that holds the domain: a sign-in to
+  an account that does not hold it changes nothing and the customer is asked to
+  use another ([signed in to the wrong
+  account](/docs/guides/secure-sign-in#signed-in-to-the-wrong-account));
+- an **API key** is a scoped credential only the zone owner can mint;
 - the **manual** flow requires the records to actually appear in the domain's
-  authoritative DNS, value-checked.
+  authoritative DNS, value-checked;
+- **DNS hosting** is the owner's own change of the domain's nameservers at its
+  registrar, and the zone turns active only when the registry lists every one of
+  them as ours ([Managed DNS](/docs/dns/managed-dns#how-it-works)).
 
 For one-click setup specifically, the catalog ships a `connect-verified` template
 that points the apex `A` at the CustomDomain™ edge and publishes the ownership TXT

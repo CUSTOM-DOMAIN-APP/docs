@@ -19,9 +19,12 @@ is `window.customdomain`.
    hosted script) and calls `window.customdomain.open({ applicationId, token })`.
 3. The widget drives the [connect flow](/docs/connect-flow/overview): it detects
    the customer's DNS provider and applies records through whichever
-   [rail](/docs/connect-flow/overview#the-four-rails) fits (OAuth into the
-   provider, provider-hosted one-click setup, an API token, or guided-manual),
-   then watches propagation to `live`.
+   [way to connect](/docs/connect-flow/overview#the-four-rails) fits (signing in
+   with the provider, provider-hosted one-click setup, a
+   [secure sign-in](/docs/guides/secure-sign-in), adding the records by hand, or,
+   where your application offers it, DNS hosting; the other way, an API key, is
+   for the console and the API, since your customer is never asked to paste one in
+   the widget), then watches propagation to `live`.
 
 The SDK bridges the widget's `postMessage` protocol onto **both** callback props
 (`onSuccess`, `onClose`, `onStepChange`, `onError`, `onFallback`) and native `customdomain:*`
@@ -31,15 +34,24 @@ window `CustomEvent`s, so you can integrate imperatively or declaratively.
 
 - **Enter domain** → validates the domain.
 - **Domain analysis** → detects the DNS provider and setup type (`domains:check`).
-- **Setup** → the best available rail: authorize with the provider, a Domain
-  Connect redirect, a [secure sign-in](/docs/guides/secure-sign-in) where it is
-  offered, or copy the exact records to add, with a live check of each record.
+- **Connect** → one open card for the way CustomDomain™ recommends for this
+  domain's DNS host, the same way the console leads with: **Sign in with** the
+  provider's name (authorize at the provider), **One-click setup** (a Domain
+  Connect redirect) or [**Secure sign-in**](/docs/guides/secure-sign-in) where it
+  is offered. The card is marked **Recommended** when there is another way, and the
+  other ways are rows under **Other ways to connect**: **Add the records**, and
+  **DNS hosting** where your application turns it on. A sign-in the customer
+  cancels, or that fails, keeps the card with one line saying so, so they can
+  try again or pick another way. **Add the records** opens the records screen:
+  the exact records to add, with a live check of each record, and a **Back** to
+  the card. When no way connects automatically for the host, the records screen
+  is the first screen.
 - **Other ways to finish** (on the records screen) → hand a ready prompt to an
   AI assistant, or email the instructions to whoever manages DNS. Where your
   application turns it on, the end user can instead let your platform keep the
-  domain working, with one change of its nameservers
-  ([Domain maintenance](/docs/guides/nameserver-migration)). That setting is the
-  only way the widget offers DNS hosting.
+  domain working, with one change of its nameservers (DNS hosting, which the
+  [nameserver migration guide](/docs/guides/nameserver-migration) calls Domain
+  maintenance). That setting is the only way the widget offers DNS hosting.
 - **In progress** → polls propagation; shows a stall hint after a while.
 - **Success** → the domain is `live`; the certificate is issued on the next
   TLS handshake.

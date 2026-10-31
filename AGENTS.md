@@ -6,7 +6,7 @@ Instructions for AI coding agents working with this repository or implementing c
 
 CustomDomain™ (customdomain.ai) is managed infrastructure that lets a platform's users connect their own domain in one click: automatic DNS configuration and automatic SSL/TLS issuance and renewal. 217 DNS hosts, registrars and domain platforms are catalogued in the census (2026-10-31): 73 have an automatic path (6 provider OAuth, 1 Domain Connect, 66 scoped API key) and the remaining 144 use a guided flow with automatic verification. The live split is served at `https://api.customdomain.ai/v1/providers/census`; read it rather than repeating a number from here.
 
-There is **no separate ownership-challenge step and no verification TXT record to add** on the guided path. Control is proven by the rail itself: an OAuth authorization, a one-click provider apply, a scoped API token, or the records appearing in the domain's own authoritative DNS. See https://docs.customdomain.ai/docs/concepts/ownership-and-setup-types.
+There is **no separate ownership-challenge step and no verification TXT record to add** on the guided path. Control is proven by the rail itself: an OAuth authorization, a one-click provider apply, a secure sign-in to the account that holds the domain, a scoped API key, the domain's nameservers answering as ours (DNS hosting), or the records appearing in the domain's own authoritative DNS. See https://docs.customdomain.ai/docs/concepts/ownership-and-setup-types.
 
 ## Connect a domain in 3 steps (REST)
 
@@ -33,7 +33,7 @@ Endpoint shapes are illustrative; always follow https://docs.customdomain.ai/doc
 
 ## MCP server (for agents)
 
-Hosted MCP endpoint: `https://mcp.customdomain.ai/mcp` (streamable HTTP; an API key, an OAuth client credentials token via `https://mcp.customdomain.ai/token`, or a delegated agent token). Twenty tools: discover a domain's provider, connect, diagnose, recheck, re-apply and disconnect a domain, check a domain's certificate and the workspace's billing standing, list connections, forward a domain, add email records, search for and suggest domains, read domain orders, and check, start and roll back a move of a domain's nameservers. `create-domain-order` is fail closed and off on the hosted service. **No tool accepts DNS records as input.** Record values are computed server-side from vetted templates, which closes off prompt-injection paths that end in arbitrary DNS writes.
+Hosted MCP endpoint: `https://mcp.customdomain.ai/mcp` (streamable HTTP; an API key, an OAuth client credentials token via `https://mcp.customdomain.ai/token`, or a delegated agent token). Twenty-three tools: discover a domain's provider, connect, diagnose, recheck, re-apply and disconnect a domain, check a domain's certificate and the workspace's billing standing, list connections, forward a domain, add email records, search for and suggest domains, read domain orders, check, start and roll back a move of a domain's nameservers, and list the workspace's connected provider accounts, find the saved keys that may act for a domain and write the domain's records with one. `create-domain-order` is fail closed and off on the hosted service. **No tool accepts DNS records as input.** Record values are computed server-side from vetted templates, which closes off prompt-injection paths that end in arbitrary DNS writes.
 
 ```bash
 claude mcp add --transport http customdomain https://mcp.customdomain.ai/mcp

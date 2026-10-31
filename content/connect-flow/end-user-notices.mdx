@@ -20,6 +20,12 @@ can email them the new records on your behalf, once it knows their address.
 - **Later:** `PUT /v1/connections/{id}/end-user-email` with an API key replaces
   any earlier address.
 
+Only an API key replaces an address the connection already has. A widget token's
+create keeps the stored one (as the `PUT` answers it, `409`), and a delegated
+agent token that sends a non-empty `end_user_email` is refused with `403`: the
+reconnect email below goes to this address and carries a link that signs in as the
+end user, so an agent never sets it.
+
 ### From the widget
 
 When your server gives no address, the widget can ask for one. The create
@@ -32,6 +38,9 @@ The end user can skip it.
 - A widget token can set an address only while the connection has none:
   otherwise the answer is `409`, so a browser never overwrites what your server
   gave.
+- A widget token bound to another end user than the connection's (`end_user_ref`)
+  sets none: the `PUT` answers `403`, the create stores neither this address nor
+  one given when the token was minted, and the create does not ask for one.
 - Turn the field off with the widget option `askEndUserEmail: false`.
 
 ## What the end user gets
@@ -60,7 +69,8 @@ which opens a [reconnect link](/docs/guides/secure-sign-in#reconnect): one
 sign-in, nothing about the domain's DNS changes. The link works once.
 
 The same email goes out when you press **Send reconnect link** in the console, or
-call `POST /v1/connections/{id}:reconnect-link` with `{"send": true}`. Reconnect
+call `POST /v1/connections/{id}:reconnect-link` with `{"send": true}` and your API
+key (a widget token or an agent token is refused with `403`). Reconnect
 emails count toward the same 3 per connection in 30 days, and go through the
 sender below; with no address, or the sender set to `none`, nothing is sent and
 the `credential.*` webhooks are yours to act on.

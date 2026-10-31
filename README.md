@@ -29,8 +29,8 @@ runnable API examples that GitHub's MDX preview does not.
 
 Connecting a customer's domain means provider detection across more than 200 DNS hosts,
 registrars and domain platforms (all of the 100 largest registrars among them), one-click
-provider authorization (or a scoped API token, or a guided manual flow with automatic
-verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy
+provider authorization (or a secure sign-in where the provider offers none, a scoped API key,
+DNS hosting, or a guided manual flow with automatic verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy
 edge that terminates TLS with strict multi-tenant isolation. Records written through provider
 authorization are usually verified within seconds of the approval.
 

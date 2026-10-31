@@ -25,9 +25,11 @@ way.
 
 Namecheap is one of the 144. Its API opens only to accounts that qualify and
 replaces the whole zone on each write, so its records are added by hand by
-default. An account that qualifies can paste an API key instead, and sign-in
-through Namecheap's MCP server is built but not switched on yet. See
-[Namecheap](/docs/providers/namecheap).
+default. An account that qualifies can paste an API key instead, or use
+[secure sign-in](/docs/guides/secure-sign-in) where it is offered, which turns the
+API on for the account. Sign-in through Namecheap's MCP server is built but not
+switched on yet. See [Namecheap](/docs/providers/namecheap) and
+[Namecheap setup](/docs/dns/provider-setup#namecheap).
 
 See [Connection paths by provider](/docs/dns/providers) for which way each one
 connects and [Provider setup](/docs/dns/provider-setup) for per-provider
@@ -47,11 +49,14 @@ purchased domain shows up in Domains already connected. See
 
 <Accordion title="How does a domain actually get configured?" id="how-does-a-domain-actually-get-configured">
 
-Through one of four [rails](/docs/connect-flow/overview#the-four-rails): the
-customer authorizes their DNS provider via OAuth (records written with the
-sign-in's token, which the hosted service keeps, encrypted, at some providers),
-a one-click setup redirect, a scoped API token you pass once, or the
-guided-manual copy-paste flow. `POST /v1/domains:check` tells you which are
+Through one of six [ways to connect](/docs/connect-flow/overview#the-four-rails):
+the customer signs in with their DNS provider via OAuth (records written with the
+sign-in's token, which the hosted service keeps, encrypted, at some providers), a
+one-click setup redirect, a [secure sign-in](/docs/guides/secure-sign-in) at a
+provider that offers no sign-in a third party can use, a scoped API key you pass
+once, the records added by hand (copy and paste, with automatic checking), or
+[DNS hosting](/docs/dns/managed-dns), where the owner points the domain's
+nameservers at CustomDomain™ once. `POST /v1/domains:check` tells you which are
 available for a given domain.
 
 </Accordion>

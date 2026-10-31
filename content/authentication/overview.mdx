@@ -135,9 +135,11 @@ carries:
   from a person and revocable by them.
 
 An agent token works at the [MCP server](/docs/mcp/overview), which verifies it
-locally against the JWKS, and on the connection and order routes the MCP tools
-call. It cannot manage keys, members, billing or webhooks; the one billing route
-it reaches is the read only standing. Revoke the grant and its tokens stop
+locally against the JWKS, and on the connection, order and provider account
+routes the MCP tools call (a read of the workspace's kept keys for its own
+application, and the use of one with `domains:connect`). It cannot manage API
+keys, members, billing or webhooks; the one billing route it reaches is the read
+only standing. Revoke the grant and its tokens stop
 working at once: the control plane checks the grant on every call, and the MCP
 answers a refused call with HTTP `401`. See
 [Agent access](/docs/agents/overview) and [The OAuth flow](/docs/agents/oauth-flow).

@@ -27,6 +27,145 @@ never change meaning or disappear without a new major version. See the
   one of them, or at Hetzner, Domeneshop, 101domain, easyDNS, World4You, Combell, Webnames.ca, WEDOS, Freename or
   Hostpoint, now goes to that registrar (OnlineNIC, COREhub and RegistryGate sell through resellers, so they are
   named, not chosen). The census lists 217 providers.
+- **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
+  bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
+  (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`
+  through a key made for another application reads `<Provider> key`; no connection answer to an agent token
+  carries `end_user_ref`, your id for your customer, neither the list, the read, a create that replays a
+  connection nor a recheck; and the provider accounts and saved access answers leave out the key's name
+  (`agent_key.name`, `key_name`), the provider's words about a failed key (`last_error`) and the applications a key is
+  shared with (`application_ids` is always empty). A key made for another application and shared with the agent's
+  own reads as `<Provider> key`, with no `application_id`, and `?domain=` answers nothing for a zone another
+  application holds. An agent token also can no longer set a customer's email address (`end_user_email` on
+  `POST /v1/connections` is refused with `403`; only an API key replaces an address, and a widget token's create keeps
+  the stored one), make a reconnect link (`POST /v1/connections/{id}:reconnect-link` is for your API key alone, and a
+  widget token is refused too), or resume a nameserver move that another application of your workspace has open.
+  A widget token bound to another end user than the connection's sets no address either (`403`). What an agent
+  changes in a domain's DNS is in the audit log as `agent.acted` under its grant: each re-apply that reached a write,
+  each nameserver move it starts, resumes or reverses, and a saved key's use even when the provider failed halfway.
+  See [Agent access](/docs/agents/overview#what-makes-it-safe) and
+  [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
+- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server (now 23 tools) has three more:
+  `list-provider-accounts` lists the provider accounts your workspace has connected, never a key, with `provider`,
+  `domain` and `applicationId` to narrow it; `find-saved-access` lists the saved keys that may write one connected
+  domain's records (`GET /v1/connections/{id}/saved-access`); and `use-saved-access` writes them with one
+  (`POST /v1/connections/{id}:use-saved-access`) after the person said yes (`confirm: true`), answering
+  `saved_access_not_usable` for a key that cannot act for the domain and `saved_access_write_failed` when the provider
+  refused the write. A delegated agent token now reaches the three routes: `domains:read` for the two reads and
+  `domains:connect` for the use, only for the keys that serve the application its grant is bound to, never a key a
+  customer made at their own sign-in, and read as a viewer reads them (no account number, customer id or sign-in
+  session id, and none of the domains another application of your workspace has connected), and without which member
+  of your workspace made a key (`made_by.by` and `created_by` are left out, `made_by.how` stays). What it does is in
+  the audit log under the agent's grant. The saved access read now needs
+  `domains:read` for an agent token, where it needed `domains:connect` and always answered an empty list. See
+  [the MCP tools](/docs/mcp/overview) and [Provider accounts](/docs/connect-flow/provider-accounts).
+- **October 30, 2026: connections say who runs their DNS.** Every connection on `GET /v1/connections` and
+  `GET /v1/connections/{id}` now carries `dns_hosting`: `state` (`none`, `moving`, `hosted` or `failed`) and, once
+  there is hosting, `by` (`customdomain`, `dns_host` or `custom`), `provider`, `zone` and `since`. Ask the list for
+  the domains CustomDomain™ runs with `?dns_hosting=hosted` (also `moving` and `any`): a domain whose zone you
+  started with [managed DNS](/docs/dns/managed-dns) and never moved is found too, and a subdomain counts when its
+  parent domain is hosted. The detail read adds `reach` for your own servers: how CustomDomain™ writes the domain's
+  DNS (`account`, `sign_in`, `domain_connect`, `dns_hosting`, `route53_role` or `none`), whether `:reapply` can
+  write now, and whether one-click setup can be offered for the domain's provider. The MCP's `list-connections`
+  takes `dnsHosting` and every row carries it. Additive: nothing that was there changed.
+- **October 30, 2026: DNSimple, OVHcloud, Vercel, Spaceship and Hostinger list their domains.** A key at one of
+  these is now checked by listing the account's domains, and **Connect more domains**
+  (`POST /v1/provider-accounts/{id}/zones`) shows them, so you no longer type each one. DNSimple lists the
+  account the key writes to, Vercel the team a key was installed on, Spaceship its registered domains and
+  Hostinger its active ones. A key a provider refuses still asks you to reconnect, and a key that may not list
+  (an OVHcloud key without the right on `/domain/zone`, for one) falls back to checking one domain you name. See
+  [which providers list their domains](/docs/connect-flow/provider-accounts#which-providers-list-their-domains).
+- **October 30, 2026: a key serves another application only when an admin shares it.** A key made at a secure
+  sign-in belongs to one application. `PATCH /v1/provider-accounts/{id}` now takes `application_ids`, the other
+  applications of your workspace that may use it, and the account answers with the same list. Only an admin or an
+  owner can share a key (not the member who connected it), a key your customer's own sign-in made is never shared,
+  and an application that is not yours is refused. Each change is in the audit log as `provider_account.shared` or
+  `provider_account.unshared`. The saved-access list offers a shared key for the second application's domains and
+  never for another, a second sign-in from the shared application reuses the shared key's account instead of adding
+  one, and taking an application out of the list detaches its domains from the key (they stay connected, without
+  continuous access). See [Provider accounts](/docs/connect-flow/provider-accounts#which-applications-may-use-it).
+- **October 30, 2026: a setting for returning end users' saved access, and a read-out for the secure sign-in.**
+  `PATCH /v1/applications/{id}` takes a new `end_user_saved_access` (`true` or `false`, never `null`), alone or
+  with `name` and `nameserver_migration`. It decides whether an end user who signed in securely for one domain
+  may reuse the access their own sign-in kept for their next domain in the same application, after one tap of
+  consent. It is on by default for every application, and a test mode application always reads `false`. Every
+  application answer now carries it, and also `secure_sign_in` (`available`, and `reason` of `switched_off` or
+  `not_enabled_for_workspace`), a read-only line on whether the secure sign-in can run for your workspace at all.
+  Nothing in the connect flow reads the setting yet; the saved access itself follows.
+- **October 30, 2026: Try it live on a domain you own, as a test that is never a customer.** The console's
+  **Widget → Try it live** has a **Domain to try** field. A domain typed there binds the token to it and opens
+  the widget on it, so the secure sign-in is offered where the DNS host has one. Every token the console mints
+  for its own tests now carries `end_user_ref: console:<member id>`, a reserved prefix: the go-live list never
+  counts such a domain as a first customer, **Domains**, the Overview, search and the domain's own page label it **Try it live (member)**, a key the sign-in
+  makes belongs to that end user and not to the workspace, and webhooks carry it as `user_id`. See
+  [Try it live](/docs/getting-started/console#try-it-live) and
+  [Widget tokens](/docs/authentication/widget-tokens#with-the-client-secret-v1tokens).
+- **October 30, 2026: the accounts list says what needs you, how each key was made and who holds its limit.**
+  `GET /v1/provider-accounts` now lists the accounts that need you first (`needs_you.reason`: `refused`,
+  `expired`, `expiring`, `one_time_window` or `no_domains`), then the most recently used. Every account says how
+  its key was made and by whom (`made_by`: `pasted`, `console_sign_in` or `widget_sign_in`, with the member's
+  e-mail or `a customer`, never a customer's id) and who holds its limit (`enforced_by`: `provider` for
+  Cloudflare, Porkbun and Route 53, `customdomain` for every other provider). The list takes `owner`, `q`,
+  `limit` and `cursor`, and `end_user_keys` counts the keys your customers' own sign-ins made. See
+  [Provider accounts](/docs/connect-flow/provider-accounts#what-needs-you).
+- **October 30, 2026: five more providers list their domains.** A key at Porkbun, Hetzner, DigitalOcean,
+  Name.com or Gandi is now checked by listing the account's domains, and **Connect more domains**
+  (`POST /v1/provider-accounts/{id}/zones`) shows them, so you no longer type each one. Porkbun lists its active
+  domains with API Access on, Hetzner its primary zones, and Gandi the domains of the token's personal
+  organization. A key a provider refuses still asks you to reconnect, and a key that may not list falls back to
+  checking one domain you name. See [which providers list their domains](/docs/connect-flow/provider-accounts#which-providers-list-their-domains).
+- **October 30, 2026: the widget's connect screen is one card, with the other ways under it.** The widget now opens
+  the way the domain check recommends (`recommended_rail`) as one card named as the console names it, **Sign in with** the
+  provider's name, **One-click setup** or **Secure sign-in**, marked **Recommended** when there is another way, and lists
+  the rest under **Other ways to connect**: **Add the records**, and **DNS hosting** where your application turns it
+  on. A sign-in the customer cancels, or that fails, keeps the card with one line instead of dropping to the records,
+  and the records screen has a **Back** to the card. The copy is in all 13 languages. **`onFallback` timing changes:**
+  `customdomain:fallback` now fires when the customer goes to the records, once per domain: where no way connects
+  automatically (the same four reasons as before), and when they choose **Add the records** over an open card, with
+  the new reason `chose_records`. A cancelled or failed sign-in no longer drops to the records, so it fires nothing.
+  If your code treats a `MANUAL_CONFIGURATION` step as the signal that someone left the automatic path, read this
+  event instead.
+- **October 30, 2026: the key a secure sign-in makes is named before and after.** The domain check's
+  `rails.cloud_browser.key` now carries `name` (the name a key made now would get, such as "CustomDomain Acme
+  2026-10-30 1204") and `delete_url` (the provider's own page that deletes API keys), beside `rights` and
+  `ends_in_days`. A sign-in makes a key or may reuse one of ours, so look for a key that begins with that name. Once
+  a session keeps its key, the session view carries `kept_key` (`name`, `page`, `rights`, `expires_at`), so the last
+  screen can say which key was kept and where to remove it. Both fields are new and optional. One check is tighter: a
+  secure sign-in start whose `consent_version` is not an id that was issued (`cb-1` to `cb-4`) now answers
+  `422` with `consent_unknown`, before anything starts; the ids the widget and the popup send are unchanged. See
+  [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
+- **October 30, 2026: the widget designer shows every way to connect.** Under **Ways to connect**, the Design
+  tab's preview now opens the screen of the secure sign-in, one-click setup, DNS hosting (offered first, its consent
+  and its move) and reconnect, each on example data, so you can see what your customers meet for each way without a
+  domain that needs it. Their buttons say that this is a preview and open nothing. A link to the Design tab can name
+  a screen with `stage=` to open the preview on it. See
+  [Design the widget](/docs/getting-started/console#design-the-widget).
+- **October 30, 2026: the domain check and the secure sign-in say one thing about a widget token.**
+  A widget token bound to no domain, or only to other domains, now reads `rails.cloud_browser.reason:
+  token_not_bound` on `POST /v1/domains:check` (it was `caller_cannot_start`, which stays for an agent, a
+  plain API call and a role that cannot write), and `POST /v1/connections/{id}/browser:start` and `:resume`
+  refuse the same token with `403 token_not_bound` instead of `403 forbidden`, so you can mint a token for
+  the domain and try again. A token for a domain another customer connected is refused with
+  `403 token_wrong_end_user`. Both answers carry a plain `title` for the person and what to mint in
+  `details`. Removing a domain and reading its monitoring, services or timeline keep answering
+  `403 forbidden`. See [Secure sign-in](/docs/guides/secure-sign-in#who-can-start-it) and
+  [Widget tokens](/docs/authentication/widget-tokens).
+- **October 30, 2026: pick the console's menu per workspace.** **Settings → General → Navigation** lets an owner
+  or admin keep the **Classic** menu or try the **New (preview)** one for the whole workspace: search first,
+  fewer menu items, and a bar along the bottom on phones. Every page stays one tap away either way. See
+  [Navigation](/docs/getting-started/console#navigation).
+- **October 30, 2026: the docs name the six ways to connect, and GoDaddy and Namecheap say what runs.** Pages that
+  listed four ways now use the glossary's six names: **Sign in with** your provider, **One-click setup**, **Secure
+  sign-in**, **API key**, **Add the records** and **DNS hosting**. [Provider setup](/docs/dns/provider-setup#godaddy)
+  no longer says GoDaddy has no sign-in for third parties. Its GoDaddy and Namecheap sections say how a secure sign-in
+  connects the domain, what the key it makes can do beyond DNS (`rights`: `transfer` at GoDaddy, `account` at
+  Namecheap) and when it ends (a year at GoDaddy, never at Namecheap), that DNS hosting is a way in at both, and that
+  each secure sign-in at GoDaddy keeps its own key for now. The widget page shows secure sign-in at eight providers,
+  and [Provider accounts](/docs/connect-flow/provider-accounts#where-an-accounts-key-comes-from) says where a key
+  comes from and how DNS hosting uses an account at the registrar. Which of the DigitalOcean, Linode and Azure DNS
+  sign-ins the hosted service has on is confirmed provider by provider: read `rails.oauth` on the domain check, as the
+  note in [Managed connections](/docs/connect-flow/managed-connections) says. See also the
+  [glossary](/docs/concepts/glossary#ways-to-connect).
 - **October 30, 2026: cookies are off until you accept them.** Optional analytics and marketing cookies, and the
   session recording that is part of analytics, no longer run for a visitor who has not chosen. One line at the
   bottom of customdomain.ai and the console asks first ("With your OK, we use analytics and marketing cookies and

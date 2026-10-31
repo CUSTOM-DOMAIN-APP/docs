@@ -16,6 +16,16 @@ description: "Opt a connection into managed mode so the control plane can re-app
 > grant, so `disconnect-domain` works on any connection (see
 > [Removing a domain](/docs/connect-flow/offboarding)).
 
+> **Which sign-ins the hosted service has on is confirmed per provider.** The
+> providers named on this page are the ones the product supports and the hosted
+> service is set up for. Whether each provider's OAuth app is registered there is
+> confirmed one provider at a time, so before you tell a customer that DigitalOcean,
+> Linode (Akamai Cloud) or Azure DNS connects with a sign-in, read `rails.oauth` on
+> `POST /v1/domains:check`: `available` says whether a sign-in runs for that domain,
+> and `reason` is `oauth_client_not_registered` when the app is not registered.
+> Where a sign-in is not on, the provider's other
+> [ways to connect](/docs/concepts/glossary#ways-to-connect) apply.
+
 Most connections are **use-once**: a [rail](/docs/connect-flow/overview#the-four-rails)
 writes the desired records a single time and the platform keeps no credential.
 **Managed mode** is the exception. When a connection is managed, the
@@ -100,7 +110,8 @@ On the hosted service, the Azure DNS, Dynadot and Unstoppable Domains
 sign-ins are on but are not in `OAUTH_MANAGED_PROVIDERS`, so they are used
 once; the Google Cloud DNS sign-in is held until Google verifies the app, and
 OVHcloud's consent and the other `mcp_oauth` sign-ins are not switched on. Their rows describe what a deployment that keeps them
-stores.
+stores. Whether the DigitalOcean, Linode and Azure DNS sign-ins are on at a given
+moment is the per provider confirmation in the note at the top of this page.
 
 - **Re-apply.** `POST /v1/connections/{id}:reapply` (and the fleet reconciler)
   rewrites the records through the provider's DNS API with the kept credential,
