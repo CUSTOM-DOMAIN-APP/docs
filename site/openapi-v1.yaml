@@ -1137,6 +1137,16 @@ paths:
         look for a key named like it), `delete_url` is the provider's own page
         that deletes keys, and `rights` and `ends_in_days` say what it can do and
         when it ends.
+
+
+        `rails.nameservers` is the DNS hosting verdict, present while the
+        application offers DNS hosting. `verdict` and `reason` say where it goes
+        and why. It is `recommended` where hosting saves the person the most: a
+        root domain whose provider has no record that can point a root
+        (`root_not_pointable`), four or more records to write (`many_records`),
+        or no automatic way (`no_automatic_way`). On CustomDomain™'s own DNS it
+        falls back to `offered` with `plan_zone_limit` once the workspace holds
+        as many hosted zones as its plan counts; nothing is refused.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1199,6 +1209,20 @@ paths:
         It cannot set the end user's e-mail address: a body with a non-empty
         `end_user_email` is refused with `403`, and the platform's API key sets
         it.
+
+
+        A name under a zone CustomDomain™ already hosts joins it without a new
+        move, and the `201` shows it already `live` when its records resolve.
+        The registrable domain's zone must be `active` (delegated to us) and
+        hosted for this application. A widget token must be bound to the end
+        user (`end_user_ref`) whose connection started the zone, and the
+        application must still offer DNS hosting on CustomDomain™'s own DNS; an
+        API key or an app scoped token joins its own application's zone. A
+        delegated agent token, a widget token bound to no end user or to
+        another end user, and every other zone change nothing: the name
+        proves control by DNS as always, and no record is written into a zone
+        that is not the caller's. The records written are in the audit log as
+        `dns.hosted_zone_joined`.
 
 
         A workspace with no subscription yet connects its first ten domains, or
@@ -10520,16 +10544,40 @@ components:
                   enum: [offered, offered_first, recommended, unavailable]
                   description: >-
                     `offered`: after the other ways. `offered_first`: the
-                    application's setting is `prefer`. `recommended`: no
-                    automatic way works for this domain, so the move saves the
-                    person copying records. `unavailable`: offered, but not for
+                    application's setting is `prefer`. `recommended`: hosting
+                    saves the person the most for this domain (`reason` says
+                    why: no automatic way works, the root cannot be pointed, or
+                    the records are many). `unavailable`: offered, but not for
                     this domain (`reason` says why).
                 reason:
                   type: string
+                  enum:
+                    - application_offers
+                    - application_prefers
+                    - no_automatic_way
+                    - root_not_pointable
+                    - many_records
+                    - plan_zone_limit
+                    - registrar_locks_nameservers
+                    - disabled
+                    - platform_subdomain
+                    - unsupported_tld
+                    - reserved
                   description: >-
-                    `application_offers`, `application_prefers`, `no_automatic_way`,
-                    or for `unavailable` the reason of `nameserver_migration`
-                    (`registrar_locks_nameservers`, the reasons of `managed_dns`).
+                    Why. `application_offers` and `application_prefers`: the
+                    application's setting. `no_automatic_way`: nothing but
+                    copying records by hand works for this domain.
+                    `root_not_pointable`: the domain is a root and its DNS
+                    provider has no record that can point a root, so no other
+                    way can connect it. `many_records`: the domain needs four
+                    or more records, a lot to copy by hand. `plan_zone_limit`:
+                    hosting would lead, but the workspace holds as many hosted
+                    zones as its plan counts (or CustomDomain™ is near its own
+                    limit), so it is offered after the other ways; the verdict is
+                    then `offered`. For `unavailable`, the reason of
+                    `nameserver_migration` (`registrar_locks_nameservers`, and
+                    the reasons of `managed_dns`: `disabled`,
+                    `platform_subdomain`, `unsupported_tld`, `reserved`).
             saved_access:
               type: object
               description: >-

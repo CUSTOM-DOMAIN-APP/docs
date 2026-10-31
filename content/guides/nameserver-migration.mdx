@@ -208,6 +208,32 @@ Send `{"nameserver_migration": {"mode": "off"}}` to turn it off. Once it is on,
 The registrar lookup there waits 3 seconds at most; the move looks again with
 more time.
 
+### When it is offered first [#offered-first]
+
+The setting above is the default place. The domain check also puts DNS hosting
+first, whatever the setting says, for a domain where it saves your user the most.
+`rails.nameservers` in the `POST /v1/domains:check` answer carries a `verdict`
+and a `reason`, and absent means the setting is off:
+
+| `reason` | `verdict` | When |
+| --- | --- | --- |
+| `root_not_pointable` | `recommended` | The domain is a root domain (such as `acme.com`) and its DNS provider has no record that can point a root, so no other way can connect it. A subdomain at the same provider is not affected. |
+| `many_records` | `recommended` | The domain needs four or more records, as an email setup does: a lot to copy by hand. |
+| `no_automatic_way` | `recommended` | Nothing but copying records by hand works for this domain. |
+| `application_prefers` | `offered_first` | **Show it as the first choice** is on. |
+| `application_offers` | `offered` | Everything else: a second choice beside adding records. |
+| `plan_zone_limit` | `offered` | Hosting would lead, but your workspace holds as many hosted zones as its plan counts (below). |
+| a reason of the offer, such as `registrar_locks_nameservers` | `unavailable` | The domain can't be moved to the target. |
+
+On CustomDomain™'s own DNS, each hosted zone is one that CustomDomain™ runs for
+you, so putting hosting first is limited by a count that depends on your plan.
+While your workspace holds fewer zones than its plan counts, hosting leads where
+the table says so. At the count, or when CustomDomain™ itself is near its own
+limit, it stays on offer as a second choice (`offered`, `plan_zone_limit`) and
+your users can still choose it. The count only changes where hosting is shown:
+nothing is refused and nothing is billed for a zone. Hosting on your own DNS
+account or your own nameservers is not counted.
+
 ## What your users see [#what-your-end-user-sees]
 
 With **Show it as the first choice** off, the widget's manual setup shows it as a
@@ -240,6 +266,32 @@ says "your registrar", never the DNS host's name. **Move back** is there while i
 can be, with the other way back beside it when both are possible. A finished move
 hands over to the usual success screen. Every string is in the widget's 13
 languages.
+
+### A returning user's next name [#next-name]
+
+When a user's domain is hosted by CustomDomain™, their next name under it (they
+host `acme.com` with `shop.acme.com`, then connect `blog.acme.com`) needs no new
+move and no new question. `POST /v1/connections` adds the name to the zone
+CustomDomain™ already runs, writes its records there and checks it at once, so
+the answer can already say `live`. The user is not asked again and nothing
+changes at the registrar.
+
+Only the right caller joins a zone, because a zone is one customer's whole DNS:
+
+- A widget token joins it only when the token is bound to the same user
+  (`end_user_ref`) who started the zone, in the same application, and the
+  application still offers DNS hosting on CustomDomain™'s own DNS. Another user
+  of your platform who types a name under `acme.com` never gets records written
+  into that user's zone: the name proves control by DNS, as it always did.
+- Your API key, or a token for your application, joins a zone of the application
+  it creates the connection for.
+- A delegated agent token, a token bound to no user, and any other application or
+  workspace do not join it.
+
+The zone must be `active`, meaning the domain already answers from our
+nameservers. Each join is recorded in the workspace's audit log as
+`dns.hosted_zone_joined`. A name under a zone at your own DNS host account is not
+joined this way yet.
 
 ## What each status means [#the-steps]
 

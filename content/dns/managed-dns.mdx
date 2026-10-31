@@ -51,6 +51,26 @@ Every record change for the connection after that (a `www` redirect switched
 on, a CAA opt-in, a `:reapply`, a disconnect) is written into the zone by
 CustomDomain™. Nobody is asked to edit DNS again.
 
+### The next name under an active zone [#next-name]
+
+Once the zone is `active`, the next name under the same registrable domain
+(`blog.acme.com`, after `shop.acme.com`) needs no start and no switch. When it is
+created with `POST /v1/connections`, it joins the zone: its records are written
+into the zone, it is checked at once, and the answer can already say `live`.
+Nobody is asked again.
+
+A zone is one customer's whole DNS, so only the right caller joins it:
+
+- A widget token, only when it is bound to the same end user (`end_user_ref`) who
+  started the zone, in the same application, and the application still offers DNS
+  hosting on CustomDomain™'s own DNS.
+- An API key, or an app-scoped token, for the application the zone was started in.
+- Never a delegated agent token, a token bound to no end user, another end user,
+  another application or another workspace. Those names prove control by DNS, as
+  before, and nothing is written into the zone.
+
+Each join is in the workspace's audit log as `dns.hosted_zone_joined`.
+
 ## Copying the existing records
 
 DNS has no way to list a zone, so before the switch CustomDomain™ asks the
@@ -136,7 +156,8 @@ curl -X POST https://api.customdomain.ai/v1/connections/<ID>/managed-dns \
 `201` the first time, `200` after that with the same zone. A repeat call also
 re-reads the delegation (at most every 30 seconds), which is how a "check
 now" button works. A second connection under the same registrable domain joins
-the existing zone. A zone already hosted for another account answers `409`.
+the existing zone (an `active` zone is joined without this call, for the callers
+[above](#next-name)). A zone already hosted for another account answers `409`.
 
 The response, and every other managed DNS response, is the zone:
 

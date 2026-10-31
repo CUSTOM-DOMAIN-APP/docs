@@ -33,6 +33,19 @@ _openapi:
           non-empty `end_user_email` is refused with `403`, and the platform's
           API key sets it.
 
+          A name under a zone CustomDomain™ already hosts joins it without a new
+          move, and the `201` shows it already `live` when its records resolve.
+          The registrable domain's zone must be `active` (delegated to us) and
+          hosted for this application. A widget token must be bound to the end
+          user (`end_user_ref`) whose connection started the zone, and the
+          application must still offer DNS hosting on CustomDomain™'s own DNS;
+          an API key or an app scoped token joins its own application's zone. A
+          delegated agent token, a widget token bound to no end user or to
+          another end user, and every other zone change nothing: the name
+          proves control by DNS as always, and no record is written into a zone
+          that is not the caller's. The records written are in the audit log as
+          `dns.hosted_zone_joined`.
+
           A workspace with no subscription yet connects its first ten domains,
           or the number an operator set, without one (`first_domain_free` and
           `free_domains` on the billing reads): a retry of the last of them is

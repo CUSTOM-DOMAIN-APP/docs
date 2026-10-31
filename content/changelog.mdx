@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 31, 2026: DNS hosting is offered first where it helps, and a returning user's next name joins the zone we
+  host.** `rails.nameservers` on `POST /v1/domains:check` now says why hosting leads: `root_not_pointable` (a root
+  domain whose provider has no record that can point a root), `many_records` (four or more records to write) or
+  `no_automatic_way`, each as `recommended`, and `reason` is now a fixed list in the API reference. On CustomDomain™'s
+  own DNS it stays a second choice (`offered`, `plan_zone_limit`) once your workspace holds as many hosted zones as its
+  plan counts; nothing is refused or billed for it. A name created under a zone CustomDomain™ already hosts
+  (`active`) joins it with no new move: its records are written into the zone and it is checked at once, for the same
+  end user in the same application, or your API key. See
+  [Domain maintenance](/docs/guides/nameserver-migration#next-name).
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`
