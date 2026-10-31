@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 31, 2026: an account can be added by secure sign-in, with the domains confirmed first.** In the console,
+  Connected accounts can add a provider account without a pasted key. `POST /v1/provider-accounts:sign-in` (the
+  console only) starts the sign-in with no domain; once the key is made, `GET /v1/browser-sessions/{id}` shows the
+  domains it lists and `POST /v1/browser-sessions/{id}:keep` keeps the account for the ones you confirm, and only then.
+  An abandoned sign-in (`:cancel`, or ten minutes) names the key it made and the provider's page that deletes it
+  (`left_key`). A sign-in for a provider account you already hold swaps the new key into that account instead of
+  adding another (GoDaddy excepted for now). `GET /v1/providers` lists each company's `account_ways`. A key you paste
+  for a provider that cannot list its domains is now checked against every domain you type, not only the first.
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`

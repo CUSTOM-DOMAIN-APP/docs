@@ -183,6 +183,7 @@ owner may, not the member who connected the key. See
 | `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
 | `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
 | `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. |
+| `POST /v1/provider-accounts:sign-in` | Start a [secure sign-in that adds an account](#add-an-account-by-secure-sign-in), with no domain. The console only. |
 
 A key the provider refuses marks the account `needs_reconnect` and each of its
 domains records it on its timeline. A refusal that only concerns one zone (the
@@ -230,6 +231,49 @@ ways:
 - **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
+
+## Add an account by secure sign-in
+
+The console's **Connected accounts** can add an account without a pasted key: the person signs in to the provider
+in a temporary browser, CustomDomain™ makes the API key itself, checks it by listing the domains it reaches, and
+asks which of those domains the account may use. The account is kept only after that answer. Nothing is kept before
+it, so a sign-in that is left alone or cancelled adds no account.
+
+It is for the console only. `POST /v1/provider-accounts:sign-in` answers `201` with `{ session_id, popup_url }` to an
+API key that carries the console's signed visitor forward, for an owner, an admin or a member (a viewer is refused
+with `403`). The `X-CustomDomain-Client` header and the `Origin` alone start nothing, and a widget token, an end
+user's token, a delegated agent token and the operator's key are refused with `403` `browser_account_unavailable`.
+Your own backend's API call does not start one; add the key with `POST /v1/provider-accounts` instead.
+[`GET /v1/providers`](/docs/api-reference/providers/listProviders) lists each company's `account_ways`, easiest
+first: `secure_sign_in` where the deployment runs it for that company, then `api_key`.
+
+Once the key is made, the member who started the sign-in reads it with `GET /v1/browser-sessions/{id}` (state
+`key_ready`, the `zones` the key lists, what the key is, and when the ten minute wait ends) and confirms with
+`POST /v1/browser-sessions/{id}:keep`:
+
+```json
+{ "scope": "selected", "domains": ["example.com"], "access": "continuous", "application_ids": [] }
+```
+
+- **`scope` is always named.** `all` of the account's domains, or `selected` ones, each a domain the key lists
+  (`422` `domain_not_listed` otherwise). `access` is `continuous` (the default) or `one_time`; a credential that is
+  used once is `one_time` only.
+- **The account is the workspace's own.** `origin` is `browser_agent`, `made_by.how` is `console_sign_in`, and it is
+  bound to the application the sign-in named, or serves every application when it named none.
+  `application_ids` [shares the key](#which-applications-may-use-it) with other applications, for an admin or an
+  owner only.
+- **One key per provider account.** When the workspace already holds a continuous key for the same provider account
+  and application, the new key is swapped into that account (`200`, `swapped: true`): the old key stays at the
+  provider and the account says so (`old_key: "revoke_by_hand"`), the chosen domains join its scope and never
+  narrow it, and widening it takes an admin, an owner or the member who connected it. GoDaddy is the exception for
+  now: its second sign-in adds a second account.
+- **An abandoned sign-in names its key.** `POST /v1/browser-sessions/{id}:cancel` with the API key, or the ten
+  minutes passing, drops the key from our memory and answers `left_key`: the name it was made with and the provider's
+  page that deletes it. The key itself lives at the provider until you delete it there.
+
+Every call about the session is for the member who started it, in their workspace; another member's session, another
+workspace's and a connect sign-in's all answer `404`. Every account made, swapped or shared is in the
+[audit log](#audit-log) (`provider_account.created`, `.key_replaced`, `.updated`, `.shared`).
 
 ## What needs you
 

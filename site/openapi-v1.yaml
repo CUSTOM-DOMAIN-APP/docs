@@ -3599,16 +3599,34 @@ paths:
         keys, its `rights` and when it ends (`expires_at`), so the last screen
         can say which key was kept and where to remove it. A key that was made
         and not kept is `left_key` instead.
+
+
+        With an API key instead (the console's own call, on its signed
+        visitor forward, for the member who started it), the route answers an
+        account sign in's state instead of the popup's view
+        (`AccountSignInSession`): no live view address, no token, no domain.
+        While the key waits for the keep step (`key_ready`) it carries the
+        `zones` the key lists, what the key is (`key`) and when the wait ends
+        (`deadline`); after an end that left the key at the provider it carries
+        `left_key`. A session of another workspace or another member, a connect
+        session and an unknown id are all `404`, a viewer and a call without the
+        console's forward are `403`, and a widget token, an agent token or the
+        operator's key fail the popup's token check (`401`). Reading it is not a
+        heartbeat.
       security:
         - browserSession: []
+        - apiKey: []
       parameters:
         - $ref: '#/components/parameters/BrowserSessionId'
       responses:
         '200':
-          description: The session as the popup may see it.
+          description: The session as the popup may see it, or an account sign in's state for the console.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BrowserSessionView' }
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/BrowserSessionView'
+                  - $ref: '#/components/schemas/AccountSignInSession'
         '401':
           description: '`browser_expired`: the token is wrong, expired, or for another session.'
           content:
@@ -3707,8 +3725,18 @@ paths:
         A `navigator.sendBeacon` cannot set headers, so this route (and
         `:event`) also accepts the token in the body, as `{"token": "..."}`
         with a content type of `text/plain` or JSON.
+
+
+        The member who started an account sign in may also cancel it with an
+        API key, on the console's signed visitor forward, in any state before
+        its end: this is how a sign in is abandoned at the list of domains. The
+        key the session made, if any, is dropped and named as `left_key` (the
+        name it was made with and the provider's page that deletes it); the
+        answer carries it. While a keep step is storing the key it is `409`
+        `browser_wrong_state`. The identity rules are those of the read above.
       security:
         - browserSession: []
+        - apiKey: []
         - {}
       parameters:
         - $ref: '#/components/parameters/BrowserSessionId'
@@ -3731,8 +3759,99 @@ paths:
                 type: object
                 properties:
                   state: { type: string }
+                  left_key:
+                    $ref: '#/components/schemas/LeftKey'
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:keep:
+    post:
+      operationId: keepBrowserSessionAccount
+      summary: Confirm the domains and keep the key of an account sign in
+      tags: [Provider accounts]
+      description: >-
+        **The console only**, for the member who started the account sign in
+        (`POST /provider-accounts:sign-in`). The key that waits (`key_ready`)
+        is kept as a provider account only now, in one step, for the domains
+        the person confirmed: `scope` is always named (`all` of the account's
+        domains, or `selected` ones), and each selected domain must be one the
+        key lists (`422` `domain_not_listed`). A call that is refused keeps
+        nothing and leaves the session waiting inside its ten minutes. The key
+        is claimed for the call, so a double press stores it once (`409`
+        `browser_wrong_state` for the second).
+
+
+        The account is the workspace's own, made by secure sign in in the
+        console (`origin: browser_agent`, `made_by.how: console_sign_in`), for
+        the application the sign in named, or for every application when it
+        named none. `access` is `continuous` (the default) or `one_time`; a
+        provider whose credential is used once and never kept (see
+        `POST /provider-accounts`) is `one_time` only (`422`
+        `use_once_credential`). `application_ids` shares the key with other
+        applications of the workspace (decision D5): an admin or an owner only
+        (`403`), every id one of the workspace's (`404` otherwise), and a key
+        for every application takes none (`422` `serves_every_application`).
+
+
+        When the workspace already holds a continuous key for the same provider
+        account, for the same application, the new key is swapped into that
+        account instead of adding a row: the answer is `200` with `swapped:
+        true`, the replaced key is named for deletion by hand on the account
+        (`agent_key.old_key`), the domains chosen join its scope and never
+        narrow it, and widening it takes an admin, an owner or the member who
+        connected it (`403` otherwise). GoDaddy is the exception until its
+        written permission is on file: its second sign in adds a second row.
+        Every account made, swapped or shared is in the audit log
+        (`provider_account.created`, `.key_replaced`, `.updated`, `.shared`).
+
+
+        A session of another workspace or member, a connect session and an
+        unknown id are `404`; a session that is not waiting for the keep step is
+        `409`, and one whose ten minutes passed `410`.
+      security:
+        - apiKey: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope]
+              properties:
+                scope: { type: string, enum: [all, selected] }
+                domains:
+                  type: array
+                  maxItems: 500
+                  items: { type: string }
+                  description: "With `selected`: at least one domain the key lists. With `all`: none."
+                access: { type: string, enum: [continuous, one_time], default: continuous }
+                application_ids:
+                  type: array
+                  maxItems: 100
+                  items: { type: string }
+                  description: "The whole set of other applications the key is shared with. Left out, a new account is shared with none and an existing one keeps its shares."
+      responses:
+        '200':
+          description: The key was swapped into the account the workspace already held for this provider account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountKept' }
+        '201':
+          description: The account was made.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountKept' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /browser-sessions/{sid}:finish-manual:
     post:
       operationId: finishManualBrowserSession
@@ -6866,6 +6985,100 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { description: "An agent token without `domains:read`, or `?application_id=` naming another application than the agent grant's" }
         '404': { description: "`?domain=` with an `application_id` (or an API key's own application) of another workspace, or none" }
+  /provider-accounts:sign-in:
+    post:
+      operationId: startProviderAccountSignIn
+      summary: Add a provider account by secure sign in (the console only)
+      tags: [Provider accounts]
+      description: >-
+        **The console only.** Starts the secure sign in that adds a provider
+        account with no domain: the person signs in to the provider in a
+        temporary browser, the agent makes a lasting API key on the provider's
+        own key page, and CustomDomain™ checks the key by listing the domains it
+        reaches. The key then waits in memory for the keep step, which makes the
+        account only after the person confirmed which of those domains it may
+        use (`POST /browser-sessions/{sid}:keep`, within ten minutes). Nothing
+        is kept before that: no `provider_accounts` row exists, and a sign in
+        that is abandoned or left to run out names the key it made so the person
+        can delete it at the provider (`left_key`).
+
+
+        Only the console's own call starts one: an API key that carries the
+        console's signed visitor forward, naming the person signed in to it.
+        The `X-CustomDomain-Client` header and the `Origin` are labels any key
+        holder can send, so neither counts alone, and a widget token, an end
+        user's token, a delegated agent token and the operator's key are
+        refused with `403` `browser_account_unavailable`. The caller must also
+        hold a role that operates applications (an owner, an admin or a member;
+        a viewer is `403` `forbidden`), and the request must carry an `Origin`
+        on the server's return origin allowlist, as `browser:start` requires.
+
+
+        Only a provider whose key can be made at sign in and whose domains can
+        be listed qualifies (`account_ways` of `GET /providers` names `secure_sign_in`
+        for it); any other is `403` `browser_provider_not_allowed` or `409`
+        `browser_account_unavailable`. One sign in at a time runs for a member
+        and a provider (`409` `browser_session_active`), and three start an hour.
+
+
+        Returns the address of the popup page, whose fragment carries a single
+        use bootstrap code that no server sees; the popup trades it at
+        `POST /browser-sessions:redeem`. The answers of every call about the
+        session are `Cache-Control: no-store`.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, return_origin, consent_version]
+              properties:
+                provider: { type: string, description: "The provider id. An account has no domain to detect it from." }
+                application_id:
+                  type: string
+                  description: >-
+                    The application the key is for, one of the workspace's own
+                    live applications (a test mode application is refused, and
+                    another workspace's is `404`). Left out, the key serves the
+                    whole workspace and takes no share.
+                return_origin: { type: string, description: Web origin the popup posts its result to; must be on the server's allowlist. }
+                consent_version:
+                  type: string
+                  enum: [cb-1, cb-2, cb-3, cb-4]
+                  description: The id of the consent text the person was shown, as for `browser:start`.
+                locale: { type: string, description: The language the popup reads in, a plain code such as `en`. Defaults to `en`. }
+                viewport_hint:
+                  type: object
+                  description: The size of the popup's live area, used as for `browser:start`.
+      responses:
+        '201':
+          description: The sign in started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, popup_url]
+                properties:
+                  session_id: { type: string, description: "The session id, `bs_` and 32 hex characters." }
+                  popup_url: { type: string, format: uri, description: "The popup page; its fragment holds the single use bootstrap code." }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `browser_account_unavailable` (not the console's own call, or not
+            a caller that may), `browser_customer_present_only` (no known
+            `Origin`), `browser_provider_not_allowed`, `sandbox_not_allowed` (a
+            test mode application) or `forbidden` (a viewer).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:
     get:
       operationId: getProviderAccount
@@ -9827,7 +10040,7 @@ components:
         id: { type: string }
         state:
           type: string
-          enum: [created, awaiting_sign_in, checking, plan_ready, applying, verifying, manual_assist, done, done_manual, cancelled, expired, abandoned, failed]
+          enum: [created, awaiting_sign_in, checking, plan_ready, applying, verifying, manual_assist, key_ready, done, done_manual, cancelled, expired, abandoned, failed]
         provider: { type: string }
         provider_name: { type: string }
         vendor: { type: string, description: "The browser hosting company." }
@@ -10679,6 +10892,70 @@ components:
         id: { type: string }
         rail: { type: string, description: 'dc | oauth | api | manual' }
         oauth: { type: boolean }
+        account_ways:
+          type: array
+          description: >-
+            The ways to add this company's account in Connected accounts, easiest
+            first: `secure_sign_in` (the person signs in at the company and
+            CustomDomain™ makes the key; `POST /provider-accounts:sign-in`, the
+            console only), then `api_key` (the person pastes a key;
+            `POST /provider-accounts`). Always present; `[]` for a company that
+            only signs in and takes no key. `secure_sign_in` is listed only while
+            the deployment runs it for the company (the feature on, its key page
+            and its domain list in place); the workspace's own gates are the
+            sign in's to apply.
+          items: { type: string, enum: [secure_sign_in, api_key] }
+    LeftKey:
+      type: object
+      required: [name]
+      description: A key the agent made at the provider and CustomDomain™ does not keep, still live in the person's account.
+      properties:
+        name: { type: string, description: The name the key was made with, to find it at the provider. }
+        page: { type: string, description: The provider's page that lists and deletes keys; absent when none is known. }
+    AccountSignInSession:
+      type: object
+      required: [id, purpose, state, provider, provider_name]
+      description: >-
+        An account sign in as the console reads it (`GET /browser-sessions/{sid}`
+        with the console's own API key call). Not the popup's view: it holds no
+        live view address, relay socket or token, and never the key.
+      properties:
+        id: { type: string }
+        purpose: { type: string, enum: [account] }
+        state:
+          type: string
+          enum: [created, awaiting_sign_in, checking, key_ready, done, cancelled, expired, abandoned, failed]
+          description: "`key_ready`: the key is made and checked and waits for `:keep`. `done`: kept. Every other end left the key at the provider (`left_key`) when one was made."
+        provider: { type: string }
+        provider_name: { type: string }
+        application_id: { type: string, description: The application the key is for; absent for a key that serves the whole workspace. }
+        deadline: { type: string, format: date-time, description: "In `key_ready`: when the wait for the keep step ends." }
+        zones:
+          type: array
+          items: { type: string }
+          description: "In `key_ready`: the registrable domains the key lists, lower case. `[]` for a key that reaches none yet."
+        key:
+          type: object
+          required: [rights]
+          description: "In `key_ready`: what the key is."
+          properties:
+            name: { type: string }
+            page: { type: string, description: The provider's page that lists and deletes keys. }
+            rights: { type: array, items: { type: string }, description: What the key can do beyond DNS records; empty for a key that reaches DNS only. }
+            expires_at: { type: string, format: date-time }
+        left_key: { $ref: '#/components/schemas/LeftKey' }
+        error:
+          type: object
+          description: "In `failed`: why, in the words the person is shown."
+          properties:
+            code: { type: string }
+            message: { type: string }
+    AccountKept:
+      type: object
+      required: [account, swapped]
+      properties:
+        account: { $ref: '#/components/schemas/ProviderAccount' }
+        swapped: { type: boolean, description: True when the key went into an account the workspace already held. }
     Usage:
       type: object
       description: >-
