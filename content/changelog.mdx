@@ -15,20 +15,23 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-{/* Draft (consent version 4, decision D-18): the date of the first entry is when this ships. The main session sets it; if that is after October 30, keep the October 30 opt in entry this one replaced (git history of this file) under its own date. Counsel signs off on the notice wording first. */}
+{/* Draft (consent version 4, decision D-18): the date of the first entry is when this ships. The main session sets it; if that is after October 30, keep the October 30 opt in entry this one replaced (git history of this file) under its own date. Counsel signs off on the notice wording first. The recording, visitor id and Google lines follow the console's switches (apps/app/src/lib/tracking-settings.ts in custom-domains): change them here if the owner flips one. */}
 
 - **October 30, 2026: cookies are on by default outside the EEA, the UK and Switzerland.** Optional analytics and
-  marketing cookies, and the session recording that is part of analytics, are on for a visitor who has not chosen,
-  unless they are in the European Economic Area, the UK or Switzerland. A notice at the bottom of customdomain.ai and
-  the console says so ("We use analytics and marketing cookies and record sessions. Turn them off in Settings."), with
-  **Settings**, where each category can be turned off, and **OK**. In the European Economic Area, the UK and
-  Switzerland nothing optional runs until you accept: the bar asks first, with **Accept** and **Reject**, which count
-  the same, and **Settings**. We tell which applies from the country of your connection, or from your device's time
-  zone when that is not known. Your choice still applies across the website, these docs and the console, and is saved
-  to your account when you are signed in. Any no you gave before still stands, and so does a yes you gave when the bar
-  asked first. Global Privacy Control turns them off everywhere, with no question; Do Not Track no longer does. This
-  replaces the bar that asked everyone first, shipped earlier the same day. See the
-  [Cookie Policy](https://app.customdomain.ai/cookies).
+  marketing cookies are on for a visitor who has not chosen, unless they are in the European Economic Area, the UK or
+  Switzerland. A notice at the bottom of customdomain.ai and the console says so ("We use analytics and marketing
+  cookies. Turn them off in Settings."), with **Settings**, where each category can be turned off, and **OK**. Session
+  recording is the exception: it starts only after you say yes to it yourself, with **Accept** on the bar or **Accept
+  all** or **Save choices** with Analytics on in Cookie settings; the default and **OK** do not start it. In the
+  European Economic Area, the UK and Switzerland nothing optional runs until you accept: the bar asks first, with
+  **Accept** and **Reject**, which count the same, and **Settings**, and our own visitor id is not created before you
+  accept. We tell which applies from the country of your connection, or from your device's time zone when that is not
+  known. Your choice still applies across the website, these docs and the console, is kept by your browser for a year,
+  and is saved to your account when you are signed in. Any no you gave before still stands, and so does a yes you gave
+  when the bar asked first. Marketing cookies measure our own campaigns: a yes to them gives Google nothing for
+  advertising. Global Privacy Control turns them off everywhere, with no question, and Cookie settings then says
+  "Opt-out request honored."; Do Not Track no longer does. This replaces the bar that asked everyone first, shipped
+  earlier the same day. See the [Cookie Policy](https://app.customdomain.ai/cookies).
 - **October 25, 2026: a key you already keep is offered first, and a second sign-in no longer adds a second key.**
   When the workspace already keeps a provider key that can act for a domain, the domain check lists it
   (`rails.saved_access`, and `GET /v1/connections/{id}/saved-access`) and `POST /v1/connections/{id}:use-saved-access`
