@@ -20,9 +20,11 @@ never change meaning or disappear without a new major version. See the
   sign-in, in `rails.saved_access` on `POST /v1/domains:check` and in `GET /v1/connections/{id}/saved-access`. It is
   offered only to that customer: their widget token must be bound to the domain and minted with their `end_user_ref`
   (a sample's `user_42` or `customer_123` never counts), your application's `end_user_saved_access` setting must be on
-  (it is by default), the email that tells them of the reuse must be sendable (you gave their address and the mail is
-  on), and the key must be one that same token's sign-in made. Never at GoDaddy for now. The entry carries
-  `from_domain`, the domain of theirs the key already serves, and no key name or label. This is an offer only: a
+  (it is by default), the email that tells them of the reuse must be sendable (you gave their address when you minted
+  the token, or the domain's connection holds one and names this customer; an address on a connection that names no
+  customer does not count), and the key must be one made at a sign-in started with a token minted with that same
+  `end_user_ref`. Never at GoDaddy for now. The entry carries `from_domain`, the domain of theirs the key already
+  serves, and no key name; its label is the neutral `<Provider> key`. This is an offer only: a
   customer's token cannot yet write records with it, and the sign-in is not refused. See
   [A returning customer's own key](/docs/connect-flow/provider-accounts#a-returning-customers-own-key).
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is

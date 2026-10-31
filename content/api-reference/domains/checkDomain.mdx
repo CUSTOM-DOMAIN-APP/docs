@@ -57,10 +57,11 @@ _openapi:
           the end user (`end_user_ref`) gets that end user's own keys, and only
           when the application allows it (`end_user_saved_access`), the e-mail
           that tells them of the reuse can be sent and the key was made at a sign
-          in their own token vouched for, never at GoDaddy for now (see `GET
-          /connections/{id}/saved-access`); a miss, for any reason, leaves the
-          other rails as they were, so the end user signs in. The offer is read
-          only: an end user's token cannot use the key yet.
+          in started with a token minted with their `end_user_ref`, never at
+          GoDaddy for now (see `GET /connections/{id}/saved-access`); a miss, for
+          any reason, leaves the other rails as they were, so the end user signs
+          in. The offer is read only: an end user's token cannot use the key
+          yet.
 
 
           Where the secure sign-in also makes a lasting API key,

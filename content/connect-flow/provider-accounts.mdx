@@ -393,16 +393,20 @@ instead of a new sign-in, and only when all of this holds:
 - the customer can be told by email that their key was reused: the
   [end user notices](/docs/connect-flow/end-user-notices) feature is on, you
   gave their address when you minted the token (`end_user_email`) or the
-  connection holds one, and the application's mail can be sent. Without the
-  email, nothing is offered;
-- the key was made at a sign-in that same token started for that customer, and
-  one read with it shows it reaches the new domain;
+  domain's connection holds one and names this customer (an address on a
+  connection that names no customer does not count, because any customer's
+  token could have set it), and the application's mail can be sent. Without
+  the email, nothing is offered;
+- the key was made at a sign-in started with a token minted with that same
+  `end_user_ref` (any such token, not only the one asking now), and one read
+  with it shows it reaches the new domain;
 - the key is not at GoDaddy. Reuse there is held until GoDaddy gives written
   permission ([why](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
 
 The entry names the provider and `from_domain`, a domain of theirs the key
-already serves, and nothing else about the key: no key name, no label, no
-application. Any miss leaves the customer on the usual sign-in. For now it is
+already serves, and nothing else about the key: no key name, no application,
+and the neutral label `<Provider> key` in place of any name a member gave the
+account. Any miss leaves the customer on the usual sign-in. For now it is
 an offer only: a customer's token cannot yet write a domain's records with the
 key (`409 saved_access_not_usable`), and the sign-in is not refused. The tap of
 consent for each domain, and the email after each use, come with that step.

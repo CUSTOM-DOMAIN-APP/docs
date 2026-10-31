@@ -1137,7 +1137,8 @@ paths:
         names the end user (`end_user_ref`) gets that end user's own keys, and
         only when the application allows it (`end_user_saved_access`), the
         e-mail that tells them of the reuse can be sent and the key was made
-        at a sign in their own token vouched for, never at GoDaddy for now (see
+        at a sign in started with a token minted with their `end_user_ref`,
+        never at GoDaddy for now (see
         `GET /connections/{id}/saved-access`); a miss, for any reason, leaves
         the other rails as they were, so the end user signs in. The offer is
         read only: an end user's token cannot use the key yet.
@@ -1920,11 +1921,14 @@ paths:
         `customer_123`); the application allows it (`end_user_saved_access` on
         the application, never in test mode); the e-mail that tells the end
         user their key was reused can be sent (the `end_user_contact` flag is
-        on, an address was given for the token at mint or is held for the
-        domain's connection, and the application's end user mail has a live
-        sender); and the key is the end user's own, in this application, made
-        at a sign in that same token vouched for, and not held at GoDaddy for
-        now. Any other widget token gets an empty list, and a token bound to
+        on, an address was given for the token at mint or is held on the
+        domain's connection when that connection names this end user, and the
+        application's end user mail has a live sender; an address on a
+        connection that names no end user does not count, because any end
+        user's token could have set it); and the key is the end user's own, in
+        this application, made at a sign in started with a token minted with
+        that same `end_user_ref`, and not held at GoDaddy for now. Any other
+        widget token gets an empty list, and a token bound to
         no domain, or to another end user than the connection's, is refused
         with `403` `token_not_bound` or `token_wrong_end_user`, as
         `browser:start` refuses it. An end user's entry carries `from_domain`,
@@ -2989,9 +2993,12 @@ paths:
         answer (its detail says when the provider answered with an error); a
         use refused before anything was sent, such as one with no records to
         write, leaves no row. A token without `domains:connect` is `403`. An end user's
-        widget token reaches the route but may not use a key yet, though
-        `GET /connections/{id}/saved-access` offers it its own: `409`
-        `saved_access_not_usable` for an account that exists.
+        widget token is held to the same end user policy as `browser:start`
+        (`403` `token_not_bound` for a token bound to no domain, `403`
+        `token_wrong_end_user` for one minted for another end user than the
+        connection's, or for none), and then reaches the route but may not use
+        a key yet, though `GET /connections/{id}/saved-access` offers it its
+        own: `409` `saved_access_not_usable` for an account that exists.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -10335,7 +10342,7 @@ components:
             Only on an end user's own key, in an end user's token's answer: the
             newest domain of that end user the key already serves (a live or
             propagating connection of theirs in this application, not the
-            domain asked about), as the widget words it in "Use your GoDaddy
+            domain asked about), as the widget words it in "Use your Namecheap
             access from shop.example.com". Left out when there is none.
     RailInfo:
       type: object

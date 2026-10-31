@@ -34,12 +34,15 @@ _openapi:
           `customer_123`); the application allows it (`end_user_saved_access` on
           the application, never in test mode); the e-mail that tells the end
           user their key was reused can be sent (the `end_user_contact` flag is
-          on, an address was given for the token at mint or is held for the
-          domain's connection, and the application's end user mail has a live
-          sender); and the key is the end user's own, in this application, made
-          at a sign in that same token vouched for, and not held at GoDaddy for
-          now. Any other widget token gets an empty list, and a token bound to
-          no domain, or to another end user than the connection's, is refused
+          on, an address was given for the token at mint or is held on the
+          domain's connection when that connection names this end user, and the
+          application's end user mail has a live sender; an address on a
+          connection that names no end user does not count, because any end
+          user's token could have set it); and the key is the end user's own, in
+          this application, made at a sign in started with a token minted with
+          that same `end_user_ref`, and not held at GoDaddy for now. Any other
+          widget token gets an empty list, and a token bound to no domain, or to
+          another end user than the connection's, is refused
           with `403` `token_not_bound` or `token_wrong_end_user`, as
           `browser:start` refuses it. An end user's entry carries `from_domain`,
           the newest domain of theirs the key already serves, the neutral label
