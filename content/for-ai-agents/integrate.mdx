@@ -18,9 +18,11 @@ statuses and webhooks, no card and nothing billed.
 ## The model
 
 A workspace has applications. An application owns its connections, its origin, its
-keys and its webhooks. A connection is one domain moving from `pending` to
-`propagating` to `live`, or to `failed`, which is not final: a recheck or creating
-the same domain again revives it. `pending` has no deadline.
+keys and its webhooks. A connection is one domain on its way to `live`: `pending`
+until its records are seen, with no deadline, or `propagating` while records a rail
+wrote are checked. A `propagating` connection whose records never resolve within 24
+hours becomes `failed`, which is not final: a recheck or creating the same domain
+again revives it.
 
 ## Credentials
 

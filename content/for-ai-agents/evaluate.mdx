@@ -28,7 +28,10 @@ agents.
 - **Most providers are connected by hand.** Of the 217 providers in the census on
   2026-10-31, 73 have an automatic path (6 sign in at the provider, 1 Domain
   Connect, 66 take a scoped API key) and 144 do not. For those 144 the flow shows
-  the exact records and checks them automatically, but a person adds them.
+  the exact records and checks them automatically, and a person adds them, unless
+  the application offers DNS hosting (the owner changes the nameservers once) or
+  the workspace has secure sign-in, which is offered to selected workspaces at
+  eight providers. See [DNS providers](/docs/dns/providers).
 - **"Automatic" means an adapter exists**, not that the user types nothing: the API
   key path still asks for a key once.
 - **Serving through the CustomDomain™ edge** (TLS at the edge and a proxy to your

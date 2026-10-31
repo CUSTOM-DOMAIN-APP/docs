@@ -15,7 +15,15 @@ import {
   nextBriefs,
   readContext,
 } from "./agent-surface.ts";
-import { absoluteLinks, isNegotiablePage, markdownPath, markdownRoute, prefersMarkdown } from "./negotiate.ts";
+import {
+  absoluteLinks,
+  isNegotiablePage,
+  markdownHeaders,
+  markdownPath,
+  markdownRoute,
+  negotiatedRoute,
+  prefersMarkdown,
+} from "./negotiate.ts";
 import { clientAddress, createRateLimiter } from "./rate-limit.ts";
 
 // Tracking plan section 5.3 B, as filed on 2026-10-30, with "CustomDomain" written "CustomDomain™".
@@ -151,6 +159,23 @@ test("which addresses negotiate, and where their Markdown is", () => {
   assert.equal(markdownPath("/docs/a/b"), "/docs/a/b.md");
   assert.equal(markdownRoute("/docs"), "/docs-md");
   assert.equal(markdownRoute("/docs/a/b"), "/docs-md/a/b");
+  assert.equal(negotiatedRoute("/docs"), "/docs-md-accept");
+  assert.equal(negotiatedRoute("/docs/a/b"), "/docs-md-accept/a/b");
+});
+
+test("Markdown at the page's own address is the page: indexable, Vary: Accept, never in a shared cache", () => {
+  const page = markdownHeaders("/docs/a", "page");
+  assert.equal(page["X-Robots-Tag"], undefined);
+  assert.equal(page.Vary, "Accept");
+  assert.match(page["Cache-Control"], /^private\b/);
+  assert.equal(page.Link, '<https://docs.customdomain.ai/docs/a>; rel="canonical"');
+  assert.equal(page["Content-Type"], "text/markdown; charset=utf-8");
+
+  const copy = markdownHeaders("/docs/a", "copy");
+  assert.equal(copy["X-Robots-Tag"], "noindex");
+  assert.equal(copy.Vary, undefined);
+  assert.equal(copy["Cache-Control"], undefined);
+  assert.equal(copy.Link, '<https://docs.customdomain.ai/docs/a>; rel="canonical"');
 });
 
 test("links in Markdown become absolute, outside code blocks only", () => {

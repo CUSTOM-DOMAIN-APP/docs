@@ -25,11 +25,14 @@ deployment and the follow-ups still open.
   wraps it in Fumadocs' `DocsLayout` (sidebar nav + search), `llms.txt/route.ts`
   serves an [llms.txt](https://llmstxt.org/) index of the whole tree.
 - `src/proxy.ts` (Next.js 16's middleware): Markdown by `Accept` (a request for
-  a docs page that prefers `text/markdown` gets `app/docs-md`'s answer, which says
-  `Vary: Accept`; HTML pages send a `Link` header naming their `.md` twin) and the
+  a docs page that prefers `text/markdown` gets `app/docs-md-accept`'s answer: the
+  page itself in another format, so no `noindex`, with `Vary: Accept` and
+  `Cache-Control: private`, and a 404 when its own path is asked for directly;
+  the `.md` copies in `app/docs-md` stay `noindex`; HTML
+  pages send a `Link` header naming their `.md` twin) and the
   agent addresses: `/agents` (the "For AI agents" page), `/agents/brief/<name>.md`
   and `/agents/context/{task}/{for}/{region}/{client}` (`src/app/agents/context`).
-  `src/lib/negotiate.ts` holds the `Accept` rules.
+  `src/lib/negotiate.ts` holds the `Accept` rules and each Markdown answer's headers.
 - `src/lib/agent-surface.ts`: the "For AI agents" wording, the seven briefs, the
   context link's lists and the `DOCS_AGENT_SURFACE` setting (`on`, `briefs` or
   `off`; see `../DEPLOYMENT.md`). The page (`content/for-ai-agents/index.mdx`, via

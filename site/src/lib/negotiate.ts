@@ -1,7 +1,8 @@
 /**
  * Markdown by content negotiation (tracking plan step 6): which docs addresses have a Markdown twin, where that twin
- * is served, and whether a request's Accept header prefers it to HTML. proxy.ts uses it to answer a request that
- * prefers text/markdown with the page's Markdown, and to send the Link header that names the twin on HTML pages.
+ * is served, whether a request's Accept header prefers it to HTML, and the headers each Markdown answer carries
+ * (indexing and caching differ between the .md copy and the page's own address). proxy.ts uses it to answer a request
+ * that prefers text/markdown with the page's Markdown, and to send the Link header that names the twin on HTML pages.
  * No imports, so proxy.ts stays small and the node:test suite can load it.
  */
 
@@ -13,9 +14,52 @@ export function markdownPath(url: string): string {
   return url === "/docs" ? "/docs.md" : `${url}.md`;
 }
 
-/** The internal route that renders a docs page's Markdown (app/docs-md): /docs -> /docs-md, /docs/a/b -> /docs-md/a/b. */
+/**
+ * The internal route that renders a docs page's Markdown copy (app/docs-md), for the .md addresses and the briefs:
+ * /docs -> /docs-md, /docs/a/b -> /docs-md/a/b.
+ */
 export function markdownRoute(docsPath: string): string {
   return `/docs-md${docsPath.slice("/docs".length)}`;
+}
+
+/**
+ * The internal route that answers a page's own address with its Markdown when Accept asks for it (app/docs-md-accept):
+ * /docs -> /docs-md-accept, /docs/a/b -> /docs-md-accept/a/b.
+ */
+export function negotiatedRoute(docsPath: string): string {
+  return `/docs-md-accept${docsPath.slice("/docs".length)}`;
+}
+
+/**
+ * The request header proxy.ts adds when it rewrites a page's own address to app/docs-md-accept. That route answers
+ * only requests that carry it, so /docs-md-accept/... asked for directly is a 404 and never a second, indexable
+ * address for a page (its answers carry no noindex). A client that sends the header itself gets nothing a request
+ * with Accept: text/markdown would not.
+ */
+export const NEGOTIATED_HEADER = "x-cd-markdown-negotiated";
+
+/**
+ * The headers of a page's Markdown. Both name the HTML page as canonical.
+ * - "copy" (a .md address or a brief, app/docs-md): a second address for the same text, so noindex. It answers
+ *   Markdown whatever the Accept header says, so it needs no Vary.
+ * - "page" (the page's own address, chosen by Accept, app/docs-md-accept): the page itself in another format. No
+ *   noindex, because an indexing rule must not depend on Accept (a crawler that prefers Markdown would otherwise drop
+ *   the page). Vary: Accept, and private: a shared cache that ignores Vary (Cloudflare does unless told otherwise)
+ *   must never keep the Markdown under the page's address and hand it to a browser. The HTML answer is the one a
+ *   shared cache may keep.
+ */
+export function markdownHeaders(pageUrl: string, at: "copy" | "page"): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "text/markdown; charset=utf-8",
+    Link: `<${SITE}${pageUrl}>; rel="canonical"`,
+  };
+  if (at === "copy") {
+    headers["X-Robots-Tag"] = "noindex";
+  } else {
+    headers.Vary = "Accept";
+    headers["Cache-Control"] = "private, max-age=300";
+  }
+  return headers;
 }
 
 /**

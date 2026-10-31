@@ -11,7 +11,7 @@ one of four:
 
 | Status | Means | What happens next |
 | --- | --- | --- |
-| `pending` | The records are not in public DNS yet | Checked every five seconds at first, then every 15 minutes, then every six hours after three days, with no deadline. It goes live the moment the records appear |
+| `pending` | The records are not in public DNS yet | Checked every five seconds at first, then every 15 minutes, then every six hours after three days (with `error_code` `setup_incomplete`), with no deadline. It goes live the moment the records appear |
 | `propagating` | A rail wrote the records and DNS is being watched | It fails after 24 hours (`propagation_timeout`) if they never resolve, usually a wrong value or a proxy in the way |
 | `live` | Every record resolves to its expected value | A domain served through the CustomDomain™ edge gets its certificate on the first request |
 | `failed` | Records a rail wrote never resolved within 24 hours (`propagation_timeout`) | Not final: a recheck, creating the same domain again, or real traffic at the edge revives it |
