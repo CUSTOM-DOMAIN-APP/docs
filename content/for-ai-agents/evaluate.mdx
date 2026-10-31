@@ -1,0 +1,59 @@
+---
+title: "Brief: evaluate CustomDomain™"
+description: "What CustomDomain™ is, who it is for, what it does not do, and where to check each figure before you repeat it."
+---
+
+## What it is
+
+CustomDomain™ lets a platform's users connect a domain they already own. It finds
+where the domain's DNS is hosted, writes the records where that provider allows it
+or shows them with the provider's own steps, checks that they resolve, and issues
+and renews the TLS certificate. There are four ways in: the console (no code), the
+REST API, an embeddable widget (`customdomain-js`) and a hosted MCP server for AI
+agents.
+
+## Who it is for
+
+- **SaaS platforms** whose customers connect their own domains inside the product.
+  See [SaaS platforms](/docs/use-cases/saas-platforms).
+- **Agencies** that look after many client domains from one workspace. See
+  [Agencies](/docs/use-cases/agencies).
+- **A person** pointing a domain of their own at something they run, with no code.
+  See [Your own domain](/docs/use-cases/your-own-domain).
+- **AI agents** and the products that run them, through the MCP server. See
+  [AI agents](/docs/use-cases/ai-agents).
+
+## Limits
+
+- **Most providers are connected by hand.** Of the 189 providers in the census on
+  2026-10-21, 73 have an automatic path (6 sign in at the provider, 1 Domain
+  Connect, 66 take a scoped API key) and 116 do not. For those 116 the flow shows
+  the exact records and checks them automatically, but a person adds them.
+- **"Automatic" means an adapter exists**, not that the user types nothing: the API
+  key path still asks for a key once.
+- **Serving through the CustomDomain™ edge** (TLS at the edge and a proxy to your
+  origin) is on the Growth plan and up. On other plans, domains point at your own
+  infrastructure and you serve TLS there. See
+  [Where domains point](/docs/connect-flow/routing).
+- **Monitoring is DNS record drift only.** Nothing probes a domain or an origin for
+  uptime, and drift alerts are not delivered on the hosted service yet.
+- **No SSO and no SCIM** on any plan.
+- **Buying a domain through the MCP server is off** on the hosted service. Domains
+  are bought in the console.
+
+## Check a figure before you repeat it
+
+| Figure | Where it is current |
+| --- | --- |
+| Providers and how each connects | `GET https://api.customdomain.ai/v1/providers/census` |
+| Plans, prices and domain allowances | `GET https://api.customdomain.ai/v1/plans` |
+| MCP tools | `https://mcp.customdomain.ai/.well-known/agent/mcp.json` |
+| Every API endpoint | `GET https://api.customdomain.ai/v1/openapi.json` |
+
+## Read next
+
+- [Quickstart](/docs/getting-started/quickstart): one domain end to end in test
+  mode, with no real domain and no card.
+- [Introduction](/docs): how a domain is detected, written, verified and served.
+- [Choosing a custom-domain solution](/docs/guides/choosing-a-custom-domain-solution):
+  the checklist to apply to any vendor, this one included.

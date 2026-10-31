@@ -1,0 +1,64 @@
+---
+title: "Brief: integrate CustomDomain™ in an app"
+description: "The four ways to build CustomDomain™ into a product (widget, REST API, MCP server, console), the credential each one needs, and the first calls."
+---
+
+## Pick the way in
+
+| You are building | Use | Start |
+| --- | --- | --- |
+| A product whose customers connect their own domains inside your UI | The widget: `customdomain-js` or `@customdomain/react` | [Widget](/docs/getting-started/widget) |
+| A product that provisions domains from your server | The REST API at `https://api.customdomain.ai/v1` with a `cd_live_` API key | [API](/docs/getting-started/api) |
+| An AI agent or MCP client | The MCP server at `https://mcp.customdomain.ai/mcp` | [MCP](/docs/getting-started/mcp) |
+| Nothing: you are pointing your own domain | The console at `https://app.customdomain.ai` | [Console](/docs/getting-started/console) |
+
+Build first in [test mode](/docs/guides/test-mode): made up `.test` names, the same
+statuses and webhooks, no card and nothing billed.
+
+## The model
+
+A workspace has applications. An application owns its connections, its origin, its
+keys and its webhooks. A connection is one domain moving from `pending` to
+`propagating` to `live`, or to `failed`, which is not final: a recheck or creating
+the same domain again revives it. `pending` has no deadline.
+
+## Credentials
+
+- **API key** (`cd_live_` or `cd_test_`, from the console's **API & SDK** page):
+  server to server calls, the MCP server, and minting widget tokens. It never goes
+  to a browser.
+- **Widget token**: a short-lived token (15 minutes by default) for one
+  application, minted on your server. It is the only credential a page holds. See
+  [Widget tokens](/docs/authentication/widget-tokens).
+- **Agent token**: scoped, revocable access a person approves for an agent. See
+  [Agent access](/docs/agents/overview).
+
+## First calls from your server
+
+```bash
+# 1. Pre-flight: where the domain's DNS is hosted, and which ways can connect it
+curl -X POST https://api.customdomain.ai/v1/domains:check \
+  -H "Authorization: Bearer cd_live_..." -H "Content-Type: application/json" \
+  -d '{"domain":"shop.acme.com"}'
+
+# 2. Create the connection (201 when new, 200 when it already exists)
+curl -X POST https://api.customdomain.ai/v1/connections \
+  -H "Authorization: Bearer cd_live_..." -H "Content-Type: application/json" \
+  -d '{"domain":"shop.acme.com"}'
+
+# 3. Read its status until it is live
+curl https://api.customdomain.ai/v1/connections/<ID> \
+  -H "Authorization: Bearer cd_live_..."
+```
+
+Branch on `rails` and `recommended_rail` from the pre-flight, not on `setup_type`.
+`end_user_automatic: true` is the only field that means nobody has to type
+anything. Rather than polling, subscribe to [webhooks](/docs/webhooks/overview),
+which are signed and fire when a domain goes live or fails.
+
+## Read next
+
+- [API, provision domains from your server](/docs/getting-started/api): every step
+  with Node samples and the mistakes integrators make.
+- [How the widget works](/docs/widget-sdk/overview): the screens a customer sees.
+- [API reference](/docs/api-reference): every `/v1` endpoint.

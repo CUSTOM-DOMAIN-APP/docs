@@ -71,6 +71,26 @@ docker build -f site/Dockerfile -t docs-site .
 docker run -p 3000:3000 docs-site
 ```
 
+### The one setting: `DOCS_AGENT_SURFACE`
+
+The "For AI agents" page, its seven briefs (`/agents/brief/<name>.md`), the optional
+context link (`/agents/context/...`) and the matching section of both `llms.txt`
+files follow one setting, read in `site/src/lib/agent-surface.ts`:
+
+| Value | What is served |
+|---|---|
+| `on` (the default) | The page, the briefs, the context link and the `llms.txt` section |
+| `briefs` | The page, the briefs and the `llms.txt` section, without the context link or its paragraphs |
+| `off` | None of it: the `/agents/*` addresses answer `404`, and links to the page go to the AI agents use case page |
+
+The pages are built with the setting, so it is a **build** argument as well as a
+runtime variable: set `build.args.DOCS_AGENT_SURFACE` on the `docs` service in the
+product repo's compose file (the Dockerfile copies it into the runtime environment),
+then run a docs deploy. An environment variable alone, without a rebuild, changes the
+`/agents/*` answers but not the pages. The compose file sets nothing today, so the
+default applies; changing `AGENT_SURFACE_DEFAULT` in `agent-surface.ts` is the other
+way to flip it. Markdown by `Accept` and the `Link` header do not depend on it.
+
 ## DNS and the old `/docs` route
 
 `docs.customdomain.ai` is a proxied `CNAME` to `app.customdomain.ai` in the
@@ -117,3 +137,11 @@ Each is a deliberate decision for a human, and none blocks a docs change.
    `git show <sha>:apps/app/openapi-v1.yaml | cmp - site/openapi-v1.yaml` before
    you commit the next vendored copy, and read `git diff` of the file for a docs
    correction the product spec lacks.
+4. **`Vary: Accept` on HTML pages.** A docs page answers with HTML or, to a request
+   whose `Accept` prefers `text/markdown`, with its Markdown. The Markdown answer says
+   `Vary: Accept`; the HTML answer cannot, because Next.js replaces the `Vary` header
+   on every page with its own list. Nothing caches docs HTML today (Cloudflare reports
+   `cf-cache-status: DYNAMIC`, and it ignores `Vary` unless the zone's Cache Rules
+   Vary setting is on). If docs HTML is ever cached at the edge, add `Vary: Accept` in
+   the `docs.customdomain.ai` block of the product repo's `infra/Caddyfile`, or turn
+   that Cloudflare setting on for `accept`, so a browser is never served Markdown.

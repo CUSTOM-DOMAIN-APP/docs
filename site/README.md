@@ -24,6 +24,18 @@ deployment and the follow-ups still open.
   any content page (including generated OpenAPI reference pages), `layout.tsx`
   wraps it in Fumadocs' `DocsLayout` (sidebar nav + search), `llms.txt/route.ts`
   serves an [llms.txt](https://llmstxt.org/) index of the whole tree.
+- `src/proxy.ts` (Next.js 16's middleware): Markdown by `Accept` (a request for
+  a docs page that prefers `text/markdown` gets `app/docs-md`'s answer, which says
+  `Vary: Accept`; HTML pages send a `Link` header naming their `.md` twin) and the
+  agent addresses: `/agents` (the "For AI agents" page), `/agents/brief/<name>.md`
+  and `/agents/context/{task}/{for}/{region}/{client}` (`src/app/agents/context`).
+  `src/lib/negotiate.ts` holds the `Accept` rules.
+- `src/lib/agent-surface.ts`: the "For AI agents" wording, the seven briefs, the
+  context link's lists and the `DOCS_AGENT_SURFACE` setting (`on`, `briefs` or
+  `off`; see `../DEPLOYMENT.md`). The page (`content/for-ai-agents/index.mdx`, via
+  `<ForAgents />`), both `llms.txt` files and the context link all render this one
+  text. Its last paragraph is the tracking plan's wording, pending counsel; the test
+  in `agent-surface.test.ts` pins it word for word, so a change to it is deliberate.
 - `src/app/api/search/route.ts`: the search index endpoint (Fumadocs' built-in
   static Orama search: no external search service/account).
 - `src/lib/source.ts`: wires the content collection + the OpenAPI loader
@@ -58,6 +70,8 @@ deployment and the follow-ups still open.
 cd site
 npm install
 npm run dev       # http://localhost:3000 -> redirects to /docs
+npm test          # node --test: the agent surface, Markdown negotiation, the rate limit
+npm run typecheck
 ```
 
 ## Production build

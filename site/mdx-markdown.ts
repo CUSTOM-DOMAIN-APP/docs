@@ -1,7 +1,11 @@
-// How MDX components read in a page's Markdown (the /docs/<slug>.md route and
-// "Copy Markdown"). Fumadocs keeps a component as JSX unless told otherwise;
-// these turn the ones the content uses into plain Markdown, so an agent reading
-// the page sees the steps, the code, the questions and the options, not markup.
+/**
+ * How MDX components read in a page's Markdown (the /docs/<slug>.md route and "Copy Markdown"). Fumadocs keeps a
+ * component as JSX unless told otherwise; these turn the ones the content uses into plain Markdown, so an agent
+ * reading the page sees the steps, the code, the questions and the options, not markup. <ForAgents /> becomes a
+ * placeholder that lib/markdown.ts fills with the "For AI agents" text when the page is served.
+ */
+
+import { FOR_AGENTS_PLACEHOLDER } from "./src/lib/agent-surface";
 
 type Attribute = { type: string; name?: string; value?: unknown };
 type JsxNode = { type: string; name?: string | null; attributes?: Attribute[]; children?: JsxNode[] };
@@ -107,6 +111,8 @@ export function stringifyComponent(rawNode: unknown, _parent: unknown, state: St
     }
     case "TypeTable":
       return typeTable(node);
+    case "ForAgents":
+      return FOR_AGENTS_PLACEHOLDER;
   }
   return undefined;
 }
