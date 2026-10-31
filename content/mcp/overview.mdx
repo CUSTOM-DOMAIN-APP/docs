@@ -346,12 +346,16 @@ The `http` transport reads these (flags shown; each has an env alias):
 
 With usage recording on (`JUSTEASY_MCP_USAGE_KEY`), the server sends the control plane:
 
-- **For each tool call:** the tool, whether it worked, how long it took, the time, and the
-  workspace when the caller is a delegated agent token. With an API key or a client credentials
-  token the MCP server does not know the workspace, so the row has none.
+- **For each tool call:** the tool, whether it worked (with an error code such as
+  `invalid_params` when it did not, never the error message, which can repeat an argument), how
+  long it took, the time, and the workspace when the caller is a delegated agent token. With an API
+  key or a client credentials token the MCP server does not know the workspace, so the row has
+  none. A tool name the server does not have is kept only when it is short and plain; otherwise
+  the row says `unknown`.
 - **For each `initialize`:** what the client says about itself in `clientInfo` (`name`, `title`,
   `version` and `websiteUrl`; each is cut to 100 characters, the website to 200, and a website keeps
-  only its scheme, host and path), the `protocolVersion` it asks for, the names of its top level
+  only its scheme, host and path; an email address, or anything that looks like a key or an install
+  id, is replaced by `[redacted]`), the `protocolVersion` it asks for, the names of its top level
   `capabilities` (never their values), the family of its user agent and how it signed in
   (`api_key`, `agent_token`, `client_credentials` or `jwt`). Each tool call also carries the user
   agent family and the `MCP-Protocol-Version` header.
