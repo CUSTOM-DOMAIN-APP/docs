@@ -31,7 +31,9 @@ _openapi:
           `browser_account_unavailable`. The caller must also hold a role that
           operates applications (an owner, an admin or a member; a viewer is `403`
           `forbidden`), and the request must carry an `Origin` on the server's return
-          origin allowlist, as `browser:start` requires.
+          origin allowlist, as `browser:start` requires. A workspace an operator
+          suspended starts none, as it starts no other cloud browser (`403`
+          `workspace_suspended`).
 
 
           Only a provider whose key can be made at sign in and whose domains can be

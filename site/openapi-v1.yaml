@@ -3782,7 +3782,8 @@ paths:
         key lists (`422` `domain_not_listed`). A call that is refused keeps
         nothing and leaves the session waiting inside its ten minutes. The key
         is claimed for the call, so a double press stores it once (`409`
-        `browser_wrong_state` for the second).
+        `browser_wrong_state` for the second). A workspace an operator suspended
+        keeps nothing (`403` `workspace_suspended`) and the key still waits.
 
 
         The account is the workspace's own, made by secure sign in in the
@@ -3801,12 +3802,19 @@ paths:
         account, for the same application, the new key is swapped into that
         account instead of adding a row: the answer is `200` with `swapped:
         true`, the replaced key is named for deletion by hand on the account
-        (`agent_key.old_key`), the domains chosen join its scope and never
-        narrow it, and widening it takes an admin, an owner or the member who
-        connected it (`403` otherwise). GoDaddy is the exception until its
-        written permission is on file: its second sign in adds a second row.
-        Every account made, swapped or shared is in the audit log
-        (`provider_account.created`, `.key_replaced`, `.updated`, `.shared`).
+        (`agent_key.old_key`) and in the answer (`replaced_key`: its name and
+        the provider's page that deletes it), and the domains chosen join its
+        scope and never narrow it. Every swap takes an admin, an owner or the
+        member who connected the account, as replacing the key by `POST
+        /provider-accounts/{id}/reconnect` does: another member's keep is `403`
+        whether or not it widens the account, and the key still waits, so the
+        member can cancel the sign in and be told which key to delete. The two
+        keys carry different names (an account sign in names its key to the
+        second), so the one to delete is never the one in use. GoDaddy is the
+        exception until its written permission is on file: its second sign in
+        adds a second row. Every account made, swapped or shared is in the audit
+        log (`provider_account.created`, `.key_replaced` with the name of the
+        key it replaced as `old_key_name`, `.updated`, `.shared`).
 
 
         A session of another workspace or member, a connect session and an
@@ -7014,7 +7022,9 @@ paths:
         refused with `403` `browser_account_unavailable`. The caller must also
         hold a role that operates applications (an owner, an admin or a member;
         a viewer is `403` `forbidden`), and the request must carry an `Origin`
-        on the server's return origin allowlist, as `browser:start` requires.
+        on the server's return origin allowlist, as `browser:start` requires. A
+        workspace an operator suspended starts none, as it starts no other
+        cloud browser (`403` `workspace_suspended`).
 
 
         Only a provider whose key can be made at sign in and whose domains can
@@ -10959,6 +10969,18 @@ components:
       properties:
         account: { $ref: '#/components/schemas/ProviderAccount' }
         swapped: { type: boolean, description: True when the key went into an account the workspace already held. }
+        replaced_key:
+          $ref: '#/components/schemas/ReplacedKey'
+    ReplacedKey:
+      type: object
+      required: [name]
+      description: >-
+        The key a swap took out of use: it is no longer the account's key, and it still lives at the provider
+        (nothing is revoked automatically). Present only when the swap replaced a different key that has a
+        name; absent for a new account and when the new key is the same key.
+      properties:
+        name: { type: string, description: "The name the replaced key was made with, to find it at the provider. It differs from the name of the new key." }
+        page: { type: string, description: The provider's page that lists and deletes keys; absent when none is known. }
     Usage:
       type: object
       description: >-

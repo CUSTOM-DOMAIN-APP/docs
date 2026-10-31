@@ -20,9 +20,13 @@ never change meaning or disappear without a new major version. See the
   console only) starts the sign-in with no domain; once the key is made, `GET /v1/browser-sessions/{id}` shows the
   domains it lists and `POST /v1/browser-sessions/{id}:keep` keeps the account for the ones you confirm, and only then.
   An abandoned sign-in (`:cancel`, or ten minutes) names the key it made and the provider's page that deletes it
-  (`left_key`). A sign-in for a provider account you already hold swaps the new key into that account instead of
-  adding another (GoDaddy excepted for now). `GET /v1/providers` lists each company's `account_ways`. A key you paste
-  for a provider that cannot list its domains is now checked against every domain you type, not only the first.
+  (`left_key`), also when the sign-in is cancelled while the key is still being made. A sign-in for a provider
+  account you already hold swaps the new key into that account instead of adding another (GoDaddy excepted for now):
+  it takes an admin, an owner or the member who connected the account, and the answer names the key it replaced
+  (`replaced_key`) so you delete the right one at the provider. A suspended workspace cannot start or keep one.
+  `GET /v1/providers` lists each company's `account_ways`. A key you paste for a provider that cannot list its
+  domains is now checked against every domain you type, not only the first; a reconnect of an account that holds more
+  than 25 such domains reads the one you name and 25 of the stored ones, and still works.
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`

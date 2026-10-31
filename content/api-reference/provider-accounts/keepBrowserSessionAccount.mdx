@@ -18,7 +18,9 @@ _openapi:
           `selected` ones), and each selected domain must be one the key lists (`422`
           `domain_not_listed`). A call that is refused keeps nothing and leaves the
           session waiting inside its ten minutes. The key is claimed for the call, so
-          a double press stores it once (`409` `browser_wrong_state` for the second).
+          a double press stores it once (`409` `browser_wrong_state` for the second). A
+          workspace an operator suspended keeps nothing (`403` `workspace_suspended`)
+          and the key still waits.
 
 
           The account is the workspace's own, made by secure sign in in the console
@@ -36,12 +38,19 @@ _openapi:
           account, for the same application, the new key is swapped into that account
           instead of adding a row: the answer is `200` with `swapped: true`, the
           replaced key is named for deletion by hand on the account
-          (`agent_key.old_key`), the domains chosen join its scope and never narrow
-          it, and widening it takes an admin, an owner or the member who connected it
-          (`403` otherwise). GoDaddy is the exception until its written permission is
-          on file: its second sign in adds a second row. Every account made, swapped
-          or shared is in the audit log (`provider_account.created`, `.key_replaced`,
-          `.updated`, `.shared`).
+          (`agent_key.old_key`) and in the answer (`replaced_key`: its name and the
+          provider's page that deletes it), and the domains chosen join its scope and
+          never narrow it. Every swap takes an admin, an owner or the member who
+          connected the account, as replacing the key by `POST
+          /provider-accounts/{id}/reconnect` does: another member's keep is `403`
+          whether or not it widens the account, and the key still waits, so the
+          member can cancel the sign in and be told which key to delete. The two keys
+          carry different names (an account sign in names its key to the second), so
+          the one to delete is never the one in use. GoDaddy is the exception until
+          its written permission is on file: its second sign in adds a second row.
+          Every account made, swapped or shared is in the audit log
+          (`provider_account.created`, `.key_replaced` with the name of the key it
+          replaced as `old_key_name`, `.updated`, `.shared`).
 
 
           A session of another workspace or member, a connect session and an unknown

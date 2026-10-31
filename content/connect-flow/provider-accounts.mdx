@@ -264,16 +264,24 @@ Once the key is made, the member who started the sign-in reads it with `GET /v1/
   owner only.
 - **One key per provider account.** When the workspace already holds a continuous key for the same provider account
   and application, the new key is swapped into that account (`200`, `swapped: true`): the old key stays at the
-  provider and the account says so (`old_key: "revoke_by_hand"`), the chosen domains join its scope and never
-  narrow it, and widening it takes an admin, an owner or the member who connected it. GoDaddy is the exception for
-  now: its second sign-in adds a second account.
+  provider and the account says so (`old_key: "revoke_by_hand"`). The answer also names it, `replaced_key` with
+  the `name` it was made with and the `page` where the provider lists and deletes keys, so you delete the right
+  one; the two keys carry different names, because an account sign-in names its key to the second. The chosen
+  domains join the account's scope and never narrow it. Every swap takes an admin, an owner or the member who
+  connected the account, whether or not it widens the scope: another member's keep is `403` and the key still
+  waits, so they can cancel the sign-in and be told which key to delete. GoDaddy is the exception for now: its
+  second sign-in adds a second account.
+- **A suspended workspace adds none.** While an operator has suspended the workspace, starting a sign-in and
+  keeping its key are `403` `workspace_suspended`; the read and the cancel still work, so one under way can be
+  abandoned and its key named.
 - **An abandoned sign-in names its key.** `POST /v1/browser-sessions/{id}:cancel` with the API key, or the ten
   minutes passing, drops the key from our memory and answers `left_key`: the name it was made with and the provider's
   page that deletes it. The key itself lives at the provider until you delete it there.
 
 Every call about the session is for the member who started it, in their workspace; another member's session, another
 workspace's and a connect sign-in's all answer `404`. Every account made, swapped or shared is in the
-[audit log](#audit-log) (`provider_account.created`, `.key_replaced`, `.updated`, `.shared`).
+[audit log](#audit-log) (`provider_account.created`, `.key_replaced` with the replaced key's name as `old_key_name`,
+`.updated`, `.shared`).
 
 ## What needs you
 
