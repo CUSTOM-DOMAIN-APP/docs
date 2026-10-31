@@ -1927,10 +1927,13 @@ paths:
         connection that names no end user does not count, because any end
         user's token could have set it); and the key is the end user's own, in
         this application, made at a sign in started with a token minted with
-        that same `end_user_ref`, and not held at GoDaddy for now. Any other
-        widget token gets an empty list, and a token bound to
-        no domain, or to another end user than the connection's, is refused
-        with `403` `token_not_bound` or `token_wrong_end_user`, as
+        that same `end_user_ref`, and not held at GoDaddy for now. Such a key
+        whose scope holds the domain's zone is `ready`; otherwise it may be
+        offered with `ready: false`, after one read with it showed it reaches
+        the zone. Any other widget token gets an empty list. A token bound to
+        no domain is refused with `403` `token_not_bound`, and one minted for
+        another end user than the connection's, or for no end user when the
+        connection names one, with `403` `token_wrong_end_user`, as
         `browser:start` refuses it. An end user's entry carries `from_domain`,
         the newest domain of theirs the key already serves, the neutral label
         `<Provider> key` and no `key_name` or `application_id`. It only

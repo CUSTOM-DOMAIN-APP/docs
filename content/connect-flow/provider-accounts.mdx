@@ -387,9 +387,9 @@ instead of a new sign-in, and only when all of this holds:
   customer (`end_user_ref`). A sample's `user_42` or `customer_123` does not
   count: it is a placeholder, so one customer could otherwise be offered
   another's key;
-- the application's **Use their saved access** setting is on
-  (`end_user_saved_access`, on by default; a test mode application never offers
-  a key). Turn it off with `PATCH /v1/applications/{id}`;
+- the application allows it: `end_user_saved_access` is on (on by default; a
+  test mode application never offers a key). Turn it off with
+  `PATCH /v1/applications/{id}`; a console switch for it comes later;
 - the customer can be told by email that their key was reused: the
   [end user notices](/docs/connect-flow/end-user-notices) feature is on, you
   gave their address when you minted the token (`end_user_email`) or the
@@ -398,8 +398,9 @@ instead of a new sign-in, and only when all of this holds:
   token could have set it), and the application's mail can be sent. Without
   the email, nothing is offered;
 - the key was made at a sign-in started with a token minted with that same
-  `end_user_ref` (any such token, not only the one asking now), and one read
-  with it shows it reaches the new domain;
+  `end_user_ref` (any such token, not only the one asking now), and either its
+  scope already holds the new domain's zone (`ready: true`) or one read with it
+  shows it reaches that zone (`ready: false`);
 - the key is not at GoDaddy. Reuse there is held until GoDaddy gives written
   permission ([why](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
 
