@@ -338,6 +338,34 @@ The `http` transport reads these (flags shown; each has an env alias):
 | `-link-base` / `MCP_LINK_BASE` | Console URL prefix for guided DNS fallback links. |
 | `-preferred-registrar` / `MCP_PREFERRED_REGISTRAR` | Registrar tried first during order resolution. |
 | `-purchase-authz-url/-user/-pass` / `MCP_PURCHASE_AUTHZ_*` | The fail closed [purchase authorization callback](#purchase-authorization-callback). Unset means purchases are denied. |
-| `JUSTEASY_MCP_USAGE_KEY` | Turns on usage recording to the control plane (`CUSTOMDOMAIN_MCP_USAGE_KEY` is read first; `MCP_USAGE_INGEST_KEY` still works as a fallback). Unset leaves it off. |
+| `JUSTEASY_MCP_USAGE_KEY` | Turns on usage recording to the control plane (`CUSTOMDOMAIN_MCP_USAGE_KEY` is read first; `MCP_USAGE_INGEST_KEY` still works as a fallback). Unset leaves it off. What it sends is in [What the server records](#what-the-server-records). |
 | `-allowed-origins` / `MCP_ALLOWED_ORIGINS` | Browser origins (`scheme://host[:port]`, comma separated) allowed to call `/mcp` besides the `-public-base` origin. A request from any other `Origin` gets `403`; one with no `Origin` is unaffected. There is no wildcard, and an entry that is not an origin stops the server at start. |
 | `-insecure` / `MCP_INSECURE=1` | Serve `/mcp` without Bearer auth. **Local development only:** the server refuses to start with it unless `-addr` is a loopback address (such as `127.0.0.1:8080` or `localhost:8080`), and never when `SENTRY_ENVIRONMENT` says production. |
+
+## What the server records
+
+With usage recording on (`JUSTEASY_MCP_USAGE_KEY`), the server sends the control plane:
+
+- **For each tool call:** the tool, whether it worked, how long it took, the time, and the
+  workspace when the caller is a delegated agent token. With an API key or a client credentials
+  token the MCP server does not know the workspace, so the row has none.
+- **For each `initialize`:** what the client says about itself in `clientInfo` (`name`, `title`,
+  `version` and `websiteUrl`; each is cut to 100 characters, the website to 200, and a website keeps
+  only its scheme, host and path), the `protocolVersion` it asks for, the names of its top level
+  `capabilities` (never their values), the family of its user agent and how it signed in
+  (`api_key`, `agent_token`, `client_credentials` or `jwt`). Each tool call also carries the user
+  agent family and the `MCP-Protocol-Version` header.
+- **For each `401`:** a count per day, user agent family and reason (`missing` is the answer that
+  starts OAuth discovery; the others are a rejected credential of each kind). Nothing that
+  identifies the caller.
+
+A user agent family is one word from a fixed list: `claude-code`, `claude`, `codex`, `chatgpt`,
+`cursor`, `windsurf`, `vscode`, `gemini`, `mcp-remote`, `mcp-sdk`, `curl`, `python`, `node`, `go`,
+`browser`, `other`, or `none` when no `User-Agent` was sent. The `User-Agent` string itself is never
+kept. Neither is a token or key, a tool's arguments or result, or an IP address.
+
+The control plane keeps the `initialize` details and the user agent family only while its runtime
+flag `mcp_client_log` is on. It is off by default, and on the hosted service it stays off until the
+[Privacy Policy](https://app.customdomain.ai/privacy) describes it; until then a tool call row holds
+only what the first bullet lists. The `401` counts are kept either way. What a client sends about
+itself is stored as text: it is never shown as HTML and never passed to an agent as an instruction.
