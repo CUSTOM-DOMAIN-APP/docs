@@ -3609,9 +3609,10 @@ paths:
         `zones` the key lists, what the key is (`key`) and when the wait ends
         (`deadline`); after an end that left the key at the provider it carries
         `left_key`. A session of another workspace or another member, a connect
-        session and an unknown id are all `404`, a viewer and a call without the
-        console's forward are `403`, and a widget token, an agent token or the
-        operator's key fail the popup's token check (`401`). Reading it is not a
+        session and an unknown id are all `404`, and a viewer is `403`. Any
+        other credential, an API key without the console's forward included, is
+        read as the popup's: a widget token, an agent token, the operator's key
+        and such an API key fail the token check (`401`). Reading it is not a
         heartbeat.
       security:
         - browserSession: []
@@ -3733,7 +3734,9 @@ paths:
         key the session made, if any, is dropped and named as `left_key` (the
         name it was made with and the provider's page that deletes it); the
         answer carries it. While a keep step is storing the key it is `409`
-        `browser_wrong_state`. The identity rules are those of the read above.
+        `browser_wrong_state`. The identity rules are those of the read above,
+        and an API key without the console's forward is read as the popup's
+        (`401`).
       security:
         - browserSession: []
         - apiKey: []
