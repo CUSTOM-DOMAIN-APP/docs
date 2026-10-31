@@ -427,11 +427,27 @@ move created.
 | Route | Who may call it |
 | --- | --- |
 | `PATCH /v1/applications/{id}` with `nameserver_migration` | An API key that can write applications. |
-| `POST /v1/connections/{id}/nameservers:migrate` | An API key; a widget token (the end user: the application's mode must be `offer` or `prefer`, `consent` must name a text the widget shows, `target`, a key and the zone flags are refused, and `copy_reviewed` is taken only for a move in `needs_review`); an agent token with `domains:connect` (no target but the application's own, and no `skip_zone_check`: `403 target_not_allowed`). |
+| `POST /v1/connections/{id}/nameservers:migrate` | An API key; a widget token (the end user: the application's mode must be `offer` or `prefer`, `consent` must name a text the widget shows, `target`, a key and the zone flags are refused, and `copy_reviewed` is taken only for a move in `needs_review`); an agent token with `domains:connect` (no target but the application's own, and no `skip_zone_check`: `403 target_not_allowed`). An agent token or a widget token never resumes the open move of another application of the workspace (`409`). |
 | `GET /v1/connections/{id}/nameservers` | An API key, a widget token, or an agent token with `domains:read`. |
-| `POST /v1/connections/{id}/nameservers:rollback` with an optional `rollback_target` | An API key; a widget token (it may choose where, but not send a key); an agent token with `domains:connect`. |
+| `POST /v1/connections/{id}/nameservers:rollback` with an optional `rollback_target` | An API key; a widget token (it may choose where, but not send a key); an agent token with `domains:connect` (its move back is recorded as `agent.acted`). |
 | `GET /v1/applications/{id}/nameserver-migrations?limit=&since=` | An API key: one application's moves and their `stats`. |
+| `GET /v1/connections?dns_hosting=hosted`, `moving` or `any` | An API key, an app-scoped token or an agent token with `domains:read`: the domains whose DNS CustomDomain™ runs ([below](#find-hosted-domains)). Any other value is `400`. |
 | `POST /v1/connections/{id}/browser:start` with `"purpose": "nameservers"` | The widget or the console: the secure sign-in session of the `agent` path, once the move waits for it (`waiting_for: browser_session`). |
+
+### Find the domains that are hosted [#find-hosted-domains]
+
+Every connection carries `dns_hosting` (`state` `none`, `moving`, `hosted` or
+`failed`, and `by`, `provider`, `zone` and `since` once there is something to
+say), on the connection list and on `GET /v1/connections/{id}`. Ask the list for
+the domains whose DNS CustomDomain™ runs with `?dns_hosting=hosted`; `moving`
+keeps those being set up or moved, and `any` keeps hosted, moving and failed. A
+page is always full and `next_cursor` keeps walking the matching rows.
+
+This finds a domain whose DNS is hosted by a move, and also one whose zone you
+started with [managed DNS](/docs/dns/managed-dns) and never moved: the list of
+moves above holds moves only. A subdomain counts when its parent domain is hosted
+(`shop.acme.com` under `acme.com`). A move that was rolled back, or that failed
+for any reason but the domain's nameservers moving away again, is not hosting.
 
 Start a move from your server through the customer's connected registrar
 account:
@@ -474,6 +490,16 @@ target, and may not send `skip_zone_check`; anything else is refused with
 chose would hand it the whole domain in one call. Your own API key may still name
 `managed` or `custom`.
 
+**Agent tokens and widget tokens act only on their own application's moves.** Two
+applications of one workspace can share a customer's zone (`www` in one, the apex
+in another), and a credential bound to one application never resumes the other's
+open move: the call answers `409`, with no word of the move, and only an API key,
+which spans the workspace, resumes it. Every start, resume or move back by an
+agent token that changed the move is in the [audit log](/docs/agents/overview#what-makes-it-safe)
+as `agent.acted` (`moved a domain's nameservers`, `moved a domain's nameservers
+back`) under `agent:<grant id>`, whichever key it used; a call that only read the
+move leaves no row.
+
 A move back takes `{"rollback_target": "previous"}` or
 `{"rollback_target": "registrar_default"}`, or nothing for the default
 ([What moving back does](#moving-back)). Its refusals: `409 old_dns_gone` (the
@@ -510,10 +536,11 @@ The [MCP server](/docs/mcp/overview) has three tools for it:
 agent sends only after the person agreed). The tools never send a registrar key.
 With an agent token, `migrate-nameservers` refuses `target` and `nameservers`:
 the application's setting decides where the nameservers go, and the control plane
-refuses the same (`403 target_not_allowed`). `migrate-nameservers` takes
-`copyReviewed` once the agent showed the person the copy's warnings and they
-agreed, and `rollback-nameservers` takes `target` (`previous` or
-`registrar_default`). Results carry `registrar`, `oldDnsHost`, `copySource`,
+refuses the same (`403 target_not_allowed`). A move that another application of
+the workspace has open is never resumed with an agent token (`409`).
+`migrate-nameservers` takes `copyReviewed` once the agent showed the person the
+copy's warnings and they agreed, and `rollback-nameservers` takes `target`
+(`previous` or `registrar_default`). Results carry `registrar`, `oldDnsHost`, `copySource`,
 `copyWarnings`, `rollbackDefault` and `rollbackTargets`.
 
 ## In the console

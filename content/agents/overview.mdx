@@ -66,8 +66,8 @@ A grant carries one or more scopes; each MCP tool requires exactly one:
 
 | Scope | Grants |
 | --- | --- |
-| `domains:read` | Observe only: availability, suggestions, connection, certificate and order status, diagnosis, provider discovery, listings, billing standing. |
-| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, and email setup. It does not remove a domain. |
+| `domains:read` | Observe only: availability, suggestions, connection, certificate, order and nameserver move status, diagnosis, provider discovery, listings, billing standing, the connected provider accounts and which saved keys may act for a domain. |
+| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, email setup, move its nameservers or move them back, and write a domain's records with a saved key. It does not remove a domain. |
 | `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. |
 | `domains:purchase` | **Spends money**: registers a domain. Isolated on its own scope, and requires a saved card and a monthly spend cap. Purchases through MCP are off on the hosted service. |
 {/* NEW SCOPES GO HERE: add one row per new scope directly above this line, and trim the matching words from the domains:connect row. This marker stays; the docs sync test reads it. */}
@@ -100,8 +100,24 @@ with that scope. Nothing else about the grant changes.
   for the one exception).
 - **Owner emails**: you are emailed when an agent connects, when it acts, and
   immediately when it spends money.
+- **It reads less than your key**: an agent token is bound to one application and
+  reads only that application's connections and keys. It never learns your
+  customer's id (`end_user_ref`), a key's customer number, sign-in session or
+  name, the provider's words about a failed key, which member of your workspace
+  made a key, or the other applications a key is shared with. A key made for
+  another application and shared with its own reads as `<Provider> key`. Your API
+  key reads all of it. [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account)
+  has the list.
+- **It never acts as your customer**: an agent token cannot set a customer's email
+  address through `end_user_email` (refused with `403`, your API key sets it),
+  cannot make a [reconnect link](/docs/guides/secure-sign-in#reconnect) (only your
+  API key can, because the link signs in as the customer), and never resumes the
+  [nameserver move](/docs/guides/nameserver-migration#api) another application of
+  your workspace has open.
 - **A trail**: what an agent does and spends is in the audit log, under the actor
-  `agent:<grant id>`.
+  `agent:<grant id>`. Its changes to a domain's DNS are `agent.acted` rows: using
+  a saved key, re-applying a domain's records, moving a domain's nameservers or
+  moving them back. A call refused before anything was sent leaves no row.
 
 ## Hosted endpoints
 
