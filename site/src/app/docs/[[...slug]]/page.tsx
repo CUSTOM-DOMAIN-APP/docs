@@ -3,7 +3,8 @@
  * GitHub links, TechArticle and breadcrumb JSON-LD, and its metadata and social card. Every page in the source is
  * generated at build; an unknown slug returns a 404. Machine fields (title, description, social tags, alt text and
  * schema.org names) carry no ™ (D-2, lib/machine-text.ts). The visible title and description keep it. The title is
- * set in the brand serif through the cd-docs-title class (src/app/brand.css).
+ * set in the brand serif through the cd-docs-title class and the description in the kit's lede through cd-docs-lede
+ * (src/app/brand.css).
  */
 
 import { notFound } from "next/navigation";
@@ -94,7 +95,7 @@ export default async function Page({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <DocsTitle className="cd-docs-title">{page.data.title}</DocsTitle>
-      <DocsDescription className="mb-0">{description}</DocsDescription>
+      <DocsDescription className="cd-docs-lede mb-0">{description}</DocsDescription>
       <div className="flex flex-row flex-wrap items-center gap-2 border-b pb-6">
         <MarkdownCopyButton markdownUrl={markdownUrl} />
         <ViewOptionsPopover markdownUrl={markdownUrl} githubUrl={githubUrl} />
