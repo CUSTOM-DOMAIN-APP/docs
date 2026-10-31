@@ -10979,7 +10979,7 @@ components:
         (nothing is revoked automatically). Present only when the swap replaced a different key that has a
         name; absent for a new account and when the new key is the same key.
       properties:
-        name: { type: string, description: "The name the replaced key was made with, to find it at the provider. It differs from the name of the new key." }
+        name: { type: string, description: "The name the replaced key was made with, to find it at the provider. An account sign in names its key to the second, so it differs from the new key's name unless both were made in the same second." }
         page: { type: string, description: The provider's page that lists and deletes keys; absent when none is known. }
     Usage:
       type: object

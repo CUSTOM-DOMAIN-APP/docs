@@ -266,7 +266,8 @@ Once the key is made, the member who started the sign-in reads it with `GET /v1/
   and application, the new key is swapped into that account (`200`, `swapped: true`): the old key stays at the
   provider and the account says so (`old_key: "revoke_by_hand"`). The answer also names it, `replaced_key` with
   the `name` it was made with and the `page` where the provider lists and deletes keys, so you delete the right
-  one; the two keys carry different names, because an account sign-in names its key to the second. The chosen
+  one; the two keys carry different names, because an account sign-in names its key to the second (two sign-ins
+  for the same account in the same second would share one). The chosen
   domains join the account's scope and never narrow it. Every swap takes an admin, an owner or the member who
   connected the account, whether or not it widens the scope: another member's keep is `403` and the key still
   waits, so they can cancel the sign-in and be told which key to delete. GoDaddy is the exception for now: its
