@@ -1,0 +1,167 @@
+---
+title: "Domain verification: publish another service's TXT record"
+description: "When your app asks customers to add a TXT record for another service (single sign-on, Search Console, a Bluesky handle), hand that record to CustomDomain™: written or shown exactly, checked, then a webhook."
+---
+
+Many services ask a customer to prove they control a domain by adding a DNS
+record: an identity provider before it turns on single sign-on for the domain,
+Google Search Console for a Domain property, Bluesky for a handle. If your app
+passes one of those records on to your customers, CustomDomain™ can carry it the
+rest of the way. Your server supplies the record. It is written at the
+customer's provider where their sign-in or API key allows it, and shown as the
+exact row everywhere else. CustomDomain™ checks that it resolves and tells your
+server with `connection.live`.
+
+**Does CustomDomain™ verify the domain for my app?** No. It writes or shows
+your record and checks that a `TXT` at that name carries your value. The
+service that issued the token runs its own check. Your customer adds no record
+for CustomDomain™ itself, and the token always comes from the service that asks
+for it.
+
+## How it works
+
+1. **Get the value from the issuing service.** For example, WorkOS returns a
+   `verification_token` for the domain.
+2. **Create a connection for the customer's domain** from your server with an
+   API key: `POST /v1/connections` with `{"domain": "acme.com"}`. See
+   [Create a connection](/docs/connect-flow/create-a-connection).
+3. **Supply the record** with `PUT /v1/connections/{id}/records`. It replaces
+   the connection's default set, so the connection asks for your record and
+   nothing else. See [Bring your own records](/docs/dns/bring-your-own-records).
+4. **Hand it to the customer.** Open the widget for the same domain:
+   `POST /v1/connections` is idempotent per application and domain, so the
+   widget's own create returns this connection and shows your record. If
+   someone else runs the customer's DNS, email them the steps instead with a
+   share link (`POST /v1/sharing/connect` with `recipient_email` and `note`).
+5. **Wait for `connection.live`.** It fires when every record in the set
+   resolves. Then run your check, or ask the issuing service to run its own.
+
+```bash
+# 2. Create the connection (your server, API key)
+curl -X POST https://api.customdomain.ai/v1/connections \
+  -H "Authorization: Bearer cd_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "acme.com"}'
+
+# 3. Supply the record before the widget opens
+curl -X PUT https://api.customdomain.ai/v1/connections/<ID>/records \
+  -H "Authorization: Bearer cd_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"records": [
+        { "type": "TXT", "host": "@", "value": "verification_token=<TOKEN>" }
+      ]}'
+```
+
+The calls are the real endpoints. The token is a placeholder for the one the
+issuing service gives you.
+
+A connection whose set has no record pointing at the CustomDomain™ edge is a
+record-delivery connection: it goes `live`, fires the same webhooks and is
+listed like any other, but it is not served and gets no certificate.
+
+## What your customer sees
+
+| Way to connect | Your record |
+| --- | --- |
+| Sign in with the provider | Written as supplied |
+| A provider API key | Written as supplied |
+| One-click setup | Refused. The customer adds the record by hand |
+| Secure sign-in | Refused before the customer signs in. The widget says "This setup includes records this sign in cannot add yet: TXT." and moves to the manual steps |
+| Add the records | The manual screen shows the exact row ("Add 1 record at" the provider, Name, Value and Copy), checks it with **Check now**, and offers **Email these instructions to someone else** |
+
+Where the record is written, the values already at that name stay: another
+service's token or the domain's SPF policy is not removed. The widget can still
+offer one-click setup or secure sign-in for such a domain. Starting either is
+refused, and the customer goes on with the manual steps.
+
+## Recipes
+
+The record formats below are each service's own. The tokens are placeholders.
+
+### WorkOS (single sign-on and domain claims)
+
+WorkOS documents the record as Name `domain-to-verify.com`, Value
+`verification_token=` followed by the token it returns, and checks for it
+periodically.
+
+```json
+{ "records": [ { "type": "TXT", "host": "@", "value": "verification_token=<TOKEN>" } ] }
+```
+
+When `connection.live` arrives, read the domain's state from WorkOS, which says
+the domain endpoint can be polled once verification has started. WorkOS marks a
+domain `failed` if it has not verified within thirty days.
+
+### Google Search Console (Domain property)
+
+A Domain property is verified by DNS only. Search Console gives a `TXT` value
+for the root of the domain.
+
+```json
+{ "records": [ { "type": "TXT", "host": "@", "value": "google-site-verification=<TOKEN>" } ] }
+```
+
+Search Console checks periodically that the token is still there, and access to
+the property expires after a grace period if it is not. Leave the record in
+place.
+
+### Bluesky handle
+
+A handle is proved with a `TXT` at `_atproto` under the handle's own name, with
+a value that starts `did=`.
+
+```json
+{ "records": [ { "type": "TXT", "host": "_atproto", "value": "did=did:plc:<ID>" } ] }
+```
+
+A relative host is anchored to the connection's own name, so on a connection for
+`acme.com` this is `_atproto.acme.com`, the record for the handle `acme.com`. For
+the handle `alice.acme.com`, use the host `_atproto.alice.acme.com` (any host at
+or under the registrable domain is accepted).
+
+## Change the wording
+
+The widget's words are for connecting a domain: its last screen says "Live".
+For this job you can change them with `whiteLabel.customCopy` on a
+direct `open()`, keyed by locale (`"*"` for all) and then by copy key:
+
+```js
+window.customdomain.open({
+  applicationId, token,
+  domain: "acme.com",
+  whiteLabel: {
+    customCopy: {
+      "*": {
+        "done.title": "Record found",
+        "done.manual.title": "Record found",
+      },
+    },
+  },
+});
+```
+
+A teammate who opens a share link gets your branding only on the Enterprise plan.
+On other plans the resumed flow uses the default look and words. See
+[Plans and quotas](/docs/billing/plans-and-quotas).
+
+## Limits
+
+- **Not in test mode.** A test mode key gets `403 sandbox_not_allowed` from
+  `PUT /v1/connections/{id}/records` and `POST /v1/sharing/connect`. Try the
+  flow with a live key on a domain you control.
+- **Fixed once written.** After the record is written, or the connection is
+  live, a different set is refused with `409`. To change the token, disconnect
+  and connect the domain again. A token that rotates on every check, such as
+  `_acme-challenge`, does not fit.
+- **One account per name.** A domain another CustomDomain™ account already
+  serves `live` is refused at create (`409 domain_already_connected`).
+- **Checked hourly, loosely.** Every live domain is checked once an hour. A
+  `TXT` counts when one of its values contains yours, compared in lowercase, so
+  a value the issuing service would reject can still read as found here. See
+  [Monitoring](/docs/connect-flow/monitoring). When you remove the domain,
+  choose to keep its records if the other service still needs the token
+  ([Removing a domain](/docs/connect-flow/offboarding)).
+- **A domain on your plan.** Each connection counts like any other domain
+  ([Plans and quotas](/docs/billing/plans-and-quotas)).
+- **No MCP tool takes the record.** No MCP tool accepts DNS records as input.
+  Supply them from your server.
