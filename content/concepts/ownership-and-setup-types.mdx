@@ -141,18 +141,19 @@ the ownership proof.
 Through the API, an API-token credential is used for the apply and then
 discarded; connect it as a
 [provider account](/docs/connect-flow/provider-accounts) to keep it. In the
-console, **Remember this key for my *&lt;provider&gt;* account** starts ticked,
-so the key is kept as a provider account unless the user unticks it.
+console, **Keep it as a connected account** starts ticked, so the key is kept
+as a provider account unless the user unticks it. If the deployment cannot keep
+it, the key is used once and the page says so.
 Account passwords and tokens that expire within hours are never saved.
 
-A remembered key is encrypted at rest (AES-256-GCM) and its plaintext never
+A kept key is encrypted at rest (AES-256-GCM) and its plaintext never
 leaves the server. On the next connect at that
 provider, **"Use saved key"** applies records in one click without re-entering
 anything, and for Cloudflare, GoDaddy, Route 53, Namecheap, IONOS,
 united-domains, Epik, NameBright, cPanel hosts and other API key providers that
 can list the zones a key covers, the same key can
 [bulk-connect the account's other domains](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
-Revoke a saved key any time under **Connected accounts** in the console sidebar. See
+Remove a kept key any time under **Connected accounts** in the console sidebar. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional) and
 [Security](/docs/security/overview#provider-credentials).
 

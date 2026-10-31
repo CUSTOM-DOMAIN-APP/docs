@@ -269,13 +269,13 @@ switch API access off where it was switched on.
 
 ## Remembering a key (optional)
 
-A provider key is used to write the records. In the console, **Remember this
-key for my *&lt;provider&gt;* account** starts ticked: untick it to use the key
-once and have it forgotten. Through the API, `POST /v1/connections/{id}/apply`
+A provider key is used to write the records. In the console, **Keep it as a
+connected account** starts ticked: untick it to use the key once and have it
+forgotten. Through the API, `POST /v1/connections/{id}/apply`
 never keeps a key; connect it as a
 [provider account](/docs/connect-flow/provider-accounts) to keep it.
 
-A remembered key becomes a continuous
+A kept key becomes a continuous
 [provider account](/docs/connect-flow/provider-accounts) for all of that
 account's domains, checked against the provider before it is kept. It is:
 
@@ -291,12 +291,14 @@ account's domains, checked against the provider before it is kept. It is:
   accounts** page and choose **Revoke**; the key is deleted and its domains stay
   connected.
 
-A deployment without `GRANT_ENCRYPTION_KEY` cannot keep provider accounts, so
-its console keeps the key itself (AES-256-GCM under `WEB_SECRET_KEY`, one per
-workspace and provider), only to connect more domains. Keys saved that way are
-listed under **Keys to move** on the Connected accounts page until you move
-them to an account. Saving or removing one of them needs a member or above; a
-viewer only sees them.
+A deployment without `GRANT_ENCRYPTION_KEY` cannot keep provider accounts. Its
+console no longer keeps the key itself: the records are still written, the key
+is used once, and the connect page says it was not kept. Older consoles did keep
+such a key in their own store (AES-256-GCM under `WEB_SECRET_KEY`, one per
+workspace and provider), and that store is being retired. A key left in it
+still works, and is listed under **Keys to move** on the Connected accounts page
+until you move it to an account or delete it. Moving or deleting one needs a
+member or above; a viewer only sees them.
 
 Credentials that are passwords or expire within hours are never kept, whatever
 the request asks: ALL-INKL.COM KAS logins, Arsys API passwords, INWX, Subreg,
