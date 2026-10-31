@@ -78,10 +78,11 @@ _openapi:
           is `offer` or `prefer`: while it is `off`, or none was saved, every
           call of this route by an agent token, a start or a resume of a move a
           person began, is refused `403` with code `ns_not_offered` and changes
-          nothing, so an agent does not retry it. A person starts the move for
-          one domain with an API key or in the console, which this rule leaves
-          as it was (so does a widget token's own refusal, a plain `403
-          forbidden`), and `:rollback` stays open to the agent. A credential
+          nothing, so an agent does not retry it. A person can turn DNS hosting
+          on in the application's settings, and the platform can still start the
+          move for one domain with an API key, which this rule leaves as it was
+          (so does a widget token's own refusal, a plain `403 forbidden`);
+          `:rollback` stays open to the agent. A credential
           bound to one application (a delegated agent token, a widget token)
           resumes only the moves of its own application: the open migration of a
           domain that another application of the workspace is moving answers

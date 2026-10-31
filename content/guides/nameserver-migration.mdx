@@ -489,10 +489,11 @@ an AI agent may do it only for an application that offers it (mode `offer` or
 `prefer`). With the mode `off`, or no setting saved, every call to
 `:migrate` by an agent token is refused with `403 ns_not_offered` and changes
 nothing: it covers a start and the resume of a move a person began, writes no row
-and calls no registrar. A person can still start the move for one domain, with an
-API key or in the console, and does not need hosting on for the whole application;
-your end users' widget keeps its own `403` for an application that does not offer
-it. Moving back (`:rollback`) stays open to an agent, so it can undo a move.
+and calls no registrar. A person can turn DNS hosting on in the application's
+settings (the DNS hosting card offers it), or your platform can start the move for
+one domain with its API key, which this rule leaves as it was; your end users'
+widget keeps its own `403` for an application that does not offer it. Moving back
+(`:rollback`) stays open to an agent, so it can undo a move.
 
 **Agent tokens never choose where the nameservers go.** A delegated agent token
 (an AI agent acting for a person) may start a move only to the application's own
@@ -527,8 +528,21 @@ is the same for every caller.
 
 It is `null` while the move copies, waits for a copy review (`copy_reviewed`), for the
 registry, for DNSSEC or the change to be made by a person at the registrar, or for a
-key to be reconnected, once it is `active`, and when it is over. An agent token on an
-application with DNS hosting off can see a `retry` it would be refused if it sent.
+key to be reconnected, once it is `active`, and when it is over.
+
+Because `next_action` is the same for every caller, it can name a request the caller
+who reads it is refused. There are three such cases. A caller in one of them does not
+send the request; it tells the person what `next_step` says.
+
+- `sign_in` points at `browser:start`, which runs only from a customer's browser or the
+  console. It refuses every agent token, and every API key without the console's
+  label, with `403 browser_customer_present_only` ([secure sign-in](/docs/guides/secure-sign-in)).
+- `retry` is refused to an agent token while the application's DNS hosting is off
+  (`403 ns_not_offered`), even when the failed move is one a person started.
+- `retry` is refused to a widget token (the end user) when the application's setting is
+  off (`403 forbidden`, "this application does not offer nameserver migration").
+
+`rollback` is open to all of them whatever the setting says.
 
 A move back takes `{"rollback_target": "previous"}` or
 `{"rollback_target": "registrar_default"}`, or nothing for the default
@@ -570,8 +584,8 @@ refuses the same (`403 target_not_allowed`). A move that another application of
 the workspace has open is never resumed with an agent token (`409`).
 While the application's DNS hosting is off, `migrate-nameservers` is refused with
 the error `ns_not_offered` and changes nothing: the agent does not retry, and tells
-the person they can start the move for that domain from its page in the console.
-`rollback-nameservers` is not refused.
+the person they can turn DNS hosting on in the application's settings, or that the
+platform can start the move with its API key. `rollback-nameservers` is not refused.
 `migrate-nameservers` takes `copyReviewed` once the agent showed the person the
 copy's warnings and they agreed, and `rollback-nameservers` takes `target`
 (`previous` or `registrar_default`). Results carry `registrar`, `oldDnsHost`, `copySource`,

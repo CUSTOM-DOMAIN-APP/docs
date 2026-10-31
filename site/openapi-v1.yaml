@@ -2555,10 +2555,11 @@ paths:
         is `offer` or `prefer`: while it is `off`, or none was saved, every
         call of this route by an agent token, a start or a resume of a move
         a person began, is refused `403` with code `ns_not_offered` and
-        changes nothing, so an agent does not retry it. A person starts the
-        move for one domain with an API key or in the console, which this
-        rule leaves as it was (so does a widget token's own refusal, a plain
-        `403 forbidden`), and `:rollback` stays open to the agent. A credential
+        changes nothing, so an agent does not retry it. A person can turn DNS
+        hosting on in the application's settings, and the platform can still
+        start the move for one domain with an API key, which this rule
+        leaves as it was (so does a widget token's own refusal, a plain
+        `403 forbidden`); `:rollback` stays open to the agent. A credential
         bound to one application (a delegated agent token, a widget token)
         resumes only the moves of its own application: the open migration of
         a domain that another application of the workspace is moving answers
@@ -11131,6 +11132,18 @@ components:
             describes. `null` when nothing is waiting for a press: the move
             is copying, waiting for the registry, waiting for a person at the
             registrar, DNSSEC or the copy review (`copy_reviewed`), or over.
+            Because it is the same for every caller, it can name a request
+            the caller who reads it is refused. Three cases: `sign_in` points
+            at `POST /v1/connections/{id}/browser:start`, which runs only from
+            a customer's browser or the console and refuses every agent token
+            and every API key without the console's client label (`403
+            browser_customer_present_only`); `retry` is refused `403
+            ns_not_offered` to an agent token while the application's DNS
+            hosting is off; and `retry` is refused `403 forbidden` to a widget
+            token when the setting is off. A caller in one of those cases
+            tells the person (`next_step` says what to do) and does not send
+            the request. `rollback` is open to all three callers whatever the
+            setting says.
           oneOf: [ { $ref: '#/components/schemas/NameserverNextAction' }, { type: 'null' } ]
         failure_code:
           type: string
