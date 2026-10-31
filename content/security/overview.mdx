@@ -141,8 +141,8 @@ discard it, unless it is kept as a provider account or a managed sign-in grant
   (`OAUTH_ALLOWED_RETURN_ORIGINS`).
 - **API token (Rail B)** uses the scoped credential you pass on a single write.
   `POST /v1/connections/{id}/apply` **discards it after that write**; the
-  console's remember box, which starts ticked, keeps it as a provider account
-  instead (see below). The console collects multi-part credentials as separate
+  console's **Keep it as a connected account** box, which starts ticked, keeps it
+  as a provider account instead (see below). The console collects multi-part credentials as separate
   labeled fields and joins them only for that request.
 - **One-click setup (Rail A)** uses no server-to-server credential; its apply
   URLs are RS256-signed from `DC_SIGNING_KEY_FILE`.
@@ -175,9 +175,10 @@ Whatever is kept:
 - **never leaves the server**: the control plane uses it itself and never
   returns it; the browser sees only details such as the provider, a label, the
   domains and the last use;
-- is used only to write, put back and remove the records of the domains it
-  covers and, for [Domain maintenance](/docs/guides/nameserver-migration), to
-  change their nameservers when the account is at the domain's registrar;
+- is used only to check that it still works, to list the account's domains, to
+  read, write, put back and remove the records of the domains it covers and, for
+  [Domain maintenance](/docs/guides/nameserver-migration), to change their
+  nameservers when the account is at the domain's registrar;
 - leaves a **trail**: the workspace's audit log records who kept, changed,
   widened, moved, replaced or removed it, and each nameserver move that used it
   ([provider account events](/docs/connect-flow/provider-accounts#audit-log));
@@ -187,10 +188,13 @@ Whatever is kept:
   made at sign-in also lives at the provider until it is revoked there.
 
 A deployment without `GRANT_ENCRYPTION_KEY` keeps no provider accounts or
-sign-ins. Its console keeps a remembered key itself instead, sealed with
-AES-256-GCM under `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key) for one workspace
-and provider, and only to connect more domains. A sign-in that is not kept and
-one-click setup (which uses no server token) store nothing. See
+sign-ins. Its console no longer keeps a key itself: the records are still
+written, the key is used once, and the connect page says it was not kept. A key
+an older console kept in its own store, sealed with AES-256-GCM under
+`WEB_SECRET_KEY` (per-blob HKDF-SHA256 key) for one workspace and provider, still
+works, only to connect more domains, until it is moved to an account or deleted;
+that store is being retired. A sign-in that is not kept and one-click setup
+(which uses no server token) store nothing. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
 ## Secrets handling

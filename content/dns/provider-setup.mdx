@@ -291,6 +291,10 @@ account's domains, checked against the provider before it is kept. It is:
   accounts** page and choose **Revoke**; the key is deleted and its domains stay
   connected.
 
+If a key is kept but the domain just connected could not be linked to its account,
+the connect page says that instead, and you can connect the domain to the account
+from **Connected accounts**.
+
 A deployment without `GRANT_ENCRYPTION_KEY` cannot keep provider accounts. Its
 console no longer keeps the key itself: the records are still written, the key
 is used once, and the connect page says it was not kept. Older consoles did keep
