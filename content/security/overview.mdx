@@ -175,13 +175,15 @@ Whatever is kept:
 - **never leaves the server**: the control plane uses it itself and never
   returns it; the browser sees only details such as the provider, a label, the
   domains and the last use;
-- is used only to check that it still works, to list the account's domains, to
-  read, write, put back and remove the records of the domains it covers and, for
-  [Domain maintenance](/docs/guides/nameserver-migration), to change their
-  nameservers when the account is at the domain's registrar and, when a move to
-  that provider as the application's DNS host is requested
+- is used only at that same provider account, and only to: check that it still
+  works; read, write and remove DNS records; list its domains; when a nameserver
+  change is requested
+  ([Domain maintenance](/docs/guides/nameserver-migration)), read and change the
+  domain's nameservers and, where the move needs it, turn off its DNSSEC at the
+  registrar; and, when a move to that provider as the application's DNS host is
+  requested
   ([your own account](/docs/guides/nameserver-migration#a-dns-host-we-connect-to)),
-  to create the domain's zone there and copy its records into it;
+  create the domain's zone there and copy its records into it;
 - leaves a **trail**: the workspace's audit log records who kept, changed,
   widened, moved, replaced or removed it, and each nameserver move that used it
   ([provider account events](/docs/connect-flow/provider-accounts#audit-log));
