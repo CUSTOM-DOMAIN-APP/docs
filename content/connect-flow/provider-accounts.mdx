@@ -325,7 +325,9 @@ with it first).
 
 An account that changed while its key was being checked (its key was replaced, or
 someone edited it in that moment) also answers `409`. Nothing is recorded for it
-and the minute is not used up, so call Check now again at once.
+and the minute is not used up, so call Check now again at once. A call that ends
+after the provider was asked, because the connection dropped before the answer or
+the answer was a `500`, does use up the minute.
 
 ## How a key was made and who added it
 
