@@ -18,6 +18,10 @@ WORKDIR /repo
 COPY . .
 WORKDIR /repo/site
 ENV NEXT_TELEMETRY_DISABLED=1
+# The console's consent bridge (src/lib/consent-bridge.ts): empty, the docs load no cookie bar and send no beacon.
+# Set by the custom-domains compose file's docs build argument once consent version 4 and attribution go live.
+ARG NEXT_PUBLIC_CONSENT_BRIDGE_SRC=
+ENV NEXT_PUBLIC_CONSENT_BRIDGE_SRC=$NEXT_PUBLIC_CONSENT_BRIDGE_SRC
 RUN npm ci
 RUN npm run build
 
