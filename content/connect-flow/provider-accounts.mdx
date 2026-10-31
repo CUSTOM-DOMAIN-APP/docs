@@ -290,8 +290,9 @@ What a check finds:
   needs you](#what-needs-you) as `check_failed`. The key stays active: a failing
   check does not stop repairs.
 
-A key your customer's own sign-in made is never listed, because its account
-holds domains you were never given: it is read through a domain it connected.
+A key your customer's own sign-in made is never listed and is checked with one
+read of a zone it already serves, because its account holds domains you were
+never given.
 Giving an account a new key, reconnecting it, or making a one time key continuous
 starts its checks over, a day from then.
 
@@ -317,7 +318,7 @@ agent token is refused. It answers the account and a `result`:
 
 An account's key can be checked once a minute: a second call answers `429`
 `rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
-`403`, a one time key `409`, and an account whose provider cannot list its
+`403` (the daily check reads it, as above), a one time key `409`, and an account whose provider cannot list its
 domains and which covers none answers `409` `nothing_to_check` (connect a domain
 with it first).
 

@@ -15,6 +15,21 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
+  CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
+  where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a
+  day, not weeks later when something happens to use it. A key the provider refuses marks the account
+  `needs_reconnect`, as before. Any other failure (a timeout, a server error, a rate limit) tries again after 1 hour,
+  then 4, 12 and 24 hours, then every 48 hours, and from the third in a row the account answers `needs_you.reason`
+  `check_failed` (the key may still work). Every account that holds a key answers `health` (`state` `ok`, `failing`,
+  `refused` or `unchecked`, with `checked_at` and `failures`). `POST /v1/provider-accounts/{id}:check` is Check now:
+  it runs the same check on request, once a minute for an account, for the workspace's API key and an admin, an owner
+  or the member who connected the account. It answers the account and a `result` of `ok`, `refused` or
+  `unreachable`, and a pasted key the provider had refused that works again returns to `active`. A key your
+  customer's own sign-in made is never listed and is checked with one read of a zone it already serves; Check now
+  answers `403` for it. Additive: nothing that was there changed. See
+  [Health checks](/docs/connect-flow/provider-accounts#health-checks) and
+  [Check now](/docs/api-reference/provider-accounts/checkProviderAccount).
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`
