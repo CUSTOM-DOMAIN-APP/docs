@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 31, 2026: an AI agent cannot move a domain's nameservers while DNS hosting is off, and a waiting move says what to press next.** A delegated agent token (the MCP's `migrate-nameservers`)
+  is now refused with `403 ns_not_offered` when the application's DNS hosting is off, for a start and for carrying on a
+  move a person began, and nothing is changed; the tool tells the agent not to retry and to send the person to the domain's
+  page in the console, where a person can still start the move for one domain. Moving back stays open to an agent.
+  Every nameserver move now carries `next_action` (`GET /v1/connections/{id}/nameservers` and the other answers that
+  carry a move): `sign_in` while it waits for the secure sign-in, `rollback` after a stop that changed the registrar,
+  `retry` after a stop that did not, or `null`. See [Domain maintenance](/docs/guides/nameserver-migration#next-action)
+  and the [MCP server](/docs/mcp/overview).
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`

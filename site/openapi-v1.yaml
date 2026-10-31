@@ -2452,7 +2452,11 @@ paths:
         The newest nameserver migration started for the connection's domain:
         its state, the old and new nameservers, what the registry lists now,
         what it waits on (`waiting_for`) and what a person does next
-        (`next_step`). Poll it while the state is not `active`, `failed` or
+        (`next_step`) and, when something has to be pressed, which request
+        presses it (`next_action`: `sign_in` while the move waits for the cloud
+        browser, `retry` after a stop that changed nothing at the registrar,
+        `rollback` after a stop that did; `null` when nothing is waiting for a
+        press). Poll it while the state is not `active`, `failed` or
         `rolled_back`. 404 when no migration was started for this connection.
         Authorized like the other connection routes: an API key within the
         tenant, or a widget token of the connection's own application. A
@@ -2546,7 +2550,15 @@ paths:
         agreed to; stored with the time, never their address), and may not
         send `target`, `credential`, `provider_account_id`, `zone_ready` or
         `skip_zone_check`. A delegated agent token needs `domains:connect`
-        (the MCP tool also asks the person to confirm first). A credential
+        (the MCP tool also asks the person to confirm first), and moves
+        nameservers only while the application's `nameserver_migration.mode`
+        is `offer` or `prefer`: while it is `off`, or none was saved, every
+        call of this route by an agent token, a start or a resume of a move
+        a person began, is refused `403` with code `ns_not_offered` and
+        changes nothing, so an agent does not retry it. A person starts the
+        move for one domain with an API key or in the console, which this
+        rule leaves as it was (so does a widget token's own refusal, a plain
+        `403 forbidden`), and `:rollback` stays open to the agent. A credential
         bound to one application (a delegated agent token, a widget token)
         resumes only the moves of its own application: the open migration of
         a domain that another application of the workspace is moving answers
@@ -11065,7 +11077,7 @@ components:
             version: { type: string }
     NameserverMigration:
       type: object
-      required: [id, zone, state, path, target, registrar, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, copy_warnings, ds_present, can_rollback, rollback_targets, old_dns_serves, created_at, updated_at]
+      required: [id, zone, state, path, target, registrar, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, copy_warnings, ds_present, can_rollback, rollback_targets, old_dns_serves, next_action, created_at, updated_at]
       properties:
         id: { type: string }
         connection_id: { type: string }
@@ -11112,6 +11124,14 @@ components:
           type: string
           enum: [zone_ready, zone_served, copy_review, dnssec_off, ds_clear, credential, registrar_confirm, browser_session, registrar, delegation]
         next_step: { type: string, description: One sentence for a person. }
+        next_action:
+          description: >-
+            The one request to press next, read from the move alone (the same
+            for every caller), so a card can show the button `next_step` only
+            describes. `null` when nothing is waiting for a press: the move
+            is copying, waiting for the registry, waiting for a person at the
+            registrar, DNSSEC or the copy review (`copy_reviewed`), or over.
+          oneOf: [ { $ref: '#/components/schemas/NameserverNextAction' }, { type: 'null' } ]
         failure_code:
           type: string
           enum: [zone_copy_failed, zone_not_served, dnssec_timeout, ds_removal_failed, credential_refused, registrar_refused, registrar_locked, changed_elsewhere, agent_failed, delegation_timeout, delegation_drift, internal]
@@ -11174,6 +11194,43 @@ components:
         checked_at: { type: string, format: date-time }
         next_check_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    NameserverNextAction:
+      type: object
+      required: [kind, method, path]
+      description: >-
+        A request that moves a nameserver migration on, with the connection's
+        id filled in. The caller adds what it always adds to that route.
+      properties:
+        kind:
+          type: string
+          enum: [sign_in, retry, rollback]
+          description: >-
+            `sign_in`: the move waits for the cloud browser (state
+            `needs_dnssec_off` or `setting` on path `agent`, or a move back
+            whose `rollback_path` is `agent` and not yet made), so the person
+            signs in to their registrar and approves what will change. The
+            request is the registrar sign in's start. `retry`: the move
+            failed before anything was changed at the registrar
+            (`can_rollback` is false); the same start call begins it again
+            (the end user's start also sends `consent`). `rollback`: the move
+            failed after the registrar was changed or asked
+            (`can_rollback` is true), and moving back is the safe way out,
+            to where a move back without a choice goes (`rollback_default`).
+        method: { type: string, enum: [POST] }
+        path:
+          type: string
+          description: >-
+            The route: `/v1/connections/{id}/browser:start` for `sign_in`,
+            `/v1/connections/{id}/nameservers:migrate` for `retry`,
+            `/v1/connections/{id}/nameservers:rollback` for `rollback`.
+        body:
+          type: object
+          additionalProperties: true
+          description: >-
+            The fields the route needs beyond the ones the caller always sends.
+            `sign_in`: `purpose` `nameservers` and the registrar's `provider`
+            (the caller adds `return_origin` and `consent_version`).
+            `rollback`: `rollback_target`. Absent for `retry`.
     NameserverMigrationStats:
       type: object
       required: [by_state, by_path, by_target, by_registrar, by_old_dns_host, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]

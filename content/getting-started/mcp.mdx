@@ -83,7 +83,10 @@ application's DNS host: `migrate-nameservers` and `rollback-nameservers` (both a
 the person first and send `confirm: true`), and `check-nameserver-status` to follow
 the move. With an agent token, the application's setting decides where the
 nameservers go: `target` and `nameservers` are refused, and it never resumes the
-move another application of the workspace has open. Each move an agent token
+move another application of the workspace has open. An agent may move nameservers
+only while the application's DNS hosting is on; with it off the call fails with
+`ns_not_offered` and changes nothing, and a person can start the move for that
+domain from its page in the console. Each move an agent token
 starts, resumes or reverses is in the audit log as `agent.acted` under its grant. See
 [Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
 

@@ -73,7 +73,15 @@ _openapi:
           agreed to; stored with the time, never their address), and may not
           send `target`, `credential`, `provider_account_id`, `zone_ready` or
           `skip_zone_check`. A delegated agent token needs `domains:connect`
-          (the MCP tool also asks the person to confirm first). A credential
+          (the MCP tool also asks the person to confirm first), and moves
+          nameservers only while the application's `nameserver_migration.mode`
+          is `offer` or `prefer`: while it is `off`, or none was saved, every
+          call of this route by an agent token, a start or a resume of a move a
+          person began, is refused `403` with code `ns_not_offered` and changes
+          nothing, so an agent does not retry it. A person starts the move for
+          one domain with an API key or in the console, which this rule leaves
+          as it was (so does a widget token's own refusal, a plain `403
+          forbidden`), and `:rollback` stays open to the agent. A credential
           bound to one application (a delegated agent token, a widget token)
           resumes only the moves of its own application: the open migration of a
           domain that another application of the workspace is moving answers

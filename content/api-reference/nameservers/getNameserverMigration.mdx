@@ -14,8 +14,13 @@ _openapi:
           The newest nameserver migration started for the connection's domain:
           its state, the old and new nameservers, what the registry lists now,
           what it waits on (`waiting_for`) and what a person does next
-          (`next_step`). Poll it while the state is not `active`, `failed` or
-          `rolled_back`. 404 when no migration was started for this connection.
+          (`next_step`) and, when something has to be pressed, which request
+          presses it (`next_action`: `sign_in` while the move waits for the
+          cloud browser, `retry` after a stop that changed nothing at the
+          registrar, `rollback` after a stop that did; `null` when nothing is
+          waiting for a press). Poll it while the state is not `active`,
+          `failed` or `rolled_back`. 404 when no migration was started for this
+          connection.
           Authorized like the other connection routes: an API key within the
           tenant, or a widget token of the connection's own application. A
           delegated agent token needs `domains:read`.
