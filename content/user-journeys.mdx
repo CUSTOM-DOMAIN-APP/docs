@@ -69,6 +69,7 @@ A person approves what the agent may do first: see
 | M12 | Find out whether the workspace may connect new domains | `check-billing-status` |
 | M13 | List the domain purchases | `list-domain-orders` |
 | M14 | Move a domain's nameservers to the application's DNS host, follow the move, and move them back (the person confirms first) | `migrate-nameservers` → `check-nameserver-status` / `rollback-nameservers` |
+| M15 | Use a key the workspace already keeps instead of starting a new sign-in (the person confirms first, and the grant needs `domains:connect`) | `list-provider-accounts` / `find-saved-access` → `use-saved-access` → `check-connection-status` |
 {/* NEW TOOLS GO HERE: add one row per new tool directly above this line. This marker stays; the docs sync test reads the one in mcp/overview.mdx. */}
 
 ## Platform-operator journeys
