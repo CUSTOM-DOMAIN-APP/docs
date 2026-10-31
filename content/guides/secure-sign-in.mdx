@@ -545,7 +545,10 @@ it:
   customer's address on the connection, CustomDomain™ emails it on your behalf
   instead and answers `emailed: true`. The console's **Send reconnect link** and
   **Copy reconnect link** do the same. A connection with no such key answers
-  `409 not_reconnectable`.
+  `409 not_reconnectable`. Only your API key makes a link: it signs in as your
+  customer, so a widget token (whatever end user it is bound to) and an AI
+  agent's token are refused with `403`, whatever their scopes, and no link is
+  made.
 - **The widget**, in your own product: `open({ mode: "reconnect", connectionId })`
   with a [widget token](/docs/authentication/widget-tokens) minted for the domain
   and your customer's `end_user_ref`, as for any connect
@@ -693,7 +696,7 @@ so you can read what a session did. Every route is in the
 | Call | What it does |
 | --- | --- |
 | `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
-| `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). An API key, a widget token or an agent token with `domains:connect` may call it. |
+| `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). Only an API key may call it: a widget token and an agent token get `403`, because the link signs in as your customer. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
 | `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, `agreement` for a provider's API terms, or `order` for the free order that turns the provider's API on, whose terms and Buy now are your customer's), `check` that a human check is on screen, and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |

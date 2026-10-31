@@ -204,7 +204,11 @@ On the detail read, an API key (and an app-scoped or agent token) also gets
 `account`, `sign_in`, `domain_connect`, `dns_hosting`, `route53_role` or `none`,
 with `can_reapply` (whether `:reapply` can write now) and `managed_possible`
 (whether the one-click sign-in can be offered for the domain's provider here).
-A hosted domain is reached by its hosting, whoever runs the zone.
+A hosted domain is reached by its hosting, whoever runs the zone. An agent token
+reads `reach` and the connection's `credential` with less: the key's customer
+number, sign-in session and name are left out, and `label` reads `<Provider> key`
+for a key made for another application, because the label the agent made it with
+names that application's domain.
 
 ### Import a zone file or add records
 

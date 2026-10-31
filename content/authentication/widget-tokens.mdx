@@ -107,7 +107,9 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
   connection as a customer. Do not start your ids with it.
 - `end_user_email` (optional) is the end user's address for
   [end user notices](/docs/connect-flow/end-user-notices). It is never put in
-  the token; a connection created with the token takes it.
+  the token; a connection created with the token takes it, unless the connection
+  already has an address (the stored one stays) or belongs to another end user
+  than this token's `end_user_ref` (it stores none).
 - Only the creation response shows a client secret. If you lost it, rotate it
   (`POST /v1/applications/{id}/client-secret:rotate`, needs `keys:manage`),
   except for a console-created application (see above).

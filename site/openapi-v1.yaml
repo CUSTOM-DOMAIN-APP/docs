@@ -1194,7 +1194,11 @@ paths:
 
 
         A delegated agent token needs `domains:connect` and creates the
-        connection on its own application.
+        connection on its own application. Its answer, a replayed connection
+        included, carries no `end_user_ref`, the platform's id for its end user.
+        It cannot set the end user's e-mail address: a body with a non-empty
+        `end_user_email` is refused with `403`, and the platform's API key sets
+        it.
 
 
         A workspace with no subscription yet connects its first ten domains, or
@@ -1303,7 +1307,16 @@ paths:
                     over an address given when the token was minted, is stored
                     only on the connection, and is shown back only in this
                     call's response and on `GET /connections/{id}` with an API
-                    key.
+                    key. Only an API key replaces an address the connection
+                    already has: a widget token's create keeps the stored one
+                    (as `PUT /connections/{id}/end-user-email` answers it with
+                    `409`), and a delegated agent token that sends one is
+                    refused with `403`, since the reconnect email goes to this
+                    address and carries a link that signs in as the end user.
+                    For the same reason a widget token bound to another end
+                    user than the connection's (`end_user_ref`) stores no
+                    address, neither this one nor one given when the token was
+                    minted, and is not asked for one.
                 application_id:
                   type: string
                   description: >-
@@ -1372,7 +1385,9 @@ paths:
         rejected with **400**. Test mode connections never match it.
 
 
-        A delegated agent token needs `domains:read`.
+        A delegated agent token needs `domains:read`. It reads no
+        `end_user_ref`, the platform's id for its end user, on any row (an API
+        key reads it).
       security:
         - apiKey: []
         - widgetJWT: []
@@ -1504,6 +1519,15 @@ paths:
 
         A delegated agent token needs `domains:read` and reads only connections
         of its own application; another application's connection answers `404`.
+        Its answer leaves out what the account routes leave out for it: the
+        `credential` carries no `account` (the customer number at the provider),
+        no `session_id` and no `name`, for any key, an end user's included, and
+        a `reach` through a key made for another application reads
+        `<Provider> key` as its `label`, since the label the agent made the key
+        with names that application's domain. It also reads no `end_user_ref`,
+        the platform's id for its end user, which the account answers leave out
+        for it too and a connection shares with its end user's key. An API key
+        reads all of it whole.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1881,7 +1905,12 @@ paths:
         `find-saved-access`), for a connection of the application its grant is
         bound to (another application's is `404`). It gets the workspace's keys
         that serve that application, never a key an end user's own sign in
-        made, and a token without `domains:read` is `403`.
+        made, and a token without `domains:read` is `403`. No entry carries a
+        `key_name` for it (the name holds an application's name, and a key of
+        the grant's own application can carry another application's after a
+        share). A key made for another application and shared with the grant's
+        own one reads as `<Provider> key`, with no `application_id`: the label
+        the agent made it with names the other application's domain.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2188,8 +2217,11 @@ paths:
         A widget token for the connection's own application can set an address
         only while the connection has none: when one is already there (the
         platform's, or an earlier one) the answer is `409`, so a browser can
-        never overwrite what the platform gave. An API key replaces any earlier
-        address. The address is never echoed back and never logged.
+        never overwrite what the platform gave. A widget token bound to another
+        end user than the connection's (`end_user_ref`) is refused with `403`:
+        the reconnect email goes to this address and its link signs in as the
+        connection's end user. An API key replaces any earlier address. The
+        address is never echoed back and never logged.
 
 
         Test domains refuse the call.
@@ -2514,7 +2546,15 @@ paths:
         agreed to; stored with the time, never their address), and may not
         send `target`, `credential`, `provider_account_id`, `zone_ready` or
         `skip_zone_check`. A delegated agent token needs `domains:connect`
-        (the MCP tool also asks the person to confirm first).
+        (the MCP tool also asks the person to confirm first). A credential
+        bound to one application (a delegated agent token, a widget token)
+        resumes only the moves of its own application: the open migration of
+        a domain that another application of the workspace is moving answers
+        `409`, and only an API key, which spans the workspace, resumes it.
+        Each start, resume or move back by an agent token that changed the
+        move is recorded in the audit log as `agent.acted` ("moved a domain's
+        nameservers") under `agent:<grant id>`, whatever key it used; a call
+        that only read the move leaves no row.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2543,8 +2583,9 @@ paths:
         '409':
           description: >-
             The domain already uses these nameservers, its nameservers are
-            being moved for another account, or another change to the
-            migration is in progress.
+            being moved for another account (or, for a delegated agent token
+            or a widget token, for another application of the workspace), or
+            another change to the migration is in progress.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2586,7 +2627,9 @@ paths:
         simply stopped (`none`). Any cloud browser session still working on
         the move is ended first. Idempotent. A widget token may move back,
         and choose where, but may not send a key. A delegated agent token
-        needs `domains:connect`.
+        needs `domains:connect`, and a move back it makes is recorded in the
+        audit log as `agent.acted` ("moved a domain's nameservers back") for
+        its grant.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2738,7 +2781,13 @@ paths:
         records nobody put there. The same webhooks are sent.
 
 
-        A delegated agent token needs `domains:connect`.
+        A delegated agent token needs `domains:connect`. Each of its calls that
+        reached a write (the account's, the kept grant's or CustomDomain™'s own
+        zone's), whatever the answer, is recorded as `agent.acted` ("re-applied
+        a domain's records") for the grant, since a provider that refuses can
+        have changed some record sets; one refused before anything was sent
+        (nothing applied for the domain, a domain not managed or being removed,
+        a rail or an account that is unavailable) leaves no row.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2788,7 +2837,8 @@ paths:
 
 
         A delegated agent token needs `domains:connect`, because a recheck can
-        move a connection forward.
+        move a connection forward. Its answer carries no `end_user_ref`, the
+        platform's id for its end user.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2825,12 +2875,12 @@ paths:
         `link`; otherwise the answer carries the `link` to pass on. The
         control plane also emails one by itself 30 and 7 days before the key's
         end and when the provider stops accepting it. A connection with no
-        such key answers `409` `not_reconnectable`. A delegated agent token
-        needs `domains:connect`.
+        such key answers `409` `not_reconnectable`. Only the platform's API key
+        makes one: the link signs in as the domain's end user, so a widget
+        token (whatever end user it is bound to) and a delegated agent token
+        are refused (`403`) whatever their scopes, and no link is made.
       security:
-        - widgetJWT: []
         - apiKey: []
-        - agentToken: ['domains:connect']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: false
@@ -2875,7 +2925,9 @@ paths:
         write that fails links nothing and leaves the key's scope
         as it was, and records the failure on the domain (its `error_code`
         and `error_message`): `502` `saved_access_write_failed`, with the
-        provider's words. Records written but a key that could not be linked
+        provider's words. A provider that writes one record set at a time can
+        fail after the first, so the zone may hold some of the records even
+        though the call failed. Records written but a key that could not be linked
         is `500` `saved_access_link_failed`: try again. A domain kept
         by an end user's own sign in key is left as it is (`409`).
 
@@ -2885,10 +2937,16 @@ paths:
         grant is bound to and a key the resolver answers for that application.
         The response's `account` is then the viewer's view of it (no
         `account_ref`, `end_user_ref`, `agent_key.account` or
-        `agent_key.session_id`, no `made_by.by` and no `created_by`, and with
-        the same limit on its `domains` as the list), and the audit log
-        records `agent.acted` for
-        the grant. A token without `domains:connect` is `403`. An end user's
+        `agent_key.session_id`, no `agent_key.name`, no `made_by.by` and no
+        `created_by`, an empty `application_ids`, with the same limit on its
+        `domains` as the list, and read as the list reads a key shared from
+        another application), and the
+        audit log records
+        `agent.acted` for the grant once whenever the records were written,
+        the key linked or the write failed at the provider, whatever the
+        answer (its detail says when the provider answered with an error); a
+        use refused before anything was sent, such as one with no records to
+        write, leaves no row. A token without `domains:connect` is `403`. An end user's
         widget token reaches the route but is given no saved access yet: `409`
         `saved_access_not_usable` for an account that exists.
       security:
@@ -6712,15 +6770,27 @@ paths:
         workspace's keys that serve the application its grant is bound to,
         never a key an end user's own sign in made, each as a viewer reads it
         (no `account_ref`, `end_user_ref`, `agent_key.account` or
-        `agent_key.session_id`) and without who in the workspace made it (no
-        `made_by.by` and no `created_by`; `made_by.how` stays), with only that
+        `agent_key.session_id`), without the key's name (no `agent_key.name`,
+        whichever application the key is bound to) and without who in the
+        workspace made it (no `made_by.by` and no `created_by`; `made_by.how`
+        stays), with only that
         application's connections and
         only the `domains` that no other application of the workspace has
         connected (a zone in which another application holds a domain is left
         out, unless the grant's own application holds one in it too),
-        `can_manage` false, and an empty `kept_access`. `?application_id=`
-        may only repeat the grant's own application (`403` otherwise). A token
-        without `domains:read` is `403`.
+        `can_manage` false, and an empty `kept_access`. `application_ids` is
+        empty for every key it reads, since it names the workspace's other
+        applications (`application_id` says the key serves its own). A key made
+        for another application and shared with the grant's own one reads as
+        `<Provider> key`, with no `application_id` (the label the agent made it
+        with names the other application's domain), and `?q=` searches what the
+        agent reads.
+        `?domain=` answers an empty `accounts` and `saved_access` for a zone in
+        which another application holds a domain (and the grant's own holds
+        none), and when the workspace's connections cannot be read; it reads a
+        key at its provider only for a zone the grant's own connections are
+        in. `?application_id=` may only repeat the grant's own application
+        (`403` otherwise). A token without `domains:read` is `403`.
       security:
         - apiKey: []
         - agentToken: ['domains:read']
@@ -8978,7 +9048,12 @@ components:
         kind: { type: string, enum: [api_key] }
         provider: { type: string }
         provider_name: { type: string }
-        label: { type: string }
+        label:
+          type: string
+          description: >-
+            What the account is called. A key the agent made reads `<Provider>
+            key for <domain>`. A delegated agent token reads `<Provider> key`
+            for a key made for another application and shared with its own.
         access: { type: string, enum: [continuous, one_time] }
         scope: { type: string, enum: [all, selected] }
         domains:
@@ -8987,7 +9062,14 @@ components:
           items: { type: string }
         credential_held: { type: boolean, description: "Whether the key is still kept and usable (false for a one time account past its hour). The key itself is never returned." }
         status: { type: string, enum: [active, used, expired, needs_reconnect] }
-        last_error: { type: string }
+        last_error:
+          type: string
+          description: >-
+            The provider's own words about the last failure with the key (a
+            refused key reads `The provider refused the saved key: ...`).
+            A delegated agent token's answer always leaves it out, for every
+            key, because the words can name another application's domain;
+            `status` and `needs_you.reason` say the state.
         created_by:
           type: string
           description: >-
@@ -9023,7 +9105,8 @@ components:
             cloud browser's agent made for it. Its key serves that application's
             domains and those of the applications in `application_ids`;
             connecting any other application's domain with it is refused
-            (`403`).
+            (`403`). A delegated agent token's answer leaves it out for a key
+            made for another application and shared with its own.
         application_ids:
           type: array
           description: >-
@@ -9031,7 +9114,10 @@ components:
             with, besides `application_id`, sorted. Empty when it is shared
             with none, for a key bound to no application (it serves every one)
             and for an end user's key (never shared). Change it with
-            `updateProviderAccount`.
+            `updateProviderAccount`. A delegated agent token's answer leaves
+            it empty for every key: the ids name the workspace's other
+            applications, and the agent needs only that the key serves its own,
+            which `application_id` says.
           items: { type: string }
         origin:
           type: string
@@ -9272,7 +9358,8 @@ components:
           type: string
           description: >-
             The integrator's own identifier for the end user who connected this
-            domain. Omitted for a console/direct connect.
+            domain. Omitted for a console/direct connect, and from every answer
+            a delegated agent token reads.
         retried_at:
           type: string
           format: date-time
@@ -9463,7 +9550,9 @@ components:
           description: The provider account (`GET /provider-accounts/{id}`) when `kind` is `account`.
         label:
           type: string
-          description: The account's label when `kind` is `account`.
+          description: >-
+            The account's label when `kind` is `account`. A delegated agent
+            token reads `<Provider> key` for a key made for another application.
         provider:
           type: string
           description: The DNS provider id the kept access is at.
@@ -9505,8 +9594,9 @@ components:
               description: >-
                 Present (true) on a create response only when the widget should
                 offer the end user an optional email field: the feature is on,
-                the caller is a widget token, the domain is not a test domain
-                and the connection has no address yet. The widget then calls
+                the caller is a widget token that may set one (not another end
+                user's), the domain is not a test domain and the connection has
+                no address yet. The widget then calls
                 `PUT /connections/{id}/end-user-email`. Omitted otherwise.
             credential:
               $ref: '#/components/schemas/ConnectionCredential'
@@ -9530,10 +9620,10 @@ components:
             the end user was asked to reconnect. `needs_reconnect`: the provider
             stopped accepting it. `expired`: it reached its end and was deleted; the
             domain stays connected and monitored, and repairs wait for a reconnect.
-        name: { type: string }
+        name: { type: string, description: "The name the key was made with. A delegated agent token's answer leaves it out for every key." }
         scopes: { type: array, items: { type: string } }
-        account: { type: string }
-        session_id: { type: string }
+        account: { type: string, description: "The provider account's identifier when the page showed one (a customer number or user name). A delegated agent token's answer leaves it out for every key." }
+        session_id: { type: string, description: "The cloud browser session that made the key. A delegated agent token's answer leaves it out for every key." }
         verified_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
         notice: { type: string, enum: [d30, d7, expired] }
@@ -9560,7 +9650,7 @@ components:
         provider after the end user signed in. Never the key.
       required: [scopes, rights]
       properties:
-        name: { type: string, description: "The name the key was made with: `CustomDomain` and the application's name." }
+        name: { type: string, description: "The name the key was made with: `CustomDomain` and the application's name. A delegated agent token's answer leaves it out for every key." }
         scopes: { type: array, items: { type: string }, description: "The scopes it was made with, as the provider names them; empty for a provider whose keys have none." }
         account: { type: string, description: "The provider account's identifier when the page showed one (a customer number or user name). Never an email address. Absent for a viewer." }
         session_id: { type: string, description: "The cloud browser session that made it. Absent for a viewer." }
@@ -10173,7 +10263,7 @@ components:
         account_id: { type: string }
         provider: { type: string }
         provider_name: { type: string }
-        label: { type: string }
+        label: { type: string, description: "The account's label. A delegated agent token reads `<Provider> key` for a key made for another application and shared with its own." }
         how:
           type: string
           enum: [api_key, secure_sign_in]
@@ -10190,8 +10280,8 @@ components:
           type: string
           enum: [active, needs_reconnect]
           description: "`needs_reconnect` for a key that still works until its end date."
-        application_id: { type: string }
-        key_name: { type: string }
+        application_id: { type: string, description: "The application the key is bound to. A delegated agent token's answer leaves it out for a key made for another application." }
+        key_name: { type: string, description: "The name an agent key was made with. A delegated agent token's answer leaves it out for every key." }
         key_expires_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
     RailInfo:

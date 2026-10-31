@@ -121,19 +121,52 @@ A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
 them no `agent_key.account` (the customer number) and no `agent_key.session_id`.
 
-A delegated agent token reads them the way a viewer does, with `domains:read`:
+A delegated agent token reads them the way a viewer does, and less, with `domains:read`:
 `GET /v1/provider-accounts` lists only the keys that serve the application its
 grant is bound to, never a key a customer made at their own sign-in, with that
 application's connections only, only the `domains` that no other application
-of your workspace has connected, and an empty `kept_access`. `?application_id=`
-may only repeat the grant's own application (`403` otherwise). Its answers
-never say which member of your workspace made a key: `made_by.by` and
-`created_by` are left out, in the list and in the account that `:use-saved-access`
-returns, and `made_by.how` stays. It reads
-`GET /v1/connections/{id}/saved-access` with `domains:read` and uses a key with
-`POST /v1/connections/{id}:use-saved-access` and `domains:connect`, for a
-connection of that application; the audit log records the use as `agent.acted`
-under the agent's grant.
+of your workspace has connected, `can_manage` false and an empty `kept_access`.
+`?application_id=` may only repeat the grant's own application (`403`
+otherwise). Its answers also leave out whatever could name a person or another
+application's domain:
+
+- **Who made a key.** `made_by.by` and `created_by` are left out, and
+  `made_by.how` stays.
+- **The key's name.** `agent_key.name` is left out for every key: the name holds
+  an application's name, and a key of the agent's own application can carry
+  another application's after a share.
+- **The provider's words about a failure.** `last_error` is left out for every
+  key, because those words can name a domain of another application. `status`
+  and `needs_you.reason` still say that the key needs attention.
+- **The share list.** `application_ids` is always empty, since it names the
+  workspace's other applications; `application_id` says the key serves the
+  agent's own.
+- **A key made for another application and shared with the agent's own.** Its
+  `label` reads `<Provider> key` and it has no `application_id`, because the
+  label the agent made it with (`<Provider> key for <domain>`) names the other
+  application's domain. `?q=` searches only what the agent reads.
+
+`?domain=` answers an empty `accounts` and `saved_access` for a zone in which
+another application holds a domain (and the grant's own holds none), and when
+the workspace's connections cannot be read. It reads a key at its provider only
+for a zone the grant's own connections are in.
+
+The agent reads `GET /v1/connections/{id}/saved-access` with `domains:read`
+(with no `key_name` on any entry, and the same neutral label for a shared key)
+and uses a key with `POST /v1/connections/{id}:use-saved-access` and
+`domains:connect`, for a connection of that application; the account the use
+answers is read the same way as the list. The audit log records the use as
+`agent.acted` under the agent's grant once whenever the records were written,
+the key linked or the write failed at the provider, whatever the answer; a use
+refused before anything was sent, such as one with no records to write, leaves
+no row.
+
+The same limits hold when the agent reads a connection. On
+`GET /v1/connections/{id}` the `credential` of a connection linked to a key
+carries no `account`, no `session_id` and no `name`, and a `reach` through a key
+made for another application reads `<Provider> key`. No connection answer to an
+agent token carries `end_user_ref`, your id for the customer. An API key reads
+all of it whole.
 
 Sharing a key with another application is narrower still: only an admin or an
 owner may, not the member who connected the key. See
@@ -320,7 +353,9 @@ place, so a second domain at the same provider does not start a second sign-in:
   writes the domain's records with that key and links it once the write worked.
   A write that fails links nothing, leaves the key's scope as it was and
   records the failure on the domain (`error_code` and `error_message`):
-  `502 saved_access_write_failed`, with the provider's words. An account that
+  `502 saved_access_write_failed`, with the provider's words. A provider that
+  writes one record set at a time can fail after the first, so the zone may
+  hold some of the records even though the call failed. An account that
   cannot act for the domain is `409 saved_access_not_usable`.
 - `rails.saved_access` on `POST /v1/domains:check` is the same list for an API
   key caller, and `recommended_rail` is then `saved_access`. An end user's
@@ -378,5 +413,5 @@ it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
 | `provider_account.shared` | An admin or an owner lets another application use the key. Names the applications it serves before and after, and the ones just shared (`application_ids`). |
 | `provider_account.unshared` | An admin or an owner takes that back. Same fields. |
 | `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
-| `agent.acted` | An agent used a saved key for a domain (`used a saved key`), under the agent's grant. |
+| `agent.acted` | An agent changed a domain's DNS under its grant: it used a saved key for a domain (`used a saved key`), re-applied a domain's records (`re-applied a domain's records`) or moved a domain's nameservers, or back (`moved a domain's nameservers`, `moved a domain's nameservers back`). The row is `agent:<grant id>` in the actor. |
 | `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |

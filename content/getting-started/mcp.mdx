@@ -82,14 +82,17 @@ forwarding: `add-email`, `forward-domain`. Moving a domain's nameservers to the
 application's DNS host: `migrate-nameservers` and `rollback-nameservers` (both ask
 the person first and send `confirm: true`), and `check-nameserver-status` to follow
 the move. With an agent token, the application's setting decides where the
-nameservers go: `target` and `nameservers` are refused. See
+nameservers go: `target` and `nameservers` are refused, and it never resumes the
+move another application of the workspace has open. Each move an agent token
+starts, resumes or reverses is in the audit log as `agent.acted` under its grant. See
 [Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
 
 ## Re-apply and disconnect
 
 - `reapply-connection` re-pushes the stored records of a **managed** connection.
   A connection with no stored grant answers `409` (`conflict`), so read `managed`
-  on `list-connections` or `check-connection-status` first. See
+  on `list-connections` or `check-connection-status` first. With an agent token
+  each re-apply that reached a write is in the audit log as `agent.acted`. See
   [Managed connections](/docs/connect-flow/managed-connections).
 - `disconnect-domain { connectionId, confirm }` removes any connection of the
   application, managed or not. The domain stops being served and its certificate

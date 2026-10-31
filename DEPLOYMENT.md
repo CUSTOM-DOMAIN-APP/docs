@@ -108,15 +108,12 @@ Each is a deliberate decision for a human, and none blocks a docs change.
    API changes. No check compares them with the product today, so a missed copy
    shows up only as a stale reference page.
 
-   **Known differences from the product spec (2026-10-30).** `site/openapi-v1.yaml`
-   is the product's spec at `53d9abba` (release batch 1b) plus two edits the product
-   has not taken yet, so the two files are not byte for byte equal. (1)
-   `createApplication` is `required: [name]`, and `tenant_id` says it is required
-   only with the management key and ignored with a tenant API key (docs #82; the
-   control plane creates the application in the key's own tenant). (2) Five
-   descriptions that name the product write CustomDomain™: the `dns_hosting` text of
-   the connection list, the `reach` text of the connection detail, the
-   `ConnectionDnsHosting` schema and its `by` field, and `ConnectionReach`. Until
-   the product spec carries the same edits, a straight copy of its file undoes them:
-   re-apply them, or confirm the product has them, before you commit the next
-   vendored copy.
+   **Known differences from the product spec (2026-10-31): none.** `site/openapi-v1.yaml`
+   is the product's `apps/app/openapi-v1.yaml` at `2bfc3760` (release batch 1b, final),
+   byte for byte. The two edits this copy carried on 2026-10-30 are the product's now:
+   `createApplication` is `required: [name]`, and `tenant_id` says it is required only
+   with the management key and ignored with a tenant API key (docs #82); and the five
+   descriptions that name the product write CustomDomain™. Check that with
+   `git show <sha>:apps/app/openapi-v1.yaml | cmp - site/openapi-v1.yaml` before
+   you commit the next vendored copy, and read `git diff` of the file for a docs
+   correction the product spec lacks.

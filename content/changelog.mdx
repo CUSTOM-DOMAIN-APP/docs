@@ -15,6 +15,24 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
+  bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
+  (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`
+  through a key made for another application reads `<Provider> key`; no connection answer to an agent token
+  carries `end_user_ref`, your id for your customer, neither the list, the read, a create that replays a
+  connection nor a recheck; and the provider accounts and saved access answers leave out the key's name
+  (`agent_key.name`, `key_name`), the provider's words about a failed key (`last_error`) and the applications a key is
+  shared with (`application_ids` is always empty). A key made for another application and shared with the agent's
+  own reads as `<Provider> key`, with no `application_id`, and `?domain=` answers nothing for a zone another
+  application holds. An agent token also can no longer set a customer's email address (`end_user_email` on
+  `POST /v1/connections` is refused with `403`; only an API key replaces an address, and a widget token's create keeps
+  the stored one), make a reconnect link (`POST /v1/connections/{id}:reconnect-link` is for your API key alone, and a
+  widget token is refused too), or resume a nameserver move that another application of your workspace has open.
+  A widget token bound to another end user than the connection's sets no address either (`403`). What an agent
+  changes in a domain's DNS is in the audit log as `agent.acted` under its grant: each re-apply that reached a write,
+  each nameserver move it starts, resumes or reverses, and a saved key's use even when the provider failed halfway.
+  See [Agent access](/docs/agents/overview#what-makes-it-safe) and
+  [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
 - **October 30, 2026: an AI agent can use a key you already keep.** The MCP server (now 23 tools) has three more:
   `list-provider-accounts` lists the provider accounts your workspace has connected, never a key, with `provider`,
   `domain` and `applicationId` to narrow it; `find-saved-access` lists the saved keys that may write one connected
