@@ -43,13 +43,13 @@ This project has a documented history of overclaiming, and every number in these
 | Endpoint count | `site/openapi-v1.yaml`, counted, not remembered |
 | MCP tool count | `GET https://mcp.customdomain.ai/.well-known/agent/mcp.json`, the live server's tool list |
 
-Three provider numbers are true and mean different things. Keep them apart (all as of 2026-10-30):
+Three provider numbers are true and mean different things. Keep them apart (all as of 2026-10-31):
 
-- **210** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Since 2026-10-21 the census lists every provider with a built-in adapter, and "more than 200 providers are known" is the safe phrasing where no date is given.
-- **73** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 66 scoped API key); the other 137 are connected by hand. One of the 66, PowerDNS, is self-hosted software the hosted service does not write to, so say so wherever the 66 are counted in detail.
+- **217** providers are catalogued in the census: DNS hosts, registrars (every one of the 100 largest) and domain platforms. Since 2026-10-21 the census lists every provider with a built-in adapter, and "more than 200 providers are known" is the safe phrasing where no date is given.
+- **73** of those have an automatic path (6 provider OAuth, 1 Domain Connect, 66 scoped API key); the other 144 are connected by hand. One of the 66, PowerDNS, is self-hosted software the hosted service does not write to, so say so wherever the 66 are counted in detail.
 - **77** built-in adapters ship in the Go registry (`GET /v1/providers`), a different quantity again: 74 of them belong to a catalogued provider through the census adapter link, and three (Unstoppable Domains, XServer Domain, Muumuu Domain) only sign in through the provider's MCP server, so the census lists them as manual. The hosted service switches on the Unstoppable Domains sign-in but not the other two, and PowerDNS reaches no customer's server, so it writes records at 74.
 
-Never attach 210 to an automatic verb. "One-click across 210 providers" is false. "73 of 210 have an automatic path" is true.
+Never attach 217 to an automatic verb. "One-click across 217 providers" is false. "73 of 217 have an automatic path" is true.
 
 ## The product name
 

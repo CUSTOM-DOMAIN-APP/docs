@@ -39,12 +39,12 @@ proven by the rail that writes the DNS, or by the records appearing in the domai
 authoritative DNS. Documenting that honestly takes room, which is why this runs to well over a
 hundred pages and not a single one.
 
-The honest limit, stated here as plainly as it is stated in the docs: **137 of the 210 providers
+The honest limit, stated here as plainly as it is stated in the docs: **144 of the 217 providers
 in the census are connected by hand**, because they ship no DNS write a third party can use,
 gate it, or ship one that replaces a whole zone. Those domains go through the guided manual path:
 the app shows the exact records and verifies them automatically, but a human still pastes them.
-The census of 2026-10-30: 210 catalogued, 66 provider API, 6 OAuth, 1 Domain Connect,
-137 manual.
+The census of 2026-10-31: 217 catalogued, 66 provider API, 6 OAuth, 1 Domain Connect,
+144 manual.
 
 Where to start, depending on why you are here:
 
