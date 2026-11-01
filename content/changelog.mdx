@@ -15,6 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: a domain has a Settings tab, and its Edge tab is called Serving.** A domain's page now has
+  seven tabs: Overview, DNS, Certificate, Serving, Traffic, History and Settings. **Settings** gathers who the domain
+  is for (the client or customer name), the www redirect of a root domain, forwarding and **Remove this domain**, one
+  card each with a line and a docs link. The name and the redirects are shown as they are, because they are set when
+  the domain is added or through the API ([forwarding](/docs/connect-flow/forwarding)); Remove works from the tab.
+  **Serving** is the tab that was called **Edge**, at the same address, so old links and the `#edge` anchor still open it.
+  See [A domain's settings](/docs/getting-started/console#domain-settings).
 - **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
   When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
   scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
