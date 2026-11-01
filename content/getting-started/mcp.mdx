@@ -64,7 +64,9 @@ to it: a command, or a few fields to fill in.
    the user; `console` needs a login to the workspace, so it is for a member of the
    workspace. An API key or a client credentials token gets `guided_setup` where the
    provider has no one click page; an agent token always gets `console`, so give the
-   user the `records`. The agent never writes DNS itself.
+   user the `records`. A `guided_setup` link is a bearer link that lasts 30 days and
+   lets whoever opens it first set up the domain, so send it only to the person who
+   owns the domain. The agent never writes DNS itself.
 3. `check-connection-status { connectionId }` returns a `status` of `pending`,
    `propagating`, `live` or `failed`. Stop when `connected` is `true`. A failed
    connection says why in `errorCode`. `pending` has no deadline; a `failed`
