@@ -7469,8 +7469,12 @@ paths:
         read of the domain's zone with the key works, the domain is connected
         with no new sign in, and the zone is added to the key's scope once a
         write there works (`provider_account.domain_added` in the audit log).
-        A call reads at most 20 such zones, one read for each, and answers
-        `400` `too_many_domains_to_check` before the first read beyond that;
+        A zone the key does not reach answers `422` `zone_not_reached`, naming
+        the domains, and a provider that cannot say (a timeout, a `5xx`)
+        answers `503`, never a refusal of the key: the same two answers
+        `PATCH /provider-accounts/{id}` gives, with nothing written. A call
+        reads at most 20 such zones, one read for each, and answers `400`
+        `too_many_domains_to_check` before the first read beyond that;
         `PATCH /provider-accounts/{id}` is the other way to widen a scope. A key
         an end user's secure sign-in made in the widget, or one a sign in
         started through the API made, answers `403`: it connects domains only
@@ -7530,6 +7534,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}/reconnect:
     post:

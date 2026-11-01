@@ -157,9 +157,11 @@ Everything below is checked before the first record is written, so a call that i
 - **Every domain is inside the account's scope.** A domain outside it answers `400` and names the domains. A key made
   at a secure sign-in in the console is the one exception: when a read of the domain's zone (the part of a domain
   that your DNS provider holds, such as `example.com` for `shop.example.com`) works with that key, the domain is
-  connected with no new sign-in and the zone joins the scope once a write there works. A call reads at most 20 such
-  zones, once each, and answers `400` `too_many_domains_to_check` beyond that. To widen the scope on its own, use
-  `PATCH /v1/provider-accounts/{id}`.
+  connected with no new sign-in and the zone joins the scope once a write there works. A zone the key does not reach
+  answers `422` `zone_not_reached` with those domains in `domains`, and a provider that cannot answer (a timeout or a
+  server error) answers `503`, never a refusal of the key; both are the answers `PATCH` gives, and nothing is written.
+  A call reads at most 20 such zones, once each, and answers `400` `too_many_domains_to_check` beyond that. To widen
+  the scope on its own, use `PATCH /v1/provider-accounts/{id}`.
 
 Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
 or `failed`. A domain whose write fails does not stop the others. See the

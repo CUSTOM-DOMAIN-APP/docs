@@ -15,6 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
+  When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
+  scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
+  with "change its scope first"), and a provider that times out or answers with a server error answers `503` and says to
+  try again, where it used to be taken for a refusal of the key. Nothing is written in either case. A call still reads
+  at most 20 such zones and answers `400` `too_many_domains_to_check` beyond that. See
+  [Connect many domains at once](/docs/connect-flow/provider-accounts#connect-many-domains-at-once).
 - **November 1, 2026: the MCP server says what its answers mean.** `connect-domain` now answers `linkKind`, which says who opens its `link`: `domain_connect` (the provider's one click page) and `guided_setup` (a single use setup page for that one domain, which the user opens with no account) are for the user, and `console` needs a login to the workspace. An API key or a client credentials token gets `guided_setup` where the provider has no one click page, except for a domain that is already live or that one of your end users connected; an agent token always gets `console`, with the `records` to hand the user. `consoleLink` is the console page when `link` is another kind. `discover-provider` now names every way it returns, secure sign in and DNS hosting included, and says that `secureSignIn` reads `caller_cannot_start` for an agent even where the provider offers it, because a person starts it. `check-connection-status`, `reapply-connection` and `list-connections` no longer say that `managed: false` means a repair needs the person at their DNS provider: re-apply also works through a DNS zone CustomDomain™ hosts and a connected provider account, and `use-saved-access` writes with a saved key. Additive: no tool or argument changed. See [MCP overview](/docs/mcp/overview#repair).
 - **November 1, 2026: Widget has a Ways to connect tab.** **Widget** now has four tabs: Design, Ways to connect, Install
   and Try it live (a link to Widget still opens Install). Ways to connect shows what your users are offered when they
