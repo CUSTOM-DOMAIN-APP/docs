@@ -65,6 +65,56 @@ never change meaning or disappear without a new major version. See the
   with **Don't send** under **Who sends DNS update emails**. Nothing here switches an email on or off, and no email,
   setting or API changed. The console's [Settings](/docs/getting-started/console#the-console-at-a-glance) row names
   the page.
+- **November 1, 2026: one customer's widget token never gets, reads or changes another customer's connection, zone or nameserver move.**
+  Two customers (end users) of one application, each with a widget token for their own domain, could reach each other's
+  connection. `POST /v1/connections` for a domain the application already had answered the existing connection, so a
+  token for another customer's exact domain was handed that connection's id, and the managed DNS and nameserver
+  routes then read that customer's whole zone, wrote records into it, and resumed, confirmed or rolled back their
+  nameserver move. Now `POST /v1/connections` answers a widget token whose `end_user_ref` is not the existing
+  connection's, or that has none while the connection names one, `403 token_wrong_end_user` and shows nothing of
+  it (a failed connection is not revived for it either). A connection that names no customer, your API key, an `app`
+  scope token, a delegated agent token and the customer's own repeat call are answered as before. Every managed DNS route
+  and every nameserver route (`GET`, `:migrate`, `:rollback`) answers `403 token_wrong_end_user` for a connection that
+  names another customer; a zone that holds another customer's connection (or one you made with your API key for
+  another name) answers `409` "the DNS of acme.com is already hosted by CustomDomain™ for someone else"; a nameserver
+  move whose connection was removed is never taken over by a customer's call, and only your API key resumes it.
+  Every other route that takes a connection's id now answers the same `403 token_wrong_end_user` to another customer's
+  token before it reads or changes anything: the connection read and its records, certificate, diagnosis, SSL and Power
+  reads; applying records, starting a sign in, Domain Connect or the Route 53 role; and `DELETE
+  /v1/connections/{id}/grant`, `:reapply` and `:recheck`. An id handed out while the bug was live no longer reads or
+  writes anything for another customer. Removing a domain and reading its monitoring, services or timeline keep their
+  rule and answer `403 forbidden`. For managed DNS and nameserver moves a connection you made with your API key (it
+  names no customer) is a token's only when its domain is one the token is bound to, so a token with an `end_user_ref`
+  and no `domain` owns none of those, and a token with neither counts only the domain of the connection the call is
+  about. Share links keep working: the person who opens a link acts as the end user who shared it (your API key shares
+  as the customer of your connection for the one domain the link names). One rule governs a link: its token owns exactly
+  what the token that made it owned, and may touch only the shared domains. A link made by a token that names no
+  customer and is bound to no domain counts only the one connection a call is about as its own, so a zone that links
+  several of the shared domains is not its own; a link made by a token that names a customer and is bound to no domain
+  owns none of your connections that name no customer, and reaches only the domain it was made for, not the customer's
+  others. A widget token can share only a domain whose connection it owns by the rules above (`403
+  token_wrong_end_user` and no link otherwise; a domain with no connection yet can be shared), so a customer's token
+  that is bound to no domain cannot share your connection's domain to itself and read its zone. A link is a credential
+  to set that one domain up and nothing more: it cannot remove the domain (`DELETE`, `:disconnect` and the sign-in to
+  remove answer `403 forbidden`), cannot set the customer's contact address on any connection, cannot start a sign-in
+  in reconnect mode to renew the customer's key, is never offered the customer's kept keys, and a key made at a sign-in
+  it starts is not the customer's own and never replaces a key the customer already keeps. A sign-in in reconnect mode
+  on a key the customer's own sign-in made is refused with `403 forbidden` before it starts unless it is that
+  customer's own session (a reconnect link on a connection that names no customer, an API key without the console's
+  signed forward, the console), and a reconnect link whose key was replaced by another, or whose connection is gone,
+  answers `404` like an expired link instead of opening the plain flow.
+
+  **Compatibility.** A widget token with no `end_user_ref` that acts on a connection that names a customer now gets
+  `403 token_wrong_end_user` on the repeat `POST /v1/connections`, `:recheck`, `:reapply`, `DELETE .../grant`, the
+  connection reads and writes above, and every managed DNS and nameserver move route, where it got `200`. That includes a
+  connection the same token created by sending `end_user_ref` in the request body. If you create connections with an
+  `end_user_ref`, mint each widget token with the same `end_user_ref` and the `domain` it is for. Share links keep
+  working, with two changes: a share link can no longer remove a connection that names no customer (it could before),
+  and links made before this release stop working (opening one answers `404` like an expired link and spends it, which
+  the console words as "invalid or expired, ask for a fresh link"), so ask for a new one. See
+  [Idempotency](/docs/connect-flow/create-a-connection#idempotency),
+  [Whose zone it is](/docs/dns/managed-dns#who-can-call-what) and
+  [Widget tokens](/docs/authentication/widget-tokens).
 - **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
   CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
   where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a
