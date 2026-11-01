@@ -313,65 +313,23 @@ token need the `member` role or above.
 exists you can switch to it or go straight to its widget.
 
 Each application has its own page: open it from **Applications** or from the
-switcher. Its summary counts the application's domains by status, and its
+switcher. Its summary counts the application's domains by status and reads out
+what its users are offered, **DNS hosting** and **Use their saved access**, each
+with a line on what it is, a link to its guide and a **Change** that opens its row in
+[Widget → Ways to connect](#ways-to-connect) (a viewer sees **View**). Its
 **Domains** (the ones that need attention first, each opening its details),
 **API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
-it**, **DNS hosting** and **Delete application**) are tabs. Deleting asks you to type the name, revokes the application's
+it**, a **DNS hosting** read-out and **Delete application**) are tabs. The
+**DNS hosting** section of **Settings** says whether DNS hosting is **Off**,
+**Offered** or **Offered first**, who runs it and **See hosted domains**,
+with the same **Change**; it is [set in Ways to connect](#domain-maintenance), so
+the setting is changed in one place. A test mode application has none. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
 that still has domains (disconnect them first). An application created through
 the API rather than in the console works the same, except that its widget
 can't be previewed here: its client secret was issued to whoever created it
 and was never stored in the console, so mint its tokens with `POST /v1/tokens`
 and that secret.
-
-#### DNS hosting [#domain-maintenance]
-
-An application's **Settings** tab has a **DNS hosting** section (it was called
-**Domain maintenance**): your
-platform keeps your users' domains working for them (records stay correct,
-certificates renew, problems get fixed) once each user agrees in the widget. One
-setting where the user bought the domain changes, its *nameservers*, which say
-who runs the domain's DNS. The guide is
-[the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
-A test mode application has none. You can also change the setting from
-[Widget → Ways to connect](#ways-to-connect), which is where it sits next to the
-other choices your users get; both write the same setting. The section has:
-
-- **Host your users' DNS**, a switch, off by default. Nothing changes for
-  your users until you **Save**; once saved, each user is asked when they connect
-  a domain.
-- **Before and after**: a user's domain as two parts. Where it is registered (paid
-  for) stays; what keeps it working (its DNS) moves to whoever runs it. A **?**
-  beside DNS, registrar and nameservers gives one plain line and a link to the
-  guide.
-- **Who runs it**: **CustomDomain™** (recommended, the default; nothing to set up)
-  or **Your own account** (pick one of your connected Cloudflare, Amazon Route 53,
-  Google Cloud DNS or Azure DNS accounts; only this application uses it). Under
-  **Advanced**, **Use your own nameservers instead** takes 2 to 13 nameservers, one
-  per line.
-- **Show it as the first choice**: users see it first, and adding records stays
-  one tap away. Off, it is a quiet second choice.
-- **Hosted domains**, under the section once it is on: how many are
-  hosted, being set up and need attention, the typical setup time, why some
-  stopped, and one row per domain (who runs it, its status in plain words, the
-  records copied, when it was last checked), each opening the domain. It lists
-  moves only: a domain whose zone you started and never moved is not in it, and
-  **DNS hosted by us** on **Domains** ([below](#hosting-and-access-filters)) lists
-  every hosted domain.
-
-The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
-`target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
-
-A hosted domain shows a **DNS hosting** section on its **DNS** tab: its
-status, three steps (**Copying settings**, **Waiting for the registrar**,
-**Live**), the next thing to do, and, when its settings could only be read from
-outside, what to check and **The records look right, continue**
-([the copy](/docs/guides/nameserver-migration#the-copy)). It names the registrar,
-where the nameservers are changed, only when it is known, and shows where its
-records are, its nameservers under **Technical details**, and the ways back:
-**Move back**, and **Move back to GoDaddy's DNS** (the registrar's own DNS) beside
-it, or in its place once the old nameservers no longer answer
-([what moving back does](/docs/guides/nameserver-migration#moving-back)).
 
 ## 3. Connect a domain
 
@@ -439,9 +397,14 @@ the domain. The recommended one is open; the others are closed one-line rows und
    bought, and CustomDomain™ writes every record after that. It is not a row on
    this page: it is the **DNS hosting** card at the foot of the domain's **DNS**
    tab, and the application's **DNS hosting** setting decides whether your
-   customers are offered it in the widget ([above](#domain-maintenance)). The
+   customers are offered it in the widget ([set in Ways to connect](#domain-maintenance)). The
    domain check reports the same verdict as `rails.nameservers`. See
    [Managed DNS](/docs/dns/managed-dns).
+
+Under the detected DNS host the page also says whether your application offers
+DNS hosting to its users (**DNS hosting for your users: Offered**), with a line on
+what it is, a link to its guide and a **Change** to
+[its row in Ways to connect](#domain-maintenance).
 
 Not the one with DNS access? Under the records, **Send these records to a
 teammate** emails them to whoever is. Replies go to you.
@@ -818,7 +781,7 @@ another screen of the preview, ends it; it has no effect on any domain.
 | **Colors** | The brand color for buttons, links and focus rings. Text on it is chosen to be readable, and it is lifted in dark mode when it would vanish. An optional background and text color, used in both light and dark. |
 | **Shape and type** | One corner radius (buttons, fields, cards and the pop-up follow it in proportion), a system font, the pop-up's width on a computer, and its shadow. |
 | **Behavior** | Light, dark or match the device; the confetti; the close button; the progress steps. |
-| **Screens and options** | "Add the records instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with **Change in Settings** to its [Domain maintenance](#domain-maintenance) section: that setting, not the widget, decides whether users are offered DNS hosting. |
+| **Screens and options** | "Add the records instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with a **Change** (**View** for a viewer) that opens its row in [Ways to connect](#domain-maintenance): that setting, not the widget, decides whether users are offered DNS hosting. |
 
 **Each application has its own look.** The designer edits the application
 chosen in the sidebar. **Save** gives that application a look of its own.
@@ -861,10 +824,10 @@ product.
 | **Secure sign-in** | For providers with no popup sign-in: they sign in inside a secure window we run ([the guide](/docs/guides/secure-sign-in)). It reads **On** or **Off** for your workspace and says why when it is off (the deployment has it off, or it is on for a list of workspaces yours is not on). | Nobody: it is read only. |
 | **Use their saved access** | A switch, on by default. A returning customer is offered a key they kept before, for their other domains ([the setting](/docs/guides/secure-sign-in#saved-access)). It saves when you flip it. | Owners, admins and members. |
 | **Add the records** | They copy a few rows into their provider's panel, and we check them. Always on. | Nobody. |
-| **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **N domains hosted** opens the domains it hosts in a sheet. | Owners, admins and members. |
+| **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **See hosted domains** opens **Domains** narrowed to the domains it hosts ([DNS hosting](#domain-maintenance)). | Owners, admins and members. |
 
-A viewer sees every control off with the reason, and can still open the hosted
-domains. A test mode application keeps no saved access and never offers DNS
+A viewer sees every control off with the reason, and can still follow **See hosted
+domains**. A test mode application keeps no saved access and never offers DNS
 hosting, and its rows say so.
 
 Every row the widget has a screen for has **Preview this**. It opens **Design**
@@ -872,7 +835,64 @@ on that screen (Sign in, Secure sign-in, Manual setup, and for DNS hosting the
 offered-first or the consent screen, whichever your setting shows), the same as a
 link to `/app/embed?tab=branding&stage=secure-sign-in`. The preview only follows
 what is on: a way that is off for your workspace has no **Preview this**. A link
-to `/app/embed?tab=ways#dns-hosting` opens this tab at the DNS hosting row.
+to `/app/embed?tab=ways#dns-hosting` opens this tab at the DNS hosting row, and
+`/app/embed?tab=ways&app=<application id>#dns-hosting` does the same for that
+application: it is the address every **Change** on the application's pages, in the
+designer and on the connect page links to (`#saved-access` is the saved access row).
+
+### DNS hosting [#domain-maintenance]
+
+The **DNS hosting** row of Ways to connect is where the setting is changed. It
+used to be a section of an application's **Settings** tab, called **Domain
+maintenance**; **Settings**, the application's summary, the widget designer and
+the connect page now show its value with a **Change** that opens this row.
+
+With it on, your platform keeps your users' domains working for them (records
+stay correct, certificates renew, problems get fixed) once each user agrees in
+the widget. One
+setting where the user bought the domain changes, its *nameservers*, which say
+who runs the domain's DNS. The guide is
+[the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
+A test mode application has none. **Off**, **Offer it** and **Offer it first**
+save when you pick one; **Change** beside **Who runs it** opens the form, which
+has:
+
+- **Host your users' DNS**, a switch, off by default. Nothing changes for
+  your users until you **Save**; once saved, each user is asked when they connect
+  a domain. (Picking **Offer it** on the row saves at once.)
+- **Before and after**: a user's domain as two parts. Where it is registered (paid
+  for) stays; what keeps it working (its DNS) moves to whoever runs it. A **?**
+  beside DNS, registrar and nameservers gives one plain line and a link to the
+  guide.
+- **Who runs it**: **CustomDomain™** (recommended, the default; nothing to set up)
+  or **Your own account** (pick one of your connected Cloudflare, Amazon Route 53,
+  Google Cloud DNS or Azure DNS accounts; only this application uses it). Under
+  **Advanced**, **Use your own nameservers instead** takes 2 to 13 nameservers, one
+  per line.
+- **Show it as the first choice**: users see it first, and adding records stays
+  one tap away. Off, it is a quiet second choice.
+- **See hosted domains**, beside the setting once it is on: a link to **Domains**
+  narrowed to this application's hosted domains (`?app=<application id>&dns_hosting=hosted`,
+  [below](#hosting-and-access-filters)). It shows no number: **DNS hosted by us**
+  on **Domains** lists every hosted domain, including a zone you started and never
+  moved, so a count of the domains moved would not match the list it opens. The
+  **DNS host** column says who runs each one. The figures and rows that used to sit
+  under the section (domains being set up, the typical setup time, why some
+  stopped) are those columns and chips now.
+
+The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
+`target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
+
+A hosted domain shows a **DNS hosting** section on its **DNS** tab: its
+status, three steps (**Copying settings**, **Waiting for the registrar**,
+**Live**), the next thing to do, and, when its settings could only be read from
+outside, what to check and **The records look right, continue**
+([the copy](/docs/guides/nameserver-migration#the-copy)). It names the registrar,
+where the nameservers are changed, only when it is known, and shows where its
+records are, its nameservers under **Technical details**, and the ways back:
+**Move back**, and **Move back to GoDaddy's DNS** (the registrar's own DNS) beside
+it, or in its place once the old nameservers no longer answer
+([what moving back does](/docs/guides/nameserver-migration#moving-back)).
 
 ## Try it live
 
