@@ -589,7 +589,7 @@ refuses the same (`403 target_not_allowed`). A move that another application of
 the workspace has open is never resumed with an agent token (`409`).
 While the application's DNS hosting is off, `migrate-nameservers` is refused with
 the error `ns_not_offered` and changes nothing: the agent does not retry, and tells
-the person they can turn DNS hosting on in the console's Widget page (Ways to connect), or that the
+the person they can turn DNS hosting on in the application's settings, or that the
 platform can start the move with its API key. `rollback-nameservers` is not refused.
 `migrate-nameservers` takes `copyReviewed` once the agent showed the person the
 copy's warnings and they agreed, and `rollback-nameservers` takes `target`
@@ -610,7 +610,7 @@ copy's warnings and they agreed, and `rollback-nameservers` takes `target`
 - **Where else the setting shows**: the application's **Settings** (a **DNS
   hosting** section), its summary, the widget designer and the connect page read
   it out (**Off**, **Offered** or **Offered first**) with a **Change** to that row.
-  Beside it, **N domains hosted** opens **Domains** narrowed to the domains
+  Beside it, **See hosted domains** opens **Domains** narrowed to the domains
   hosted for the application ([find them](/docs/getting-started/console#hosting-and-access-filters)),
   where **DNS hosted by us** and the **DNS host** column say who runs each one and
   which moves need a look.

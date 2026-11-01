@@ -315,13 +315,13 @@ exists you can switch to it or go straight to its widget.
 Each application has its own page: open it from **Applications** or from the
 switcher. Its summary counts the application's domains by status and reads out
 what its users are offered, **DNS hosting** and **Use their saved access**, each
-with a **Change** that opens its row in [Widget → Ways to connect](#ways-to-connect)
-(a viewer sees **View**). Its
+with a line on what it is, a link to its guide and a **Change** that opens its row in
+[Widget → Ways to connect](#ways-to-connect) (a viewer sees **View**). Its
 **Domains** (the ones that need attention first, each opening its details),
 **API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
 it**, a **DNS hosting** read-out and **Delete application**) are tabs. The
 **DNS hosting** section of **Settings** says whether DNS hosting is **Off**,
-**Offered** or **Offered first**, who runs it and how many domains are hosted,
+**Offered** or **Offered first**, who runs it and **See hosted domains**,
 with the same **Change**; it is [set in Ways to connect](#domain-maintenance), so
 the setting is changed in one place. A test mode application has none. Deleting asks you to type the name, revokes the application's
 API keys, and is refused for your workspace's default application and for one
@@ -402,8 +402,9 @@ the domain. The recommended one is open; the others are closed one-line rows und
    [Managed DNS](/docs/dns/managed-dns).
 
 Under the detected DNS host the page also says whether your application offers
-DNS hosting to its users (**DNS hosting for your users: Offered**), with a
-**Change** to [its row in Ways to connect](#domain-maintenance).
+DNS hosting to its users (**DNS hosting for your users: Offered**), with a line on
+what it is, a link to its guide and a **Change** to
+[its row in Ways to connect](#domain-maintenance).
 
 Not the one with DNS access? Under the records, **Send these records to a
 teammate** emails them to whoever is. Replies go to you.
@@ -749,7 +750,7 @@ another screen of the preview, ends it; it has no effect on any domain.
 | **Colors** | The brand color for buttons, links and focus rings. Text on it is chosen to be readable, and it is lifted in dark mode when it would vanish. An optional background and text color, used in both light and dark. |
 | **Shape and type** | One corner radius (buttons, fields, cards and the pop-up follow it in proportion), a system font, the pop-up's width on a computer, and its shadow. |
 | **Behavior** | Light, dark or match the device; the confetti; the close button; the progress steps. |
-| **Screens and options** | "Add the records instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with a **Change** that opens its row in [Ways to connect](#domain-maintenance): that setting, not the widget, decides whether users are offered DNS hosting. |
+| **Screens and options** | "Add the records instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with a **Change** (**View** for a viewer) that opens its row in [Ways to connect](#domain-maintenance): that setting, not the widget, decides whether users are offered DNS hosting. |
 
 **Each application has its own look.** The designer edits the application
 chosen in the sidebar. **Save** gives that application a look of its own.
@@ -792,10 +793,10 @@ product.
 | **Secure sign-in** | For providers with no popup sign-in: they sign in inside a secure window we run ([the guide](/docs/guides/secure-sign-in)). It reads **On** or **Off** for your workspace and says why when it is off (the deployment has it off, or it is on for a list of workspaces yours is not on). | Nobody: it is read only. |
 | **Use their saved access** | A switch, on by default. A returning customer is offered a key they kept before, for their other domains ([the setting](/docs/guides/secure-sign-in#saved-access)). It saves when you flip it. | Owners, admins and members. |
 | **Add the records** | They copy a few rows into their provider's panel, and we check them. Always on. | Nobody. |
-| **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **N domains hosted** opens **Domains** narrowed to the domains it hosts ([DNS hosting](#domain-maintenance)). | Owners, admins and members. |
+| **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **See hosted domains** opens **Domains** narrowed to the domains it hosts ([DNS hosting](#domain-maintenance)). | Owners, admins and members. |
 
-A viewer sees every control off with the reason, and can still follow **N domains
-hosted**. A test mode application keeps no saved access and never offers DNS
+A viewer sees every control off with the reason, and can still follow **See hosted
+domains**. A test mode application keeps no saved access and never offers DNS
 hosting, and its rows say so.
 
 Every row the widget has a screen for has **Preview this**. It opens **Design**
@@ -839,14 +840,14 @@ has:
   per line.
 - **Show it as the first choice**: users see it first, and adding records stays
   one tap away. Off, it is a quiet second choice.
-- **N domains hosted**, beside the setting once it is on: a link to **Domains**
+- **See hosted domains**, beside the setting once it is on: a link to **Domains**
   narrowed to this application's hosted domains (`?app=<application id>&dns_hosting=hosted`,
-  [below](#hosting-and-access-filters)). The count is the domains moved to
-  DNS hosting that are live; **DNS hosted by us** on **Domains** lists every
-  hosted domain, including a zone you started and never moved, and its **DNS host**
-  column says who runs each one. The figures and rows that used to sit under the
-  section (domains being set up, the typical setup time, why some stopped) are
-  those columns and chips now.
+  [below](#hosting-and-access-filters)). It shows no number: **DNS hosted by us**
+  on **Domains** lists every hosted domain, including a zone you started and never
+  moved, so a count of the domains moved would not match the list it opens. The
+  **DNS host** column says who runs each one. The figures and rows that used to sit
+  under the section (domains being set up, the typical setup time, why some
+  stopped) are those columns and chips now.
 
 The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
 `target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
