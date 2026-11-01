@@ -502,12 +502,17 @@ change the domain's records, in one line each:
 | **Kept by your Cloudflare sign-in** | You approved us once at the provider, in a popup, and we kept that approval. |
 | **Kept by your one-click setup at GoDaddy** | You approved the change once at the provider, and we kept that approval. |
 | **Through DNS hosting** | We run the domain's DNS, so we write its records ourselves. |
+| **DNS hosting, setting up** | The zone is ours but the nameservers have not moved yet. Its records are kept in our zone and go live when they move. |
+| **DNS hosting needs a look** | Hosting stopped working for this domain. Its DNS tab says why. |
 | **Kept by your AWS access role** | A role in your AWS account. It can add and change records, not delete them. |
 | **Not kept** | We keep no access, so a change to the records needs you at the provider. |
 
 The card's buttons follow from that. **Re-apply now** writes the records again, and
-shows for any kept access that can write right now. **Stop managing** drops a kept
-sign-in or one-click setup and leaves the records where they are. **Make this domain
+shows for any kept access that can write right now. **Stop managing** shows whenever the
+domain is managed and drops the sign-in or one-click setup we hold, leaving the records
+where they are. It shows even when the card says DNS hosting or **Not kept**: a managed
+domain that moved to DNS hosting keeps its old sign-in, and this is the way to let go of
+it. **Make this domain
 managed** shows only where it can run: nothing is kept yet, and the provider signs in
 or the deployment can offer one-click setup for it. **Change** opens a menu:
 
