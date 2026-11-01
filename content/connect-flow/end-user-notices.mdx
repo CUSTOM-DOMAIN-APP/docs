@@ -57,6 +57,25 @@ account wording, because the reader has no account with us.
   `connection.records_outdated` webhook and an email to your owners and admins,
   whether or not there is an address.
 
+## What the secure sign-in tells them about the API key
+
+Your customer is told about the lasting API key before a
+[secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) makes it, and after. On
+the screen that opens the sign-in, in the widget and in the console's Connect
+page, up to three lines name the key, what else it can do, and where to delete it:
+
+- "We'll make (or reuse) an API key named “{name}” in your {provider} account and
+  keep it so {domain} keeps working."
+- "It can also transfer your domains. We use it only for DNS.", "It can also pay
+  renewals. We use it only for DNS." or both, only for a key that can do that.
+- "Delete it any time on {provider}'s page.", a link to the provider's own page.
+
+After the sign-in, the widget's **Live** screen names the key that was kept and
+links the same page, and a key that was made and not kept stays named until the
+widget is closed. The text is in all 13 widget languages. It carries no email and
+asks for no address: it is on the screen your customer is already looking at. The
+id of the text, `cb-4`, is stored with the session as `consent_version`.
+
 ## Reconnect emails
 
 When a [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) made a

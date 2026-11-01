@@ -67,6 +67,34 @@ other provider sign-in (680 by 760, centered over the page). On a phone or a
 tablet it opens as a sheet over the page, and the sheet follows the visible part
 of the screen, so the keyboard never covers a field.
 
+Before the sign-in opens, the card says what it does with an API key, in up to
+three lines (from the domain check's `rails.cloud_browser.key`, so the widget and
+the console say the same thing):
+
+1. What is made and kept: "We'll make (or reuse) an API key named “CustomDomain
+   Acme 2026-10-30 1204” in your Namecheap account and keep it so acme.com keeps
+   working." Where the sign-in makes no key and uses the account's own (Namecheap),
+   it says "We'll use your Namecheap account's own API key and keep it so acme.com
+   keeps working."
+2. What else the key can do, only when it can transfer domains or pay renewals:
+   "It can also transfer your domains. We use it only for DNS.", "It can also pay
+   renewals. We use it only for DNS.", or both in one line. A key that reaches DNS
+   only has no such line.
+3. Where to delete it: "Delete it any time on Namecheap's page.", a link to the
+   provider's own page that lists API keys (in a new tab). Without a page, "Delete it
+   any time in your Namecheap account."
+
+When the sign-in makes no key, the card says nothing about one. The widget and the
+console send `consent_version` `cb-4` with the start: the id of this text, which we
+store with the session. After the sign-in, the widget's **Live** screen says which key
+was kept ("We kept an API key named “CustomDomain Acme 2026-10-30 1207” in your
+Namecheap account so acme.com keeps working.", with the delete link), because the
+popup closes itself a moment after **Done**. The key's name there is the one it was
+really made with, which can differ from the card's by a minute. A key that was made
+and not kept (the provider's API refused it) is named on the screens after the
+sign-in, with the link to delete it, until your customer closes the widget, and the
+console's Connect page says the same on its card and its waiting and live cards.
+
 A bar across the top names the provider. While the provider's own page is on
 screen (a human check, a Google or Apple page, or the provider's sign-in page),
 the bar also shows the site that page is on, with a tick when it is the
@@ -404,7 +432,8 @@ deletes API keys), `rights` and `ends_in_days`. A sign-in makes a key, or may
 reuse one of ours the account already has, and each session names its key from
 the minute it starts, so look for a key that begins with that name, not for that
 exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
-so its `key` has no `name`. After the sign-in, the session's view
+so its `key` has no `name`. These are the facts the widget and the console say
+before the sign-in opens (see [what your customer sees](#what-your-customer-sees)). After the sign-in, the session's view
 ([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
 `kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
 its `rights` and `expires_at` (left out for a key with no end date). A key that
@@ -720,7 +749,7 @@ so you can read what a session did. Every route is in the
 
 | Call | What it does |
 | --- | --- |
-| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-3`, the popup's own form), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
+| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-4`, the key notice above; `cb-3` is still accepted: the popup's own form with no text, which the widget's reconnect and nameserver move send), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
 | `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). Only an API key may call it: a widget token and an agent token get `403`, because the link signs in as your customer. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |

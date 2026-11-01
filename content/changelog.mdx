@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: secure sign-in says which API key it makes, what it can do and where to delete it.** Before a
+  [secure sign-in](/docs/guides/secure-sign-in) opens, the widget's card and the console's Connect page say "We'll make
+  (or reuse) an API key named “...” in your {provider} account and keep it so {domain} keeps working.", add a line only for
+  a key that can also transfer domains or pay renewals, and link "Delete it any time on {provider}'s page." The sign-in
+  sends `consent_version` `cb-4` for this text. After it, the widget's **Live** screen names the key that was kept, a key
+  that was made and not kept stays named until the widget is closed, and the console's Connect page says the same.
+  The text is in all 13 widget languages. See [what your customer
+  sees](/docs/guides/secure-sign-in#what-your-customer-sees).
 - **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
   When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
   scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
