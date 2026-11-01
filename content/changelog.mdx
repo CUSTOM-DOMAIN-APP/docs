@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: Widget has a Ways to connect tab.** **Widget** now has four tabs: Design, Ways to connect, Install
+  and Try it live (a link to Widget still opens Install). Ways to connect shows what your users are offered when they
+  connect a domain, one row per way with a line and a docs link: sign in with their provider and adding the records
+  (always on), secure sign-in (read only: on or off for your workspace, with why), **Use their saved access** (a switch
+  for `end_user_saved_access`, on by default, off for a test mode application) and **DNS hosting** (Off, Offer it, Offer
+  it first, who runs it, and how many domains it hosts). The DNS hosting setting is the same one as on an
+  application's Settings tab. Each row that the widget has a screen for has **Preview this**, which opens the Design
+  preview on it. Owners, admins and members can change the settings; a viewer sees them off with the reason. A link to
+  Widget with `?app=<application id>` switches to that application first. See the
+  [console guide](/docs/getting-started/console#ways-to-connect) and
+  [secure sign-in](/docs/guides/secure-sign-in#saved-access).
 - **November 1, 2026: a key made at a secure sign-in widens only to domains it reaches, an account is renewed by signing in again, and removing one says what it leaves.** `PATCH /v1/provider-accounts/{id}` on a key made at a sign-in in the console now reads each domain it adds with the key before storing anything: a domain the key does not reach answers `422` `zone_not_reached` with those domains in `domains`, and none of the call's domains are stored. The scope `all` needs the provider to list the key's domains (`422` `scope_all_needs_list` otherwise). A pasted key may still be given any scope, and a key your customer's sign-in made is still never widened. `POST /v1/provider-accounts/{id}/reconnect` takes `method`: `api_key` (the default) or `secure_sign_in`, which starts a sign-in whose key swaps into the same account when kept, so the account keeps its id and its domains; a key of another provider account is `422` `different_account`. `DELETE /v1/provider-accounts/{id}` now answers `used_by`, the number of domains that used the account, and `revoke_url`, the provider's page where the key itself is deleted, for a pasted key too. It also now takes whoever manages the account, like every other change to it: an admin, an owner or the member who connected it (a key your customer's sign-in made, only an admin or an owner), and answers `403` to any other member and to a viewer. Until now any member who operates applications could remove any account. Additive except the stricter widening of a key made at a sign-in and the removal rule. See [What each kind allows](/docs/connect-flow/provider-accounts#what-each-kind-of-account-allows), [Renew an account by signing in again](/docs/connect-flow/provider-accounts#renew-an-account-by-signing-in-again) and [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
 - **November 1, 2026: Domains shows which domains we host and which we keep no access to.** In the console, **Domains**
   has two buttons under its filters, **DNS hosted by us** and **No saved access**, each with its number and a **?**, and
