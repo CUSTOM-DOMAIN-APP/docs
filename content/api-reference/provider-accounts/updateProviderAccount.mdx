@@ -41,7 +41,13 @@ _openapi:
           has no domain to read, so it needs the provider to list the domains a key
           reaches and this key to list them now: a provider that cannot answers `422`
           `scope_all_needs_list` (add the domains instead), and a key the provider
-          refuses answers `422` `ProviderAuthenticationError`.
+          refuses answers `422` `ProviderAuthenticationError`. The scope `all` is no
+          way round the read of a domain: while it is `all`, a domain named that the
+          account does not already hold in `domains` is read too, whether the call
+          keeps `all` or goes back to `selected`. The change is written on the account
+          as it is after the reads, so a renewal that landed meanwhile is kept; an
+          account that lost its key, or whose change no longer matches what was read,
+          answers `409` and nothing is written.
       - content: >-
           `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
           is never widened, whoever asks. A change that adds a domain or sets `scope`

@@ -57,10 +57,12 @@ _openapi:
           so a body that names `scope`, `domains`, `access` or `application_ids` is
           `400` (the account is changed by `PATCH /provider-accounts/{id}`). It is
           refused, keeping the key pending, with `404` for an account removed
-          meanwhile, `403` for a member who no longer manages it, and `422`
+          meanwhile, `403` for a member who no longer manages it, `422`
           `different_account` for a key of another provider account (`domains`, when
           the proof was the list, names the domains the account holds that the new key
-          does not list).
+          does not list), and `422` `account_not_verifiable` for an account that holds
+          no domain and has no account number to compare the key with (remove it and
+          add it again).
       - content: >-
           A session of another workspace or member, a connect session and an unknown
           id are `404`; a session that is not waiting for the keep step is `409`, and

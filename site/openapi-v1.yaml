@@ -3892,9 +3892,11 @@ paths:
         a body that names `scope`, `domains`, `access` or `application_ids` is `400`
         (the account is changed by `PATCH /provider-accounts/{id}`). It is refused,
         keeping the key pending, with `404` for an account removed meanwhile, `403`
-        for a member who no longer manages it, and `422` `different_account` for a
+        for a member who no longer manages it, `422` `different_account` for a
         key of another provider account (`domains`, when the proof was the list,
-        names the domains the account holds that the new key does not list).
+        names the domains the account holds that the new key does not list), and
+        `422` `account_not_verifiable` for an account that holds no domain and has
+        no account number to compare the key with (remove it and add it again).
 
 
         A session of another workspace or member, a connect session and an
@@ -3942,7 +3944,7 @@ paths:
         '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
         '422':
-          description: "`domain_not_listed`, `use_once_credential`, `serves_every_application`, or `different_account` for a renewal (the key is another provider account's)."
+          description: "`domain_not_listed`, `use_once_credential`, `serves_every_application`, or for a renewal `different_account` (the key is another provider account's) or `account_not_verifiable` (nothing to compare the key with)."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DomainsRefusedError' }
@@ -6884,11 +6886,13 @@ paths:
         `use_once_credential`.
 
 
-        Anyone whose role operates applications may connect a key, read the
-        accounts and revoke one. Changing an account's access, scope or
-        domains, listing the domains its key reaches, connecting domains with
-        it and replacing its key take an admin, an owner or the member who
-        connected it (`can_manage`). Every change is recorded in the audit log
+        Anyone whose role operates applications may connect a key and read the
+        accounts. Changing an account's access, scope or domains, listing the
+        domains its key reaches, connecting domains with it, replacing its key,
+        renewing it by signing in again and removing it take an admin, an owner
+        or the member who connected it (`can_manage`); a key a customer's sign-in
+        made, which no member connected, is managed by an admin or an owner
+        alone. Every change is recorded in the audit log
         (`provider_account.*`, `GET /audit`).
       security:
         - apiKey: []
@@ -7238,6 +7242,12 @@ paths:
         domains a key reaches and this key to list them now: a provider that
         cannot answers `422` `scope_all_needs_list` (add the domains instead),
         and a key the provider refuses answers `422` `ProviderAuthenticationError`.
+        The scope `all` is no way round the read of a domain: while it is `all`,
+        a domain named that the account does not already hold in `domains` is read
+        too, whether the call keeps `all` or goes back to `selected`. The change is
+        written on the account as it is after the reads, so a renewal that landed
+        meanwhile is kept; an account that lost its key, or whose change no longer
+        matches what was read, answers `409` and nothing is written.
 
 
         `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
@@ -7330,8 +7340,11 @@ paths:
         as for a lasting API key the cloud browser's agent made: the key lives at
         the provider until it is deleted there (no provider documents an API that
         revokes one), and the application receives `credential.removed` for a key
-        the agent made. Anyone who operates applications may remove an account; a
-        viewer may not (`403`).
+        the agent made. Removing an account takes whoever manages it, like every
+        other change to it: an admin, an owner or the member who connected it
+        (`can_manage`), and for a key a customer's secure sign-in made, which no
+        member connected, an admin or an owner. Anyone else, a viewer included, gets
+        `403`, and nothing is deleted or detached.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7507,8 +7520,11 @@ paths:
         (`403`). The keep refuses a key of another provider account (`422`
         `different_account`): where the provider names the account, the two must be
         the same; where it does not (IONOS), the new key must list every domain the
-        account holds. The refused key stays pending and is named for deletion when
-        the sign in is cancelled.
+        account holds. An account that holds no domain and has no account number
+        gives nothing to compare, so its renewal is refused (`422`
+        `account_not_verifiable`): remove the account and add it again with the new
+        sign in. The refused key stays pending and is named for deletion when the
+        sign in is cancelled.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]

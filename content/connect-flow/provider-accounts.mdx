@@ -110,6 +110,13 @@ domains a key reaches and the key to list them now. For a provider that cannot,
 it answers `422` `scope_all_needs_list`: add the domains one at a time instead.
 A key the provider refuses answers `422` `ProviderAuthenticationError`.
 
+The scope `all` is no way round the read of a domain. While a key made at a
+sign-in is on `all`, a domain you name that the account does not already hold is
+read with the key too, whether the call keeps `all` or goes back to `selected`.
+The change is written on the account as it is after the reads, so a renewal that
+landed meanwhile is kept; an account that lost its key meanwhile answers `409` and
+nothing is written.
+
 ## Which providers list their domains
 
 Where a provider has a list call for it, the key is checked by listing, the console's **Connect more
@@ -141,13 +148,17 @@ call answers `422` `ProviderAuthenticationError` and the account is marked as ne
 
 ## Who can manage an account
 
-Anyone whose role operates applications may connect a key, read the accounts,
-rename one and remove one. Changing an account's access, scope or domains, listing the
-domains its key reaches, connecting domains with it, giving it a new key and
-[renewing it by signing in again](#renew-an-account-by-signing-in-again) take
-an admin, an owner or the member who connected it, because the key reaches zones
-the others were never given; anyone else gets `403`. Each account says whether
-you may (`can_manage`).
+Anyone whose role operates applications may connect a key, read the accounts and
+rename one. Changing an account's access, scope or domains, listing the
+domains its key reaches, connecting domains with it, giving it a new key,
+[renewing it by signing in again](#renew-an-account-by-signing-in-again) and
+[removing it](#remove-an-account) take an admin, an owner or the member who
+connected it, because the key reaches zones the others were never given and
+removing it deletes the key and detaches every domain that used it; anyone else
+gets `403`. A key your customer's own sign-in made, which no member connected, is
+managed by an admin or an owner alone. Each account says whether you may
+(`can_manage`), and the console shows a member who did not connect an account no
+buttons on it.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -352,9 +363,13 @@ account gets a new hour.
   renewed by your customer, never from the console (`403`).
 - **It must be the same provider account.** Where the provider names the account,
   the new key's account must be the same. Where it does not (IONOS), the new key
-  must list every domain the account holds. A key of another account answers `422`
+  must list every domain the account holds, or for an account of every domain,
+  the domains linked to it. A key of another account answers `422`
   `different_account` and changes nothing; the key stays pending, and cancelling
-  the sign-in names it so you can delete it at the provider.
+  the sign-in names it so you can delete it at the provider. An account that holds
+  no domain and has no account number gives nothing to compare, so it answers `422`
+  `account_not_verifiable` the same way: remove the account and add it again with
+  this sign-in.
 - **Nothing else changes.** A body that names `scope`, `domains`, `access` or
   `application_ids` is `400`: change those with `PATCH`.
 - **Audited.** `provider_account.key_replaced`, with `via` `sign_in` and `renewed`
@@ -377,7 +392,9 @@ the account. It says what that leaves:
   the provider, so the key lives there until you delete it. The field is absent
   when the provider has no such page on file.
 
-Anyone who operates applications may remove an account; a viewer may not.
+Removing an account takes whoever manages it: an admin, an owner or the member
+who connected it, and for a key your customer's sign-in made, an admin or an owner.
+Anyone else, a viewer included, gets `403`, and nothing is deleted or detached.
 
 ## What needs you
 
