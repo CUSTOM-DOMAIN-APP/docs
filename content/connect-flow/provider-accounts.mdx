@@ -351,9 +351,49 @@ ways:
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
 
+## Add an account in the console
+
+The console adds an account on its own page, **Connect an account** on **Connected accounts**
+(`/app/accounts/new`), in three steps and then **Connect N domains now**. It is a page and not a dialog
+so a flow this long works on a phone. Nothing is chosen for you.
+
+1. **Which company.** A searchable list of the companies that have a way to add an account here (the ones
+   whose `account_ways` in [`GET /v1/providers`](/docs/api-reference/providers/listProviders) is not empty), or a typed
+   domain found through the domain check. A company with no way, such as one that signs in domain by domain, is named
+   and sent to the connect page. The address `/app/accounts/new?provider=<id>` opens at step 2.
+2. **How to connect.** Only that company's ways, easiest first, as `account_ways` lists them:
+   - **Sign in** opens the secure sign-in over the page, as the connect page's does. You sign in at the company, we make
+     the key and check it by listing the domains it reaches, and the key waits in memory, never in an account, for ten
+     minutes. See [Add an account by secure sign-in](#add-an-account-by-secure-sign-in).
+   - **Paste an API key** shows the company's steps and key page. **Check the key** lists the domains the key
+     reaches. Only `list_not_supported` means the company cannot list; any other refusal (a key the company
+     refused, a company that did not answer) is shown in its own words and you stay on the key. A credential that is
+     used once says why, and is kept for one time access only ([Credentials that are used once](#credentials-that-are-used-once)).
+3. **What it may do.**
+   - **Which domains.** Every domain in the account, or the ones you choose, ticked from the list or typed. A key that
+     cannot list its domains takes **every domain** only with one domain named (`check_domain`), which is how we check
+     the key, and typed domains are each checked. The button waits while a choice is empty.
+   - **Which applications.** A pasted key is bound to no application, so every application may use it. A key a sign-in made
+     is for the application chosen in step 2, and only an admin or an owner can share it with others
+     ([Which applications may use it](#which-applications-may-use-it)).
+   - **Access.** [Continuous or one time](#access); a credential used once, and a deployment that keeps no keys, offer one time only.
+
+   A pasted key is made with `POST /v1/provider-accounts`, and a sign-in's key with
+   `POST /v1/browser-sessions/{id}:keep`. A key that replaced the one an account held is named, so you delete the right one.
+
+Then **Connect N domains now** calls `POST /v1/provider-accounts/{id}/connect` ([Connect many domains at once](#connect-many-domains-at-once)):
+each ticked domain goes into the application you choose among the ones the key may use, at most 200 a call, and each
+domain's result is shown (**Connected**, **Already connected** or why not), with a retry of the ones that failed. After a
+sign-in, the offer is the key's domains the workspace has not connected yet ([More domains in the account](#more-domains-in-the-account)).
+**Later** leaves them for the account's own page.
+
+A sign-in that stops before the keep (the window closed, **Back**, **Start again**, leaving the page, or the ten minutes
+passing) is cancelled, and the page says which key it made, with the provider's page that deletes it
+(`left_key`, see below). The page needs the member role or above.
+
 ## Add an account by secure sign-in
 
-The console's **Connected accounts** can add an account without a pasted key: the person signs in to the provider
+The console's **Connected accounts** can add an account without a pasted key ([the page that does it](#add-an-account-in-the-console)): the person signs in to the provider
 in a temporary browser, CustomDomain™ makes the API key itself, checks it by listing the domains it reaches, and
 asks which of those domains the account may use. The account is kept only after that answer. Nothing is kept before
 it, so a sign-in that is left alone or cancelled adds no account.
