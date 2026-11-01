@@ -408,9 +408,10 @@ so its `key` has no `name`. After the sign-in, the session's view
 ([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
 `kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
 its `rights` and `expires_at` (left out for a key with no end date), and
-`reused: true` when no key was made because the sign-in used one of ours that the
-provider's page still listed ([below](#reusing-a-key-of-ours)). A key that was
-made and not kept is `left_key` instead, never both.
+`reused: true` when no key was made because the sign-in used the key we stored for
+the account, whose row the provider's page still listed
+([below](#reusing-a-key-of-ours)). A key that was made and not kept is `left_key`
+instead, never both.
 
 IONOS's API is off for an account until the account signs up for it, a free
 product in IONOS's shop under IONOS's API terms. When IONOS's key page says it is
@@ -499,23 +500,30 @@ not accept them, the session goes on to the DNS page.
   [provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access)
   instead of adding another. GoDaddy is the exception for now: each sign-in there
   keeps its own key ([what that means](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
-- **Reusing a key of ours [#reusing-a-key-of-ours].** Where the provider's key page keeps
-  showing each key's value next to its name (Name.com's token table), a second
-  sign-in for the same provider account reads the key we made the first time
-  instead of making another, so the account holds one key of ours and the
-  provider's list stops growing. We read a row only when it is provably ours: its
-  name is the name we made a key with for your application and its account is
-  the account we recorded for that name. Any other row on the page is never read,
-  and a page with nothing of ours in it makes a key, as before. The key still has
-  to work: one the provider refuses is replaced by a new one. Nothing about it
-  changes for your customer except that no new key appears in their account: a
-  reused key has the rights and the end date it was made with, and the kept-key
-  notice the clients show is worded "makes or reuses a key". The session says so
-  in `kept_key.reused`, and its key's name is the earlier key's. GoDaddy never reuses a key, and neither do providers whose page
-  shows a key once, when it is made (Namecheap makes none).
+  Where the provider's page still lists our earlier key, the sign-in uses that key
+  instead of making one ([reusing a key of ours](#reusing-a-key-of-ours)).
 - **It can also move a domain's nameservers.** A key kept this way counts as a
   connected account for [DNS hosting](/docs/dns/managed-dns), for the application's
   domains only ([provider accounts](/docs/connect-flow/provider-accounts#dns-hosting-uses-an-account-at-the-registrar)).
+
+### Reusing a key of ours [#reusing-a-key-of-ours]
+
+Where the provider's key page lists each key with its name and the account it
+belongs to (Name.com's token table), a second sign-in for the same provider
+account does not make another key. The page is only looked at, to see that the
+row of the key we made and stored the first time is still listed: its exact name
+and its exact account, in one row. If it is, we use the key we stored for it,
+check with the provider that it still works, and keep it in the same provider
+account as before. We never read a key's value off the provider's page, so a row
+another person or another application named like ours adds nothing to your
+account. If the row is not there, or the provider refuses the stored key, a new
+key is made, as before.
+
+The customer sees one difference: no new key appears in their account. The key
+used has the rights and the end date it was made with, for the same provider
+account, workspace and application. The session says so in `kept_key.reused`, and
+the key's name is the earlier key's. GoDaddy never reuses a key, and neither do
+providers whose page shows a key once, when it is made (Namecheap makes none).
 
 ### What you see
 

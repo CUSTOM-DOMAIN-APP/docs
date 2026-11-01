@@ -15,15 +15,16 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-- **November 1, 2026: a second secure sign-in reuses the key we made, where the provider's page shows it.** When your
-  customer signs in again at a provider whose key page keeps listing each key's value next to its name (Name.com's
-  token table), CustomDomain™ now reads the key it made the first time instead of making another one, so the
-  customer's list at the provider stops growing. It does so only for a row that is provably ours: the name we made a
-  key with for your application, in the account we recorded for it; every other row is never read, and the key must
-  still work, or a new one is made. The session view's `kept_key` gains `reused` (`true` when no key was made); its
-  `name` and `expires_at` are then the earlier key's. Additive and optional. Nothing the customer is asked to accept
-  changes: a reused key has the rights and the end date it was made with. GoDaddy never reuses a key. See
-  [secure sign-in](/docs/guides/secure-sign-in#reusing-a-key-of-ours).
+- **November 1, 2026: a second secure sign-in uses the key we stored, where the provider's page still lists its row.** When
+  your customer signs in again at a provider whose key page lists each key with its name and account (Name.com's
+  token table), CustomDomain™ now looks for the row of the key it made the first time: its exact name and its exact
+  account, in one row. If it is still listed, CustomDomain™ uses the key it stored for that row, after checking that it
+  still works, instead of making another one, so the customer's list at the provider stops growing. It never reads a
+  key's value off the provider's page, and a row that only looks like ours adds nothing; if the row is missing or the
+  stored key is refused, a new key is made. The session view's `kept_key` gains `reused` (`true` when no key was
+  made); its `name` and `expires_at` are then the earlier key's. Additive and optional. Nothing the customer is
+  asked to accept changes: the key has the rights and the end date it was made with. GoDaddy never reuses a key.
+  See [secure sign-in](/docs/guides/secure-sign-in#reusing-a-key-of-ours).
 - **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
   CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
   where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a

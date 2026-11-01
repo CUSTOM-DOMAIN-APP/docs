@@ -3666,9 +3666,10 @@ paths:
         carries `kept_key`: the key's `name`, the provider's `page` that deletes
         keys, its `rights` and when it ends (`expires_at`), so the last screen
         can say which key was kept and where to remove it. When no key was made
-        because the provider's page still listed one an earlier sign in made for
-        this account, `kept_key.reused` is `true` and the name is that key's. A
-        key that was made and not kept is `left_key` instead.
+        because the provider's page still listed the row of one an earlier sign
+        in made for this account and the key stored for it was used,
+        `kept_key.reused` is `true` and the name is that key's. A key that was
+        made and not kept is `left_key` instead.
 
 
         With an API key instead (the console's own call, on its signed
@@ -10342,11 +10343,12 @@ components:
               type: boolean
               description: >-
                 `true` when no key was made in this session: the provider's key
-                page still listed the key an earlier sign in made for this same
-                provider account (found by the name and the account
-                CustomDomain recorded for it, and still working), and it was
-                used again. `name` and `expires_at` are then that key's own.
-                Absent for a key made in this session.
+                page still listed the row of the key an earlier sign in made for
+                this same provider account (its name and account, as
+                CustomDomain recorded them), and the key CustomDomain stored for
+                it, checked again and still working, was used instead. No key
+                was read off the page. `name` and `expires_at` are then that
+                key's own. Absent for a key made in this session.
         api_activation:
           type: object
           required: [kind]
