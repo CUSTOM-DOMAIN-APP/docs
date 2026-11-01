@@ -59,7 +59,10 @@ asking the customer to consent again**. The grant comes from one of two rails:
   was pinned into the signed `state` at start (never re-derived from fresh
   discovery). The sign-in callback (`GET /v1/connect/oauth/callback`) keeps
   what the provider handed over. Both are stored encrypted at rest
-  (AES-256-GCM with `GRANT_ENCRYPTION_KEY`), one grant per connection. The
+  (AES-256-GCM with `GRANT_ENCRYPTION_KEY`; in the v2 format each token is also
+  bound to its workspace and connection, see
+  [Encryption keys](/docs/security/overview#encryption-keys-self-hosted)), one
+  grant per connection. The
   browser token of the sync one-click rail is *not* a grant, and neither is a
   sign-in at a provider that is not listed: both are discarded right after the
   write.

@@ -15,6 +15,19 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
+  The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
+  SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another
+  workspace's record does not open, and it names the key it was sealed under, so a key can be added, made current and
+  retired without a gap. With none of the new settings set, the control plane writes and reads exactly what it did
+  before: `GRANT_ENCRYPTION_KEY` works as before and `GRANT_ENCRYPTION_WRITE` defaults to the old format (it only
+  counts, at start, how many stored secrets are in each format). The new settings `GRANT_ENCRYPTION_KEYS`,
+  `GRANT_ENCRYPTION_WRITE`, `GRANT_ENCRYPTION_READ_V1` and `WEBHOOK_ENCRYPTION_KEYS` take effect only when you set
+  them, and a combination that cannot work is refused at start instead of guessed: a key list with no
+  `GRANT_ENCRYPTION_KEY` must also set `GRANT_ENCRYPTION_WRITE=v2`, and a valid list beside an unusable
+  `GRANT_ENCRYPTION_KEY` stops the start. A `credctl` tool in the control plane image
+  (`status`, `verify`, `rewrap`) moves stored secrets between formats and keys and checks them. See
+  [Encryption keys](/docs/security/overview#encryption-keys-self-hosted).
 - **November 1, 2026: a domain has a Settings tab, and its Edge tab is called Serving.** A domain's page now has
   seven tabs: Overview, DNS, Certificate, Serving, Traffic, History and Settings. **Settings** gathers who the domain
   is for (the client or customer name), the www redirect of a root domain, forwarding and **Remove this domain**, one
