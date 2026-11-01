@@ -21,9 +21,11 @@ never change meaning or disappear without a new major version. See the
   account, in one row. If it is still listed, CustomDomain™ uses the key it stored for that row, after checking that it
   still works, instead of making another one, so the customer's list at the provider stops growing. It never reads a
   key's value off the provider's page, and a row that only looks like ours adds nothing; if the row is missing or the
-  stored key is refused, a new key is made. The session view's `kept_key` gains `reused` (`true` when no key was
-  made); its `name` and `expires_at` are then the earlier key's. Additive and optional. Nothing the customer is
-  asked to accept changes: the key has the rights and the end date it was made with. GoDaddy never reuses a key.
+  stored key is refused, a new key is made. A stored key that cannot be kept is not sent to your application as
+  `credential.failed` (`not_kept`): no key was made, and that event is for a key that was. The session view's
+  `kept_key` gains `reused` (`true` when no key was made); its `name` and `expires_at` are then the earlier key's.
+  Additive and optional. Nothing the customer is asked to accept changes: the key has the rights and the end date it
+  was made with. GoDaddy never reuses a key.
   See [secure sign-in](/docs/guides/secure-sign-in#reusing-a-key-of-ours).
 - **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
   When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's

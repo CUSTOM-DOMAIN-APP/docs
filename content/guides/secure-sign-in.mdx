@@ -517,7 +517,10 @@ check with the provider that it still works, and keep it in the same provider
 account as before. We never read a key's value off the provider's page, so a row
 another person or another application named like ours adds nothing to your
 account. If the row is not there, or the provider refuses the stored key, a new
-key is made, as before.
+key is made, as before. If the stored key cannot be kept after it was checked (its
+row changed or went away in the meantime), the sign-in goes on to the DNS page, and
+your application does not get `credential.failed` with `not_kept`: no key was made,
+and that reason is for a key that was.
 
 The customer sees one difference: no new key appears in their account. The key
 used has the rights and the end date it was made with, for the same provider
