@@ -217,13 +217,18 @@ and a `reason`, and absent means the setting is off:
 
 | `reason` | `verdict` | When |
 | --- | --- | --- |
-| `root_not_pointable` | `recommended` | The domain is a root domain (such as `acme.com`), its DNS provider has no record that can point a root, and a zone CustomDomain™ hosts can, so hosting is the one way that connects it. A subdomain at the same provider is not affected. Where hosting could not point the root either (no published apex addresses, a root aimed at another host, or your own nameservers as the target), it is only offered. |
 | `many_records` | `recommended` | The domain needs four or more records, as an email setup does: a lot to copy by hand. |
 | `no_automatic_way` | `recommended` | Nothing but copying records by hand works for this domain. |
 | `application_prefers` | `offered_first` | **Show it as the first choice** is on. |
 | `application_offers` | `offered` | Everything else: a second choice beside adding records. |
 | `plan_zone_limit` | `offered` | Hosting would lead, but your workspace holds as many hosted zones as its plan counts (below). |
 | a reason of the offer, such as `registrar_locks_nameservers` | `unavailable` | The domain can't be moved to the target. |
+
+A root domain (such as `acme.com`) whose DNS provider has no record that can point a root has no reason of its own.
+A zone CustomDomain™ hosts can't point a root at a platform that gives no apex addresses either, because a hosted
+zone can't alias a hostname outside it (see [Root domains](/docs/dns/managed-dns#root-domains)). Hosting would not
+connect the root, so it isn't recommended for it: it is offered like any other domain, as `offered`, or as
+`offered_first` where **Show it as the first choice** is on.
 
 On CustomDomain™'s own DNS, each hosted zone is one that CustomDomain™ runs for
 you, so putting hosting first is limited by a count that depends on your plan.

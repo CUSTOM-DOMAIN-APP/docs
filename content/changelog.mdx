@@ -128,9 +128,10 @@ never change meaning or disappear without a new major version. See the
   domains is now checked against every domain you type, not only the first; a reconnect of an account that holds more
   than 25 such domains reads the one you name and 25 of the stored ones, and still works.
 - **October 31, 2026: DNS hosting is offered first where it helps, and a returning user's next name joins the zone we
-  host.** `rails.nameservers` on `POST /v1/domains:check` now says why hosting leads: `root_not_pointable` (a root
-  domain whose provider has no record that can point a root, where a zone CustomDomain™ hosts can point it),
-  `many_records` (four or more records to write) or `no_automatic_way`, each as `recommended`, and `reason` is now a fixed list in the API reference. On CustomDomain™'s
+  host.** `rails.nameservers` on `POST /v1/domains:check` now says why hosting leads: `many_records` (four or more
+  records to write) or `no_automatic_way`, each as `recommended`, and `reason` is now a fixed list in the API reference.
+  A root domain whose provider cannot point a root has no reason of its own: a zone CustomDomain™ hosts cannot point a
+  root at a platform that gives no apex addresses either, so hosting is only offered for it. On CustomDomain™'s
   own DNS it stays a second choice (`offered`, `plan_zone_limit`) once your workspace holds as many hosted zones as its
   plan counts; nothing is refused or billed for it. A name created under a zone CustomDomain™ already hosts
   (`active`) joins it with no new move: its records are written into the zone and it is checked at once, for your API

@@ -1154,13 +1154,14 @@ paths:
 
         `rails.nameservers` is the DNS hosting verdict, present while the
         application offers DNS hosting. `verdict` and `reason` say where it goes
-        and why. It is `recommended` where hosting saves the person the most: a
-        root domain whose provider has no record that can point a root and a
-        zone CustomDomain™ hosts can (`root_not_pointable`), four or more
-        records to write (`many_records`), or no automatic way
-        (`no_automatic_way`). On CustomDomain™'s own DNS it falls back to
-        `offered` with `plan_zone_limit` once the workspace holds as many
-        hosted zones as its plan counts; nothing is refused.
+        and why. It is `recommended` where hosting saves the person the most:
+        four or more records to write (`many_records`), or no automatic way
+        (`no_automatic_way`). A root domain whose provider has no record that
+        can point a root is not a reason of its own: a zone CustomDomain™ hosts
+        cannot point a root at a platform that gives no apex addresses either,
+        so hosting is only offered there. On CustomDomain™'s own DNS it falls
+        back to `offered` with `plan_zone_limit` once the workspace holds as
+        many hosted zones as its plan counts; nothing is refused.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -11384,16 +11385,15 @@ components:
                     `offered`: after the other ways. `offered_first`: the
                     application's setting is `prefer`. `recommended`: hosting
                     saves the person the most for this domain (`reason` says
-                    why: no automatic way works, the root cannot be pointed, or
-                    the records are many). `unavailable`: offered, but not for
-                    this domain (`reason` says why).
+                    why: no automatic way works, or the records are many).
+                    `unavailable`: offered, but not for this domain (`reason`
+                    says why).
                 reason:
                   type: string
                   enum:
                     - application_offers
                     - application_prefers
                     - no_automatic_way
-                    - root_not_pointable
                     - many_records
                     - plan_zone_limit
                     - registrar_locks_nameservers
@@ -11405,14 +11405,8 @@ components:
                     Why. `application_offers` and `application_prefers`: the
                     application's setting. `no_automatic_way`: nothing but
                     copying records by hand works for this domain.
-                    `root_not_pointable`: the domain is a root, its DNS
-                    provider has no record that can point a root, and a zone
-                    CustomDomain™ hosts can, so hosting is the one way that
-                    connects it. It is not said where hosting could not point
-                    the root either (no published apex addresses, a root aimed
-                    at another host, or the platform's own nameservers), where
-                    hosting is only offered. `many_records`: the domain needs four
-                    or more records, a lot to copy by hand. `plan_zone_limit`:
+                    `many_records`: the domain needs four or more records, a
+                    lot to copy by hand. `plan_zone_limit`:
                     hosting would lead, but the workspace holds as many hosted
                     zones as its plan counts (or CustomDomain™ is near its own
                     limit), so it is offered after the other ways; the verdict is
