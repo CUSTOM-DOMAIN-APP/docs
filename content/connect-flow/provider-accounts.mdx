@@ -90,7 +90,10 @@ How far an account's scope can be widened depends on how its key was made
 | **Made at a secure sign-in in the console** (`console_sign_in`) | Only to domains the key reaches. Each domain you add is read with the key before anything is stored. A domain it does not reach is refused, and nothing is stored. `all` needs the provider to list the key's domains. |
 | **Made at your customer's own sign-in** (`widget_sign_in`) | Never widened, by anyone (`403`). It can be renamed, narrowed or removed. |
 
-Narrowing and renaming ask the provider nothing, for every kind.
+Narrowing and renaming ask the provider nothing, for every kind, with one
+exception: a key made at a secure sign-in that goes from `all` back to `selected`
+has each domain it names that the account does not already hold read first, at most
+20 a call (`400` `too_many_domains_to_check` beyond), as explained below.
 
 For a key made at a secure sign-in, `PATCH /v1/provider-accounts/{id}` reads each
 domain it adds, by its zone, with the key. A call that names a domain the key
@@ -369,7 +372,7 @@ account gets a new hour.
   the sign-in names it so you can delete it at the provider. An account that holds
   no domain and has no account number gives nothing to compare, so it answers `422`
   `account_not_verifiable` the same way: remove the account and add it again with
-  this sign-in.
+  a new sign-in.
 - **Nothing else changes.** A body that names `scope`, `domains`, `access` or
   `application_ids` is `400`: change those with `PATCH`.
 - **Audited.** `provider_account.key_replaced`, with `via` `sign_in` and `renewed`

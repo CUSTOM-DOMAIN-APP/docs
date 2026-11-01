@@ -3896,7 +3896,8 @@ paths:
         key of another provider account (`domains`, when the proof was the list,
         names the domains the account holds that the new key does not list), and
         `422` `account_not_verifiable` for an account that holds no domain and has
-        no account number to compare the key with (remove it and add it again).
+        no account number to compare the key with (remove it and add it again with a
+        new sign in).
 
 
         A session of another workspace or member, a connect session and an
@@ -7221,7 +7222,11 @@ paths:
 
         What each kind of account allows when `scope` or `domains` widens it
         (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
-        provider, for every kind. A change that is refused stores nothing.
+        provider, for every kind, with one exception: a key made at a secure
+        sign-in that goes from `all` back to `selected` has each domain it names
+        that the account does not already hold read first (at most 20 a call,
+        `400` `too_many_domains_to_check` beyond). A change that is refused stores
+        nothing.
 
 
         `pasted`: any scope and any domains. The person chose the key and what it
@@ -7296,7 +7301,9 @@ paths:
                     The whole set of domains a `selected` account may use. A domain it
                     does not hold yet widens the account; for a key made at a secure
                     sign-in each such domain must be one the key reaches (`422`
-                    `zone_not_reached`, at most 20 new ones a call).
+                    `zone_not_reached`, at most 20 new ones a call). For an account
+                    on `all` that is any domain not already in its `domains`, also
+                    when the call goes back to `selected`.
                 application_ids:
                   type: array
                   maxItems: 100
@@ -7522,7 +7529,7 @@ paths:
         the same; where it does not (IONOS), the new key must list every domain the
         account holds. An account that holds no domain and has no account number
         gives nothing to compare, so its renewal is refused (`422`
-        `account_not_verifiable`): remove the account and add it again with the new
+        `account_not_verifiable`): remove the account and add it again with a new
         sign in. The refused key stays pending and is named for deletion when the
         sign in is cancelled.
       security:

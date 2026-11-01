@@ -23,7 +23,11 @@ _openapi:
       - content: >-
           What each kind of account allows when `scope` or `domains` widens it
           (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
-          provider, for every kind. A change that is refused stores nothing.
+          provider, for every kind, with one exception: a key made at a secure sign-in
+          that goes from `all` back to `selected` has each domain it names that the
+          account does not already hold read first (at most 20 a call, `400`
+          `too_many_domains_to_check` beyond). A change that is refused stores
+          nothing.
       - content: >-
           `pasted`: any scope and any domains. The person chose the key and what it is
           used for, so nothing is read at the provider; connecting a domain the key
