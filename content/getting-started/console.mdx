@@ -483,6 +483,48 @@ into the Name field or Cloudflare's proxy turned on. It is the same check the
 widget runs for your customers (`GET /v1/connections/{id}/diagnose`), and the
 page to send a customer whose domain is stuck.
 
+### How CustomDomain™ reaches the domain, and who runs its DNS [#how-we-reach-a-domain]
+
+Under the actions, a domain's page says two things in plain words.
+
+**Who runs its DNS** is the first fact. It names the company whose servers answer for
+the domain (its [DNS host](/docs/concepts/glossary#dns-host)), or CustomDomain™ once we
+host the zone ([DNS hosting](/docs/dns/managed-dns)). A move to DNS hosting that is
+under way still shows the old company, with "moving to CustomDomain™" beside it, and a
+move that failed says it needs a look.
+
+**How CustomDomain™ reaches this domain** is a card. It says which access we keep to
+change the domain's records, in one line each:
+
+| The card says | What it means |
+| --- | --- |
+| **Kept by your IONOS account "Acme"** | A [connected account](/docs/connect-flow/provider-accounts) with its label. We use its key. |
+| **Kept by your Cloudflare sign-in** | You approved us once at the provider, in a popup, and we kept that approval. |
+| **Kept by your one-click setup at GoDaddy** | You approved the change once at the provider, and we kept that approval. |
+| **Through DNS hosting** | We run the domain's DNS, so we write its records ourselves. |
+| **Kept by your AWS access role** | A role in your AWS account. It can add and change records, not delete them. |
+| **Not kept** | We keep no access, so a change to the records needs you at the provider. |
+
+The card's buttons follow from that. **Re-apply now** writes the records again, and
+shows for any kept access that can write right now. **Stop managing** drops a kept
+sign-in or one-click setup and leaves the records where they are. **Make this domain
+managed** shows only where it can run: nothing is kept yet, and the provider signs in
+or the deployment can offer one-click setup for it. **Change** opens a menu:
+
+- **Use another account** (**Use a saved account** when none is kept) lists the saved
+  accounts that may act for this domain and writes its records with the one you pick. An
+  account has to be at the same DNS provider and still work. Admins and owners see the
+  workspace's accounts for the domain's application, and a member sees the ones they
+  connected, so the list can be empty.
+- **Add an account** opens [Connected accounts](/docs/connect-flow/provider-accounts).
+- **Host its DNS instead** opens the domain's DNS tab, where DNS hosting starts. A domain
+  whose DNS is already ours shows **See its DNS hosting** in its place.
+
+A viewer sees the card with its buttons off, and the reason under them: members, admins
+and owners can change domains. The **Management** line under **Details** reads
+**Managed** whenever any access is kept, and **Not managed** only when none is. See
+[Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
+
 ## 6. Serve something
 
 Live means the edge terminates TLS and proxies the domain to your

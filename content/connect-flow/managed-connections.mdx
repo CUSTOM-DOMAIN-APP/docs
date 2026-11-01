@@ -66,6 +66,13 @@ asking the customer to consent again**. The grant comes from one of two rails:
 - **Silent re-apply.** With the grant in hand the platform can recompute the
   connection's authoritative desired records and push any drift to the
   provider on demand, with no customer interaction.
+- **Named on the domain's page.** `reach.kind` on `GET /v1/connections/{id}` says
+  which access is kept (`account`, `sign_in`, `domain_connect`, `dns_hosting`,
+  `route53_role` or `none`), and the console's **How CustomDomain™ reaches this
+  domain** card says it in a line: **Kept by your IONOS account "Acme"**, **Kept by your
+  Cloudflare sign-in**, **Kept by your one-click setup at GoDaddy**, **Through DNS
+  hosting**, **Kept by your AWS access role** or **Not kept**. A domain reads **Managed**
+  in the console whenever any of them is kept, not only a stored grant.
 - **Auto-heal-ready.** Because re-apply is a single server-side call, managed
   connections are the substrate for automatic drift healing: when
   [Monitor](/docs/webhooks/overview#event-catalog) reports that a record was
@@ -145,9 +152,11 @@ moment is the per provider confirmation in the note at the top of this page.
 
 To make an existing connection managed through its sign-in, run the sign-in
 again: `POST /v1/connections/{id}/oauth:start` (with `region` for OVHcloud),
-then let the customer approve. In the console, **Make this connection
-managed** on a domain whose provider keeps sign-ins opens that sign-in instead
-of the async one-click consent.
+then let the customer approve. In the console, **Make this domain managed** on the
+domain's **How CustomDomain™ reaches this domain** card opens that sign-in instead
+of the async one-click consent. The card shows the button only where nothing is kept
+yet and it can run: the provider signs in, or the deployment can offer one-click setup
+for it (`managed_possible` in the `reach` that `GET /v1/connections/{id}` answers).
 
 ## Re-apply on demand
 
@@ -162,10 +171,14 @@ The `200` body is a re-apply **receipt**, not a connection object: it carries
 `connection_id` (not `id`) plus the record set that was written. Fetch
 `GET /v1/connections/{id}` if you need the connection itself.
 
-`POST /v1/connections/{id}:reapply` is **managed mode only**. It recomputes the
-desired record set, writes any drift through the stored grant, re-verifies the
-connection, and emits `connection.records.updated`. If the connection is not
-managed or has no stored grant, it responds **`409`**.
+`POST /v1/connections/{id}:reapply` needs access we keep: a stored grant (managed
+mode), a continuous [connected account](/docs/connect-flow/provider-accounts)'s key, or
+our own hosted zone ([DNS hosting](/docs/dns/managed-dns)). It recomputes the desired
+record set, writes any drift through that access, re-verifies the connection, and
+emits `connection.records.updated`. If the connection has none of them (it is not
+managed, has no stored grant and no account behind it), it responds **`409`**. The
+console's **Re-apply now** shows on the domain's card for any of these, whenever
+`reach.can_reapply` is true.
 
 If the push fails it emits `connection.reapply.failed`. When the provider reports
 the grant was **revoked** (a `401` kill-switch: the customer withdrew consent at

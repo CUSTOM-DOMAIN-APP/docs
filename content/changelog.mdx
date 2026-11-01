@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: a domain's page says how CustomDomain™ reaches it and who runs its DNS.** The first fact
+  on a domain's page is **Who runs its DNS**: the company it is at, or CustomDomain™ once we host the zone. A new
+  card, **How CustomDomain™ reaches this domain**, says in a line which access we keep to change its records (a
+  connected account with its label, a sign-in, a one-click setup, DNS hosting, the AWS access role, or none), with
+  **Re-apply now** for any kept access that can write, **Stop managing** for a kept sign-in or one-click setup,
+  and **Change**: use another saved account that may act for the domain, add an account, or host its DNS instead.
+  **Make this domain managed** shows only where it can run, so it no longer ends in "Managed setup isn't
+  available", and a domain kept by an account reads **Managed** instead of **Not managed**. Console only: the API
+  already sent `reach` and `dns_hosting` on `GET /v1/connections/{id}`. See
+  [the domain's page](/docs/getting-started/console#how-we-reach-a-domain) and
+  [Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
 - **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
   CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
   where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a
