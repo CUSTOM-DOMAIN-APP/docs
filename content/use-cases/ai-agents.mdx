@@ -48,10 +48,15 @@ The CustomDomain™ MCP server's only endpoint is `https://mcp.customdomain.ai/m
   [list is on the agent access page](/docs/agents/overview#what-makes-it-safe).
 - **Twenty-three tools, and none takes DNS records.** Record values are computed on
   the server from vetted templates, which closes off prompt injection that ends
-  in an arbitrary DNS write. `connect-domain` returns a link for the person to
-  finish, with whichever of the [ways to connect](/docs/concepts/glossary#ways-to-connect)
-  fits their provider (a sign-in with it, one click, a secure sign-in, an API key,
-  or the records to add), and the agent follows the connection until it is live.
+  in an arbitrary DNS write. `connect-domain` returns the records to add and a link,
+  and `linkKind` says who opens it: the provider's one click page or, for an API key
+  or a client credentials token, a setup page for that one domain with whichever of
+  the [ways to connect](/docs/concepts/glossary#ways-to-connect) fits their provider
+  (a sign-in with it, a secure sign-in or the records to add), both for the user; an
+  agent token gets the console page, which needs a login to the workspace, and gives
+  the user the records. A setup page link is a bearer link that lasts 30 days and
+  lets whoever opens it first set up the domain, so the agent sends it only to the
+  person who owns the domain. The agent follows the connection until it is live.
   An agent never starts a secure sign-in itself: a person is always there for that. Purchases through MCP are off on
   the hosted service.
 - **A skill that teaches the safe way.** The [agent skill](/docs/agents/skills)
