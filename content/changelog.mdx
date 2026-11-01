@@ -28,12 +28,23 @@ never change meaning or disappear without a new major version. See the
   names another customer; a zone that holds another customer's connection (or one you made with your API key for
   another name) answers `409` "the DNS of acme.com is already hosted by CustomDomain™ for someone else"; a nameserver
   move whose connection was removed is never taken over by a customer's call, and only your API key resumes it.
-  `DELETE /v1/connections/{id}/grant`, `:reapply` and `:recheck` also refuse another customer's token with `403`
-  `token_wrong_end_user`. For managed DNS and nameserver moves a connection you made with your API key (it names no
-  customer) is a token's only when the token is bound to its `domain`, so a token with an `end_user_ref` and no
-  `domain` owns none of those. Not additive for one case: a token minted for another customer, or without an
-  `end_user_ref`, that connects a domain a customer already connected now gets `403` where it got `200`; mint each
-  token with the customer's `end_user_ref` and its `domain`. See
+  Every other route that takes a connection's id now answers the same `403 token_wrong_end_user` to another customer's
+  token before it reads or changes anything: the connection read and its records, certificate, diagnosis, SSL and Power
+  reads; applying records, starting a sign in, Domain Connect or the Route 53 role; and `DELETE
+  /v1/connections/{id}/grant`, `:reapply` and `:recheck`. An id handed out while the bug was live no longer reads or
+  writes anything for another customer. Removing a domain and reading its monitoring, services or timeline keep their
+  rule and answer `403 forbidden`. For managed DNS and nameserver moves a connection you made with your API key (it
+  names no customer) is a token's only when its domain is one the token is bound to, so a token with an `end_user_ref`
+  and no `domain` owns none of those, and a token with neither counts only the domain of the connection the call is
+  about. Share links keep working: the person who opens a link acts as the end user who shared it (your API key shares
+  as the customer of your connection for the one domain the link names), and the link is never offered that customer's
+  kept keys.
+
+  **Compatibility.** A widget token with no `end_user_ref` that acts on a connection that names a customer now gets
+  `403 token_wrong_end_user` on the repeat `POST /v1/connections`, `:recheck`, `:reapply`, `DELETE .../grant`, the
+  connection reads and writes above, and every managed DNS and nameserver move route, where it got `200`. That includes a
+  connection the same token created by sending `end_user_ref` in the request body. If you create connections with an
+  `end_user_ref`, mint each widget token with the same `end_user_ref` and the `domain` it is for. See
   [Idempotency](/docs/connect-flow/create-a-connection#idempotency),
   [Whose zone it is](/docs/dns/managed-dns#who-can-call-what) and
   [Widget tokens](/docs/authentication/widget-tokens).

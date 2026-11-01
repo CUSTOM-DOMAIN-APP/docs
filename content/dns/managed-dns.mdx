@@ -279,7 +279,10 @@ answers `403 token_wrong_end_user` on every managed DNS route (`POST` and `GET`
 .../managed-dns/records/{record_id}`) and on the nameserver routes
 (`GET .../nameservers`, `:migrate`, `:rollback`), before anything is read, created,
 linked or changed. A connection you made with your API key names no customer and is
-a token's only when the token is bound to its `domain`. A zone that already exists
+a token's only when its domain is one the token is bound to (`domain` or `domains`):
+a token with no `end_user_ref` and no `domain` counts only the domain of the
+connection the call is about, and a token with an `end_user_ref` and no `domain` owns
+none of those. A zone that already exists
 is started, joined, read or changed only when every connection linked to it is the
 token's too; another customer's zone, a zone that also holds a connection you made
 with your API key for another name, and a zone nobody is linked to answer `409`

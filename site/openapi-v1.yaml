@@ -1563,6 +1563,14 @@ paths:
         the platform's id for its end user, which the account answers leave out
         for it too and a connection shares with its end user's key. An API key
         reads all of it whole.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1575,7 +1583,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
     delete:
       operationId: disconnectConnection
@@ -1736,6 +1744,14 @@ paths:
 
 
         A delegated agent token needs `domains:read`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1766,7 +1782,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DomainEvent' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/services:
     get:
@@ -2170,6 +2186,14 @@ paths:
 
 
         A delegated agent token needs `domains:read`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2182,7 +2206,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectionDiagnosis' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/records:
     get:
@@ -2196,6 +2220,14 @@ paths:
 
 
         A delegated agent token needs `domains:read` or `domains:connect`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2216,7 +2248,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
     put:
       operationId: setConnectionRecords
@@ -2945,6 +2977,14 @@ paths:
         domain-bound token to its own domain only). An API key applies to a
         connection of any application in its tenant; a member's key needs a role
         that operates apps (not viewer).
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2981,7 +3021,7 @@ paths:
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
@@ -3367,6 +3407,14 @@ paths:
         (a domain-bound token for its own domain only); an API key for a
         connection of any application in its tenant, and a member's key needs a
         role that operates apps.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3461,7 +3509,7 @@ paths:
                     description: OVHcloud only, the region the consent was requested in.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
           description: >-
@@ -4608,6 +4656,14 @@ paths:
 
         A delegated agent token needs `domains:connect` and starts the setup of
         its own application's connections.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4685,7 +4741,7 @@ paths:
                   rail: { type: string, description: '"async" on the managed rail; omitted on the sync rail.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '422':
           description: >-
@@ -4722,6 +4778,14 @@ paths:
         connection's own application or an API key for a connection of any
         application in its tenant (a member's key needs a role that operates
         apps), like `route53-role:complete`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4748,7 +4812,7 @@ paths:
               schema: { $ref: '#/components/schemas/Route53RoleStart' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/route53-role:complete:
@@ -4778,6 +4842,14 @@ paths:
         record holds the name with a type the needed record cannot share;
         delete or change it in the Route 53 console), all 422, and
         `route53_unavailable` (503, nothing was changed, try again).
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4803,7 +4875,7 @@ paths:
               schema: { $ref: '#/components/schemas/Route53RoleComplete' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
@@ -4846,6 +4918,21 @@ paths:
         application, and the teammate's flow then connects the domain into that
         application. A member's key needs a role that operates apps. A widget
         JWT always shares for its own application.
+
+
+        **Whose end user the recipient is.** The recipient's widget token names
+        the end user the sharer is, recorded when the link is made and never
+        worked out from the domain when it is opened. A widget token shares as
+        its own `end_user_ref` (none when it names none). An API key or an
+        app-scoped token shares as the `end_user_ref` of the application's
+        connection for the one domain the link names, and as no end user when
+        there is no connection for it yet, the connection names none, or the
+        link names several domains or none. A connection that names an end user
+        answers only a widget token that names the same one, so this is what lets
+        the recipient reach the connection the link was made for; another end
+        user who shares this one's domain gets a token that names itself and is
+        still refused on it. A `prefill` key the control plane records this in is
+        dropped from the caller's prefill and never read back.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5439,6 +5526,13 @@ paths:
         no bearer is required. Returns the stored `prefill` so a teammate's widget
         can resume the flow. A share token EXPIRES 30 days after it is minted;
         unknown OR expired tokens are indistinguishable and both return `404`.
+
+
+        The `widget_token` it answers is bound to the shared domain(s) and names
+        the end user the sharer was (`createSharedFlow`), so it reaches the
+        connection the link was made for. It is a credential for that one setup,
+        not the end user: it is never offered the end user's kept keys (saved
+        access). A reconnect link's token stays the end user.
       security: []
       parameters:
         - { name: token, in: path, required: true, schema: { type: string } }
@@ -6504,6 +6598,14 @@ paths:
       description: >-
         The control-plane's read-mirror of the edge certificate store for this
         connection's domain. `404` when no certificate is tracked yet.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6518,6 +6620,7 @@ paths:
                 properties:
                   certificate: { $ref: '#/components/schemas/Certificate' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     delete:
@@ -6546,6 +6649,14 @@ paths:
         Advisory: a certificate is only issuable once the domain points at the
         edge (connection `live` or `propagating`). The widget/console uses this
         to gate the provision button.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6557,6 +6668,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Eligibility' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/ssl:provision:
@@ -6692,6 +6804,13 @@ paths:
       operationId: getConnectionPower
       summary: Read a connection's Power (edge reverse-proxy) configuration
       tags: [Power]
+      description: >-
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6706,6 +6825,7 @@ paths:
                 properties:
                   power: { $ref: '#/components/schemas/PowerConfig' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     post:
@@ -6899,6 +7019,14 @@ paths:
       description: >-
         Power needs the domain pointing at the edge (connection `live` or
         `propagating`) so the reverse proxy receives its traffic.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6910,6 +7038,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Eligibility' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/power:repower:
@@ -8379,6 +8508,29 @@ components:
             code: workspace_suspended
             title: This workspace is suspended.
             details: "New domains, connect steps and domain purchases are refused while CustomDomain™ support has this workspace suspended. Contact support to have it resumed."
+    ForbiddenOrWrongEndUser:
+      description: >-
+        `forbidden`: the credential may not do this. `token_wrong_end_user`: a
+        widget token that is not this connection's end user (the connection names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none); nothing is read or changed, and the answer shows
+        nothing of the connection. Mint the token with the end user's
+        `end_user_ref`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ForbiddenSuspendedOrWrongEndUser:
+      description: >-
+        `forbidden`: the credential may not do this. `workspace_suspended`: see
+        the `ForbiddenOrSuspended` response. `token_wrong_end_user`: a widget
+        token that is not this connection's end user (the connection names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none); nothing is read, written or changed, and the answer
+        shows nothing of the connection. Mint the token with the end user's
+        `end_user_ref`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     BillingRequired:
       description: >-
         Refused because of the workspace's billing. `billing_required`: the
