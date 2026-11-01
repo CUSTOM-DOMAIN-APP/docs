@@ -1639,6 +1639,11 @@ paths:
         and with another domain `409 confirmation_mismatch`; nothing is removed
         either way. Another application's connection answers `404`. Any other
         credential that sends `confirm` is held to it the same way.
+
+
+        A share link's token (the `widget_token` of `GET /share/{token}`) sets a
+        domain up and never removes it: it answers `403` `forbidden`, on a
+        connection that names an end user or not.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2112,7 +2117,8 @@ paths:
 
 
         A delegated agent token needs `domains:disconnect` and must send
-        `confirm`, as for `DELETE /connections/{id}`.
+        `confirm`, as for `DELETE /connections/{id}`. A share link's token is
+        refused with `403` `forbidden`, as there.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2328,6 +2334,12 @@ paths:
 
 
         Test domains refuse the call.
+
+
+        A share link's token counts as naming no end user here, so it is
+        refused on a connection that names one: a link is a credential to
+        set one domain up, not the end user, and the address receives the
+        reconnect link that signs in as them.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3415,6 +3427,12 @@ paths:
         before anything is read or changed, and a connection that names none
         is any token's. An API key, an app-scoped token and a delegated
         agent token are not limited by it.
+
+
+        Signing in to remove the domain (`purpose: remove`) keeps its own
+        answer, `403` `forbidden`, for a token that is not the end user's,
+        and for a share link's token on every connection: a link sets a
+        domain up and never removes it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5530,9 +5548,14 @@ paths:
 
         The `widget_token` it answers is bound to the shared domain(s) and names
         the end user the sharer was (`createSharedFlow`), so it reaches the
-        connection the link was made for. It is a credential for that one setup,
-        not the end user: it is never offered the end user's kept keys (saved
-        access). A reconnect link's token stays the end user.
+        connection the link was made for and sets it up as the end user would
+        (the secure sign in, managed DNS, a nameserver move, the monitoring
+        reads). It is a credential for that one setup, not the end user, so it
+        never removes the domain (`403` `forbidden`, on every connection), never
+        sets the end user's contact address, is never offered the end user's
+        kept keys (saved access) and is not the maker of a key as the end user:
+        a key made at a sign in it starts is not the end user's own for saved
+        access. A reconnect link's token stays the end user.
       security: []
       parameters:
         - { name: token, in: path, required: true, schema: { type: string } }

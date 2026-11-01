@@ -204,8 +204,10 @@ The person who opens the link acts as the end user who shared it: a widget token
 shares as its own `end_user_ref`, and your API key (or an `app` scope token) shares
 as the `end_user_ref` of your connection for the one domain the link names, so the
 link keeps working on a connection that names a customer. The link is a credential
-for finishing that one setup, not the customer: it is never offered the customer's
-kept keys (saved access). See [Widget tokens](/docs/authentication/widget-tokens).
+for finishing that one setup, not the customer: it cannot remove the domain, cannot
+set the customer's contact address, and is never offered the customer's kept keys
+(saved access); a key made at a sign-in it starts is not the customer's own. See
+[Widget tokens](/docs/authentication/widget-tokens).
 
 **Let your platform keep the domain working.** The row reads "Let Acme Sites
 keep your domain working", with your `applicationName`. Offered only when your application

@@ -130,7 +130,14 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
   no `end_user_ref` now gets `403` on a connection that names one, including a
   connection that token created by sending `end_user_ref` in the request body.
   Share links keep working: the link's recipient acts as the end user who shared it
-  (see [Email these instructions to someone else](/docs/widget-sdk/reference)).
+  (see [Email these instructions to someone else](/docs/widget-sdk/reference)),
+  for that one domain and nothing more. A share link sets the domain up as the
+  customer would (the secure sign-in, managed DNS, a nameserver move, the monitoring,
+  services and timeline reads). It cannot remove the domain (`DELETE`, `:disconnect`
+  and the sign-in to remove answer `403 forbidden`, whether or not the connection
+  names a customer), cannot set the customer's contact address, is never offered the
+  customer's saved keys, and a key made at a sign-in it starts is not the customer's
+  own, so it is never offered to the customer on another domain.
 - Only the creation response shows a client secret. If you lost it, rotate it
   (`POST /v1/applications/{id}/client-secret:rotate`, needs `keys:manage`),
   except for a console-created application (see above).

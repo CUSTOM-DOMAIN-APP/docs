@@ -37,8 +37,10 @@ never change meaning or disappear without a new major version. See the
   names no customer) is a token's only when its domain is one the token is bound to, so a token with an `end_user_ref`
   and no `domain` owns none of those, and a token with neither counts only the domain of the connection the call is
   about. Share links keep working: the person who opens a link acts as the end user who shared it (your API key shares
-  as the customer of your connection for the one domain the link names), and the link is never offered that customer's
-  kept keys.
+  as the customer of your connection for the one domain the link names). A link is a credential to set that one domain
+  up and nothing more: it cannot remove the domain (`DELETE`, `:disconnect` and the sign-in to remove answer `403
+  forbidden`), cannot set the customer's contact address, is never offered the customer's kept keys, and a key made at a
+  sign-in it starts is not the customer's own.
 
   **Compatibility.** A widget token with no `end_user_ref` that acts on a connection that names a customer now gets
   `403 token_wrong_end_user` on the repeat `POST /v1/connections`, `:recheck`, `:reapply`, `DELETE .../grant`, the
