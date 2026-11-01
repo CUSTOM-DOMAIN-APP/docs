@@ -184,7 +184,7 @@ checklist until they answer the welcome too. Your customers' domains are on
 | Section | What it's for |
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
-| **Domains** | Every connected domain with its live status, who runs its DNS and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
+| **Domains** | Every connected domain with its live status, who runs its DNS and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Serving, Traffic, History and Settings tabs. |
 | **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
 | **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, with the **Authenticate with** switch for the token step; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
@@ -499,14 +499,37 @@ and owners can change domains. The **Management** line under **Details** reads
 **Managed** whenever any access is kept, and **Not managed** only when none is. See
 [Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
 
+### A domain's settings [#domain-settings]
+
+A domain's page has seven tabs: **Overview**, **DNS**, **Certificate**, **Serving**, **Traffic**,
+**History** and **Settings**. On a phone the last ones sit under **More**. **Serving** is the tab that
+was called **Edge**: it keeps its address, so old links still open it. **Settings** holds what belongs to
+the domain itself, one card each:
+
+- **Who it is for** shows the client or customer name the **Domains** list filters by. It is set when
+  the domain is added and is not changed here ([whose a domain is](#many-domains-and-whose-they-are)).
+- **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), says whether visitors to
+  the root go on to `www.` that domain. It is the choice made when the domain was connected, or the
+  one set later with the API, and the **www redirect** fact on the **Overview** opens this card.
+- **Forwarding** shows the address the edge sends every visit to, with the same path, or **Not set**.
+  Forwarding is part of edge serving, so a workspace without it reads **Included on Growth and up.**,
+  a domain that points at your own servers reads **Not on the edge**, and a deployment with edge serving
+  off has no card. The redirects change through the API ([forwarding](/docs/connect-flow/forwarding)).
+- **Remove this domain** opens the same removal dialog as the **Overview**'s menu, and links
+  [what removing does](/docs/connect-flow/offboarding).
+
+A viewer reads the same cards with **Remove domain** turned off, and the reason under it. A test mode
+domain has **Who it is for** and **Remove this domain** only.
+
 ## 6. Serve something
 
 Live means the edge terminates TLS and proxies the domain to your
 application's **origin** (**Edge serving**). If you haven't set one, the domain shows a "not
 configured" page: set it under **Routing**, the page titled **Where domains
 point**, as the **Application address**, or point the domains straight at your own servers
-there instead. See [Where domains point](/docs/connect-flow/routing). Root-domain redirects
-(`www_redirect`) and per-path rules live on the connection's detail page.
+there instead. See [Where domains point](/docs/connect-flow/routing). The domain's **Serving** tab
+shows whether the edge serves it and where your application runs. Root-domain redirects
+(`www_redirect`) and forwarding are shown on its **Settings** tab and set with the API, as are per-path rules.
 
 ## 7. See its traffic
 
@@ -593,7 +616,7 @@ several**, up to 200 at a time.
   used for that domain instead. A domain already in your workspace is left as it
   was. The name is set when the domain is added and cannot be changed afterwards,
   so to rename a client or give a domain to another, remove the domain and add it
-  again.
+  again. The domain's **Settings** tab shows it.
 - **The first ten domains are free.** A new workspace connects its first ten
   domains without a card, and the rest once the free trial has started. The box
   says so before you paste, with **Start free trial** beside it (nothing is
