@@ -11,38 +11,69 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          Narrowing the scope detaches the domains it no longer covers; they
-          stay connected, without continuous access. Switching to `one_time`
-          deletes the key now. Switching to `continuous` needs the key still
-          held. Changing `access`, `scope` or `domains` takes an admin, an owner
-          or the member who connected the account (`403` otherwise); the label
-          is anyone's who operates applications. A key an end user's secure
-          sign-in made in the widget is never widened: a change that adds a
-          domain or sets `scope` to `all` answers `403`, whoever asks; renaming,
-          narrowing and revoking still work. `continuous` access for a
-          credential that is used once and never kept answers `422`
-          `use_once_credential`. A change is recorded in the audit log
-          (`provider_account.updated`, with the label, access, scope, domains
-          and applications before and after).
+          Narrowing the scope detaches the domains it no longer covers; they stay
+          connected, without continuous access. Switching to `one_time` deletes the
+          key now. Switching to `continuous` needs the key still held. Changing
+          `access`, `scope` or `domains` takes an admin, an owner or the member who
+          connected the account (`403` otherwise); the label is anyone's who operates
+          applications. `continuous` access for a credential that is used once and
+          never kept answers `422` `use_once_credential`. A change is recorded in the
+          audit log (`provider_account.updated`, with the label, access, scope,
+          domains and applications before and after).
       - content: >-
-          `application_ids` is the whole set of other applications of the
-          workspace that may use a key bound to one application, besides its own
-          (`application_id`, which always serves). Sending it replaces the set:
-          name an application to share the key with it, leave it out to take it
-          back, send `[]` to share with none. Naming the key's own application,
-          a repeat or a blank changes nothing. It takes an admin or an owner,
-          never only the member who connected the key (`403` otherwise), and
-          answers `403` for a key an end user's sign-in made, which is never
-          shared, and `404` for an application that is not the workspace's. A
-          key bound to no application already serves every application, so
-          naming one answers `422` `serves_every_application`; at most 100 are
-          taken in a call (`400` beyond). Each application shared is recorded in
-          the audit log as `provider_account.shared`, and each taken out as
-          `provider_account.unshared`, both naming the applications served
-          before and after and the ones changed (`application_ids`). Taking an
-          application out detaches the domains of it that were using the key:
-          they stay connected, without continuous access, and each domain's
-          timeline records `access_revoked` with the reason `unshared`.
+          What each kind of account allows when `scope` or `domains` widens it
+          (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
+          provider, for every kind, with one exception: a key made at a secure sign-in
+          that goes from `all` back to `selected` has each domain it names that the
+          account does not already hold read first (at most 20 a call, `400`
+          `too_many_domains_to_check` beyond). A change that is refused stores
+          nothing.
+      - content: >-
+          `pasted`: any scope and any domains. The person chose the key and what it is
+          used for, so nothing is read at the provider; connecting a domain the key
+          cannot write is what finds it.
+      - content: >-
+          `console_sign_in`, a key made at a secure sign-in a member started in the
+          console: it widens only to domains the key reaches at the provider. Each
+          domain added is read with the key, by its zone, before anything is stored. A
+          call that names a domain the key does not reach answers `422`
+          `zone_not_reached`, naming those domains in `domains`, and stores nothing,
+          not even the domains that were reached. A failure that says nothing about
+          the key (a timeout, a `5xx`) answers `503` and stores nothing. At most 20
+          new domains are read in one call (`400` `too_many_domains_to_check`), and an
+          account that no longer holds its key answers `409`. Setting `scope` to `all`
+          has no domain to read, so it needs the provider to list the domains a key
+          reaches and this key to list them now: a provider that cannot answers `422`
+          `scope_all_needs_list` (add the domains instead), and a key the provider
+          refuses answers `422` `ProviderAuthenticationError`. The scope `all` is no
+          way round the read of a domain: while it is `all`, a domain named that the
+          account does not already hold in `domains` is read too, whether the call
+          keeps `all` or goes back to `selected`. The change is written on the account
+          as it is after the reads, so a renewal that landed meanwhile is kept; an
+          account that lost its key, or whose change no longer matches what was read,
+          answers `409` and nothing is written.
+      - content: >-
+          `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
+          is never widened, whoever asks. A change that adds a domain or sets `scope`
+          to `all` answers `403`; renaming, narrowing and removing still work.
+      - content: >-
+          `application_ids` is the whole set of other applications of the workspace
+          that may use a key bound to one application, besides its own
+          (`application_id`, which always serves). Sending it replaces the set: name
+          an application to share the key with it, leave it out to take it back, send
+          `[]` to share with none. Naming the key's own application, a repeat or a
+          blank changes nothing. It takes an admin or an owner, never only the member
+          who connected the key (`403` otherwise), and answers `403` for a key an end
+          user's sign-in made, which is never shared, and `404` for an application
+          that is not the workspace's. A key bound to no application already serves
+          every application, so naming one answers `422` `serves_every_application`;
+          at most 100 are taken in a call (`400` beyond). Each application shared is
+          recorded in the audit log as `provider_account.shared`, and each taken out
+          as `provider_account.unshared`, both naming the applications served before
+          and after and the ones changed (`application_ids`). Taking an application
+          out detaches the domains of it that were using the key: they stay connected,
+          without continuous access, and each domain's timeline records
+          `access_revoked` with the reason `unshared`.
 ---
 
 {/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}

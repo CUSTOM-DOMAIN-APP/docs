@@ -71,13 +71,122 @@ provider's sign-in.
 When you leave them out, `access` is `continuous` (`one_time` for a
 [credential that is used once](#credentials-that-are-used-once)), and `scope`
 is `selected` if you send `domains` and `all` if you do not. `POST /v1/provider-accounts/{id}/connect`
-takes at most 200 domains per call (`400` beyond that).
+takes at most 200 domains per call (`400` beyond that; see [connect many domains at
+once](#connect-many-domains-at-once)).
 
 ## Scope
 
 All of the account's domains (`"scope": "all"`, including ones added later), or
 a selected list (`"scope": "selected"`, `domains`) picked from the provider's
 own list where it has one.
+
+### What each kind of account allows
+
+How far an account's scope can be widened depends on how its key was made
+(`made_by.how`), and the server enforces it:
+
+| Kind | Widening its domains or scope |
+| --- | --- |
+| **Pasted** (`pasted`): you made the key and pasted it | Any scope and any domains. Nothing is read at the provider; connecting a domain the key cannot write is what finds it. |
+| **Made at a secure sign-in in the console** (`console_sign_in`) | Only to domains the key reaches. Each domain you add is read with the key before anything is stored. A domain it does not reach is refused, and nothing is stored. `all` needs the provider to list the key's domains. |
+| **Made at your customer's own sign-in** (`widget_sign_in`) | Never widened, by anyone (`403`). It can be renamed, narrowed or removed. |
+
+Narrowing and renaming ask the provider nothing, for every kind, with one
+exception: a key made at a secure sign-in that goes from `all` back to `selected`
+has each domain it names that the account does not already hold read first, at most
+20 a call (`400` `too_many_domains_to_check` beyond), as explained below.
+
+For a key made at a secure sign-in, `PATCH /v1/provider-accounts/{id}` reads each
+domain it adds, by its zone, with the key. A call that names a domain the key
+does not reach answers `422` `zone_not_reached` with those domains in `domains`,
+and stores none of the call's domains, not even the ones that were reached:
+
+```json
+{ "code": "zone_not_reached", "title": "This key does not reach every domain you added.", "domains": ["other.example"] }
+```
+
+At most 20 new domains are read in a call (`400` `too_many_domains_to_check`
+beyond that). A failure that says nothing about the key, such as a timeout or a
+server error at the provider, answers `503` and stores nothing; try again. An
+account that no longer holds its key answers `409`: renew it first. Setting
+`scope` to `all` has no domain to read, so it needs the provider to list the
+domains a key reaches and the key to list them now. For a provider that cannot,
+it answers `422` `scope_all_needs_list`: add the domains one at a time instead.
+A key the provider refuses answers `422` `ProviderAuthenticationError`.
+
+The scope `all` is no way round the read of a domain. While a key made at a
+sign-in is on `all`, a domain you name that the account does not already hold is
+read with the key too, whether the call keeps `all` or goes back to `selected`.
+The change is written on the account as it is after the reads, so a renewal that
+landed meanwhile is kept; an account that lost its key meanwhile answers `409` and
+nothing is written.
+
+## Connect many domains at once
+
+`POST /v1/provider-accounts/{id}/connect` connects up to 200 domains with the account's key in one call. Each entry
+in `domains` is a name, or an object that puts that one domain into an application of its own:
+
+```json
+{
+  "application_id": "app_web",
+  "domains": [
+    "www.example.com",
+    { "domain": "shop.example.com", "application_id": "app_store" },
+    "docs.example.com"
+  ]
+}
+```
+
+A domain goes into the first of these that names an application:
+
+1. the application named for that domain;
+2. the call's `application_id`, which you can leave out;
+3. the application that already holds the domain in your workspace (its connection's own), so a domain you already
+   serve is linked to the account where it lives, not connected a second time.
+
+A domain none of those names answers `400`, and so does one that two applications hold or that the call names for two
+different applications. A name written twice is one domain, and the 200 counts domains, not entries.
+
+Everything below is checked before the first record is written, so a call that is refused changes nothing:
+
+- **The caller may manage the account.** An admin, an owner or the member who connected it. Anyone else gets `403`
+  before the body is read, so a member cannot use or widen a key they may not manage.
+- **The key serves every application the call uses.** A key made at a secure sign-in serves its own application and the
+  ones an admin shared it with (`application_ids`); any other application answers `403` ("this key is not shared with
+  this application; an admin or an owner can share it"). An application that is not your workspace's answers `404`.
+- **Every domain is inside the account's scope.** A domain outside it answers `400` and names the domains. A key made
+  at a secure sign-in in the console is the one exception: when a read of the domain's zone (the part of a domain
+  that your DNS provider holds, such as `example.com` for `shop.example.com`) works with that key, the domain is
+  connected with no new sign-in and the zone joins the scope once a write there works. A zone the key does not reach
+  answers `422` `zone_not_reached` with those domains in `domains`, and a provider that cannot answer (a timeout or a
+  server error) answers `503`, never a refusal of the key; both are the answers `PATCH` gives, and nothing is written.
+  A call reads at most 20 such zones, once each, and answers `400` `too_many_domains_to_check` beyond that. To widen
+  the scope on its own, use `PATCH /v1/provider-accounts/{id}`.
+
+Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
+or `failed`. A domain whose write fails does not stop the others. See the
+[API reference](/docs/api-reference/provider-accounts/connectWithProviderAccount).
+
+## More domains in the account
+
+An account's key often reaches more domains at the provider than your workspace has connected. For whoever manages the
+account, `GET /v1/provider-accounts/{id}` and the answer of a [secure sign-in's
+keep](/docs/api-reference/provider-accounts/keepBrowserSessionAccount) carry `more_domains`: the domains the key
+lists, minus the ones your workspace has connected. A console can ask "This IONOS account holds 11 more domains.
+Connect them?" and send the list to the connect call above.
+
+- A domain counts as connected when your workspace has a connection for it, or for a name under it, in any
+  application. A failed connection and a test mode one count for nothing.
+- The list is sorted. It is empty for a provider that cannot list the domains of a key (see [which providers list
+  their domains](#which-providers-list-their-domains)).
+- It can include domains outside the account's scope, such as a key made for one domain that reaches the whole
+  account at the provider. The connect call refuses those until the scope covers them.
+- Listing a key's domains is a use of the key, so only the account's manager gets it: it is left out for a viewer,
+  for a member who did not connect the account, for a key your customer's sign-in made, and for an account with no
+  usable key. The account list never carries it.
+- The read changes nothing. If the provider refuses the key or the list fails, `more_domains` is left out and the
+  account stays as it was; [Check now](#health-checks) is where a refused key is found. The provider's list is kept
+  for a minute, so reading the account again does not call the provider again.
 
 ## Which providers list their domains
 
@@ -110,12 +219,17 @@ call answers `422` `ProviderAuthenticationError` and the account is marked as ne
 
 ## Who can manage an account
 
-Anyone whose role operates applications may connect a key, read the accounts
-and revoke one. Changing an account's access, scope or domains, listing the
-domains its key reaches, connecting domains with it and giving it a new key take
-an admin, an owner or the member who connected it, because the key reaches zones
-the others were never given; anyone else gets `403`. Each account says whether
-you may (`can_manage`).
+Anyone whose role operates applications may connect a key, read the accounts and
+rename one. Changing an account's access, scope or domains, listing the
+domains its key reaches, connecting domains with it, giving it a new key,
+[renewing it by signing in again](#renew-an-account-by-signing-in-again) and
+[removing it](#remove-an-account) take an admin, an owner or the member who
+connected it, because the key reaches zones the others were never given and
+removing it deletes the key and detaches every domain that used it; anyone else
+gets `403`. A key your customer's own sign-in made, which no member connected, is
+managed by an admin or an owner alone. Each account says whether you may
+(`can_manage`), and the console shows a member who did not connect an account no
+buttons on it.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -178,12 +292,13 @@ owner may, not the member who connected the key. See
 | --- | --- |
 | `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
 | `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, [what needs you](#what-needs-you) first, plus kept sign-ins and Domain Connect authorizations grouped by provider. `?owner=workspace` or `end_user`, `?q=`, `?limit=` and `?cursor=` filter, search and page the list; `end_user_keys` counts your customers' keys. |
-| `PATCH /v1/provider-accounts/{id}` | Change label, access or scope, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. |
+| `PATCH /v1/provider-accounts/{id}` | Change label, access, scope or domains, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. What [each kind allows](#what-each-kind-of-account-allows) when it widens the account differs. |
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
-| `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
-| `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
+| `GET /v1/provider-accounts/{id}` | One account with its domains. For its manager it also carries [`more_domains`](#more-domains-in-the-account). |
+| `POST /v1/provider-accounts/{id}/connect` | [Connect domains](#connect-many-domains-at-once), each into its own application: `{ application_id?, domains }`, where a domain is a name or `{ domain, application_id }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
+| `POST /v1/provider-accounts/{id}/reconnect` | A new key: `{ credential: { token, params? }, access?, check_domain? }` for a pasted key, checked before it is kept (`params` replace the kept ones), or `{ method: "secure_sign_in", return_origin, consent_version }` to [renew a key made at a sign-in by signing in again](#renew-an-account-by-signing-in-again). |
 | `POST /v1/provider-accounts/{id}:check` | [Check now](#health-checks): read the key against its provider and answer `{ account, result }`. Once a minute for an account. |
-| `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. |
+| `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. Answers [what that leaves](#remove-an-account): `used_by` and `revoke_url`. |
 | `POST /v1/provider-accounts:sign-in` | Start a [secure sign-in that adds an account](#add-an-account-by-secure-sign-in), with no domain. The console only. |
 
 A key the provider refuses marks the account `needs_reconnect` and each of its
@@ -225,10 +340,13 @@ ways:
   `notice`, the `reconnect_reason`, `reconnect_sent_at` and `renewed_at`,
   `old_key: "revoke_by_hand"` after a renewal, and the provider's `revoke_url`.
 - **It is renewed by a sign-in, not a pasted key.** Before its end, or once the
-  provider refuses it, the account is `needs_reconnect` and your customer signs
-  in again ([reconnecting](/docs/guides/secure-sign-in#reconnect)). In the
-  console, **Connected accounts** shows it as **Made at sign in**, and its only
-  action is **Remove**.
+  provider refuses it, the account is `needs_reconnect`. For a key your customer's
+  sign-in made, your customer signs in again
+  ([reconnecting](/docs/guides/secure-sign-in#reconnect)). For a key a member
+  made at a sign-in in the console, a member who manages the account
+  [signs in again](#renew-an-account-by-signing-in-again) from the account, and
+  the account keeps its domains. In the console, **Connected accounts** shows it
+  as **Made at sign in**.
 - **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
   answers the provider's `revoke_url` and sends `credential.removed`: the key
   itself lives at the provider until it is revoked there.
@@ -284,6 +402,71 @@ Every call about the session is for the member who started it, in their workspac
 workspace's and a connect sign-in's all answer `404`. Every account made, swapped or shared is in the
 [audit log](#audit-log) (`provider_account.created`, `.key_replaced` with the replaced key's name as `old_key_name`,
 `.updated`, `.shared`).
+
+## Renew an account by signing in again
+
+A key made at a secure sign-in in the console is renewed the way it was made: by
+signing in to the provider again. The account stays the same account. It keeps
+its id, its domains, its scope, its access and the domains linked to it, and only
+its key changes.
+
+`POST /v1/provider-accounts/{id}/reconnect` takes `method`. The default,
+`api_key`, is the paste for a key a person pasted. `secure_sign_in` starts the
+same sign-in as [adding an account](#add-an-account-by-secure-sign-in), for the
+account's own provider and application:
+
+```json
+{ "method": "secure_sign_in", "return_origin": "https://app.example.com", "consent_version": "cb-3" }
+```
+
+It answers `201` with `{ session_id, popup_url }`, and `GET /v1/browser-sessions/{id}`
+names the account the session renews in `renews_account_id`. When the key is made
+and checked, confirm it with `POST /v1/browser-sessions/{id}:keep` and an empty
+body, `{}`: the new key goes into the same account (`200`, `swapped: true`, and
+`replaced_key` names the old key so you delete it at the provider). The account is
+`active` again, its [daily check](#health-checks) starts afresh, and a one time
+account gets a new hour.
+
+- **Who may.** The console's own signed call, for an admin, an owner or the member
+  who connected the account. Another member and a viewer get `403`, and so does
+  any caller that is not the console.
+- **Which keys.** A key made at a sign-in in the console. A key you pasted is
+  renewed by pasting a new one (`409`). A key your customer's own sign-in made is
+  renewed by your customer, never from the console (`403`).
+- **It must be the same provider account.** Where the provider names the account,
+  the new key's account must be the same. Where it does not (IONOS), the new key
+  must list every domain the account holds, or for an account of every domain,
+  the domains linked to it. A key of another account answers `422`
+  `different_account` and changes nothing; the key stays pending, and cancelling
+  the sign-in names it so you can delete it at the provider. An account that holds
+  no domain and has no account number gives nothing to compare, so it answers `422`
+  `account_not_verifiable` the same way: remove the account and add it again with
+  a new sign-in.
+- **Nothing else changes.** A body that names `scope`, `domains`, `access` or
+  `application_ids` is `400`: change those with `PATCH`.
+- **Audited.** `provider_account.key_replaced`, with `via` `sign_in` and `renewed`
+  true.
+
+## Remove an account
+
+`DELETE /v1/provider-accounts/{id}` deletes CustomDomain™'s copy of the key and
+the account. It says what that leaves:
+
+```json
+{ "id": "pacct_...", "revoked": true, "used_by": 2, "domains_kept_connected": 2, "revoke_url": "https://..." }
+```
+
+- **`used_by`** is how many domains used the account. They stay connected and
+  keep serving, without continuous access; each records `access_revoked` on its
+  timeline. `domains_kept_connected` is the same number.
+- **`revoke_url`** is the provider's page where the key itself is deleted, for a
+  key you pasted as for one made at a sign-in. CustomDomain™ cannot revoke a key at
+  the provider, so the key lives there until you delete it. The field is absent
+  when the provider has no such page on file.
+
+Removing an account takes whoever manages it: an admin, an owner or the member
+who connected it, and for a key your customer's sign-in made, an admin or an owner.
+Anyone else, a viewer included, gets `403`, and nothing is deleted or detached.
 
 ## What needs you
 
@@ -524,7 +707,8 @@ instead of a new sign-in, and only when all of this holds:
   another's key;
 - the application allows it: `end_user_saved_access` is on (on by default; a
   test mode application never offers a key). Turn it off with
-  `PATCH /v1/applications/{id}`; a console switch for it comes later;
+  `PATCH /v1/applications/{id}` or with **Use their saved access** under
+  **Widget → Ways to connect** ([the setting](/docs/guides/secure-sign-in#saved-access));
 - the customer can be told by email that their key was reused: the
   [end user notices](/docs/connect-flow/end-user-notices) feature is on, you
   gave their address when you minted the token (`end_user_email`) or the

@@ -517,6 +517,31 @@ not accept them, the session goes on to the DNS page.
   **Connected accounts** lists the key as **Made at sign in**
   ([console guide](/docs/getting-started/console#provider-api-key)).
 
+### Reusing it for a returning customer [#saved-access]
+
+A key a customer's own secure sign-in made can be offered to them for their next
+domain in the same application, instead of a new sign-in. Each application has a
+setting for it, `end_user_saved_access`, on by default: with it on, a returning
+customer is offered a key they kept before, for their other domains. Turn it off
+and no key is offered, so every domain starts with a sign-in. The rules for which
+key may be offered, and to whom, and what an offer can do for now, are in
+[A returning customer's own key](/docs/connect-flow/provider-accounts#a-returning-customers-own-key).
+
+- **In the console:** **Widget → Ways to connect → Use their saved access**, a
+  switch that saves when you flip it. Owners, admins and members can change it;
+  a viewer sees it off with the reason. A test mode application keeps no saved
+  access (its sign-ins are made up), so its switch is off and cannot be turned
+  on.
+- **In the API:** `PATCH /v1/applications/{id}` with `end_user_saved_access`
+  (`true` or `false`, never `null`). Every application answer carries it.
+- **Whether secure sign-in runs for you:** every application answer also carries
+  `secure_sign_in`, read only: `available`, and when it is `false`, `reason`
+  (`switched_off` when the deployment has it off, `not_enabled_for_workspace`
+  when it is on for a list of workspaces yours is not on). **Ways to connect**
+  shows it as **On** or **Off** with that reason. It says whether the feature can
+  run for the workspace at all; whether it is offered for one domain is still
+  `rails.cloud_browser` on the domain check.
+
 ## When the key ends, and reconnecting [#reconnect]
 
 A key with an end date (GoDaddy's after a year, Hostinger's where it offers no
