@@ -546,8 +546,8 @@ the domain itself, one card each:
 - **Who it is for** shows the client or customer name the **Domains** list filters by. It is set when
   the domain is added and is not changed here ([whose a domain is](#many-domains-and-whose-they-are)).
 - **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), says whether visitors to
-  the root go on to `www.` that domain. It is the choice made when the domain was connected, and the
-  **www redirect** fact on the **Overview** opens this card.
+  the root go on to `www.` that domain. It is the choice made when the domain was connected, or the
+  one set later with the API, and the **www redirect** fact on the **Overview** opens this card.
 - **Forwarding** shows the address the edge sends every visit to, with the same path, or **Not set**.
   Forwarding is part of edge serving, so a workspace without it reads **Included on Growth and up.**,
   a domain that points at your own servers reads **Not on the edge**, and a deployment with edge serving
@@ -566,7 +566,7 @@ configured" page: set it under **Routing**, the page titled **Where domains
 point**, as the **Application address**, or point the domains straight at your own servers
 there instead. See [Where domains point](/docs/connect-flow/routing). The domain's **Serving** tab
 shows whether the edge serves it and where your application runs. Root-domain redirects
-(`www_redirect`) and forwarding are on its **Settings** tab, and per-path rules are set with the API.
+(`www_redirect`) and forwarding are shown on its **Settings** tab and set with the API, as are per-path rules.
 
 ## 7. See its traffic
 
