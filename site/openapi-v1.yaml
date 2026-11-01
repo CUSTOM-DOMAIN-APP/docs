@@ -2336,10 +2336,9 @@ paths:
         Test domains refuse the call.
 
 
-        A share link's token counts as naming no end user here, so it is
-        refused on a connection that names one: a link is a credential to
-        set one domain up, not the end user, and the address receives the
-        reconnect link that signs in as them.
+        A share link's token never sets the address, on any connection: a
+        link is a credential to set one domain up, not the end user, and the
+        address receives the reconnect link that signs in as them.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4951,6 +4950,18 @@ paths:
         user who shares this one's domain gets a token that names itself and is
         still refused on it. A `prefill` key the control plane records this in is
         dropped from the caller's prefill and never read back.
+
+
+        **What a widget token may share.** Only a domain whose connection in the
+        application its own token owns, by the rule every managed DNS route
+        applies: a connection that names the token's `end_user_ref`, or one that
+        names no end user when the token is bound to that domain (a token with an
+        `end_user_ref` and no bound domain owns none of those). Any other shared
+        domain is refused with `403` `token_wrong_end_user` and no link is made. A
+        domain with no connection yet can be shared. The recipient never owns more
+        than the sharer's token did: a link made by a token that names an end user
+        and is bound to no domain gives a token that is bound to none either, as
+        the sharer's.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -5017,7 +5028,16 @@ paths:
                     description: Present when recipient_email was given but the email could not be sent. The link is still valid.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden` (the token is bound to a different domain, or its role
+            cannot write connections) or `token_wrong_end_user` (a widget token
+            that does not own the connection of a domain it asks to share: the
+            connection names another end user, or names none while the token is
+            not bound to that domain; no link is made).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '429':
           description: Share-by-email cap reached (`rate_limited`); no link was minted.
@@ -5552,10 +5572,11 @@ paths:
         (the secure sign in, managed DNS, a nameserver move, the monitoring
         reads). It is a credential for that one setup, not the end user, so it
         never removes the domain (`403` `forbidden`, on every connection), never
-        sets the end user's contact address, is never offered the end user's
-        kept keys (saved access) and is not the maker of a key as the end user:
-        a key made at a sign in it starts is not the end user's own for saved
-        access. A reconnect link's token stays the end user.
+        sets the end user's contact address (on any connection), is never offered
+        the end user's kept keys (saved access) and is not the maker of a key as
+        the end user: a key made at a sign in it starts is not the end user's own
+        for saved access, and is never swapped into a key row the end user
+        already keeps. A reconnect link's token stays the end user.
       security: []
       parameters:
         - { name: token, in: path, required: true, schema: { type: string } }

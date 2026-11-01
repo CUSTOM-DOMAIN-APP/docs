@@ -39,14 +39,21 @@ never change meaning or disappear without a new major version. See the
   about. Share links keep working: the person who opens a link acts as the end user who shared it (your API key shares
   as the customer of your connection for the one domain the link names). A link is a credential to set that one domain
   up and nothing more: it cannot remove the domain (`DELETE`, `:disconnect` and the sign-in to remove answer `403
-  forbidden`), cannot set the customer's contact address, is never offered the customer's kept keys, and a key made at a
-  sign-in it starts is not the customer's own.
+  forbidden`), cannot set the customer's contact address on any connection, is never offered the customer's kept keys,
+  and a key made at a sign-in it starts is not the customer's own and never replaces a key the customer already keeps.
+  A link never gives its recipient more than the sharer's token had: a widget token can share only a domain whose
+  connection it owns by the rules above (`403 token_wrong_end_user` and no link otherwise; a domain with no connection
+  yet can be shared), so a customer's token that is bound to no domain cannot share your connection's domain to itself
+  and read its zone, and a link made by such a token gives a token that is bound to no domain either.
 
   **Compatibility.** A widget token with no `end_user_ref` that acts on a connection that names a customer now gets
   `403 token_wrong_end_user` on the repeat `POST /v1/connections`, `:recheck`, `:reapply`, `DELETE .../grant`, the
   connection reads and writes above, and every managed DNS and nameserver move route, where it got `200`. That includes a
   connection the same token created by sending `end_user_ref` in the request body. If you create connections with an
-  `end_user_ref`, mint each widget token with the same `end_user_ref` and the `domain` it is for. See
+  `end_user_ref`, mint each widget token with the same `end_user_ref` and the `domain` it is for. Share links keep
+  working, with two changes: a share link can no longer remove a connection that names no customer (it could before),
+  and links made before this release have no recorded customer, so for up to 30 days (a link's lifetime) they give a
+  token with no `end_user_ref`, which gets `403 token_wrong_end_user` on a connection that names a customer. See
   [Idempotency](/docs/connect-flow/create-a-connection#idempotency),
   [Whose zone it is](/docs/dns/managed-dns#who-can-call-what) and
   [Widget tokens](/docs/authentication/widget-tokens).
