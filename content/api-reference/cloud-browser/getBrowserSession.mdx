@@ -20,8 +20,11 @@ _openapi:
           Once the session has kept a lasting API key for the connection, the view
           carries `kept_key`: the key's `name`, the provider's `page` that deletes
           keys, its `rights` and when it ends (`expires_at`), so the last screen can
-          say which key was kept and where to remove it. A key that was made and not
-          kept is `left_key` instead.
+          say which key was kept and where to remove it. When no key was made because
+          the provider's page still listed the row of one an earlier sign in made for
+          this account and the key stored for it was used, `kept_key.reused` is `true`
+          and the name is that key's. A key that was made and not kept is `left_key`
+          instead.
 
 
           With an API key instead (the console's own call, on its signed visitor
