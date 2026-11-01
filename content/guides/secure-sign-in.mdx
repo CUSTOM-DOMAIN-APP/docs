@@ -78,15 +78,18 @@ the console say the same thing):
    keeps working."
 2. What else the key can do, only when it can transfer domains or pay renewals:
    "It can also transfer your domains. We use it only for DNS.", "It can also pay
-   renewals. We use it only for DNS.", or both in one line. A key that reaches DNS
-   only has no such line.
+   renewals. We use it only for DNS.", or both in one line. IONOS's key reaches DNS
+   only, so it has no such line. A key with no scopes (Namecheap, Name.com, Hostinger)
+   holds every right the provider's API gives the account, and the card does not list
+   those rights yet.
 3. Where to delete it: "Delete it any time on Namecheap's page.", a link to the
    provider's own page that lists API keys (in a new tab). Without a page, "Delete it
    any time in your Namecheap account."
 
 When the sign-in makes no key, the card says nothing about one. The widget and the
-console send `consent_version` `cb-4` with the start: the id of this text, which we
-store with the session. After the sign-in, the widget's **Live** screen says which key
+console send `consent_version` `cb-4` with the start only when the card showed these
+lines: the id of this text, which we store with the session. A start whose card showed
+none of them (a provider whose check names no key, a reconnect) sends `cb-3`. After the sign-in, the widget's **Live** screen says which key
 was kept ("We kept an API key named “CustomDomain Acme 2026-10-30 1207” in your
 Namecheap account so acme.com keeps working.", with the delete link), because the
 popup closes itself a moment after **Done**. The key's name there is the one it was
@@ -749,7 +752,7 @@ so you can read what a session did. Every route is in the
 
 | Call | What it does |
 | --- | --- |
-| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-4`, the key notice above; `cb-3` is still accepted: the popup's own form with no text, which the widget's reconnect and nameserver move send), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
+| `POST /v1/connections/{id}/browser:start` | Starts a session. Takes `provider`, `return_origin`, `consent_version` (`cb-4`, the key notice above; `cb-3` is still accepted: the popup's own form with no text, which the widget's reconnect and nameserver move send, and a connect whose card showed no key notice), and optionally `locale`, `viewport_hint`, `widget_session_id` (the widget's own session, so the sign-in can be read against its device and place), `purpose` (`nameservers` for a [nameserver move](/docs/guides/nameserver-migration)) and `mode` (`reconnect` renews the connection's [lasting API key](#reconnect) and changes no record). |
 | `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). Only an API key may call it: a widget token and an agent token get `403`, because the link signs in as your customer. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
