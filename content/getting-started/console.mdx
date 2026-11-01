@@ -189,7 +189,7 @@ checklist until they answer the welcome too. Your customers' domains are on
 | **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, with the **Authenticate with** switch for the token step; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
-| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). |
+| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). **Connect an account** adds one in [three steps](#add-an-account). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Every email we send**, on **Notifications** and on **General**, opens **Emails we send**: every email CustomDomain™ sends, who gets it and how to stop it (with the new menu it is **Settings → Notifications**; see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 | **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
 
@@ -490,7 +490,7 @@ or the deployment can offer one-click setup for it. **Change** opens a menu:
   account has to be at the same DNS provider and still work. Admins and owners see the
   workspace's accounts for the domain's application, and a member sees the ones they
   connected, so the list can be empty.
-- **Add an account** opens [Connected accounts](/docs/connect-flow/provider-accounts).
+- **Add an account** opens [Add an account](#add-an-account), where you can connect the provider's account once and use it for this domain and others.
 - **Host its DNS instead** opens the domain's DNS tab, where DNS hosting starts. A domain
   whose DNS is already ours shows **See its DNS hosting** in its place.
 
@@ -634,6 +634,34 @@ workspaces) makes a link for that one domain instead:
   well as copying it.
 - It is for a domain that is not live yet, and it needs the member role or
   above. A workspace can make 30 an hour.
+
+### Add an account
+
+**Connected accounts** has **Connect an account**. It opens a page, `/app/accounts/new`, because the steps
+are too long for a pop-up on a phone. Nothing is chosen for you.
+
+1. **Which company.** Pick it from the list, or search it by name. A registrar is where you bought
+   the domain, and a DNS host runs the records that say where a name goes. If you are not sure who
+   runs your domain's DNS, type a domain you have there and **Find it** looks it up. A company that connects
+   one domain at a time is named and sent to the connect page, because there is no account to add.
+2. **How to connect.** Only that company's ways, easiest first. **Sign in to the company** opens a
+   secure window over the page: you sign in, we make the API key for you, and we show what it
+   can do and when it ends. **Paste an API key** shows the company's own steps and the page where
+   the key is made, then **Check the key** reads the domains it reaches. A company whose key is
+   used once says why, and links to [what that means](/docs/connect-flow/provider-accounts#credentials-that-are-used-once).
+   With more than one application, you also say which one the key and its domains are for.
+3. **What it may do.** Every domain in the account, or only the ones you tick. A company that cannot
+   list its domains asks for one domain the key manages, so we can check the key. Then which
+   [applications may use the key](/docs/connect-flow/provider-accounts#which-applications-may-use-it)
+   (an admin or an owner can share a sign-in's key with the others), and whether it is
+   [kept or used once](/docs/connect-flow/provider-accounts#access).
+
+Then **Connect N domains now** writes the records of the domains the account may use, each into
+the application you choose, and says what happened to each one. **Later** leaves them for the
+account's own page. If you close the sign-in window, go back, or take more than ten minutes,
+nothing is kept and the page names the key it already made, with the provider's page that deletes it.
+A viewer cannot add an account. The same steps, with the calls behind them, are in
+[Provider accounts](/docs/connect-flow/provider-accounts#add-an-account-in-the-console).
 
 ## Where each domain came from
 
