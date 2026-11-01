@@ -51,6 +51,30 @@ Every record change for the connection after that (a `www` redirect switched
 on, a CAA opt-in, a `:reapply`, a disconnect) is written into the zone by
 CustomDomain™. Nobody is asked to edit DNS again.
 
+### The next name under an active zone [#next-name]
+
+Once the zone is `active`, the next name under the same registrable domain
+(`blog.acme.com`, after `shop.acme.com`) needs no start and no switch. When it is
+created with `POST /v1/connections`, it joins the zone: its records are written
+into the zone, it is checked at once, and the answer can already say `live`.
+Nobody is asked again.
+
+A zone is one customer's whole DNS, so only the right caller joins it:
+
+- A widget token, only when the zone is the token's own, by the same rule as every
+  other managed DNS call of a widget token ("Whose zone it is", below): the
+  new connection is the token's, and so is every connection already linked to the
+  zone, in the same application. The application must still offer DNS hosting on
+  CustomDomain™'s own DNS. Who started the zone does not decide it: once your API
+  key (or another end user) has a name in the zone, it is no longer that end
+  user's, so their next name does not join it.
+- An API key, or an app-scoped token, for the application the zone was started in.
+- Never a delegated agent token, a token that does not own the zone, another
+  application or another workspace. Those names prove control by DNS, as before,
+  and nothing is written into the zone.
+
+Each join is in the workspace's audit log as `dns.hosted_zone_joined`.
+
 ## Copying the existing records
 
 DNS has no way to list a zone, so before the switch CustomDomain™ asks the
@@ -136,7 +160,8 @@ curl -X POST https://api.customdomain.ai/v1/connections/<ID>/managed-dns \
 `201` the first time, `200` after that with the same zone. A repeat call also
 re-reads the delegation (at most every 30 seconds), which is how a "check
 now" button works. A second connection under the same registrable domain joins
-the existing zone. A zone already hosted for another account answers `409`.
+the existing zone (an `active` zone is joined without this call, for the callers
+[above](#next-name)). A zone already hosted for another account answers `409`.
 
 The response, and every other managed DNS response, is the zone:
 
@@ -270,6 +295,28 @@ Once a zone is `active` it answers for the whole domain, email included, so an
 end user's **connect-scoped** widget token may only read it. Records can still
 be changed with an API key or an app-scoped token.
 
+**Whose zone it is.** One zone serves a whole registrable domain (`acme.com` for
+`shop.acme.com` and `blog.acme.com`), so an end user's widget token acts only on
+what is its own. The connection the call is about must be the token's: a
+connection that names another customer (its `end_user_ref` is not the token's)
+answers `403 token_wrong_end_user` on every managed DNS route (`POST` and `GET`
+`.../managed-dns`, `POST .../managed-dns/records`, `DELETE
+.../managed-dns/records/{record_id}`) and on the nameserver routes
+(`GET .../nameservers`, `:migrate`, `:rollback`), before anything is read, created,
+linked or changed. A connection you made with your API key names no customer and is
+a token's only when its domain is one the token is bound to (`domain` or `domains`):
+a token with no `end_user_ref` and no `domain` counts only the domain of the
+connection the call is about, and a token with an `end_user_ref` and no `domain` owns
+none of those. A zone that already exists
+is started, joined, read or changed only when every connection linked to it is the
+token's too; another customer's zone, a zone that also holds a connection you made
+with your API key for another name, and a zone nobody is linked to answer `409`
+with "the DNS of acme.com is already hosted by CustomDomain™ for someone else",
+and show none of the zone. A nameserver move whose connection was removed names no
+connection: an end user's call on it answers `403 token_wrong_end_user` and never
+takes it over, and only your API key resumes it. An API key and an app-scoped token
+are not limited by any of this.
+
 ### Limits
 
 | Limit | Value |
@@ -287,6 +334,7 @@ be changed with an API key or an app-scoped token.
 | `400` | `invalid_request` | Both or neither of `zone_file` and `records` were sent, or more than 500 `records` in one request |
 | `409` | `conflict` | The zone belongs to another account, a hand-added record would override a `customdomain` record, a `customdomain` record was deleted, or another change to the zone is in progress |
 | `403` | `forbidden` | An end user's widget token started managed DNS for an application that doesn't offer DNS hosting, or that hosts its users' DNS on its own DNS host or nameservers |
+| `403` | `token_wrong_end_user` | An end user's widget token acted on a connection that names another customer, or on a nameserver move that is not its own |
 | `413` | `payload_too_large` | The zone file is over 256 KB |
 | `422` | `managed_dns_unavailable` | Managed DNS isn't available for this domain (see the availability `reason`) |
 | `422` | `managed_dns_limit` | The account already holds its maximum number of zones |

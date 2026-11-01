@@ -1131,12 +1131,37 @@ paths:
         checks for its own application; naming another application is a `403`.
 
 
+        `rails.saved_access` lists the kept keys that may act for the domain for
+        the caller, and `recommended_rail` is then `saved_access`. An API key
+        gets the workspace's keys. A widget token bound to the domain that
+        names the end user (`end_user_ref`) gets that end user's own keys, and
+        only when the application allows it (`end_user_saved_access`), the
+        e-mail that tells them of the reuse can be sent and the key was made
+        at a sign in started with a token minted with their `end_user_ref`,
+        never at GoDaddy for now (see
+        `GET /connections/{id}/saved-access`); a miss, for any reason, leaves
+        the other rails as they were, so the end user signs in. The offer is
+        read only: an end user's token cannot use the key yet.
+
+
         Where the secure sign-in also makes a lasting API key,
         `rails.cloud_browser.key` names it before the person signs in: `name` is
         the name a key made now would get (a sign-in makes or reuses a key, so
         look for a key named like it), `delete_url` is the provider's own page
         that deletes keys, and `rights` and `ends_in_days` say what it can do and
         when it ends.
+
+
+        `rails.nameservers` is the DNS hosting verdict, present while the
+        application offers DNS hosting. `verdict` and `reason` say where it goes
+        and why. It is `recommended` where hosting saves the person the most:
+        four or more records to write (`many_records`), or no automatic way
+        (`no_automatic_way`). A root domain whose provider has no record that
+        can point a root is not a reason of its own: a zone CustomDomain™ hosts
+        cannot point a root at a platform that gives no apex addresses either,
+        so hosting is only offered there. On CustomDomain™'s own DNS it falls
+        back to `offered` with `plan_zone_limit` once the workspace holds as
+        many hosted zones as its plan counts; nothing is refused.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1181,6 +1206,17 @@ paths:
         connection is replayed with `200`.
 
 
+        A widget token is never handed another end user's connection. When the
+        application already has a connection for the domain (live, or failed
+        and about to be resumed) that names another end user than the token's
+        `end_user_ref`, or names one while the token names none, the call
+        answers `403` `token_wrong_end_user` and shows nothing of it: no id, no
+        field, and a failed connection is not resumed. Mint the token with the
+        end user's `end_user_ref`. The replay is unchanged for the end user's own
+        token, for a connection that names no end user (an API key made it),
+        for an API key, an app-scoped token and a delegated agent token.
+
+
         A domain another application already serves live is refused with
         `409 domain_already_connected` before anything is written: move it by
         disconnecting it there first. When the ownership TXT flow is on the
@@ -1199,6 +1235,26 @@ paths:
         It cannot set the end user's e-mail address: a body with a non-empty
         `end_user_email` is refused with `403`, and the platform's API key sets
         it.
+
+
+        A name under a zone CustomDomain™ already hosts joins it without a new
+        move, and the `201` shows it already `live` when its records resolve.
+        The registrable domain's zone must be `active` (delegated to us) and
+        hosted for this application. A widget token joins only a zone that is
+        its own by the rule every managed DNS call of a widget token follows:
+        the new connection is the token's, and so is every connection already
+        linked to the zone (a connection that names an end user is the token's
+        when its `end_user_ref` is the token's; one that names none is the
+        token's only for a name the token is bound to). The connection that
+        started the zone does not decide it, so a zone that an API key, the
+        console or another end user also linked a name to is not the token's.
+        The application must still offer DNS hosting on CustomDomain™'s own
+        DNS. An API key or an app scoped token joins its own application's
+        zone. A delegated agent token, a widget token that does not own the
+        zone, and every other zone change nothing: the name proves control by
+        DNS as always, and no record is written into a zone that is not the
+        caller's. The records written are in the audit log as
+        `dns.hosted_zone_joined`.
 
 
         A workspace with no subscription yet connects its first ten domains, or
@@ -1337,7 +1393,18 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403':
+          description: >-
+            `forbidden` (the credential may not do this, or `application_id` or
+            `end_user_ref` does not match the token's), `token_wrong_end_user`
+            (a widget token: the application already has a connection for this
+            domain that names another end user, or names one while the token
+            names none; nothing of it is shown or changed, so mint the token
+            with this domain's `end_user_ref`), or `workspace_suspended` (see the
+            `ForbiddenOrSuspended` response).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '409':
           description: >-
             `domain_already_connected`: another application already serves this
@@ -1528,6 +1595,14 @@ paths:
         the platform's id for its end user, which the account answers leave out
         for it too and a connection shares with its end user's key. An API key
         reads all of it whole.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1540,7 +1615,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectionWithRecords' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
     delete:
       operationId: disconnectConnection
@@ -1596,6 +1671,11 @@ paths:
         and with another domain `409 confirmation_mismatch`; nothing is removed
         either way. Another application's connection answers `404`. Any other
         credential that sends `confirm` is held to it the same way.
+
+
+        A share link's token (the `widget_token` of `GET /share/{token}`) sets a
+        domain up and never removes it: it answers `403` `forbidden`, on a
+        connection that names an end user or not.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1701,6 +1781,14 @@ paths:
 
 
         A delegated agent token needs `domains:read`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -1731,7 +1819,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DomainEvent' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/services:
     get:
@@ -1898,7 +1986,35 @@ paths:
         console may be offered with `ready: false`, after one read with it
         showed it reaches the zone (at most 3 reads a call, each answer kept
         10 minutes), and using it adds the zone to its scope. One entry per
-        provider account. An end user's widget token gets an empty list.
+        provider account.
+
+
+        An end user's widget token (scope `connect`) gets that end user's own
+        keys, and only theirs, when all of these hold: the token is bound to
+        the connection's domain and was minted with the end user's
+        `end_user_ref` (not one of the install samples' `user_42` and
+        `customer_123`); the application allows it (`end_user_saved_access` on
+        the application, never in test mode); the e-mail that tells the end
+        user their key was reused can be sent (the `end_user_contact` flag is
+        on, an address was given for the token at mint or is held on the
+        domain's connection when that connection names this end user, and the
+        application's end user mail has a live sender; an address on a
+        connection that names no end user does not count, because any end
+        user's token could have set it); and the key is the end user's own, in
+        this application, made at a sign in started with a token minted with
+        that same `end_user_ref`, and not held at GoDaddy for now. Such a key
+        whose scope holds the domain's zone is `ready`; otherwise it may be
+        offered with `ready: false`, after one read with it showed it reaches
+        the zone. Any other widget token gets an empty list. A token bound to
+        no domain is refused with `403` `token_not_bound`, and one minted for
+        another end user than the connection's, or for no end user when the
+        connection names one, with `403` `token_wrong_end_user`, as
+        `browser:start` refuses it. An end user's entry carries `from_domain`,
+        the newest domain of theirs the key already serves, the neutral label
+        `<Provider> key` and no `key_name` or `application_id`. It only
+        offers the key: `POST /connections/{id}:use-saved-access` and the
+        `409` `saved_access_available` of the sign in routes do not apply to an
+        end user's token yet.
 
 
         A delegated agent token reads it with `domains:read` (the MCP's
@@ -1935,7 +2051,15 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/SavedAccess' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            An agent token without `domains:read`, a widget token for another
+            domain (`forbidden`), or an end user's token that is bound to no
+            domain (`token_not_bound`) or to another end user than the
+            connection's (`token_wrong_end_user`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/monitor:
     get:
@@ -2025,7 +2149,8 @@ paths:
 
 
         A delegated agent token needs `domains:disconnect` and must send
-        `confirm`, as for `DELETE /connections/{id}`.
+        `confirm`, as for `DELETE /connections/{id}`. A share link's token is
+        refused with `403` `forbidden`, as there.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2099,6 +2224,14 @@ paths:
 
 
         A delegated agent token needs `domains:read`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2111,7 +2244,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectionDiagnosis' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/records:
     get:
@@ -2125,6 +2258,14 @@ paths:
 
 
         A delegated agent token needs `domains:read` or `domains:connect`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2145,7 +2286,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
     put:
       operationId: setConnectionRecords
@@ -2225,6 +2366,11 @@ paths:
 
 
         Test domains refuse the call.
+
+
+        A share link's token never sets the address, on any connection: a
+        link is a credential to set one domain up, not the end user, and the
+        address receives the reconnect link that signs in as them.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2293,6 +2439,31 @@ paths:
         editing an existing zone's records is unchanged. `managed_dns` on
         `POST /v1/domains:check` stays the deployment's and the domain's
         verdict; it does not say whether the application offers hosting.
+
+
+        The end user's widget token acts only on what is its own. A connection
+        that names an end user (`end_user_ref`) is the token's when that is the
+        token's own `end_user_ref` (mint the token with it); a connection that
+        names none (an API key made it) is the token's only when its domain is
+        one the token is bound to. A token with an `end_user_ref` and no bound
+        domain owns none of those, and a token with no `end_user_ref` and no
+        bound domain counts only this connection's domain. The call's connection
+        must be the token's: a connection of another end user answers 403
+        `token_wrong_end_user` before anything is created or linked (the create
+        call refuses a token for that end user's exact name too, so it is not
+        handed that connection's id). One zone
+        serves the whole registrable domain, so a zone that already exists is
+        started, joined or resumed only when every connection linked to it is
+        the token's too. Another end user's zone, one that also holds another
+        name's connection of the platform (made with an API key) or a connection
+        of another application, and one nobody is linked to (the end user removed
+        its last connection; the platform's API key starts it for the new one)
+        answer 409 `conflict`, "the DNS of acme.com is already hosted by
+        CustomDomain™ for someone else"; nothing is linked or written and the
+        answer shows none of the zone. A zone this call creates is the caller's.
+        Two starts at once by one end user on a new zone can answer one of them
+        409; the same call again succeeds. API keys and app-scoped tokens are not
+        limited by it.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2316,10 +2487,24 @@ paths:
               schema: { $ref: '#/components/schemas/ManagedDNSView' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403':
+          description: >-
+            `forbidden` (the application does not offer DNS hosting on
+            CustomDomain™, or a role that cannot write connections),
+            `token_wrong_end_user` (a widget token: the connection belongs to
+            another end user; mint a token with this domain's `end_user_ref`),
+            or `workspace_suspended` (see the `ForbiddenOrSuspended` response).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
-          description: The domain's zone is already hosted for another account, or another change to it is in progress.
+          description: >-
+            The domain's zone is already hosted for another account, or (for a
+            widget token) for someone else: not every connection linked to it is
+            the token's (another end user's, the platform's for another name,
+            another application's), or none is linked. Or another change to it
+            is in progress.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2347,7 +2532,10 @@ paths:
         what the registry currently lists, the registrar, every record, and
         notes to show the user. Poll it while `status` is
         `awaiting_delegation`. 404 when managed DNS was never started for this
-        connection.
+        connection. A widget token reads it only for its own end user's
+        connection and only when the zone is that end user's (every connection
+        linked to it is the token's, as for the start above); otherwise it gets
+        403 or 409 and none of the zone.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2359,8 +2547,21 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ManagedDNSView' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user`: a widget token whose end user is not the
+            connection's (mint a token with this domain's `end_user_ref`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            A widget token only: the zone is hosted for someone else, because
+            not every connection linked to it is the token's.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/managed-dns/records:
     post:
@@ -2382,7 +2583,9 @@ paths:
 
         Once the zone is `active`, only an API key or an app-scoped widget
         token may change it; an end user's connect-scoped token may change the
-        zone only during setup.
+        zone only during setup, and only a zone that is its own: its
+        connection's end user and every connection linked to the zone are the
+        token's (as for the start above).
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2400,9 +2603,23 @@ paths:
               schema: { $ref: '#/components/schemas/ManagedDNSView' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user` (a widget token whose end user is not the
+            connection's), or `forbidden` (the zone is live and the token is an
+            end user's: use an API key or an app-scoped token).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            A listed record would override one CustomDomain™ needs for the
+            connection, or (a widget token) the zone is hosted for someone
+            else because not every connection linked to it is the token's.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '413': { $ref: '#/components/responses/Error' }
         '422':
           description: >-
@@ -2422,7 +2639,8 @@ paths:
         `customdomain` record is how CustomDomain™ serves the domain and is
         refused with 409; disconnecting the domain removes it. Once the zone is
         `active`, only an API key or an app-scoped widget token may remove
-        records.
+        records. A widget token removes records only from a zone that is its
+        own, as for adding them.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2439,9 +2657,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ManagedDNSView' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user` (a widget token whose end user is not the
+            connection's), or `forbidden` (the zone is live and the token is an
+            end user's).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            The record is one CustomDomain™ needs for the connection, or (a
+            widget token) the zone is hosted for someone else because not every
+            connection linked to it is the token's.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/nameservers:
     get:
@@ -2452,11 +2684,16 @@ paths:
         The newest nameserver migration started for the connection's domain:
         its state, the old and new nameservers, what the registry lists now,
         what it waits on (`waiting_for`) and what a person does next
-        (`next_step`). Poll it while the state is not `active`, `failed` or
+        (`next_step`) and, when something has to be pressed, which request
+        presses it (`next_action`: `sign_in` while the move waits for the cloud
+        browser, `retry` after a stop that changed nothing at the registrar,
+        `rollback` after a stop that did; `null` when nothing is waiting for a
+        press). Poll it while the state is not `active`, `failed` or
         `rolled_back`. 404 when no migration was started for this connection.
         Authorized like the other connection routes: an API key within the
-        tenant, or a widget token of the connection's own application. A
-        delegated agent token needs `domains:read`.
+        tenant, or a widget token of the connection's own application and end
+        user (a connection that names another end user answers 403
+        `token_wrong_end_user`). A delegated agent token needs `domains:read`.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -2469,7 +2706,13 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NameserverMigration' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user`: a widget token whose end user is not the
+            connection's (mint a token with this domain's `end_user_ref`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/nameservers:migrate:
@@ -2546,11 +2789,36 @@ paths:
         agreed to; stored with the time, never their address), and may not
         send `target`, `credential`, `provider_account_id`, `zone_ready` or
         `skip_zone_check`. A delegated agent token needs `domains:connect`
-        (the MCP tool also asks the person to confirm first). A credential
+        (the MCP tool also asks the person to confirm first), and moves
+        nameservers only while the application's `nameserver_migration.mode`
+        is `offer` or `prefer`: while it is `off`, or none was saved, every
+        call of this route by an agent token, a start or a resume of a move
+        a person began, is refused `403` with code `ns_not_offered` and
+        changes nothing, so an agent does not retry it. A person can turn DNS
+        hosting on in the application's settings, and the platform can still
+        start the move for one domain with an API key, which this rule
+        leaves as it was (so does a widget token's own refusal, a plain
+        `403 forbidden`); `:rollback` stays open to the agent. A credential
         bound to one application (a delegated agent token, a widget token)
         resumes only the moves of its own application: the open migration of
         a domain that another application of the workspace is moving answers
         `409`, and only an API key, which spans the workspace, resumes it.
+        A widget token starts, resumes or confirms a move, whatever its target,
+        only on connections that are its own end user's: the call's connection
+        and the open move's connection (a connection that names an end user is
+        the token's when that is its `end_user_ref`; one that names none, only
+        when its domain is one the token is bound to, which a token with an
+        `end_user_ref` and no bound domain is not). Another end user's
+        connection, and an open move whose connection is another end user's, or
+        was removed and so names none, answer `403` `token_wrong_end_user`, and
+        nothing is read, copied or confirmed; an end user's call never takes
+        over such a move, and only an API key resumes one that names no
+        connection.
+        A widget token whose move goes to a managed zone that already exists
+        also starts or resumes it only when the zone is that end user's (every
+        connection linked to it is the token's, by the same rule); another end
+        user's zone answers `409` before the move exists and nothing is linked
+        or written.
         Each start, resume or move back by an agent token that changed the
         move is recorded in the audit log as `agent.acted` ("moved a domain's
         nameservers") under `agent:<grant id>`, whatever key it used; a call
@@ -2578,14 +2846,28 @@ paths:
               schema: { $ref: '#/components/schemas/NameserverMigration' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403':
+          description: >-
+            `forbidden` (the credential may not do this: a widget token that
+            sends `target`, a key or the zone flags, the setting is off, a role
+            that cannot write connections), `token_wrong_end_user` (a widget
+            token whose end user is not the call's connection's or the open
+            move's connection's, or the open move names no connection: mint a
+            token with this domain's `end_user_ref`), `target_not_allowed` (an
+            agent token), or
+            `workspace_suspended` (see the `ForbiddenOrSuspended` response).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
           description: >-
             The domain already uses these nameservers, its nameservers are
             being moved for another account (or, for a delegated agent token
-            or a widget token, for another application of the workspace), or
-            another change to the migration is in progress.
+            or a widget token, for another application of the workspace), its
+            managed zone is hosted for someone else (a widget token with target
+            `managed`: not every connection linked to the zone is the token's),
+            or another change to the migration is in progress.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2626,7 +2908,8 @@ paths:
         or choose). A migration that changed nothing at the registrar yet is
         simply stopped (`none`). Any cloud browser session still working on
         the move is ended first. Idempotent. A widget token may move back,
-        and choose where, but may not send a key. A delegated agent token
+        and choose where, but may not send a key, and only on its own end user's
+        connection (another's answers 403 `token_wrong_end_user`). A delegated agent token
         needs `domains:connect`, and a move back it makes is recorded in the
         audit log as `agent.acted` ("moved a domain's nameservers back") for
         its grant.
@@ -2648,7 +2931,14 @@ paths:
               schema: { $ref: '#/components/schemas/NameserverMigration' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user` (a widget token whose end user is not the
+            connection's), or `forbidden` (a widget token sends a key, or a
+            credential that may not do this).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
           description: '`old_dns_gone`: the old nameservers no longer answer for the zone; move back to the registrar''s own DNS instead. `changed_elsewhere`: the registrar lists other nameservers than the move''s, so a move back would overwrite someone else''s change. Or nothing was changed at the registrar to move back.'
@@ -2681,6 +2971,13 @@ paths:
         `DELETE /v1/connections/{id}` (which reverts the template at the provider
         and removes the whole connection). Idempotent: a connection that is already
         unmanaged returns `200`.
+
+
+        A widget token must be the connection's end user: a connection that names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none, answers `403` `token_wrong_end_user` before the grant is
+        touched, and a connection that names none is the token's as before. An API
+        key and an app-scoped token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2697,6 +2994,15 @@ paths:
                   connection_id: { type: string }
                   managed: { type: boolean, enum: [false] }
         '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user` (a widget token: the connection names another
+            end user, or names one while the token names none; the grant is kept
+            and nothing is changed) or `forbidden` (a role that cannot write
+            connections).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /connections/{id}/apply:
     post:
@@ -2714,6 +3020,14 @@ paths:
         domain-bound token to its own domain only). An API key applies to a
         connection of any application in its tenant; a member's key needs a role
         that operates apps (not viewer).
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2750,7 +3064,7 @@ paths:
                     items: { $ref: '#/components/schemas/DnsRecord' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
@@ -2788,6 +3102,13 @@ paths:
         have changed some record sets; one refused before anything was sent
         (nothing applied for the domain, a domain not managed or being removed,
         a rail or an account that is unavailable) leaves no row.
+
+
+        A widget token must be the connection's end user: a connection that names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none, answers `403` `token_wrong_end_user` before anything is
+        written, and a connection that names none is the token's as before. An API
+        key, an app-scoped token and a delegated agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2805,7 +3126,15 @@ paths:
               schema: { $ref: '#/components/schemas/ReapplyResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403':
+          description: >-
+            `token_wrong_end_user` (a widget token: the connection names another
+            end user, or names one while the token names none; nothing is written),
+            `forbidden`, or `workspace_suspended` (see the `ForbiddenOrSuspended`
+            response).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The connection is not managed, has no stored grant, or the grant was revoked (re-consent required); or a provider account keeps it and CustomDomain™ did not write its records, or the account holds no usable key" }
         '422': { description: "The provider refused the provider account's key (`ProviderAuthenticationError`) or the write (`dns_write_failed`)" }
@@ -2839,6 +3168,14 @@ paths:
         A delegated agent token needs `domains:connect`, because a recheck can
         move a connection forward. Its answer carries no `end_user_ref`, the
         platform's id for its end user.
+
+
+        A widget token must be the connection's end user: a connection that names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none, answers `403` `token_wrong_end_user` and is not
+        rechecked or revived, and a connection that names none is the token's as
+        before. An API key, an app-scoped token and a delegated agent token are
+        not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -2851,7 +3188,14 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecheckResult' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `token_wrong_end_user` (a widget token: the connection names another
+            end user, or names one while the token names none; nothing is
+            changed) or `forbidden` (an agent token without `domains:connect`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "A failed connection cannot be retried because the same application already has another active connection for this domain; retry that one instead" }
   /connections/{id}:reconnect-link:
@@ -2947,8 +3291,12 @@ paths:
         answer (its detail says when the provider answered with an error); a
         use refused before anything was sent, such as one with no records to
         write, leaves no row. A token without `domains:connect` is `403`. An end user's
-        widget token reaches the route but is given no saved access yet: `409`
-        `saved_access_not_usable` for an account that exists.
+        widget token is held to the same end user policy as `browser:start`
+        (`403` `token_not_bound` for a token bound to no domain, `403`
+        `token_wrong_end_user` for one minted for another end user than the
+        connection's, or for none), and then reaches the route but may not use
+        a key yet, though `GET /connections/{id}/saved-access` offers it its
+        own: `409` `saved_access_not_usable` for an account that exists.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -3102,6 +3450,20 @@ paths:
         (a domain-bound token for its own domain only); an API key for a
         connection of any application in its tenant, and a member's key needs a
         role that operates apps.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
+
+
+        Signing in to remove the domain (`purpose: remove`) keeps its own
+        answer, `403` `forbidden`, for a token that is not the end user's,
+        and for a share link's token on every connection: a link sets a
+        domain up and never removes it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -3158,7 +3520,9 @@ paths:
                     saved key may already act for (`GET /connections/{id}/saved-access`)
                     is refused with `409` `saved_access_available`, before anything
                     is started; `true` signs in anyway. Never needed by an end
-                    user's widget token, which is never refused.
+                    user's widget token, which is never refused (it may be
+                    offered its own key by the domain check, but that is not
+                    a refusal yet).
       responses:
         '200':
           description: The URL to open, and what it runs
@@ -3194,7 +3558,7 @@ paths:
                     description: OVHcloud only, the region the consent was requested in.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
           description: >-
@@ -3253,7 +3617,16 @@ paths:
         `browser_reconnect_unavailable`, and a `provider` other than the key's
         own is a `400`. A reconnect link
         (`POST /connections/{id}:reconnect-link`) opens the hosted page in this
-        mode.
+        mode. A share link's token never starts one (`403` `forbidden`, before the
+        key is looked at): a share link sets a domain up and cannot renew the end
+        user's key. It starts a sign in only on a connection its sharer owned,
+        for a domain it is bound to (`token_wrong_end_user` otherwise). A key an
+        end user's own sign in made is renewed only by that end user's own
+        session: any other session is refused with `403` `forbidden` before it
+        starts (nothing is paid for and nobody signs in), such as a reconnect link
+        on a connection that names no end user while the key was made at a sign in
+        by a token that names one, an API key without the console's signed
+        forward, the console or a member.
 
 
         Returns the address of the popup page that shows the browser. Its
@@ -3597,18 +3970,40 @@ paths:
         Once the session has kept a lasting API key for the connection, the view
         carries `kept_key`: the key's `name`, the provider's `page` that deletes
         keys, its `rights` and when it ends (`expires_at`), so the last screen
-        can say which key was kept and where to remove it. A key that was made
-        and not kept is `left_key` instead.
+        can say which key was kept and where to remove it. When no key was made
+        because the provider's page still listed the row of one an earlier sign
+        in made for this account and the key stored for it was used,
+        `kept_key.reused` is `true` and the name is that key's. A key that was
+        made and not kept is `left_key` instead.
+
+
+        With an API key instead (the console's own call, on its signed
+        visitor forward, for the member who started it), the route answers an
+        account sign in's state instead of the popup's view
+        (`AccountSignInSession`): no live view address, no token, no domain.
+        While the key waits for the keep step (`key_ready`) it carries the
+        `zones` the key lists, what the key is (`key`) and when the wait ends
+        (`deadline`); after an end that left the key at the provider it carries
+        `left_key`. A session of another workspace or another member, a connect
+        session and an unknown id are all `404`, and a viewer is `403`. Any
+        other credential, an API key without the console's forward included, is
+        read as the popup's: a widget token, an agent token, the operator's key
+        and such an API key fail the token check (`401`). Reading it is not a
+        heartbeat.
       security:
         - browserSession: []
+        - apiKey: []
       parameters:
         - $ref: '#/components/parameters/BrowserSessionId'
       responses:
         '200':
-          description: The session as the popup may see it.
+          description: The session as the popup may see it, or an account sign in's state for the console.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BrowserSessionView' }
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/BrowserSessionView'
+                  - $ref: '#/components/schemas/AccountSignInSession'
         '401':
           description: '`browser_expired`: the token is wrong, expired, or for another session.'
           content:
@@ -3707,8 +4102,20 @@ paths:
         A `navigator.sendBeacon` cannot set headers, so this route (and
         `:event`) also accepts the token in the body, as `{"token": "..."}`
         with a content type of `text/plain` or JSON.
+
+
+        The member who started an account sign in may also cancel it with an
+        API key, on the console's signed visitor forward, in any state before
+        its end: this is how a sign in is abandoned at the list of domains. The
+        key the session made, if any, is dropped and named as `left_key` (the
+        name it was made with and the provider's page that deletes it); the
+        answer carries it. While a keep step is storing the key it is `409`
+        `browser_wrong_state`. The identity rules are those of the read above,
+        and an API key without the console's forward is read as the popup's
+        (`401`).
       security:
         - browserSession: []
+        - apiKey: []
         - {}
       parameters:
         - $ref: '#/components/parameters/BrowserSessionId'
@@ -3731,8 +4138,126 @@ paths:
                 type: object
                 properties:
                   state: { type: string }
+                  left_key:
+                    $ref: '#/components/schemas/LeftKey'
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /browser-sessions/{sid}:keep:
+    post:
+      operationId: keepBrowserSessionAccount
+      summary: Confirm the domains and keep the key of an account sign in
+      tags: [Provider accounts]
+      description: >-
+        **The console only**, for the member who started the account sign in
+        (`POST /provider-accounts:sign-in`). The key that waits (`key_ready`)
+        is kept as a provider account only now, in one step, for the domains
+        the person confirmed: `scope` is always named (`all` of the account's
+        domains, or `selected` ones), and each selected domain must be one the
+        key lists (`422` `domain_not_listed`). A call that is refused keeps
+        nothing and leaves the session waiting inside its ten minutes. The key
+        is claimed for the call, so a double press stores it once (`409`
+        `browser_wrong_state` for the second). A workspace an operator suspended
+        keeps nothing (`403` `workspace_suspended`) and the key still waits.
+
+
+        The account is the workspace's own, made by secure sign in in the
+        console (`origin: browser_agent`, `made_by.how: console_sign_in`), for
+        the application the sign in named, or for every application when it
+        named none. `access` is `continuous` (the default) or `one_time`; a
+        provider whose credential is used once and never kept (see
+        `POST /provider-accounts`) is `one_time` only (`422`
+        `use_once_credential`). `application_ids` shares the key with other
+        applications of the workspace (decision D5): an admin or an owner only
+        (`403`), every id one of the workspace's (`404` otherwise), and a key
+        for every application takes none (`422` `serves_every_application`).
+
+
+        When the workspace already holds a continuous key for the same provider
+        account, for the same application, the new key is swapped into that
+        account instead of adding a row: the answer is `200` with `swapped:
+        true`, the replaced key is named for deletion by hand on the account
+        (`agent_key.old_key`) and in the answer (`replaced_key`: its name and
+        the provider's page that deletes it), and the domains chosen join its
+        scope and never narrow it. Every swap takes an admin, an owner or the
+        member who connected the account, as replacing the key by `POST
+        /provider-accounts/{id}/reconnect` does: another member's keep is `403`
+        whether or not it widens the account, and the key still waits, so the
+        member can cancel the sign in and be told which key to delete. The two
+        keys carry different names (an account sign in names its key to the
+        second), so the one to delete is never the one in use. GoDaddy is the
+        exception until its written permission is on file: its second sign in
+        adds a second row. Every account made, swapped or shared is in the audit
+        log (`provider_account.created`, `.key_replaced` with the name of the
+        key it replaced as `old_key_name`, `.updated`, `.shared`).
+
+
+        A sign in that renews an account (`POST /provider-accounts/{id}/reconnect`
+        with `method` `secure_sign_in`; the session's `renews_account_id` names the
+        account) is kept with an empty body, `{}`: the key swaps into that account's
+        own row and the account keeps its domains, scope, access and applications, so
+        a body that names `scope`, `domains`, `access` or `application_ids` is `400`
+        (the account is changed by `PATCH /provider-accounts/{id}`). It is refused,
+        keeping the key pending, with `404` for an account removed meanwhile, `403`
+        for a member who no longer manages it, `422` `different_account` for a
+        key of another provider account (`domains`, when the proof was the list,
+        names the domains the account holds that the new key does not list), and
+        `422` `account_not_verifiable` for an account that holds no domain and has
+        no account number to compare the key with (remove it and add it again with a
+        new sign in).
+
+
+        A session of another workspace or member, a connect session and an
+        unknown id are `404`; a session that is not waiting for the keep step is
+        `409`, and one whose ten minutes passed `410`.
+      security:
+        - apiKey: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: "`scope` is required to add an account; a sign in that renews one takes no field."
+              properties:
+                scope: { type: string, enum: [all, selected] }
+                domains:
+                  type: array
+                  maxItems: 500
+                  items: { type: string }
+                  description: "With `selected`: at least one domain the key lists. With `all`: none."
+                access: { type: string, enum: [continuous, one_time], default: continuous }
+                application_ids:
+                  type: array
+                  maxItems: 100
+                  items: { type: string }
+                  description: "The whole set of other applications the key is shared with. Left out, a new account is shared with none and an existing one keeps its shares."
+      responses:
+        '200':
+          description: "The key was swapped into an account that already existed: the one the workspace held for this provider account, or the one a renewal sign in is for."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountKept' }
+        '201':
+          description: The account was made.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountKept' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '422':
+          description: "`domain_not_listed`, `use_once_credential`, `serves_every_application`, or for a renewal `different_account` (the key is another provider account's) or `account_not_verifiable` (nothing to compare the key with)."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DomainsRefusedError' }
+        '503': { $ref: '#/components/responses/Error' }
   /browser-sessions/{sid}:finish-manual:
     post:
       operationId: finishManualBrowserSession
@@ -4211,6 +4736,14 @@ paths:
 
         A delegated agent token needs `domains:connect` and starts the setup of
         its own application's connections.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4288,7 +4821,7 @@ paths:
                   rail: { type: string, description: '"async" on the managed rail; omitted on the sync rail.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '422':
           description: >-
@@ -4325,6 +4858,14 @@ paths:
         connection's own application or an API key for a connection of any
         application in its tenant (a member's key needs a role that operates
         apps), like `route53-role:complete`.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4351,7 +4892,7 @@ paths:
               schema: { $ref: '#/components/schemas/Route53RoleStart' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/route53-role:complete:
@@ -4381,6 +4922,14 @@ paths:
         record holds the name with a type the needed record cannot share;
         delete or change it in the Route 53 console), all 422, and
         `route53_unavailable` (503, nothing was changed, try again).
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4406,7 +4955,7 @@ paths:
               schema: { $ref: '#/components/schemas/Route53RoleComplete' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
@@ -4449,6 +4998,47 @@ paths:
         application, and the teammate's flow then connects the domain into that
         application. A member's key needs a role that operates apps. A widget
         JWT always shares for its own application.
+
+
+        **Whose end user the recipient is.** The recipient's widget token names
+        the end user the sharer is, recorded when the link is made and never
+        worked out from the domain when it is opened. A widget token shares as
+        its own `end_user_ref` (none when it names none). An API key or an
+        app-scoped token shares as the `end_user_ref` of the application's
+        connection for the one domain the link names, and as no end user when
+        there is no connection for it yet, the connection names none, or the
+        link names several domains or none. A connection that names an end user
+        answers only a widget token that names the same one, so this is what lets
+        the recipient reach the connection the link was made for; another end
+        user who shares this one's domain gets a token that names itself and is
+        still refused on it. A `prefill` key the control plane records this in is
+        dropped from the caller's prefill and never read back.
+
+
+        **What a widget token may share.** Only a domain whose connection in the
+        application its own token owns, by the rule every managed DNS route
+        applies: a connection that names the token's `end_user_ref`; one that
+        names no end user when the token is bound to that domain; and, for a token
+        that names no end user and is bound to no domain, the connection of the
+        domain it is asked about, since it counts only that connection as its own
+        (a token with an `end_user_ref` and no bound domain owns none that names
+        no end user). Any other shared domain is refused with `403`
+        `token_wrong_end_user` and no link is made. A domain with no connection
+        yet can be shared.
+
+
+        **What the recipient owns and reaches.** One rule: the recipient owns
+        exactly what the sharer owned, and may touch only the shared domains. It
+        owns the sharer's end user and the domains the sharer's own binding made
+        its own, recorded when the link is made, and never the shared domains it
+        is bound to: a link made by a token that names no end user and is bound to
+        none owns each connection by itself, so a zone that links several of the
+        shared domains is not its own. It reaches the shared domains, intersected
+        with the sharer's binding when the sharer was bound: an end user that is
+        bound to no domain, sharing one of its domains, gives a token that reaches
+        that domain and none of its others. A link made by the platform's API key
+        or an app-scoped token owns by the end user of the connection it names (or
+        none) and reaches the shared domains.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -4515,7 +5105,16 @@ paths:
                     description: Present when recipient_email was given but the email could not be sent. The link is still valid.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden` (the token is bound to a different domain, or its role
+            cannot write connections) or `token_wrong_end_user` (a widget token
+            that does not own the connection of a domain it asks to share: the
+            connection names another end user, or names none while the token is
+            not bound to that domain; no link is made).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '429':
           description: Share-by-email cap reached (`rate_limited`); no link was minted.
@@ -5042,6 +5641,34 @@ paths:
         no bearer is required. Returns the stored `prefill` so a teammate's widget
         can resume the flow. A share token EXPIRES 30 days after it is minted;
         unknown OR expired tokens are indistinguishable and both return `404`.
+
+
+        The `widget_token` it answers reaches only the shared domains
+        (intersected with the sharer's binding when the sharer was bound) and
+        owns exactly what the sharer owned: the sharer's end user and the domains
+        the sharer's own binding made its own, never the shared domains it is
+        bound to (`createSharedFlow`). So it sets the connection the link was made
+        for up as the end user would (the secure sign in, managed DNS, a
+        nameserver move, the monitoring reads), and acts on a connection that
+        names no end user only when the sharer could have (a link from a sharer
+        that names no end user and is bound to no domain may start the secure
+        sign in on the connection it owns, the one a call is about). A link made
+        before the sharer was recorded (before this release), and one whose shared
+        domains are all outside the sharer's binding, mints no `widget_token`; the
+        first is answered `404` like an expired link, whose answer the console
+        words as "invalid or expired, ask for a fresh link". A reconnect link is
+        the end user's own and keeps working, except that one whose key was
+        replaced by another, or whose connection is gone, now answers `404` too
+        (it used to open the plain flow). A share link is a credential for that
+        one setup, not the end user, so it
+        never removes the domain (`403` `forbidden`, on every connection), never
+        sets the end user's contact address (on any connection), is never offered
+        the end user's kept keys (saved access) and is not the maker of a key as
+        the end user: a key made at a sign in it starts is not the end user's own
+        for saved access, and is never swapped into a key row the end user
+        already keeps, and its sign in is never in reconnect mode (`403`
+        `forbidden`: it cannot renew the end user's key). A reconnect link's
+        token stays the end user.
       security: []
       parameters:
         - { name: token, in: path, required: true, schema: { type: string } }
@@ -6107,6 +6734,14 @@ paths:
       description: >-
         The control-plane's read-mirror of the edge certificate store for this
         connection's domain. `404` when no certificate is tracked yet.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6121,6 +6756,7 @@ paths:
                 properties:
                   certificate: { $ref: '#/components/schemas/Certificate' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     delete:
@@ -6149,6 +6785,14 @@ paths:
         Advisory: a certificate is only issuable once the domain points at the
         edge (connection `live` or `propagating`). The widget/console uses this
         to gate the provision button.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6160,6 +6804,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Eligibility' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/ssl:provision:
@@ -6295,6 +6940,13 @@ paths:
       operationId: getConnectionPower
       summary: Read a connection's Power (edge reverse-proxy) configuration
       tags: [Power]
+      description: >-
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6309,6 +6961,7 @@ paths:
                 properties:
                   power: { $ref: '#/components/schemas/PowerConfig' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     post:
@@ -6502,6 +7155,14 @@ paths:
       description: >-
         Power needs the domain pointing at the edge (connection `live` or
         `propagating`) so the reverse proxy receives its traffic.
+
+
+        A widget token must be the connection's end user: a connection that
+        names another end user than the token's `end_user_ref`, or names one
+        while the token names none, answers `403` `token_wrong_end_user`
+        before anything is read or changed, and a connection that names none
+        is any token's. An API key, an app-scoped token and a delegated
+        agent token are not limited by it.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -6513,6 +7174,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Eligibility' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/power:repower:
@@ -6670,11 +7332,13 @@ paths:
         `use_once_credential`.
 
 
-        Anyone whose role operates applications may connect a key, read the
-        accounts and revoke one. Changing an account's access, scope or
-        domains, listing the domains its key reaches, connecting domains with
-        it and replacing its key take an admin, an owner or the member who
-        connected it (`can_manage`). Every change is recorded in the audit log
+        Anyone whose role operates applications may connect a key and read the
+        accounts. Changing an account's access, scope or domains, listing the
+        domains its key reaches, connecting domains with it, replacing its key,
+        renewing it by signing in again and removing it take an admin, an owner
+        or the member who connected it (`can_manage`); a key a customer's sign-in
+        made, which no member connected, is managed by an admin or an owner
+        alone. Every change is recorded in the audit log
         (`provider_account.*`, `GET /audit`).
       security:
         - apiKey: []
@@ -6733,8 +7397,9 @@ paths:
         The workspace's provider accounts with their access mode, the domains
         they cover, when they were last used and when they expire, whether
         the caller may manage each one (`can_manage`), what needs the person
-        (`needs_you`), how each key was made and by whom (`made_by`) and who
-        enforces its limit (`enforced_by`); and, in `kept_access`, the
+        (`needs_you`), what the last check of its key found (`health`), how
+        each key was made and by whom (`made_by`) and who enforces its limit
+        (`enforced_by`); and, in `kept_access`, the
         sign-ins and Domain Connect authorizations kept per domain, grouped
         by provider. A kept sign-in is stopped per domain with `DELETE
         /connections/{id}/grant`. A viewer reads them without
@@ -6866,6 +7531,102 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { description: "An agent token without `domains:read`, or `?application_id=` naming another application than the agent grant's" }
         '404': { description: "`?domain=` with an `application_id` (or an API key's own application) of another workspace, or none" }
+  /provider-accounts:sign-in:
+    post:
+      operationId: startProviderAccountSignIn
+      summary: Add a provider account by secure sign in (the console only)
+      tags: [Provider accounts]
+      description: >-
+        **The console only.** Starts the secure sign in that adds a provider
+        account with no domain: the person signs in to the provider in a
+        temporary browser, the agent makes a lasting API key on the provider's
+        own key page, and CustomDomain™ checks the key by listing the domains it
+        reaches. The key then waits in memory for the keep step, which makes the
+        account only after the person confirmed which of those domains it may
+        use (`POST /browser-sessions/{sid}:keep`, within ten minutes). Nothing
+        is kept before that: no `provider_accounts` row exists, and a sign in
+        that is abandoned or left to run out names the key it made so the person
+        can delete it at the provider (`left_key`).
+
+
+        Only the console's own call starts one: an API key that carries the
+        console's signed visitor forward, naming the person signed in to it.
+        The `X-CustomDomain-Client` header and the `Origin` are labels any key
+        holder can send, so neither counts alone, and a widget token, an end
+        user's token, a delegated agent token and the operator's key are
+        refused with `403` `browser_account_unavailable`. The caller must also
+        hold a role that operates applications (an owner, an admin or a member;
+        a viewer is `403` `forbidden`), and the request must carry an `Origin`
+        on the server's return origin allowlist, as `browser:start` requires. A
+        workspace an operator suspended starts none, as it starts no other
+        cloud browser (`403` `workspace_suspended`).
+
+
+        Only a provider whose key can be made at sign in and whose domains can
+        be listed qualifies (`account_ways` of `GET /providers` names `secure_sign_in`
+        for it); any other is `403` `browser_provider_not_allowed` or `409`
+        `browser_account_unavailable`. One sign in at a time runs for a member
+        and a provider (`409` `browser_session_active`), and three start an hour.
+
+
+        Returns the address of the popup page, whose fragment carries a single
+        use bootstrap code that no server sees; the popup trades it at
+        `POST /browser-sessions:redeem`. The answers of every call about the
+        session are `Cache-Control: no-store`.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, return_origin, consent_version]
+              properties:
+                provider: { type: string, description: "The provider id. An account has no domain to detect it from." }
+                application_id:
+                  type: string
+                  description: >-
+                    The application the key is for, one of the workspace's own
+                    live applications (a test mode application is refused, and
+                    another workspace's is `404`). Left out, the key serves the
+                    whole workspace and takes no share.
+                return_origin: { type: string, description: Web origin the popup posts its result to; must be on the server's allowlist. }
+                consent_version:
+                  type: string
+                  enum: [cb-1, cb-2, cb-3, cb-4]
+                  description: The id of the consent text the person was shown, as for `browser:start`.
+                locale: { type: string, description: The language the popup reads in, a plain code such as `en`. Defaults to `en`. }
+                viewport_hint:
+                  type: object
+                  description: The size of the popup's live area, used as for `browser:start`.
+      responses:
+        '201':
+          description: The sign in started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, popup_url]
+                properties:
+                  session_id: { type: string, description: "The session id, `bs_` and 32 hex characters." }
+                  popup_url: { type: string, format: uri, description: "The popup page; its fragment holds the single use bootstrap code." }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `browser_account_unavailable` (not the console's own call, or not
+            a caller that may), `browser_customer_present_only` (no known
+            `Origin`), `browser_provider_not_allowed`, `sandbox_not_allowed` (a
+            test mode application) or `forbidden` (a viewer).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:
     get:
       operationId: getProviderAccount
@@ -6874,6 +7635,17 @@ paths:
       description: >-
         A viewer reads it without `agent_key.account` and
         `agent_key.session_id`.
+
+
+        For whoever manages the account (`can_manage`, and never a viewer), it
+        also carries `more_domains`: the domains the key lists at the provider
+        that the workspace has not connected, to offer them with `POST
+        /provider-accounts/{id}/connect`. Listing them is a use of the key, so
+        it is asked of the provider on this read (kept for a minute) and left
+        out for anyone else, for a key an end user's secure sign-in made, and
+        for an account with no usable key. The read changes nothing: a key the
+        provider refuses, or a list that fails, leaves `more_domains` out and
+        the account as it was.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6898,13 +7670,50 @@ paths:
         the key now. Switching to `continuous` needs the key still held.
         Changing `access`, `scope` or `domains` takes an admin, an owner or the
         member who connected the account (`403` otherwise); the label is
-        anyone's who operates applications. A key an end user's secure sign-in
-        made in the widget is never widened: a change that adds a domain or
-        sets `scope` to `all` answers `403`, whoever asks; renaming, narrowing
-        and revoking still work. `continuous` access for a credential that is
-        used once and never kept answers `422` `use_once_credential`. A change
-        is recorded in the audit log (`provider_account.updated`, with the
-        label, access, scope, domains and applications before and after).
+        anyone's who operates applications. `continuous` access for a credential
+        that is used once and never kept answers `422` `use_once_credential`. A
+        change is recorded in the audit log (`provider_account.updated`, with
+        the label, access, scope, domains and applications before and after).
+
+
+        What each kind of account allows when `scope` or `domains` widens it
+        (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
+        provider, for every kind, with one exception: a key made at a secure
+        sign-in that goes from `all` back to `selected` has each domain it names
+        that the account does not already hold read first (at most 20 a call,
+        `400` `too_many_domains_to_check` beyond). A change that is refused stores
+        nothing.
+
+
+        `pasted`: any scope and any domains. The person chose the key and what it
+        is used for, so nothing is read at the provider; connecting a domain the
+        key cannot write is what finds it.
+
+
+        `console_sign_in`, a key made at a secure sign-in a member started in the
+        console: it widens only to domains the key reaches at the provider. Each
+        domain added is read with the key, by its zone, before anything is
+        stored. A call that names a domain the key does not reach answers `422`
+        `zone_not_reached`, naming those domains in `domains`, and stores nothing,
+        not even the domains that were reached. A failure that says nothing about
+        the key (a timeout, a `5xx`) answers `503` and stores nothing. At most 20
+        new domains are read in one call (`400` `too_many_domains_to_check`), and
+        an account that no longer holds its key answers `409`. Setting `scope`
+        to `all` has no domain to read, so it needs the provider to list the
+        domains a key reaches and this key to list them now: a provider that
+        cannot answers `422` `scope_all_needs_list` (add the domains instead),
+        and a key the provider refuses answers `422` `ProviderAuthenticationError`.
+        The scope `all` is no way round the read of a domain: while it is `all`,
+        a domain named that the account does not already hold in `domains` is read
+        too, whether the call keeps `all` or goes back to `selected`. The change is
+        written on the account as it is after the reads, so a renewal that landed
+        meanwhile is kept; an account that lost its key, or whose change no longer
+        matches what was read, answers `409` and nothing is written.
+
+
+        `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
+        is never widened, whoever asks. A change that adds a domain or sets `scope`
+        to `all` answers `403`; renaming, narrowing and removing still work.
 
 
         `application_ids` is the whole set of other applications of the
@@ -6937,10 +7746,20 @@ paths:
               properties:
                 label: { type: string }
                 access: { type: string, enum: [continuous, one_time] }
-                scope: { type: string, enum: [all, selected] }
+                scope:
+                  type: string
+                  enum: [all, selected]
+                  description: "`all` widens a `selected` account; for a key made at a secure sign-in it needs the provider to list the key's domains (`422` `scope_all_needs_list`)."
                 domains:
                   type: array
                   items: { type: string }
+                  description: >-
+                    The whole set of domains a `selected` account may use. A domain it
+                    does not hold yet widens the account; for a key made at a secure
+                    sign-in each such domain must be one the key reaches (`422`
+                    `zone_not_reached`, at most 20 new ones a call). For an account
+                    on `all` that is any domain not already in its `domains`, also
+                    when the call goes back to `selected`.
                 application_ids:
                   type: array
                   maxItems: 100
@@ -6962,7 +7781,15 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
-        '422': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            `zone_not_reached` (a domain added is not one the key reaches; `domains`
+            names them), `scope_all_needs_list`, `serves_every_application`,
+            `use_once_credential` or `ProviderAuthenticationError`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DomainsRefusedError' }
+        '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
       summary: Revoke an account
@@ -6970,10 +7797,17 @@ paths:
       description: >-
         Deletes the key and the account. Its domains stay connected and
         served, without continuous access; each domain's timeline records it.
-        For a lasting API key the cloud browser's agent made, this deletes
-        CustomDomain™'s copy only: the key lives at the provider until it is
-        revoked there, at `revoke_url`, and the application receives
-        `credential.removed`.
+        The answer says what that leaves: `used_by` is how many domains used the
+        account, and `revoke_url` is the provider's page where the key itself is
+        deleted. It deletes CustomDomain™'s copy only, for a key a person pasted
+        as for a lasting API key the cloud browser's agent made: the key lives at
+        the provider until it is deleted there (no provider documents an API that
+        revokes one), and the application receives `credential.removed` for a key
+        the agent made. Removing an account takes whoever manages it, like every
+        other change to it: an admin, an owner or the member who connected it
+        (`can_manage`), and for a key a customer's secure sign-in made, which no
+        member connected, an admin or an owner. Anyone else, a viewer included, gets
+        `403`, and nothing is deleted or detached.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -6987,11 +7821,15 @@ paths:
                 properties:
                   id: { type: string }
                   revoked: { type: boolean }
-                  domains_kept_connected: { type: integer }
+                  used_by: { type: integer, description: "How many domains used the account. They stay connected, each with a timeline event, without continuous access." }
+                  domains_kept_connected: { type: integer, description: "The same number as `used_by`, kept for older integrations." }
                   revoke_url:
                     type: string
                     format: uri
-                    description: For a key the agent made, the provider's page where the key itself is revoked.
+                    description: >-
+                      The provider's page where the key itself is deleted: the page the
+                      agent's own sign-in named for a key it made, else the provider's
+                      key page. Absent when the provider has none on file.
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -7037,9 +7875,22 @@ paths:
       summary: Connect domains with the account
       tags: [Provider accounts]
       description: >-
-        Creates a connection for each domain under the application and writes
+        Creates a connection for each domain under its application and writes
         its records with the account's key (keeping the CAA and TXT values
-        already there and recording what each write replaced). Each domain is
+        already there and recording what each write replaced).
+
+
+        A domain goes into the application named for it, else the call's
+        `application_id`, else the application that already holds it in the
+        workspace (its own connection's, so a domain the workspace already
+        serves is linked where it lives). A domain none of those names answers
+        `400`, and so does one two applications hold; so does a domain named
+        for two different applications. A call takes at most 200 domains (a
+        domain named twice is one; `400` beyond). Every application used must
+        be the workspace's (`404` otherwise) and one the key serves, and every
+        domain must be inside the key's scope: a call that is refused for any
+        of this changes nothing, because all of it is checked before the first
+        write. Each domain is
         linked to the account once its records are written; a domain whose
         write fails is not linked and keeps the access it had. A continuous
         account then keeps the linked domains in sync. A domain the
@@ -7057,12 +7908,19 @@ paths:
         applications an admin shared it with (`application_ids`); naming any
         other application's id answers `403` (this key is not shared with this
         application; an admin or an owner can share it). A domain outside the
-        key's scope answers `400`, except for a key a member of the
-        workspace made at a sign in started in the console (the console's
-        signed call, not an API key that names the console): when a read of
-        the domain's zone with the key works, the domain is connected with no
-        new sign in, and the zone is added to the key's scope once a write
-        there works (`provider_account.domain_added` in the audit log). A key
+        key's scope answers `400`, naming the domains, except for a key a
+        member of the workspace made at a sign in started in the console (the
+        console's signed call, not an API key that names the console): when a
+        read of the domain's zone with the key works, the domain is connected
+        with no new sign in, and the zone is added to the key's scope once a
+        write there works (`provider_account.domain_added` in the audit log).
+        A zone the key does not reach answers `422` `zone_not_reached`, naming
+        the domains, and a provider that cannot say (a timeout, a `5xx`)
+        answers `503`, never a refusal of the key: the same two answers
+        `PATCH /provider-accounts/{id}` gives, with nothing written. A call
+        reads at most 20 such zones, one read for each, and answers `400`
+        `too_many_domains_to_check` before the first read beyond that;
+        `PATCH /provider-accounts/{id}` is the other way to widen a scope. A key
         an end user's secure sign-in made in the widget, or one a sign in
         started through the API made, answers `403`: it connects domains only
         through that end user's own widget session. A domain the
@@ -7078,12 +7936,31 @@ paths:
           application/json:
             schema:
               type: object
-              required: [application_id, domains]
+              required: [domains]
               properties:
-                application_id: { type: string }
+                application_id:
+                  type: string
+                  description: >-
+                    The application for a domain that names none of its own.
+                    Leave it out when every domain names its own or is already
+                    held by an application of the workspace: that application is
+                    the default.
                 domains:
                   type: array
-                  items: { type: string }
+                  description: >-
+                    The domains to connect, at most 200. Each is a name, or an
+                    object naming the application that one domain goes into.
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: object
+                        required: [domain]
+                        additionalProperties: false
+                        properties:
+                          domain: { type: string }
+                          application_id:
+                            type: string
+                            description: The application this domain goes into, one the key serves.
                 www_redirect: { type: boolean }
       responses:
         '200':
@@ -7102,6 +7979,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}/reconnect:
     post:
@@ -7109,19 +7987,47 @@ paths:
       summary: Give an account a new key
       tags: [Provider accounts]
       description: >-
-        For an account the provider stopped accepting, or a one time account
-        whose key was deleted. Everything is checked before anything is kept:
-        the access mode, then the key (listing the provider's domains, or
-        reading `check_domain`, a selected domain or a domain the account
-        connected, for a provider that cannot list them), and for a `selected`
-        account that the key reaches every selected domain. `params` sent
-        with the key replace the kept ones. Takes an admin, an owner or the
-        member who connected the account. A key made at a secure sign-in
-        answers `409`: it is renewed by signing in again (the reconnect mode of
-        the sign-in), not by pasting a key. `continuous` access (asked, or the
-        account's own) for a credential that is used once and never kept
-        answers `422` `use_once_credential`; send `access` `one_time`. The new
-        key is recorded in the audit log (`provider_account.key_replaced`).
+        A new key for an account, in one of two ways (`method`). Both take an
+        admin, an owner or the member who connected the account (`403`
+        otherwise), and the key is recorded in the audit log
+        (`provider_account.key_replaced`).
+
+
+        `api_key` (the default), for a key a person pasted: for an account the
+        provider stopped accepting, or a one time account whose key was deleted.
+        Everything is checked before anything is kept: the access mode, then the
+        key (listing the provider's domains, or reading `check_domain`, a selected
+        domain or a domain the account connected, for a provider that cannot list
+        them), and for a `selected` account that the key reaches every selected
+        domain. `params` sent with the key replace the kept ones. A key made at a
+        secure sign-in answers `409`: it is renewed by signing in again, not by
+        pasting a key. `continuous` access (asked, or the account's own) for a
+        credential that is used once and never kept answers `422`
+        `use_once_credential`; send `access` `one_time`.
+
+
+        `secure_sign_in`, for a key made at a secure sign-in a member started in
+        the console: starts the same account sign in as
+        `POST /provider-accounts:sign-in`, for the account's own provider and
+        application, and answers `201` with `session_id` and `popup_url`. The new
+        key swaps into this same account when the person keeps it
+        (`POST /browser-sessions/{sid}:keep` with an empty body), so the account
+        keeps its id, its domains, its scope and the domains linked to it; only
+        its key changes, it is active again with its daily check started afresh, and
+        the key it replaces is named for deletion at the provider (`replaced_key`).
+        It is the console's own call (an API key on the signed visitor forward, `403`
+        `browser_account_unavailable` otherwise) and takes the sign in's body
+        (`return_origin`, `consent_version`, `locale`, `viewport_hint`) and no key. A
+        key a person pasted is renewed by pasting (`409`), and a key a customer's own
+        secure sign-in made is renewed by that customer, never from the console
+        (`403`). The keep refuses a key of another provider account (`422`
+        `different_account`): where the provider names the account, the two must be
+        the same; where it does not (IONOS), the new key must list every domain the
+        account holds. An account that holds no domain and has no account number
+        gives nothing to compare, so its renewal is refused (`422`
+        `account_not_verifiable`): remove the account and add it again with a new
+        sign in. The refused key stays pending and is named for deletion when the
+        sign in is cancelled.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7131,32 +8037,131 @@ paths:
           application/json:
             schema:
               type: object
-              required: [credential]
               properties:
-                access: { type: string, enum: [continuous, one_time] }
+                method:
+                  type: string
+                  enum: [api_key, secure_sign_in]
+                  default: api_key
+                  description: "How the key is renewed. `api_key` takes `credential` (required then); `secure_sign_in` takes the sign in's fields and no key."
+                access: { type: string, enum: [continuous, one_time], description: "`api_key` only." }
                 check_domain:
                   type: string
-                  description: A domain the key manages, read to check the key when the provider cannot list its domains.
+                  description: "`api_key` only: a domain the key manages, read to check the key when the provider cannot list its domains."
                 credential:
                   type: object
                   required: [token]
+                  description: "`api_key` only, and required for it."
                   properties:
                     token: { type: string }
                     params: { type: object, additionalProperties: { type: string } }
+                return_origin: { type: string, description: "`secure_sign_in` only, required: web origin the popup posts its result to; must be on the server's allowlist." }
+                consent_version:
+                  type: string
+                  enum: [cb-1, cb-2, cb-3, cb-4]
+                  description: "`secure_sign_in` only, required: the id of the consent text the person was shown, as for `browser:start`."
+                locale: { type: string, description: "`secure_sign_in` only: the language the popup reads in. Defaults to `en`." }
+                viewport_hint:
+                  type: object
+                  description: "`secure_sign_in` only: the size of the popup's live area, used as for `browser:start`."
       responses:
         '200':
-          description: The account
+          description: The account (`api_key`).
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   account: { $ref: '#/components/schemas/ProviderAccount' }
+        '201':
+          description: The sign in started (`secure_sign_in`).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, popup_url]
+                properties:
+                  session_id: { type: string, description: "The session id, `bs_` and 32 hex characters." }
+                  popup_url: { type: string, format: uri, description: "The popup page; its fragment holds the single use bootstrap code." }
         '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden` (a viewer, a member who did not connect the account, or a
+            key a customer's own sign in made, for `secure_sign_in`),
+            `browser_account_unavailable` (`secure_sign_in` from anything but the
+            console's own call), `browser_provider_not_allowed` or
+            `workspace_suspended`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /provider-accounts/{id}:check:
+    post:
+      operationId: checkProviderAccount
+      summary: Check an account's key now
+      tags: [Provider accounts]
+      description: >-
+        Reads the account's key against its provider right now: the same one
+        cheap call as the daily check (the provider's domain list where it
+        gives one, else a read of one domain the account covers), and its
+        verdict is recorded the same way. Nothing is written at the provider.
+        The answer is the account, with its `health`, and `result`: `ok` (the
+        provider accepted the key), `refused` (the provider refused it: the
+        account is now `needs_reconnect`, with a timeline event for each domain
+        it covers and an inbox item, once), or `unreachable` (the provider
+        could not be asked or answered with an error that is not a refusal;
+        `message` says what, and the failure counts toward the backoff and
+        toward `needs_you` `check_failed`).
+
+
+        A pasted key the provider had refused that works again returns to
+        `active`, recorded in the audit log as `provider_account.updated`
+        (`status` before and after, `via` `check_now`). A key a secure
+        sign-in made keeps its status: it is renewed by signing in again.
+
+
+        Takes the workspace's API key and an admin, an owner or the member who
+        connected the account (`403` otherwise). A key an end user's own
+        sign-in made is never used for it (`403`), and a one time key is used
+        once and never checked (`409`). An account whose provider cannot list
+        its domains and which covers none answers `409` `nothing_to_check`.
+        One check a minute for an account: a second answers `429`
+        `rate_limited` with `Retry-After: 60`.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The account after the check, and what the check found.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account, result]
+                properties:
+                  account: { $ref: '#/components/schemas/ProviderAccount' }
+                  result:
+                    type: string
+                    enum: [ok, refused, unreachable]
+                    description: What the check found.
+                  message:
+                    type: string
+                    description: For `unreachable`, the provider's own words, on one line.
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '409': { description: "The account holds no key, it is a one time account, nothing could be read the key against (`nothing_to_check`), or it changed while it was checked" }
+        '429':
+          description: "`rate_limited`: this account's key was checked less than a minute ago."
+          headers:
+            Retry-After: { schema: { type: integer }, description: "Seconds until the key can be checked again." }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /providers/{provider}/zones:list:
     post:
@@ -7821,6 +8826,29 @@ components:
             code: workspace_suspended
             title: This workspace is suspended.
             details: "New domains, connect steps and domain purchases are refused while CustomDomain™ support has this workspace suspended. Contact support to have it resumed."
+    ForbiddenOrWrongEndUser:
+      description: >-
+        `forbidden`: the credential may not do this. `token_wrong_end_user`: a
+        widget token that is not this connection's end user (the connection names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none); nothing is read or changed, and the answer shows
+        nothing of the connection. Mint the token with the end user's
+        `end_user_ref`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ForbiddenSuspendedOrWrongEndUser:
+      description: >-
+        `forbidden`: the credential may not do this. `workspace_suspended`: see
+        the `ForbiddenOrSuspended` response. `token_wrong_end_user`: a widget
+        token that is not this connection's end user (the connection names
+        another end user than the token's `end_user_ref`, or names one while the
+        token names none); nothing is read, written or changed, and the answer
+        shows nothing of the connection. Mint the token with the end user's
+        `end_user_ref`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     BillingRequired:
       description: >-
         Refused because of the workspace's billing. `billing_required`: the
@@ -7906,6 +8934,21 @@ components:
         - type: object
           properties:
             order: { $ref: '#/components/schemas/SellOrderView' }
+    DomainsRefusedError:
+      description: >-
+        The error envelope of a refusal that is about domains the caller named, plus
+        those domains: `zone_not_reached` of `PATCH /v1/provider-accounts/{id}` (the
+        domains added that the key does not reach) and `different_account` of
+        `POST /v1/browser-sessions/{sid}:keep` for a renewal (the domains the
+        account holds that the new key does not list).
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            domains:
+              type: array
+              items: { type: string }
+              description: The domains the refusal is about. Absent for any other refusal.
     Environment:
       type: string
       enum: [production, staging, development]
@@ -9000,12 +10043,16 @@ components:
           properties:
             reason:
               type: string
-              enum: [refused, expired, expiring, one_time_window, no_domains]
+              enum: [refused, expired, check_failed, expiring, one_time_window, no_domains]
               description: >-
                 `refused`: the provider refused the key; reconnect it or
                 remove the account. `expired`: the key reached its end, or a
-                one time window passed with the key unused. `expiring`: a key
-                made at a sign-in ends within 30 days (`until`).
+                one time window passed with the key unused. `check_failed`:
+                the daily check of the key failed three times in a row
+                without the provider refusing it (a timeout, a server error,
+                a domain the key no longer reads); the key may still work, and
+                `POST /provider-accounts/{id}:check` tries it now. `expiring`:
+                a key made at a sign-in ends within 30 days (`until`).
                 `one_time_window`: a one time key waits for its domains to be
                 connected, until `until`. `no_domains`: a continuous key the
                 workspace holds that no domain uses.
@@ -9013,6 +10060,33 @@ components:
               type: string
               format: date-time
               description: When the key ends (`expiring`) or the one time window closes (`one_time_window`).
+        health:
+          type: object
+          description: >-
+            What the last check of the key found. The lifecycle sweep reads
+            each continuous account's key once a day, and
+            `POST /provider-accounts/{id}:check` does it on request. Absent for
+            a one time account and for one that holds no key. It names no one
+            and no domain, so a delegated agent token reads it as a member
+            does.
+          required: [state, failures]
+          properties:
+            state:
+              type: string
+              enum: [ok, failing, refused, unchecked]
+              description: >-
+                `ok`: the last check worked. `failing`: the last check or more
+                reached no verdict (the account joins `needs_you` as
+                `check_failed` from the third in a row). `refused`: the
+                provider refused the key. `unchecked`: no check has run yet.
+            checked_at:
+              type: string
+              format: date-time
+              description: When the key was last read against its provider; absent until then.
+            failures:
+              type: integer
+              minimum: 0
+              description: How many checks in a row reached no verdict. The daily check backs off after each (1, 4, 12, 24, then 48 hours).
         made_by:
           type: object
           description: How the key was made and by whom.
@@ -9044,6 +10118,24 @@ components:
             policy on Route 53). `customdomain`: the key reaches the whole
             account at the provider, and CustomDomain™ uses it only for the
             domains in the scope.
+        more_domains:
+          type: array
+          items: { type: string }
+          description: >-
+            The domains the key lists at the provider that the workspace has
+            not connected, sorted: "This account holds 11 more domains".
+            A domain counts as connected when the workspace has a connection
+            for it or for a name under it, in any application; a failed
+            connection and a test mode one count for nothing. Only on `GET
+            /provider-accounts/{id}` and on the answer of a secure sign-in's
+            keep (`POST /browser-sessions/{sid}:keep`), and only for whoever
+            manages the account (`can_manage`; never a viewer): listing a key's
+            domains is a use of the key. It lists domains outside the account's
+            scope too, which a connect refuses until the scope covers them.
+            Empty for a provider that cannot list the domains of a key. Absent
+            for anyone else, on the list, for a key an end user's secure sign-in
+            made, for an account with no usable key, and when the provider
+            could not be asked.
         id: { type: string }
         kind: { type: string, enum: [api_key] }
         provider: { type: string }
@@ -9827,7 +10919,7 @@ components:
         id: { type: string }
         state:
           type: string
-          enum: [created, awaiting_sign_in, checking, plan_ready, applying, verifying, manual_assist, done, done_manual, cancelled, expired, abandoned, failed]
+          enum: [created, awaiting_sign_in, checking, plan_ready, applying, verifying, manual_assist, key_ready, done, done_manual, cancelled, expired, abandoned, failed]
         provider: { type: string }
         provider_name: { type: string }
         vendor: { type: string, description: "The browser hosting company." }
@@ -9946,6 +11038,16 @@ components:
                 `rails.cloud_browser.key.rights`: empty for a key that reaches
                 DNS only.
             expires_at: { type: string, format: date-time, description: "When the key ends. Absent for a key with no end date." }
+            reused:
+              type: boolean
+              description: >-
+                `true` when no key was made in this session: the provider's key
+                page still listed the row of the key an earlier sign in made for
+                this same provider account (its name and account, as
+                CustomDomain recorded them), and the key CustomDomain stored for
+                it, checked again and still working, was used instead. No key
+                was read off the page. `name` and `expires_at` are then that
+                key's own. Absent for a key made in this session.
         api_activation:
           type: object
           required: [kind]
@@ -10252,6 +11354,9 @@ components:
       required: [domain, status]
       properties:
         domain: { type: string }
+        application_id:
+          type: string
+          description: The application the domain was connected into (`POST /provider-accounts/{id}/connect`).
         connection_id: { type: string }
         status: { type: string, enum: [connected, already, failed] }
         message: { type: string }
@@ -10263,7 +11368,7 @@ components:
         account_id: { type: string }
         provider: { type: string }
         provider_name: { type: string }
-        label: { type: string, description: "The account's label. A delegated agent token reads `<Provider> key` for a key made for another application and shared with its own." }
+        label: { type: string, description: "The account's label. A delegated agent token reads `<Provider> key` for a key made for another application and shared with its own, and an end user's token always reads `<Provider> key`." }
         how:
           type: string
           enum: [api_key, secure_sign_in]
@@ -10280,10 +11385,18 @@ components:
           type: string
           enum: [active, needs_reconnect]
           description: "`needs_reconnect` for a key that still works until its end date."
-        application_id: { type: string, description: "The application the key is bound to. A delegated agent token's answer leaves it out for a key made for another application." }
-        key_name: { type: string, description: "The name an agent key was made with. A delegated agent token's answer leaves it out for every key." }
+        application_id: { type: string, description: "The application the key is bound to. A delegated agent token's answer leaves it out for a key made for another application, and an end user's token's answer for every key." }
+        key_name: { type: string, description: "The name an agent key was made with. A delegated agent token's and an end user's token's answers leave it out for every key." }
         key_expires_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
+        from_domain:
+          type: string
+          description: >-
+            Only on an end user's own key, in an end user's token's answer: the
+            newest domain of that end user the key already serves (a live or
+            propagating connection of theirs in this application, not the
+            domain asked about), as the widget words it in "Use your Namecheap
+            access from shop.example.com". Left out when there is none.
     RailInfo:
       type: object
       required: [available]
@@ -10520,24 +11633,48 @@ components:
                   enum: [offered, offered_first, recommended, unavailable]
                   description: >-
                     `offered`: after the other ways. `offered_first`: the
-                    application's setting is `prefer`. `recommended`: no
-                    automatic way works for this domain, so the move saves the
-                    person copying records. `unavailable`: offered, but not for
-                    this domain (`reason` says why).
+                    application's setting is `prefer`. `recommended`: hosting
+                    saves the person the most for this domain (`reason` says
+                    why: no automatic way works, or the records are many).
+                    `unavailable`: offered, but not for this domain (`reason`
+                    says why).
                 reason:
                   type: string
+                  enum:
+                    - application_offers
+                    - application_prefers
+                    - no_automatic_way
+                    - many_records
+                    - plan_zone_limit
+                    - registrar_locks_nameservers
+                    - disabled
+                    - platform_subdomain
+                    - unsupported_tld
+                    - reserved
                   description: >-
-                    `application_offers`, `application_prefers`, `no_automatic_way`,
-                    or for `unavailable` the reason of `nameserver_migration`
-                    (`registrar_locks_nameservers`, the reasons of `managed_dns`).
+                    Why. `application_offers` and `application_prefers`: the
+                    application's setting. `no_automatic_way`: nothing but
+                    copying records by hand works for this domain.
+                    `many_records`: the domain needs four or more records, a
+                    lot to copy by hand. `plan_zone_limit`:
+                    hosting would lead, but the workspace holds as many hosted
+                    zones as its plan counts (or CustomDomain™ is near its own
+                    limit), so it is offered after the other ways; the verdict is
+                    then `offered`. For `unavailable`, the reason of
+                    `nameserver_migration` (`registrar_locks_nameservers`, and
+                    the reasons of `managed_dns`: `disabled`,
+                    `platform_subdomain`, `unsupported_tld`, `reserved`).
             saved_access:
               type: object
               description: >-
                 The kept keys that may act for this domain for the caller, best
                 first (see `GET /connections/{id}/saved-access`): no sign in
                 and no new key. Present only when there is one, and then
-                `recommended_rail` is `saved_access`. Only an API key caller
-                has any; an end user's widget token never gets it.
+                `recommended_rail` is `saved_access`. An API key caller has
+                the workspace's keys; an end user's widget token has that end
+                user's own, under the conditions of
+                `GET /connections/{id}/saved-access`; a delegated agent
+                token never gets the block.
               required: [available, accounts]
               properties:
                 available: { type: boolean }
@@ -10679,6 +11816,83 @@ components:
         id: { type: string }
         rail: { type: string, description: 'dc | oauth | api | manual' }
         oauth: { type: boolean }
+        account_ways:
+          type: array
+          description: >-
+            The ways to add this company's account in Connected accounts, easiest
+            first: `secure_sign_in` (the person signs in at the company and
+            CustomDomain™ makes the key; `POST /provider-accounts:sign-in`, the
+            console only), then `api_key` (the person pastes a key;
+            `POST /provider-accounts`). Always present; `[]` for a company that
+            only signs in and takes no key. `secure_sign_in` is listed only while
+            the deployment runs it for the company (the feature on, its key page
+            and its domain list in place); the workspace's own gates are the
+            sign in's to apply.
+          items: { type: string, enum: [secure_sign_in, api_key] }
+    LeftKey:
+      type: object
+      required: [name]
+      description: A key the agent made at the provider and CustomDomain™ does not keep, still live in the person's account.
+      properties:
+        name: { type: string, description: The name the key was made with, to find it at the provider. }
+        page: { type: string, description: The provider's page that lists and deletes keys; absent when none is known. }
+    AccountSignInSession:
+      type: object
+      required: [id, purpose, state, provider, provider_name]
+      description: >-
+        An account sign in as the console reads it (`GET /browser-sessions/{sid}`
+        with the console's own API key call). Not the popup's view: it holds no
+        live view address, relay socket or token, and never the key.
+      properties:
+        id: { type: string }
+        purpose: { type: string, enum: [account] }
+        state:
+          type: string
+          enum: [created, awaiting_sign_in, checking, key_ready, done, cancelled, expired, abandoned, failed]
+          description: "`key_ready`: the key is made and checked and waits for `:keep`. `done`: kept. Every other end left the key at the provider (`left_key`) when one was made."
+        provider: { type: string }
+        provider_name: { type: string }
+        application_id: { type: string, description: The application the key is for; absent for a key that serves the whole workspace. }
+        renews_account_id: { type: string, description: "The provider account a renewal sign in (`POST /provider-accounts/{id}/reconnect` with `method` `secure_sign_in`) makes the key for; absent for a sign in that adds an account." }
+        deadline: { type: string, format: date-time, description: "In `key_ready`: when the wait for the keep step ends." }
+        zones:
+          type: array
+          items: { type: string }
+          description: "In `key_ready`: the registrable domains the key lists, lower case. `[]` for a key that reaches none yet."
+        key:
+          type: object
+          required: [rights]
+          description: "In `key_ready`: what the key is."
+          properties:
+            name: { type: string }
+            page: { type: string, description: The provider's page that lists and deletes keys. }
+            rights: { type: array, items: { type: string }, description: What the key can do beyond DNS records; empty for a key that reaches DNS only. }
+            expires_at: { type: string, format: date-time }
+        left_key: { $ref: '#/components/schemas/LeftKey' }
+        error:
+          type: object
+          description: "In `failed`: why, in the words the person is shown."
+          properties:
+            code: { type: string }
+            message: { type: string }
+    AccountKept:
+      type: object
+      required: [account, swapped]
+      properties:
+        account: { $ref: '#/components/schemas/ProviderAccount' }
+        swapped: { type: boolean, description: True when the key went into an account the workspace already held. }
+        replaced_key:
+          $ref: '#/components/schemas/ReplacedKey'
+    ReplacedKey:
+      type: object
+      required: [name]
+      description: >-
+        The key a swap took out of use: it is no longer the account's key, and it still lives at the provider
+        (nothing is revoked automatically). Present only when the swap replaced a different key that has a
+        name; absent for a new account and when the new key is the same key.
+      properties:
+        name: { type: string, description: "The name the replaced key was made with, to find it at the provider. An account sign in names its key to the second, so it differs from the new key's name unless both were made in the same second." }
+        page: { type: string, description: The provider's page that lists and deletes keys; absent when none is known. }
     Usage:
       type: object
       description: >-
@@ -11065,7 +12279,7 @@ components:
             version: { type: string }
     NameserverMigration:
       type: object
-      required: [id, zone, state, path, target, registrar, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, copy_warnings, ds_present, can_rollback, rollback_targets, old_dns_serves, created_at, updated_at]
+      required: [id, zone, state, path, target, registrar, old_nameservers, new_nameservers, observed_nameservers, records_copied, email_records, email_kinds, copy_warnings, ds_present, can_rollback, rollback_targets, old_dns_serves, next_action, created_at, updated_at]
       properties:
         id: { type: string }
         connection_id: { type: string }
@@ -11112,6 +12326,26 @@ components:
           type: string
           enum: [zone_ready, zone_served, copy_review, dnssec_off, ds_clear, credential, registrar_confirm, browser_session, registrar, delegation]
         next_step: { type: string, description: One sentence for a person. }
+        next_action:
+          description: >-
+            The one request to press next, read from the move alone (the same
+            for every caller), so a card can show the button `next_step` only
+            describes. `null` when nothing is waiting for a press: the move
+            is copying, waiting for the registry, waiting for a person at the
+            registrar, DNSSEC or the copy review (`copy_reviewed`), or over.
+            Because it is the same for every caller, it can name a request
+            the caller who reads it is refused. Three cases: `sign_in` points
+            at `POST /v1/connections/{id}/browser:start`, which runs only from
+            a customer's browser or the console and refuses every agent token
+            and every API key without the console's client label (`403
+            browser_customer_present_only`); `retry` is refused `403
+            ns_not_offered` to an agent token while the application's DNS
+            hosting is off; and `retry` is refused `403 forbidden` to a widget
+            token when the setting is off. A caller in one of those cases
+            tells the person (`next_step` says what to do) and does not send
+            the request. `rollback` is open to all three callers whatever the
+            setting says.
+          oneOf: [ { $ref: '#/components/schemas/NameserverNextAction' }, { type: 'null' } ]
         failure_code:
           type: string
           enum: [zone_copy_failed, zone_not_served, dnssec_timeout, ds_removal_failed, credential_refused, registrar_refused, registrar_locked, changed_elsewhere, agent_failed, delegation_timeout, delegation_drift, internal]
@@ -11174,6 +12408,43 @@ components:
         checked_at: { type: string, format: date-time }
         next_check_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    NameserverNextAction:
+      type: object
+      required: [kind, method, path]
+      description: >-
+        A request that moves a nameserver migration on, with the connection's
+        id filled in. The caller adds what it always adds to that route.
+      properties:
+        kind:
+          type: string
+          enum: [sign_in, retry, rollback]
+          description: >-
+            `sign_in`: the move waits for the cloud browser (state
+            `needs_dnssec_off` or `setting` on path `agent`, or a move back
+            whose `rollback_path` is `agent` and not yet made), so the person
+            signs in to their registrar and approves what will change. The
+            request is the registrar sign in's start. `retry`: the move
+            failed before anything was changed at the registrar
+            (`can_rollback` is false); the same start call begins it again
+            (the end user's start also sends `consent`). `rollback`: the move
+            failed after the registrar was changed or asked
+            (`can_rollback` is true), and moving back is the safe way out,
+            to where a move back without a choice goes (`rollback_default`).
+        method: { type: string, enum: [POST] }
+        path:
+          type: string
+          description: >-
+            The route: `/v1/connections/{id}/browser:start` for `sign_in`,
+            `/v1/connections/{id}/nameservers:migrate` for `retry`,
+            `/v1/connections/{id}/nameservers:rollback` for `rollback`.
+        body:
+          type: object
+          additionalProperties: true
+          description: >-
+            The fields the route needs beyond the ones the caller always sends.
+            `sign_in`: `purpose` `nameservers` and the registrar's `provider`
+            (the caller adds `return_origin` and `consent_version`).
+            `rollback`: `rollback_target`. Absent for `retry`.
     NameserverMigrationStats:
       type: object
       required: [by_state, by_path, by_target, by_registrar, by_old_dns_host, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]

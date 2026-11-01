@@ -96,7 +96,9 @@ see on a connection:
 
 `POST /v1/connections` is idempotent per application + domain: if the app already
 has a non-failed connection for the domain, that connection is replayed (`200`)
-instead of a duplicate being created. Every object is tenant-scoped: an API
+instead of a duplicate being created (a widget token for a domain another
+customer connected gets `403 token_wrong_end_user` instead, see
+[Idempotency](/docs/connect-flow/create-a-connection#idempotency)). Every object is tenant-scoped: an API
 key sees all its tenant's connections; a widget JWT sees only its
 application's. Cross-tenant ids return `404`, never another tenant's data.
 

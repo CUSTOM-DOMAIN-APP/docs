@@ -16,6 +16,17 @@ _openapi:
           if the app already has a non-failed connection for the domain, that
           existing connection is replayed with `200`.
 
+          A widget token is never handed another end user's connection. When the
+          application already has a connection for the domain (live, or failed
+          and about to be resumed) that names another end user than the token's
+          `end_user_ref`, or names one while the token names none, the call
+          answers `403` `token_wrong_end_user` and shows nothing of it: no id,
+          no field, and a failed connection is not resumed. Mint the token with
+          the end user's `end_user_ref`. The replay is unchanged for the end
+          user's own token, for a connection that names no end user (an API key
+          made it), for an API key, an app-scoped token and a delegated agent
+          token.
+
           A domain another application already serves live is refused with `409
           domain_already_connected` before anything is written: move it by
           disconnecting it there first. When the ownership TXT flow is on the
@@ -32,6 +43,25 @@ _openapi:
           user. It cannot set the end user's e-mail address: a body with a
           non-empty `end_user_email` is refused with `403`, and the platform's
           API key sets it.
+
+          A name under a zone CustomDomain™ already hosts joins it without a new
+          move, and the `201` shows it already `live` when its records resolve.
+          The registrable domain's zone must be `active` (delegated to us) and
+          hosted for this application. A widget token joins only a zone that is
+          its own by the rule every managed DNS call of a widget token follows:
+          the new connection is the token's, and so is every connection already
+          linked to the zone (a connection that names an end user is the token's
+          when its `end_user_ref` is the token's; one that names none is the
+          token's only for a name the token is bound to). The connection that
+          started the zone does not decide it, so a zone that an API key, the
+          console or another end user also linked a name to is not the token's.
+          The application must still offer DNS hosting on CustomDomain™'s own
+          DNS. An API key or an app scoped token joins its own application's
+          zone. A delegated agent token, a widget token that does not own the
+          zone, and every other zone change nothing: the name proves control by
+          DNS as always, and no record is written into a zone that is not the
+          caller's. The records written are in the audit log as
+          `dns.hosted_zone_joined`.
 
           A workspace with no subscription yet connects its first ten domains,
           or the number an operator set, without one (`first_domain_free` and

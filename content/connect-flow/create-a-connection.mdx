@@ -147,8 +147,15 @@ returned with `200` rather than a duplicate being created. The explicit retry is
 `POST /v1/connections/{id}:recheck` (`409` if a different active connection
 exists for the domain). This is also what makes an abandoned setup resumable:
 the console's **Finish setup** / **Resume** reopens the guided flow against the
-existing connection at the right step. A domain-bound widget JWT may only create
-a connection for the hostname it was minted for. Hosting-platform subdomains
+existing connection at the right step. A widget token never gets another
+customer's connection: when the existing connection (live, or failed and about to
+be revived) names a different `end_user_ref` than the token's, or names one while
+the token names none, the call answers `403 token_wrong_end_user` and shows nothing
+of it, and a failed connection is not revived. Mint the token with that customer's
+`end_user_ref`. A connection that names no customer, your API key, an `app` scope
+token and a delegated agent token are still answered with the existing connection.
+A domain-bound widget JWT may only create a connection for the hostname it was
+minted for. Hosting-platform subdomains
 (`*.vercel.app` and the rest of the platform list) are refused with `422
 platform_subdomain`.
 

@@ -407,8 +407,11 @@ exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
 so its `key` has no `name`. After the sign-in, the session's view
 ([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
 `kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
-its `rights` and `expires_at` (left out for a key with no end date). A key that
-was made and not kept is `left_key` instead, never both.
+its `rights` and `expires_at` (left out for a key with no end date), and
+`reused: true` when no key was made because the sign-in used the key we stored for
+the account, whose row the provider's page still listed
+([below](#reusing-a-key-of-ours)). A key that was made and not kept is `left_key`
+instead, never both.
 
 IONOS's API is off for an account until the account signs up for it, a free
 product in IONOS's shop under IONOS's API terms. When IONOS's key page says it is
@@ -497,9 +500,33 @@ not accept them, the session goes on to the DNS page.
   [provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access)
   instead of adding another. GoDaddy is the exception for now: each sign-in there
   keeps its own key ([what that means](/docs/dns/provider-setup#reuse-of-godaddy-keys-is-held-for-now)).
+  Where the provider's page still lists our earlier key, the sign-in uses that key
+  instead of making one ([reusing a key of ours](#reusing-a-key-of-ours)).
 - **It can also move a domain's nameservers.** A key kept this way counts as a
   connected account for [DNS hosting](/docs/dns/managed-dns), for the application's
   domains only ([provider accounts](/docs/connect-flow/provider-accounts#dns-hosting-uses-an-account-at-the-registrar)).
+
+### Reusing a key of ours [#reusing-a-key-of-ours]
+
+Where the provider's key page lists each key with its name and the account it
+belongs to (Name.com's token table), a second sign-in for the same provider
+account does not make another key. The page is only looked at, to see that the
+row of the key we made and stored the first time is still listed: its exact name
+and its exact account, in one row. If it is, we use the key we stored for it,
+check with the provider that it still works, and keep it in the same provider
+account as before. We never read a key's value off the provider's page, so a row
+another person or another application named like ours adds nothing to your
+account. If the row is not there, or the provider refuses the stored key, a new
+key is made, as before. If the stored key cannot be kept after it was checked (its
+row changed or went away in the meantime), the sign-in goes on to the DNS page, and
+your application does not get `credential.failed` with `not_kept`: no key was made,
+and that reason is for a key that was.
+
+The customer sees one difference: no new key appears in their account. The key
+used has the rights and the end date it was made with, for the same provider
+account, workspace and application. The session says so in `kept_key.reused`, and
+the key's name is the earlier key's. GoDaddy never reuses a key, and neither do
+providers whose page shows a key once, when it is made (Namecheap makes none).
 
 ### What you see
 
@@ -516,6 +543,31 @@ not accept them, the session goes on to the DNS page.
 - In the console, the domain's page has a **Provider API key** card, and
   **Connected accounts** lists the key as **Made at sign in**
   ([console guide](/docs/getting-started/console#provider-api-key)).
+
+### Reusing it for a returning customer [#saved-access]
+
+A key a customer's own secure sign-in made can be offered to them for their next
+domain in the same application, instead of a new sign-in. Each application has a
+setting for it, `end_user_saved_access`, on by default: with it on, a returning
+customer is offered a key they kept before, for their other domains. Turn it off
+and no key is offered, so every domain starts with a sign-in. The rules for which
+key may be offered, and to whom, and what an offer can do for now, are in
+[A returning customer's own key](/docs/connect-flow/provider-accounts#a-returning-customers-own-key).
+
+- **In the console:** **Widget → Ways to connect → Use their saved access**, a
+  switch that saves when you flip it. Owners, admins and members can change it;
+  a viewer sees it off with the reason. A test mode application keeps no saved
+  access (its sign-ins are made up), so its switch is off and cannot be turned
+  on.
+- **In the API:** `PATCH /v1/applications/{id}` with `end_user_saved_access`
+  (`true` or `false`, never `null`). Every application answer carries it.
+- **Whether secure sign-in runs for you:** every application answer also carries
+  `secure_sign_in`, read only: `available`, and when it is `false`, `reason`
+  (`switched_off` when the deployment has it off, `not_enabled_for_workspace`
+  when it is on for a list of workspaces yours is not on). **Ways to connect**
+  shows it as **On** or **Off** with that reason. It says whether the feature can
+  run for the workspace at all; whether it is offered for one domain is still
+  `rails.cloud_browser` on the domain check.
 
 ## When the key ends, and reconnecting [#reconnect]
 
