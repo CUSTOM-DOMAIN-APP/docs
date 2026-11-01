@@ -161,12 +161,15 @@ own application only.
 
 ## Turn it on
 
-In the console: **Applications**, the application, **Settings**, then **Domain
-maintenance** (a [test mode](/docs/guides/test-mode) application has none). Turn
-on **Maintain your users' domains**, choose **Who runs it**, and **Save**. Nothing
-changes for your users until you save. Once saved, each user is asked when they
-connect a domain. Turned off again, new users are not asked, and domains already
-maintained stay that way.
+In the console: **Widget**, **Ways to connect**, then the **DNS hosting** row (a
+[test mode](/docs/guides/test-mode) application has none). Pick **Offer it** or
+**Offer it first**; it saves at once, with CustomDomain™ running it. **Change**
+beside **Who runs it** opens the whole form: choose **Who runs it** and **Save**.
+Nothing changes for your users until you pick. Once on, each user is asked when
+they connect a domain. Turned off again, new users are not asked, and domains
+already hosted stay that way. The application's **Settings** and summary, the
+widget designer and the connect page show the same setting with a **Change** to
+that row.
 
 With the API, `PATCH /v1/applications/{id}` with `nameserver_migration`. The API
 is the same as before the console's new words: its switches map to `mode`, and
@@ -174,9 +177,9 @@ is the same as before the console's new words: its switches map to `mode`, and
 
 | In the console | `mode` | What the widget does |
 | --- | --- | --- |
-| **Maintain your users' domains** off (the default) | `off` | Never offers it, nor any other DNS hosting. The application carries no setting. |
-| On, **Show it as the first choice** off | `offer` | Shows it as a quiet second choice beside adding records. |
-| On, **Show it as the first choice** on | `prefer` | Makes it the first screen of the manual path. Adding records stays one tap away. |
+| **Off** (the default) | `off` | Never offers it, nor any other DNS hosting. The application carries no setting. |
+| **Offer it** | `offer` | Shows it as a quiet second choice beside adding records. |
+| **Offer it first** | `prefer` | Makes it the first screen of the manual path. Adding records stays one tap away. |
 
 This is the one switch for every DNS hosting offer your users see. With it off,
 the widget never offers to host their DNS, even where
@@ -586,7 +589,7 @@ refuses the same (`403 target_not_allowed`). A move that another application of
 the workspace has open is never resumed with an agent token (`409`).
 While the application's DNS hosting is off, `migrate-nameservers` is refused with
 the error `ns_not_offered` and changes nothing: the agent does not retry, and tells
-the person they can turn DNS hosting on in the application's settings, or that the
+the person they can turn DNS hosting on in the console's Widget page (Ways to connect), or that the
 platform can start the move with its API key. `rollback-nameservers` is not refused.
 `migrate-nameservers` takes `copyReviewed` once the agent showed the person the
 copy's warnings and they agreed, and `rollback-nameservers` takes `target`
@@ -595,18 +598,22 @@ copy's warnings and they agreed, and `rollback-nameservers` takes `target`
 
 ## In the console
 
-- **Application settings, Domain maintenance**: the switch **Maintain your users'
-  domains**, a before and after picture of a user's domain (where it is
-  registered stays; what keeps it working moves to CustomDomain™ or your host),
-  **Who runs it** (CustomDomain™, or your own Cloudflare, Amazon Route 53, Google
-  Cloud DNS or Azure DNS account, with your own nameservers under **Advanced**),
-  and **Show it as the first choice**. A **?** beside DNS, registrar and
-  nameservers gives one plain line and a link here, and every card links to the
-  part of this page that explains it.
-- **Domains you maintain**, under it once it is on: how many domains are
-  maintained, being set up and need attention, the typical setup time, why moves
-  stopped, and one row per domain with who runs it, its status in plain words, the
-  records copied and when it was last checked. Each row opens the domain.
+- **Widget, Ways to connect, DNS hosting**: **Off**, **Offer it** and **Offer it
+  first**, saved when you pick one. **Change** beside **Who runs it** opens the
+  form: the switch **Host your users' DNS**, a before and after picture of a
+  user's domain (where it is registered stays; what keeps it working moves to
+  CustomDomain™ or your host), **Who runs it** (CustomDomain™, or your own
+  Cloudflare, Amazon Route 53, Google Cloud DNS or Azure DNS account, with your
+  own nameservers under **Advanced**), and **Show it as the first choice**. A
+  **?** beside DNS, registrar and nameservers gives one plain line and a link
+  here, and every card links to the part of this page that explains it.
+- **Where else the setting shows**: the application's **Settings** (a **DNS
+  hosting** section), its summary, the widget designer and the connect page read
+  it out (**Off**, **Offered** or **Offered first**) with a **Change** to that row.
+  Beside it, **N domains hosted** opens **Domains** narrowed to the domains
+  hosted for the application ([find them](/docs/getting-started/console#hosting-and-access-filters)),
+  where **DNS hosted by us** and the **DNS host** column say who runs each one and
+  which moves need a look.
 - **A domain's DNS tab**: a **Domain maintenance** section with its status, the
   three steps, the next thing to do, for a copy to check what to check and **The
   records look right, continue**, the domain's two parts (naming the registrar,

@@ -15,6 +15,16 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: DNS hosting and saved access show where you need them, with a Change.** The DNS hosting setting
+  is changed in one place, **Widget → Ways to connect**, and every other page now reads it out and links to it. An
+  application's **Settings** has a **DNS hosting** section that says **Off**, **Offered** or **Offered first**, who runs
+  it and how many domains are hosted, with **Change** (a link to `#domain-maintenance` still lands on the setting). The
+  application's summary reads out DNS hosting and **Use their saved access** the same way. The widget designer's
+  **Change** opens Ways to connect at the row, and the connect page says whether your application offers DNS hosting to
+  its users. **N domains hosted** now opens **Domains** narrowed to those domains instead of a sheet. Search finds **DNS
+  hosting** and **Use their saved access**. A viewer sees **View** in place of Change. See the
+  [console guide](/docs/getting-started/console#domain-maintenance) and the
+  [DNS hosting guide](/docs/guides/nameserver-migration#turn-it-on).
 - **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
   When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
   scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
