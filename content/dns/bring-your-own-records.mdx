@@ -65,6 +65,7 @@ whatever SPF already exists. See [Email DNS](/docs/dns/email-dns).
 | API key | Written as supplied |
 | One-click setup (Domain Connect) | **Refused**: a provider-hosted template can't carry a caller-authored set. The start returns an error; use another rail. |
 | Secure sign-in | **Refused** before the customer signs in (`422 browser_unsupported_records`, with the types named). The widget says so and moves to the manual steps, so the customer adds the records by hand. |
+| DNS hosting ([managed DNS](/docs/dns/managed-dns)) | Written into the zone CustomDomain™ hosts for the domain, which serves them once the domain's nameservers point there |
 | Manual | Shown to the end user exactly as supplied |
 
 Before a rail writes a `TXT` or `CAA` record, it reads the values already at that

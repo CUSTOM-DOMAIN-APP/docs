@@ -8,8 +8,9 @@ record: an identity provider before it turns on single sign-on for the domain,
 Google Search Console for a Domain property, Bluesky for a handle. If your app
 passes one of those records on to your customers, CustomDomain™ can carry it the
 rest of the way. Your server supplies the record. It is written at the
-customer's provider where their sign-in or API key allows it, and shown as the
-exact row everywhere else. CustomDomain™ checks that it resolves and tells your
+customer's provider where their sign-in or API key allows it, or into the zone
+CustomDomain™ hosts when the domain uses DNS hosting, and shown as the exact
+row everywhere else. CustomDomain™ checks that it resolves and tells your
 server with `connection.live`.
 
 **Does CustomDomain™ verify the domain for my app?** No. It writes or shows
@@ -67,6 +68,7 @@ listed like any other, but it is not served and gets no certificate.
 | A provider API key | Written as supplied |
 | One-click setup | Refused. The customer adds the record by hand |
 | Secure sign-in | Refused before the customer signs in. The widget says "This setup includes records this sign in cannot add yet: TXT." and moves to the manual steps |
+| DNS hosting (when your application offers it) | Written into the zone CustomDomain™ hosts for the domain, and served once the nameservers point there. See [Managed DNS](/docs/dns/managed-dns) |
 | Add the records | The manual screen shows the exact row ("Add 1 record at" the provider, Name, Value and Copy), checks it with **Check now**, and offers **Email these instructions to someone else** |
 
 Where the record is written, the values already at that name stay: another
