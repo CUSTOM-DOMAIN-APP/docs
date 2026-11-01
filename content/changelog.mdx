@@ -15,6 +15,21 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
+  CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
+  where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a
+  day, not weeks later when something happens to use it. A key the provider refuses marks the account
+  `needs_reconnect`, as before. Any other failure (a timeout, a server error, a rate limit) tries again after 1 hour,
+  then 4, 12 and 24 hours, then every 48 hours, and from the third in a row the account answers `needs_you.reason`
+  `check_failed` (the key may still work). Every continuous account that holds a key answers `health` (`state` `ok`,
+  `failing`, `refused` or `unchecked`, with `checked_at` and `failures`). `POST /v1/provider-accounts/{id}:check` is
+  Check now: it runs the same check on request, once a minute for an account, for the workspace's API key and an
+  admin, an owner or the member who connected the account. It answers the account and a `result` of `ok`, `refused` or
+  `unreachable`, and a pasted key the provider had refused that works again returns to `active`. A key your customer's
+  own sign-in made is never listed and is checked with one read of a zone it already serves; Check now answers `403`
+  for it. Additive: nothing that was there changed. See
+  [Health checks](/docs/connect-flow/provider-accounts#health-checks) and
+  [Check now](/docs/api-reference/provider-accounts/checkProviderAccount).
 - **October 31, 2026: 28 more registrars are named in the census.** OnlineNIC, EuroDNS, Safenames, IHS Telekom,
   P.A Vietnam, LWS, Rumahweb, acens, Mat Bao, Above.com, cdmon, Fabulous, 35.com, Bizcn, Netim, ZZY, TierraNet,
   Hosting Ukraine, Whois, Longming, 22.cn, IDwebhost, Tecnocrática (Neodigit and Virtualname), Abion, Northwest
@@ -27,6 +42,41 @@ never change meaning or disappear without a new major version. See the
   one of them, or at Hetzner, Domeneshop, 101domain, easyDNS, World4You, Combell, Webnames.ca, WEDOS, Freename or
   Hostpoint, now goes to that registrar (OnlineNIC, COREhub and RegistryGate sell through resellers, so they are
   named, not chosen). The census lists 217 providers.
+- **October 31, 2026: an AI agent cannot move a domain's nameservers while DNS hosting is off, and a waiting move says what to press next.** A delegated agent token (the MCP's `migrate-nameservers`)
+  is now refused with `403 ns_not_offered` when the application's DNS hosting is off, for a start and for carrying on a
+  move a person began, and nothing is changed; the tool tells the agent not to retry and that a person can turn DNS hosting
+  on in the application's settings, or the platform can start the move with its API key. Moving back stays open to an agent.
+  Every nameserver move now carries `next_action` (`GET /v1/connections/{id}/nameservers` and the other answers that
+  carry a move): `sign_in` while it waits for the secure sign-in, `rollback` after a stop that changed the registrar,
+  `retry` after a stop that did not, or `null`. It is the same for every caller, so it can name a request the reader is
+  refused: `sign_in` points at `browser:start`, which refuses every agent token and every API key without the console's
+  label, and `retry` is refused to an agent token while hosting is off and to a widget token when the setting is off.
+  See [Domain maintenance](/docs/guides/nameserver-migration#next-action)
+  and the [MCP server](/docs/mcp/overview).
+- **October 31, 2026: your customer's own saved key can be offered back to them.** A customer who signed in securely
+  for one domain and comes back with another can now be offered the key their own sign-in kept, instead of a new
+  sign-in, in `rails.saved_access` on `POST /v1/domains:check` and in `GET /v1/connections/{id}/saved-access`. It is
+  offered only to that customer: their widget token must be bound to the domain and minted with their `end_user_ref`
+  (a sample's `user_42` or `customer_123` never counts), your application's `end_user_saved_access` setting must be on
+  (it is by default), the email that tells them of the reuse must be sendable (you gave their address when you minted
+  the token, or the domain's connection holds one and names this customer; an address on a connection that names no
+  customer does not count), and the key must be one made at a sign-in started with a token minted with that same
+  `end_user_ref`. Never at GoDaddy for now. The entry carries `from_domain`, the domain of theirs the key already
+  serves, and no key name; its label is the neutral `<Provider> key`. This is an offer only: a
+  customer's token cannot yet write records with it, and the sign-in is not refused. See
+  [A returning customer's own key](/docs/connect-flow/provider-accounts#a-returning-customers-own-key).
+- **October 31, 2026: an account can be added by secure sign-in, with the domains confirmed first.** In the console,
+  Connected accounts can add a provider account without a pasted key. `POST /v1/provider-accounts:sign-in` (the
+  console only) starts the sign-in with no domain; once the key is made, `GET /v1/browser-sessions/{id}` shows the
+  domains it lists and `POST /v1/browser-sessions/{id}:keep` keeps the account for the ones you confirm, and only then.
+  An abandoned sign-in (`:cancel`, or ten minutes) names the key it made and the provider's page that deletes it
+  (`left_key`), also when the sign-in is cancelled while the key is still being made. A sign-in for a provider
+  account you already hold swaps the new key into that account instead of adding another (GoDaddy excepted for now):
+  it takes an admin, an owner or the member who connected the account, and the answer names the key it replaced
+  (`replaced_key`) so you delete the right one at the provider. A suspended workspace cannot start or keep one.
+  `GET /v1/providers` lists each company's `account_ways`. A key you paste for a provider that cannot list its
+  domains is now checked against every domain you type, not only the first; a reconnect of an account that holds more
+  than 25 such domains reads the one you name and 25 of the stored ones, and still works.
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`

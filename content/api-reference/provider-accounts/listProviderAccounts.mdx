@@ -14,8 +14,9 @@ _openapi:
           The workspace's provider accounts with their access mode, the domains
           they cover, when they were last used and when they expire, whether the
           caller may manage each one (`can_manage`), what needs the person
-          (`needs_you`), how each key was made and by whom (`made_by`) and who
-          enforces its limit (`enforced_by`); and, in `kept_access`, the
+          (`needs_you`), what the last check of its key found (`health`), how
+          each key was made and by whom (`made_by`) and who enforces its limit
+          (`enforced_by`); and, in `kept_access`, the
           sign-ins and Domain Connect authorizations kept per domain, grouped by
           provider. A kept sign-in is stopped per domain with `DELETE
           /connections/{id}/grant`. A viewer reads them without
