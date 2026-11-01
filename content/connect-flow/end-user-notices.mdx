@@ -92,19 +92,22 @@ the same 3 per connection in 30 days.
 
 A saved key is offered to a customer only when this email can be sent (the feature
 on, an address held for the token or on a connection that names this customer, and
-a sender that is not `none`), and a use is refused (`409 saved_access_not_usable`)
-when it cannot be sent. The email counts as sent only once it was sent: if the
+a sender that is not `none`: either the default sender, which has to be set up, or
+your own server; the next paragraph says when neither delivers), and a use is refused
+(`409 saved_access_not_usable`) when it cannot be sent. The email counts as sent only once it was sent: if the
 customer taps twice, the second call is answered `409 reuse_mail_pending` while the
 first is still sending, and nothing is written until the email exists. Sent means a
 message really left, through your own server or, when it fails, through the default
 sender. When neither could deliver it (your server is down on an installation whose
 default sender is not set up, as on a self hosted install with no email key, or your
 sender was switched to `none` after the key was offered), the use is refused with
-`409 saved_access_not_usable`, nothing is written, and the next use sends the email.
+`409 saved_access_not_usable`, nothing is written, and a later use sends it once a
+sender can deliver.
 
-Setting the sender to `none` (**Don't send** in the console), or giving no address
-for the customer, stops all three customer emails together (new DNS records,
-reconnect, and this one) and turns saved keys off for your customers entirely.
+Setting the sender to `none` (**Don't send** in the console) stops all three customer
+emails together (new DNS records, reconnect, and this one) and turns saved keys off
+for all your customers. Giving no address for a customer does the same for that
+customer.
 
 ## Who sends it
 
