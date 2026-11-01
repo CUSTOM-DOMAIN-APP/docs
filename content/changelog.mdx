@@ -15,6 +15,18 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: a second secure sign-in uses the key we stored, where the provider's page still lists its row.** When
+  your customer signs in again at a provider whose key page lists each key with its name and account (Name.com's
+  token table), CustomDomain™ now looks for the row of the key it made the first time: its exact name and its exact
+  account, in one row. If it is still listed, CustomDomain™ uses the key it stored for that row, after checking that it
+  still works, instead of making another one, so the customer's list at the provider stops growing. It never reads a
+  key's value off the provider's page, and a row that only looks like ours adds nothing; if the row is missing or the
+  stored key is refused, a new key is made. A stored key that cannot be kept is not sent to your application as
+  `credential.failed` (`not_kept`): no key was made, and that event is for a key that was. The session view's
+  `kept_key` gains `reused` (`true` when no key was made); its `name` and `expires_at` are then the earlier key's.
+  Additive and optional. Nothing the customer is asked to accept changes: the key has the rights and the end date it
+  was made with. GoDaddy never reuses a key.
+  See [secure sign-in](/docs/guides/secure-sign-in#reusing-a-key-of-ours).
 - **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
   When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
   scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
@@ -184,6 +196,16 @@ never change meaning or disappear without a new major version. See the
   `GET /v1/providers` lists each company's `account_ways`. A key you paste for a provider that cannot list its
   domains is now checked against every domain you type, not only the first; a reconnect of an account that holds more
   than 25 such domains reads the one you name and 25 of the stored ones, and still works.
+- **October 31, 2026: DNS hosting is offered first where it helps, and a returning user's next name joins the zone we
+  host.** `rails.nameservers` on `POST /v1/domains:check` now says why hosting leads: `many_records` (four or more
+  records to write) or `no_automatic_way`, each as `recommended`, and `reason` is now a fixed list in the API reference.
+  A root domain whose provider cannot point a root has no reason of its own: a zone CustomDomain™ hosts cannot point a
+  root at a platform that gives no apex addresses either, so hosting is only offered for it. On CustomDomain™'s
+  own DNS it stays a second choice (`offered`, `plan_zone_limit`) once your workspace holds as many hosted zones as its
+  plan counts; nothing is refused or billed for it. A name created under a zone CustomDomain™ already hosts
+  (`active`) joins it with no new move: its records are written into the zone and it is checked at once, for your API
+  key, or for an end user's widget token when the zone is theirs (every name already in it is theirs, whoever started it). See
+  [Domain maintenance](/docs/guides/nameserver-migration#next-name).
 - **October 31, 2026: an agent token reads less, and what it changes is on the record.** A delegated agent token is
   bound to one application, and its answers now leave out more of what belongs to someone else. A connection read
   (`GET /v1/connections/{id}`) carries no `account`, `session_id` or `name` on its `credential`, and a `reach`
