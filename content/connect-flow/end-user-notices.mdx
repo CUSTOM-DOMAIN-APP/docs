@@ -95,8 +95,16 @@ on, an address held for the token or on a connection that names this customer, a
 a sender that is not `none`), and a use is refused (`409 saved_access_not_usable`)
 when it cannot be sent. The email counts as sent only once it was sent: if the
 customer taps twice, the second call is answered `409 reuse_mail_pending` while the
-first is still sending, and nothing is written until the email exists. With the
-sender set to `none`, customers are offered no saved key at all.
+first is still sending, and nothing is written until the email exists. Sent means a
+message really left, through your own server or, when it fails, through the default
+sender. When neither could deliver it (your server is down on an installation whose
+default sender is not set up, as on a self hosted install with no email key, or your
+sender was switched to `none` after the key was offered), the use is refused with
+`409 saved_access_not_usable`, nothing is written, and the next use sends the email.
+
+Setting the sender to `none` (**Don't send** in the console), or giving no address
+for the customer, stops all three customer emails together (new DNS records,
+reconnect, and this one) and turns saved keys off for your customers entirely.
 
 ## Who sends it
 
@@ -107,10 +115,14 @@ the application's settings, or with `GET` and `PUT /v1/applications/{id}/email-s
 | --- | --- |
 | `default` | The CustomDomain™ sender. |
 | `smtp` | Your own mail server, with the From taken from `from_address` and `from_name`. TLS is always on, on port 25, 465, 587 or 2525. Check it with `POST /v1/applications/{id}/email-sender:test`. |
-| `none` | Nothing is sent. Use the `connection.records_outdated` webhook to tell the end user yourself. A returning customer is then offered no saved key. |
+| `none` | Nothing is sent: not the new records email, the reconnect email or the saved access email. Use the `connection.records_outdated` webhook to tell the end user yourself. A returning customer is then offered no saved key at all. |
 
 If your server fails at send time, that message goes through the default
-sender instead and the error is kept in `last_error`.
+sender instead and the error is kept in `last_error`. Where the default sender is
+not set up (a self hosted install with no email key) there is nothing to fall back
+to: the message is not sent, and the notice counts as not sent. A new records or
+reconnect email is logged as failed and does not count toward the 3 in 30 days,
+and a saved key is not used.
 
 ## Where the address is kept
 
