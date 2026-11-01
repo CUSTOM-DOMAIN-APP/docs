@@ -15,6 +15,14 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: Domains shows which domains we host and which we keep no access to.** In the console, **Domains**
+  has two buttons under its filters, **DNS hosted by us** and **No saved access**, each with its number and a **?**, and
+  a **DNS host** column that says who runs each domain's DNS: CustomDomain™ for a hosted domain, otherwise the provider
+  it is at. **DNS hosted by us** lists the domains a zone of ours serves, the same ones `GET /v1/connections?dns_hosting=hosted`
+  returns; **No saved access** lists the domains with no connected account, no kept sign-in or one-click setup, no AWS
+  access role and no hosting of ours (a hosted domain, or a zone of ours being set up or failed). From **Overview** it is one click to **Domains** and one on the button, on a phone too.
+  The Export CSV's **DNS host** column says the same. Console only: no API field changed. See
+  [the Domains filters](/docs/getting-started/console#hosting-and-access-filters).
 - **November 1, 2026: a domain's page says how CustomDomain™ reaches it and who runs its DNS.** The first fact
   on a domain's page is **Who runs its DNS**: the company it is at, or CustomDomain™ once we host the zone. A new
   card, **How CustomDomain™ reaches this domain**, says in a line which access we keep to change its records (a
