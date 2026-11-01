@@ -3885,6 +3885,21 @@ paths:
         key it replaced as `old_key_name`, `.updated`, `.shared`).
 
 
+        A sign in that renews an account (`POST /provider-accounts/{id}/reconnect`
+        with `method` `secure_sign_in`; the session's `renews_account_id` names the
+        account) is kept with an empty body, `{}`: the key swaps into that account's
+        own row and the account keeps its domains, scope, access and applications, so
+        a body that names `scope`, `domains`, `access` or `application_ids` is `400`
+        (the account is changed by `PATCH /provider-accounts/{id}`). It is refused,
+        keeping the key pending, with `404` for an account removed meanwhile, `403`
+        for a member who no longer manages it, `422` `different_account` for a
+        key of another provider account (`domains`, when the proof was the list,
+        names the domains the account holds that the new key does not list), and
+        `422` `account_not_verifiable` for an account that holds no domain and has
+        no account number to compare the key with (remove it and add it again with a
+        new sign in).
+
+
         A session of another workspace or member, a connect session and an
         unknown id are `404`; a session that is not waiting for the keep step is
         `409`, and one whose ten minutes passed `410`.
@@ -3898,7 +3913,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [scope]
+              description: "`scope` is required to add an account; a sign in that renews one takes no field."
               properties:
                 scope: { type: string, enum: [all, selected] }
                 domains:
@@ -3914,7 +3929,7 @@ paths:
                   description: "The whole set of other applications the key is shared with. Left out, a new account is shared with none and an existing one keeps its shares."
       responses:
         '200':
-          description: The key was swapped into the account the workspace already held for this provider account.
+          description: "The key was swapped into an account that already existed: the one the workspace held for this provider account, or the one a renewal sign in is for."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AccountKept' }
@@ -3929,7 +3944,11 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
-        '422': { $ref: '#/components/responses/Error' }
+        '422':
+          description: "`domain_not_listed`, `use_once_credential`, `serves_every_application`, or for a renewal `different_account` (the key is another provider account's) or `account_not_verifiable` (nothing to compare the key with)."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DomainsRefusedError' }
         '503': { $ref: '#/components/responses/Error' }
   /browser-sessions/{sid}:finish-manual:
     post:
@@ -6868,11 +6887,13 @@ paths:
         `use_once_credential`.
 
 
-        Anyone whose role operates applications may connect a key, read the
-        accounts and revoke one. Changing an account's access, scope or
-        domains, listing the domains its key reaches, connecting domains with
-        it and replacing its key take an admin, an owner or the member who
-        connected it (`can_manage`). Every change is recorded in the audit log
+        Anyone whose role operates applications may connect a key and read the
+        accounts. Changing an account's access, scope or domains, listing the
+        domains its key reaches, connecting domains with it, replacing its key,
+        renewing it by signing in again and removing it take an admin, an owner
+        or the member who connected it (`can_manage`); a key a customer's sign-in
+        made, which no member connected, is managed by an admin or an owner
+        alone. Every change is recorded in the audit log
         (`provider_account.*`, `GET /audit`).
       security:
         - apiKey: []
@@ -7193,13 +7214,50 @@ paths:
         the key now. Switching to `continuous` needs the key still held.
         Changing `access`, `scope` or `domains` takes an admin, an owner or the
         member who connected the account (`403` otherwise); the label is
-        anyone's who operates applications. A key an end user's secure sign-in
-        made in the widget is never widened: a change that adds a domain or
-        sets `scope` to `all` answers `403`, whoever asks; renaming, narrowing
-        and revoking still work. `continuous` access for a credential that is
-        used once and never kept answers `422` `use_once_credential`. A change
-        is recorded in the audit log (`provider_account.updated`, with the
-        label, access, scope, domains and applications before and after).
+        anyone's who operates applications. `continuous` access for a credential
+        that is used once and never kept answers `422` `use_once_credential`. A
+        change is recorded in the audit log (`provider_account.updated`, with
+        the label, access, scope, domains and applications before and after).
+
+
+        What each kind of account allows when `scope` or `domains` widens it
+        (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
+        provider, for every kind, with one exception: a key made at a secure
+        sign-in that goes from `all` back to `selected` has each domain it names
+        that the account does not already hold read first (at most 20 a call,
+        `400` `too_many_domains_to_check` beyond). A change that is refused stores
+        nothing.
+
+
+        `pasted`: any scope and any domains. The person chose the key and what it
+        is used for, so nothing is read at the provider; connecting a domain the
+        key cannot write is what finds it.
+
+
+        `console_sign_in`, a key made at a secure sign-in a member started in the
+        console: it widens only to domains the key reaches at the provider. Each
+        domain added is read with the key, by its zone, before anything is
+        stored. A call that names a domain the key does not reach answers `422`
+        `zone_not_reached`, naming those domains in `domains`, and stores nothing,
+        not even the domains that were reached. A failure that says nothing about
+        the key (a timeout, a `5xx`) answers `503` and stores nothing. At most 20
+        new domains are read in one call (`400` `too_many_domains_to_check`), and
+        an account that no longer holds its key answers `409`. Setting `scope`
+        to `all` has no domain to read, so it needs the provider to list the
+        domains a key reaches and this key to list them now: a provider that
+        cannot answers `422` `scope_all_needs_list` (add the domains instead),
+        and a key the provider refuses answers `422` `ProviderAuthenticationError`.
+        The scope `all` is no way round the read of a domain: while it is `all`,
+        a domain named that the account does not already hold in `domains` is read
+        too, whether the call keeps `all` or goes back to `selected`. The change is
+        written on the account as it is after the reads, so a renewal that landed
+        meanwhile is kept; an account that lost its key, or whose change no longer
+        matches what was read, answers `409` and nothing is written.
+
+
+        `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
+        is never widened, whoever asks. A change that adds a domain or sets `scope`
+        to `all` answers `403`; renaming, narrowing and removing still work.
 
 
         `application_ids` is the whole set of other applications of the
@@ -7232,10 +7290,20 @@ paths:
               properties:
                 label: { type: string }
                 access: { type: string, enum: [continuous, one_time] }
-                scope: { type: string, enum: [all, selected] }
+                scope:
+                  type: string
+                  enum: [all, selected]
+                  description: "`all` widens a `selected` account; for a key made at a secure sign-in it needs the provider to list the key's domains (`422` `scope_all_needs_list`)."
                 domains:
                   type: array
                   items: { type: string }
+                  description: >-
+                    The whole set of domains a `selected` account may use. A domain it
+                    does not hold yet widens the account; for a key made at a secure
+                    sign-in each such domain must be one the key reaches (`422`
+                    `zone_not_reached`, at most 20 new ones a call). For an account
+                    on `all` that is any domain not already in its `domains`, also
+                    when the call goes back to `selected`.
                 application_ids:
                   type: array
                   maxItems: 100
@@ -7257,7 +7325,15 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
-        '422': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            `zone_not_reached` (a domain added is not one the key reaches; `domains`
+            names them), `scope_all_needs_list`, `serves_every_application`,
+            `use_once_credential` or `ProviderAuthenticationError`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DomainsRefusedError' }
+        '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
       summary: Revoke an account
@@ -7265,10 +7341,17 @@ paths:
       description: >-
         Deletes the key and the account. Its domains stay connected and
         served, without continuous access; each domain's timeline records it.
-        For a lasting API key the cloud browser's agent made, this deletes
-        CustomDomain™'s copy only: the key lives at the provider until it is
-        revoked there, at `revoke_url`, and the application receives
-        `credential.removed`.
+        The answer says what that leaves: `used_by` is how many domains used the
+        account, and `revoke_url` is the provider's page where the key itself is
+        deleted. It deletes CustomDomain™'s copy only, for a key a person pasted
+        as for a lasting API key the cloud browser's agent made: the key lives at
+        the provider until it is deleted there (no provider documents an API that
+        revokes one), and the application receives `credential.removed` for a key
+        the agent made. Removing an account takes whoever manages it, like every
+        other change to it: an admin, an owner or the member who connected it
+        (`can_manage`), and for a key a customer's secure sign-in made, which no
+        member connected, an admin or an owner. Anyone else, a viewer included, gets
+        `403`, and nothing is deleted or detached.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7282,11 +7365,15 @@ paths:
                 properties:
                   id: { type: string }
                   revoked: { type: boolean }
-                  domains_kept_connected: { type: integer }
+                  used_by: { type: integer, description: "How many domains used the account. They stay connected, each with a timeline event, without continuous access." }
+                  domains_kept_connected: { type: integer, description: "The same number as `used_by`, kept for older integrations." }
                   revoke_url:
                     type: string
                     format: uri
-                    description: For a key the agent made, the provider's page where the key itself is revoked.
+                    description: >-
+                      The provider's page where the key itself is deleted: the page the
+                      agent's own sign-in named for a key it made, else the provider's
+                      key page. Absent when the provider has none on file.
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
@@ -7404,19 +7491,47 @@ paths:
       summary: Give an account a new key
       tags: [Provider accounts]
       description: >-
-        For an account the provider stopped accepting, or a one time account
-        whose key was deleted. Everything is checked before anything is kept:
-        the access mode, then the key (listing the provider's domains, or
-        reading `check_domain`, a selected domain or a domain the account
-        connected, for a provider that cannot list them), and for a `selected`
-        account that the key reaches every selected domain. `params` sent
-        with the key replace the kept ones. Takes an admin, an owner or the
-        member who connected the account. A key made at a secure sign-in
-        answers `409`: it is renewed by signing in again (the reconnect mode of
-        the sign-in), not by pasting a key. `continuous` access (asked, or the
-        account's own) for a credential that is used once and never kept
-        answers `422` `use_once_credential`; send `access` `one_time`. The new
-        key is recorded in the audit log (`provider_account.key_replaced`).
+        A new key for an account, in one of two ways (`method`). Both take an
+        admin, an owner or the member who connected the account (`403`
+        otherwise), and the key is recorded in the audit log
+        (`provider_account.key_replaced`).
+
+
+        `api_key` (the default), for a key a person pasted: for an account the
+        provider stopped accepting, or a one time account whose key was deleted.
+        Everything is checked before anything is kept: the access mode, then the
+        key (listing the provider's domains, or reading `check_domain`, a selected
+        domain or a domain the account connected, for a provider that cannot list
+        them), and for a `selected` account that the key reaches every selected
+        domain. `params` sent with the key replace the kept ones. A key made at a
+        secure sign-in answers `409`: it is renewed by signing in again, not by
+        pasting a key. `continuous` access (asked, or the account's own) for a
+        credential that is used once and never kept answers `422`
+        `use_once_credential`; send `access` `one_time`.
+
+
+        `secure_sign_in`, for a key made at a secure sign-in a member started in
+        the console: starts the same account sign in as
+        `POST /provider-accounts:sign-in`, for the account's own provider and
+        application, and answers `201` with `session_id` and `popup_url`. The new
+        key swaps into this same account when the person keeps it
+        (`POST /browser-sessions/{sid}:keep` with an empty body), so the account
+        keeps its id, its domains, its scope and the domains linked to it; only
+        its key changes, it is active again with its daily check started afresh, and
+        the key it replaces is named for deletion at the provider (`replaced_key`).
+        It is the console's own call (an API key on the signed visitor forward, `403`
+        `browser_account_unavailable` otherwise) and takes the sign in's body
+        (`return_origin`, `consent_version`, `locale`, `viewport_hint`) and no key. A
+        key a person pasted is renewed by pasting (`409`), and a key a customer's own
+        secure sign-in made is renewed by that customer, never from the console
+        (`403`). The keep refuses a key of another provider account (`422`
+        `different_account`): where the provider names the account, the two must be
+        the same; where it does not (IONOS), the new key must list every domain the
+        account holds. An account that holds no domain and has no account number
+        gives nothing to compare, so its renewal is refused (`422`
+        `account_not_verifiable`): remove the account and add it again with a new
+        sign in. The refused key stays pending and is named for deletion when the
+        sign in is cancelled.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7426,32 +7541,67 @@ paths:
           application/json:
             schema:
               type: object
-              required: [credential]
               properties:
-                access: { type: string, enum: [continuous, one_time] }
+                method:
+                  type: string
+                  enum: [api_key, secure_sign_in]
+                  default: api_key
+                  description: "How the key is renewed. `api_key` takes `credential` (required then); `secure_sign_in` takes the sign in's fields and no key."
+                access: { type: string, enum: [continuous, one_time], description: "`api_key` only." }
                 check_domain:
                   type: string
-                  description: A domain the key manages, read to check the key when the provider cannot list its domains.
+                  description: "`api_key` only: a domain the key manages, read to check the key when the provider cannot list its domains."
                 credential:
                   type: object
                   required: [token]
+                  description: "`api_key` only, and required for it."
                   properties:
                     token: { type: string }
                     params: { type: object, additionalProperties: { type: string } }
+                return_origin: { type: string, description: "`secure_sign_in` only, required: web origin the popup posts its result to; must be on the server's allowlist." }
+                consent_version:
+                  type: string
+                  enum: [cb-1, cb-2, cb-3, cb-4]
+                  description: "`secure_sign_in` only, required: the id of the consent text the person was shown, as for `browser:start`."
+                locale: { type: string, description: "`secure_sign_in` only: the language the popup reads in. Defaults to `en`." }
+                viewport_hint:
+                  type: object
+                  description: "`secure_sign_in` only: the size of the popup's live area, used as for `browser:start`."
       responses:
         '200':
-          description: The account
+          description: The account (`api_key`).
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   account: { $ref: '#/components/schemas/ProviderAccount' }
+        '201':
+          description: The sign in started (`secure_sign_in`).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, popup_url]
+                properties:
+                  session_id: { type: string, description: "The session id, `bs_` and 32 hex characters." }
+                  popup_url: { type: string, format: uri, description: "The popup page; its fragment holds the single use bootstrap code." }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden` (a viewer, a member who did not connect the account, or a
+            key a customer's own sign in made, for `secure_sign_in`),
+            `browser_account_unavailable` (`secure_sign_in` from anything but the
+            console's own call), `browser_provider_not_allowed` or
+            `workspace_suspended`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:check:
     post:
@@ -8265,6 +8415,21 @@ components:
         - type: object
           properties:
             order: { $ref: '#/components/schemas/SellOrderView' }
+    DomainsRefusedError:
+      description: >-
+        The error envelope of a refusal that is about domains the caller named, plus
+        those domains: `zone_not_reached` of `PATCH /v1/provider-accounts/{id}` (the
+        domains added that the key does not reach) and `different_account` of
+        `POST /v1/browser-sessions/{sid}:keep` for a renewal (the domains the
+        account holds that the new key does not list).
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            domains:
+              type: array
+              items: { type: string }
+              description: The domains the refusal is about. Absent for any other refusal.
     Environment:
       type: string
       enum: [production, staging, development]
@@ -11117,6 +11282,7 @@ components:
         provider: { type: string }
         provider_name: { type: string }
         application_id: { type: string, description: The application the key is for; absent for a key that serves the whole workspace. }
+        renews_account_id: { type: string, description: "The provider account a renewal sign in (`POST /provider-accounts/{id}/reconnect` with `method` `secure_sign_in`) makes the key for; absent for a sign in that adds an account." }
         deadline: { type: string, format: date-time, description: "In `key_ready`: when the wait for the keep step ends." }
         zones:
           type: array
