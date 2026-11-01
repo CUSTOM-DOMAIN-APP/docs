@@ -524,7 +524,8 @@ instead of a new sign-in, and only when all of this holds:
   another's key;
 - the application allows it: `end_user_saved_access` is on (on by default; a
   test mode application never offers a key). Turn it off with
-  `PATCH /v1/applications/{id}`; a console switch for it comes later;
+  `PATCH /v1/applications/{id}` or with **Use their saved access** under
+  **Widget → Ways to connect** ([the setting](/docs/guides/secure-sign-in#saved-access));
 - the customer can be told by email that their key was reused: the
   [end user notices](/docs/connect-flow/end-user-notices) feature is on, you
   gave their address when you minted the token (`end_user_email`) or the
