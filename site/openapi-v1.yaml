@@ -1140,8 +1140,9 @@ paths:
         at a sign in started with a token minted with their `end_user_ref`,
         never at GoDaddy for now (see
         `GET /connections/{id}/saved-access`); a miss, for any reason, leaves
-        the other rails as they were, so the end user signs in. The offer is
-        read only: an end user's token cannot use the key yet.
+        the other rails as they were, so the end user signs in. The offer
+        changes nothing: the key is used with
+        `POST /connections/{id}:use-saved-access` and the end user's consent.
 
 
         Where the secure sign-in also makes a lasting API key,
@@ -1937,9 +1938,10 @@ paths:
         `browser:start` refuses it. An end user's entry carries `from_domain`,
         the newest domain of theirs the key already serves, the neutral label
         `<Provider> key` and no `key_name` or `application_id`. It only
-        offers the key: `POST /connections/{id}:use-saved-access` and the
+        offers the key: the
         `409` `saved_access_available` of the sign in routes do not apply to an
-        end user's token yet.
+        end user's token yet. The key is used with
+        `POST /connections/{id}:use-saved-access`.
 
 
         A delegated agent token reads it with `domains:read` (the MCP's
@@ -3008,13 +3010,38 @@ paths:
         the key linked or the write failed at the provider, whatever the
         answer (its detail says when the provider answered with an error); a
         use refused before anything was sent, such as one with no records to
-        write, leaves no row. A token without `domains:connect` is `403`. An end user's
-        widget token is held to the same end user policy as `browser:start`
-        (`403` `token_not_bound` for a token bound to no domain, `403`
-        `token_wrong_end_user` for one minted for another end user than the
-        connection's, or for none), and then reaches the route but may not use
-        a key yet, though `GET /connections/{id}/saved-access` offers it its
-        own: `409` `saved_access_not_usable` for an account that exists.
+        write, leaves no row. A token without `domains:connect` is `403`.
+
+
+        An end user's widget token is held to the same end user policy as
+        `browser:start` (`403` `token_not_bound` for a token bound to no domain,
+        `403` `token_wrong_end_user` for one minted for another end user than
+        the connection's, or for none). It may use only a key
+        `GET /connections/{id}/saved-access` offers it, which is its own: any
+        other account, one that does not exist included, is `409`
+        `saved_access_not_usable`, and so is any token that is offered nothing
+        (no end user named, an install sample's `end_user_ref`, a test mode
+        application, the application's `end_user_saved_access` off, a key at
+        GoDaddy). It must send `consent_version` `ru-1` in the request: the
+        end user's agreement is for this domain only, asked of every call, and
+        nothing kept from an earlier domain stands in for it (`422`
+        `consent_required`). The end user is e-mailed before anything is
+        written, once for each key and domain, and with no e-mail that can be
+        sent nothing is used (`409` `saved_access_not_usable`, the same code as
+        a key that is not theirs). A domain that another account keeps is left
+        with it, and a domain already serving is linked only by a key whose
+        scope holds it (`409`). After a use that linked the key, the key
+        records the consent (`reuse_consent`, `reuse_consent_at`) and takes the
+        zone into its scope when it only reached it. Every use that wrote or
+        linked, or whose write the provider answered with an error, is one
+        `provider_account.domain_added` row in the audit log, the actor
+        `end_user:<end_user_ref>`, naming the domain, the connection, the
+        consent id and `via` `end_user_reuse` (never the key). The answer is
+        `result` alone: no `account`, so nothing of the key, its customer
+        number, a member or another end user reaches the browser, and the
+        provider's own words in `result.message` or a `502` are cleaned of
+        the key's secret, name and customer number. An API key, an agent
+        token or any other caller ignores `consent_version`.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -3029,9 +3056,20 @@ paths:
               required: [account_id]
               properties:
                 account_id: { type: string }
+                consent_version:
+                  type: string
+                  enum: [ru-1]
+                  description: >-
+                    The id of the consent text the end user agreed to for using
+                    their saved access for this domain. Required of an end
+                    user's widget token on every call (`422` `consent_required`
+                    without it, or with any other value); ignored from any
+                    other caller.
       responses:
         '200':
-          description: The domain's outcome and the account after it
+          description: >-
+            The domain's outcome and the account after it. An end user's widget
+            token gets `result` alone.
           content:
             application/json:
               schema:
@@ -3044,6 +3082,14 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '422':
+          description: >-
+            `consent_required`: an end user's widget token sent no
+            `consent_version`, or one that is not `ru-1`. Nothing was used and
+            no e-mail was sent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/Error' }
         '502': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }

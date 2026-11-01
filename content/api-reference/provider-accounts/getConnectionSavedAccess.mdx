@@ -50,9 +50,9 @@ _openapi:
           `browser:start` refuses it. An end user's entry carries `from_domain`,
           the newest domain of theirs the key already serves, the neutral label
           `<Provider> key` and no `key_name` or `application_id`. It only offers
-          the key: `POST /connections/{id}:use-saved-access` and the `409`
-          `saved_access_available` of the sign in routes do not apply to an end
-          user's token yet.
+          the key: the `409` `saved_access_available` of the sign in routes do
+          not apply to an end user's token yet. The key is used with `POST
+          /connections/{id}:use-saved-access`.
 
           A delegated agent token reads it with `domains:read` (the MCP's
           `find-saved-access`), for a connection of the application its grant is

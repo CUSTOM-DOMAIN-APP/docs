@@ -15,6 +15,7 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: a returning customer can use their saved key for the next domain, with one tap of consent for each domain.** When a customer who signed in securely for one domain comes back with another, the widget's token can now use the key their own sign-in kept: `POST /v1/connections/{id}:use-saved-access` takes `consent_version` `ru-1` for an end user's token (`422` `consent_required` without it), and the agreement is for that one domain only. The customer gets one email before the key is used (nothing is used if it cannot be sent), the use is recorded in the audit log under `end_user:<end_user_ref>` with the domain and the consent, and the answer carries the outcome of the write and nothing about the key. One provider account holds all of the customer's domains at that provider: one sign-in, then one tap for each next domain. GoDaddy keys stay held. See [A returning customer's own key](/docs/connect-flow/provider-accounts#a-returning-customers-own-key) and [Reuse emails](/docs/connect-flow/end-user-notices#reuse-emails). Additive: workspace and agent callers are unchanged.
 - **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
   CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
   where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a

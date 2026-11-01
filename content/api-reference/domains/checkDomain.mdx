@@ -58,8 +58,8 @@ _openapi:
           in started with a token minted with their `end_user_ref`, never at
           GoDaddy for now (see `GET /connections/{id}/saved-access`); a miss, for
           any reason, leaves the other rails as they were, so the end user signs
-          in. The offer is read only: an end user's token cannot use the key
-          yet.
+          in. The offer changes nothing: the key is used with `POST
+          /connections/{id}:use-saved-access` and the end user's consent.
 
 
           Where the secure sign-in also makes a lasting API key,

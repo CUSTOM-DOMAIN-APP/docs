@@ -542,10 +542,29 @@ instead of a new sign-in, and only when all of this holds:
 The entry names the provider and `from_domain`, a domain of theirs the key
 already serves, and nothing else about the key: no key name, no application,
 and the neutral label `<Provider> key` in place of any name a member gave the
-account. Any miss leaves the customer on the usual sign-in. For now it is
-an offer only: a customer's token cannot yet write a domain's records with the
-key (`409 saved_access_not_usable`), and the sign-in is not refused. The tap of
-consent for each domain, and the email after each use, come with that step.
+account. Any miss leaves the customer on the usual sign-in.
+
+The offer changes nothing, and the sign-in is not refused. The key is used with
+`POST /v1/connections/{id}:use-saved-access` and the customer's widget token:
+
+- **One consent for each domain.** The request carries
+  `"consent_version": "ru-1"`, the id of the consent text the widget shows at
+  one tap, or the answer is `422 consent_required`. It is asked of every call.
+  What the key remembers of an earlier domain's consent stands in for nothing,
+  and the token reaches only its own domain.
+- **Only their own key.** Any other account, one that does not exist included,
+  is the same `409 saved_access_not_usable`, so a customer learns nothing about
+  other keys. A domain that another key already keeps is left with it.
+- **The email goes first.** The customer gets one
+  [email](/docs/connect-flow/end-user-notices#reuse-emails) for each key and
+  domain before anything is written. If it cannot be sent, nothing is used
+  (`409 saved_access_not_usable`).
+- **Every use is audited.** One `provider_account.domain_added` row for each
+  use, with the actor `end_user:<end_user_ref>`, the domain, the consent id and
+  `via: "end_user_reuse"`. A use that linked the key also records the consent on
+  the key and adds the domain's zone to its scope.
+- **The answer is the outcome alone** (`result`): no account, no key name, no
+  provider customer number and no other customer's id.
 
 A second secure sign-in for a provider account you already hold a key for, from
 the application the key belongs to or one it is shared with, does not add a
