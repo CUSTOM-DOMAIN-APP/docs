@@ -1,6 +1,6 @@
 ---
 title: Notifications
-description: "See which CustomDomain™ notifications reach the console bell and browser push, like domains going live or certificate problems, and how to turn each off."
+description: "See which CustomDomain™ notifications reach the console bell and browser push, like domains going live or certificate problems, which emails we send and who gets them, and how to turn each off."
 ---
 
 CustomDomain™ tells you when something happens to your domains, your billing or
@@ -14,8 +14,8 @@ notification can land, and you choose each one separately:
   when the console is closed. Push is off until you turn it on in a browser, and
   your browser asks you first.
 
-Email is separate and unchanged: the billing, certificate, DNS and agent emails
-you already get keep coming. Security and account email is always sent.
+Email is separate from both. [Email](#email), below, lists every email we send,
+who gets it and how to stop it. Security and account email is always sent.
 
 ## What you are told about
 
@@ -120,6 +120,118 @@ at once and are yours alone: they do not change what a teammate gets.
 
 You can also withdraw the permission in your browser's site settings at any
 time. A notification never needs you to keep the console open.
+
+## Email
+
+Every email CustomDomain™ sends is listed below: what it says and when it goes, who gets it, whether it is always
+sent or optional, and how to stop it. The console shows the same list, read only and open to every role, so a member
+sees what an owner sees. Nothing on it switches an email on or off.
+
+- **New menu:** **Settings → Notifications**, a tab of Settings. Your own bell and push choices (the steps above call
+  that page **Settings → Notifications**) are on **Notification settings**, in the avatar menu.
+- **Classic menu:** a page called **Emails we send**. Open it from **Every email we send**, on
+  **Settings → Notifications** (the page where you choose what you are told) and on **Settings → General**.
+
+[Navigation](/docs/getting-started/console#navigation) explains the two menus.
+
+Beside each email the console also shows whether the bell and push ring at the same moment, and what they default to.
+They go to every owner and admin, so when an email goes to one person, such as the person who gave an agent access,
+the page adds "for owners and admins". You choose them under **What to tell you**, above, not here.
+
+### How to stop an email
+
+The last column of each table says how. There are three cases:
+
+- **Always sent.** Security and account email cannot be turned off. Its row says what to do instead: revoke an agent,
+  change a person's role on the **Team** page (**Team & roles** in the new menu), fix the domain, or ignore the email.
+- **Optional: tips and product updates, domain alerts, the weekly digest.** Each has one switch in your
+  **Email preferences**. Open it from the **Email preferences** link in the footer of one of those emails (no
+  sign-in needed), or from the link at the top of the console's list. **Unsubscribe from all optional email** turns
+  all three off at once.
+- **Optional: set for each application.** Email to your customers is stopped by the application's own setting, not
+  by anyone's preferences: choose **Don't send** under **Who sends DNS update emails**, in **End user email** on the
+  application's settings. See [Who sends it](/docs/connect-flow/end-user-notices#who-sends-it).
+
+### Domain emails
+
+Certificate and DNS alerts go to owners and admins. [Certificates](/docs/connect-flow/certificates#alerts) and
+[Monitoring](/docs/connect-flow/monitoring#alerts) describe them, [Routing](/docs/connect-flow/routing#changing-where-domains-point)
+describes the move email, and [End user notices](/docs/connect-flow/end-user-notices) describes the two emails to a
+customer.
+
+| Email | Who gets it | Sent | How to stop it |
+| --- | --- | --- | --- |
+| **A domain needs attention.** A domain has waited a day for its DNS records and they are still missing. Not sent once the domain is a week old. | The workspace owner | Optional: domain alerts | Turn off domain alerts in your email preferences. |
+| **A domain's setup failed.** A domain's setup failed and stayed failed for two hours. Not sent once the failure is a week old. | The workspace owner | Optional: domain alerts | Turn off domain alerts in your email preferences. |
+| **Your first domain is live.** The first time a domain goes live, within a week of it. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Certificate problems.** A certificate could not be issued, keeps failing to renew, is about to expire or has expired. | Owners and admins | Always sent | Cannot be turned off. Fix the domain and the alerts stop. To stop it for one person, change their role to member on the **Team** page. |
+| **DNS records changed.** A record CustomDomain™ manages changed or went missing and could not be put back. | Owners and admins | Always sent | Cannot be turned off. Fix the records and the alerts stop. To stop it for one person, change their role to member on the **Team** page. |
+| **A domain moved to other routing.** A domain was moved to other routing and its DNS records changed. | Owners and admins | Always sent | Cannot be turned off. It is sent once for each move. To stop it for one person, change their role to member on the **Team** page. |
+| **DNS records sent to someone.** Someone asked us to email a domain's DNS records, from the widget or the console. | The person it is for | Always sent | Cannot be turned off. It is sent only when someone asks, to the address they typed. Ignore it and nothing changes. |
+| **The weekly digest.** Once a week, early in the week, when the week had widget activity, a new domain or something that needs attention. | The workspace owner | Optional: the weekly digest | Turn off the weekly digest in your email preferences. |
+| **New DNS records for a customer.** A domain was moved and its records have to change, sent to the customer who connected it. | The customer who connected the domain | Optional: set for each application | Choose **Don't send** under **Who sends DNS update emails** in the application's settings. It stops the reconnect email too. Or leave the customer's address off: it goes only to the address you gave us. |
+| **Reconnect notice for a customer.** The key we made at a customer's DNS provider is about to end or has stopped working. | The customer who connected the domain | Optional: set for each application | Choose **Don't send** under **Who sends DNS update emails** in the application's settings. It stops the new DNS records email too. Or leave the customer's address off: it goes only to the address you gave us. |
+
+### Billing emails
+
+Billing emails go to owners and admins. [Billing emails](/docs/billing/plans-and-quotas#billing-emails) describes the
+trial, payment and plan ones.
+
+| Email | Who gets it | Sent | How to stop it |
+| --- | --- | --- | --- |
+| **Your trial started.** A plan's trial starts. Nothing is charged before it ends. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Your trial is ending.** Three days before the trial ends and the card is charged. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **A payment failed.** A payment for the plan did not go through. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Choose a plan.** A grace period starts and a plan has to be chosen or billing set up. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Choose a plan reminder.** Seven, three and one day before the grace period ends. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Adding domains is paused.** Billing paused adding new domains. Domains already connected keep working. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Billing is back in good standing.** A payment went through or a plan was chosen, and new domains work again. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Your subscription ended.** A subscription ended. Domains already connected keep working. Where [lapsed plans](/docs/billing/plans-and-quotas#when-a-paid-plan-ends) are on, **Your plan ended** is sent instead. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **A refund is under review.** A payment was refunded and a person is looking at it. Nothing changes on its own. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **A payment dispute.** A payment was disputed with the card issuer, and again when the dispute is settled. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Your plan ended.** A plan ended and nothing replaced it. Domains keep working until the date it names. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Your domains pause soon.** A reminder before the date the domains of an ended plan are paused. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+| **Your domains are paused.** The date passed and the domains of an ended plan are paused until you subscribe again. | Owners and admins | Always sent | Cannot be turned off. It follows the workspace's plan. To stop it for one person, change their role to member on the **Team** page. |
+
+### Agent emails
+
+The email goes to the person who gave the agent access. Its bell and push go to every owner and admin.
+[Owner emails](/docs/agents/managing-access#owner-emails) describes them.
+
+| Email | Who gets it | Sent | How to stop it |
+| --- | --- | --- | --- |
+| **A new agent was connected.** Someone gave an AI agent access to the workspace. It lists what the agent can do. | The person who gave the agent access | Always sent | Cannot be turned off. It is sent once, when access is given. |
+| **Routine agent actions.** An agent connected, disconnected or re-applied a domain, used a saved key, or moved a domain's nameservers. | The person who gave the agent access | Always sent | Cannot be turned off. Revoke the agent's access under **Agents** and these stop. |
+| **An agent hit its spend cap.** A purchase was blocked because it would go over the agent's monthly spend cap. No money moved. | The person who gave the agent access | Always sent | Cannot be turned off. Revoke the agent's access under **Agents** and these stop. |
+| **An agent spent money.** An AI agent bought a domain and was charged. | The person who gave the agent access | Always sent | Cannot be turned off. Revoke the agent's access under **Agents** and these stop. |
+| **An agent's access ended.** An agent's access to the workspace was revoked, by a person or by the agent. | The person who gave the agent access | Always sent | Cannot be turned off. It is sent once, when access ends. |
+| **An agent's credential was reused.** An old agent credential was used again after it was replaced. The agent's access is revoked. | The person who gave the agent access | Always sent | Cannot be turned off. It is sent once, when the agent is cut off. |
+
+### Account emails
+
+Sign-in, password and invite emails go to the person they are for. The tips and nudges go to the workspace owner. The
+last two are operator notices: they go to whoever runs this deployment.
+
+| Email | Who gets it | Sent | How to stop it |
+| --- | --- | --- | --- |
+| **Confirm your email address.** You signed up and the address has to be confirmed. | The person it is for | Always sent | Cannot be turned off. Ignore it if you did not sign up: the account stays unverified. |
+| **Password link.** Someone asked to reset a password, or to add one to an account that signs in with Google or GitHub. | The person it is for | Always sent | Cannot be turned off. Ignore it if you did not ask: your password stays as it is. |
+| **Your password was changed.** After a password reset, so you know it happened. | The person it is for | Always sent | Cannot be turned off. If it was not you, reset your password under **Security**. |
+| **Confirm a new email address.** You asked to change the address you sign in with. It goes to your current address. | The person it is for | Always sent | Cannot be turned off. Ignore it if you did not ask: your address stays as it is. |
+| **An invite to a workspace.** An owner or admin invited you to join a workspace. | The person it is for | Always sent | Cannot be turned off. Ignore it and nothing happens until you accept. |
+| **An invite to finish a domain.** Someone invited you to help finish one domain. The records to add come with it. | The person it is for | Always sent | Cannot be turned off. Ignore it and nothing happens until you accept. |
+| **A test message from your mail server.** Someone pressed Send test on an application's own mail server settings. | The person it is for | Always sent | Cannot be turned off. It is sent only when you press Send test, to the address you type. |
+| **Your first steps.** Right after the welcome questions, or half an hour after sign up without them. Never after two days. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Open the widget.** One to three days after sign up, when nobody has opened the widget. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Add your first domain.** Three to seven days after sign up, when the workspace has no domain. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Start a trial.** Only when the people who run CustomDomain™ send it by hand, when the workspace has no plan or trial. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Connect your server.** Only when the people who run CustomDomain™ send it by hand, when your server never asked for a widget token. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Your first customer domain.** Only when the people who run CustomDomain™ send it by hand, when the widget was opened and no customer's domain is live. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **Add a second domain.** Only when the people who run CustomDomain™ send it by hand, when the workspace has exactly one domain. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **A note when you have gone quiet.** A free workspace with no live domain was quiet for two weeks. Never to people who pay or in regions that need opt in consent. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **One last note.** Two weeks after the first note, when the workspace is still quiet. Never sent to someone who came back. | The workspace owner | Optional: tips and product updates | Turn off tips and product updates in your email preferences. |
+| **A DNS provider's checks changed.** A check of a DNS provider changed status. One email for each monitor run. | Whoever runs this deployment | Always sent | Cannot be turned off. Whoever runs this deployment sets where these go. |
+| **Browser minutes are at 80 percent.** Once a month, when the secure sign-in has used 80 percent of its monthly browser time. | Whoever runs this deployment | Always sent | Cannot be turned off. Whoever runs this deployment sets where these go. |
 
 ## What we keep
 
