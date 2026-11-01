@@ -234,8 +234,8 @@ is sealed with AES-256-GCM in one of two formats:
 | Variable | What it does |
 |---|---|
 | `GRANT_ENCRYPTION_KEY` | The v1 key, base64 of 32 random bytes. It works exactly as before and opens every v1 value. |
-| `GRANT_ENCRYPTION_KEYS` | Comma separated keys for v2, the current one first. Every key opens a value; the first seals new ones. Unset, the v1 key is the one v2 key. |
-| `GRANT_ENCRYPTION_WRITE` | `v1` or `v2`: the format new and changed values are written in. The default is `v1` while `GRANT_ENCRYPTION_KEY` is set, so an older release still reads every row. |
+| `GRANT_ENCRYPTION_KEYS` | Comma separated keys for v2, the current one first. Every key opens a value; the first seals new ones. The v1 key is always a v2 key too: when the list does not name it, it follows the list and only opens, so a value sealed under it still opens. Unset, the v1 key is the one v2 key. |
+| `GRANT_ENCRYPTION_WRITE` | `v1` or `v2`: the format new and changed values are written in. The default is `v1` while `GRANT_ENCRYPTION_KEY` is set, so an older release still reads every row. **With `GRANT_ENCRYPTION_KEYS` and no `GRANT_ENCRYPTION_KEY` there is no default: v1 needs the v1 key, so you must set this to `v2`, and the control plane refuses to start until you do.** |
 | `GRANT_ENCRYPTION_READ_V1` | `on` (the default) or `off`. Off refuses a v1 value, such as a pasted or restored one. |
 | `WEBHOOK_ENCRYPTION_KEY`, `WEBHOOK_ENCRYPTION_KEYS` | The same, for webhook signing secrets and SMTP passwords, when they have keys of their own. Unset, they use the grant keys. |
 
@@ -247,12 +247,25 @@ make the new key the **first** entry and run `credctl rewrap --to v2` again.
 `credctl status` counts stored secrets by format and key id, and `credctl verify`
 opens every one. Retire the old key only when `credctl status` shows nothing
 under it and no backup you may still restore holds anything sealed under it. A
-list that is set but unusable stops the control plane at start, and an error or
-a log line names a key id, never a key.
+list that is set but unusable stops the control plane at start. So does a valid
+list beside a `GRANT_ENCRYPTION_KEY` that is set but unusable (it would leave
+sign-ins off while webhook secrets are written in v2), and so does a list with no
+`GRANT_ENCRYPTION_KEY` and no `GRANT_ENCRYPTION_WRITE`. The same rules apply to
+the keys of webhook secrets and to `credctl`. An error or a log line names a
+variable or a key id, never a key. At start the control plane also logs, and
+exposes as `credential_rows`, how many stored secrets are in each format and
+under each key id (a count taken once at start; `credctl status` is the live one).
+Because the v1 key stays a v2 key after the list, an old key that is also
+`GRANT_ENCRYPTION_KEY` is retired only when that variable is unset too.
 
 Once any v2 value exists, never run a release older than the one that added v2:
 it cannot read v2 values. To go back, set `GRANT_ENCRYPTION_WRITE=v1`, run
 `credctl rewrap --to v1`, and then change releases.
+
+A v2 value is bound to its workspace, so a record that is moved to another
+workspace stops opening. Nothing in the product moves one; if you move records by
+hand, run `credctl rewrap --to v1` first (with `GRANT_ENCRYPTION_WRITE=v1`), move
+them, then `credctl rewrap --to v2`.
 
 ## Unauthenticated surfaces
 
