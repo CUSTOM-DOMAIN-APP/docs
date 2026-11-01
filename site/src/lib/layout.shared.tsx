@@ -1,13 +1,12 @@
 /**
- * Shared nav and header options for the /docs route group: the title (the oak mark and "CustomDomain™ docs",
- * src/components/wordmark.tsx), the GitHub link and the links that Fumadocs' DocsLayout lists at the top of the
- * sidebar (and the phone drawer). The chrome is Fumadocs' own, themed on the brand kit in src/app/brand.css. The
- * first link is "Sign in", or "Console" for a signed-in browser (src/components/auth-link.tsx, picked before first
- * paint by src/lib/auth-hint.ts). Icon links hide their svg from assistive tech; the link label names them.
+ * Shared nav and header options for the /docs route group: the title (the lockup, src/components/wordmark.tsx) and
+ * the two icon links (npm, GitHub) that Fumadocs shows beside the theme switch at the foot of the sidebar and at the
+ * top of the phone drawer. Sign in or Console, the API key link, Status and customdomain.ai are no longer link items
+ * at the top of the page list: src/components/sidebar-account.tsx renders them at the foot (src/app/docs/layout.tsx).
+ * Icon links hide their svg from assistive tech; the link label names them.
  */
 
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { AuthLink } from "@/components/auth-link";
 import { Wordmark } from "@/components/wordmark";
 
 export function baseOptions(): BaseLayoutProps {
@@ -17,9 +16,6 @@ export function baseOptions(): BaseLayoutProps {
       url: "/docs",
     },
     links: [
-      { type: "custom", on: "menu", children: <AuthLink /> },
-      { text: "Get an API key", url: "https://app.customdomain.ai/signup", external: true, active: "none" },
-      { text: "Status", url: "https://status.customdomain.ai", external: true, active: "none" },
       {
         type: "icon",
         label: "npm",
@@ -30,11 +26,6 @@ export function baseOptions(): BaseLayoutProps {
           </svg>
         ),
         url: "https://www.npmjs.com/package/customdomain-js",
-      },
-      {
-        text: "customdomain.ai",
-        url: "https://customdomain.ai",
-        active: "none",
       },
       // The GitHub link Fumadocs adds for `githubUrl`, written out so its icon can be aria-hidden: the link's
       // label names it, and an unnamed role="img" svg fails axe (svg-img-alt).

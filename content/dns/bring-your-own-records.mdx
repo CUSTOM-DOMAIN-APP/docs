@@ -33,7 +33,11 @@ curl -X PUT https://api.customdomain.ai/v1/connections/<ID>/records \
 set with yours. From then on the poller verifies *your* records, the widget's
 manual screen shows *your* records, and `live` means *your* records resolve.
 The poller compares values for `CNAME`, `A`, `AAAA`, `APEXCNAME` and `TXT`
-records (a `TXT` counts when it contains your value). `MX`, `SPFM` and `CAA`
+records. A `TXT` counts when one of the values at its name **contains** yours,
+compared in lowercase: the check is neither an exact match nor case-sensitive,
+so a value with extra text around it, or typed in the wrong case, still counts.
+A service that checks its token exactly can still reject what passes here, so
+let that service run its own check once the connection is `live`. `MX`, `SPFM` and `CAA`
 records are written, but they are not value-checked, so a set made only of
 those can go `live` without confirming them in DNS.
 See [Create a connection: supplying your own
@@ -60,7 +64,14 @@ whatever SPF already exists. See [Email DNS](/docs/dns/email-dns).
 | Sign in with the provider (OAuth) | Written as supplied |
 | API key | Written as supplied |
 | One-click setup (Domain Connect) | **Refused**: a provider-hosted template can't carry a caller-authored set. The start returns an error; use another rail. |
+| Secure sign-in | **Refused** before the customer signs in (`422 browser_unsupported_records`, with the types named). The widget says so and moves to the manual steps, so the customer adds the records by hand. |
+| DNS hosting ([managed DNS](/docs/dns/managed-dns)) | Written into the zone CustomDomain™ hosts for the domain, which serves them once the domain's nameservers point there |
 | Manual | Shown to the end user exactly as supplied |
+
+Before a rail writes a `TXT` or `CAA` record, it reads the values already at that
+name and keeps them (another service's token, the SPF policy), except an SPF,
+DMARC or DKIM value your set brings its own of. If that read fails, nothing is
+written.
 
 ## What an email-only connection does *not* get
 
@@ -83,6 +94,10 @@ records to it).
 
 - **Server-side only.** The call needs an API key; a widget token is
   refused (`403`): a page in a browser must not choose the records we write.
+- **Not in test mode.** A [test mode](/docs/guides/test-mode) key gets
+  `403 sandbox_not_allowed` from this endpoint (and from
+  `POST /v1/sharing/connect`), so a supplied set cannot be tried on a `.test`
+  name. Try it with a live key on a domain you control.
 - **Replace, don't patch.** The whole set is replaced on each `PUT`.
 - **Before anything is written.** Once the connection's records have been
   applied (or it is live), the set is frozen: a `PUT` with a different set
@@ -109,7 +124,8 @@ endpoint; removal is a [disconnect](/docs/connect-flow/offboarding) concern.
 
 - **SES / SendGrid / Postmark domain authentication**: the DKIM selectors
   are per-account and unknowable to us.
-- **A verification `TXT` for a third party**: same reason.
+- **A verification `TXT` for a third party**: same reason. See
+  [Domain verification](/docs/guides/domain-verification).
 - **An `MX` set your platform manages** for the customer.
 
 For plain web connections, don't supply records: the derived set already

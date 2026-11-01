@@ -1,10 +1,18 @@
 /*
  * The docs' brand rules on top of the kit tokens (tokens-docs.css): the three self-hosted faces (src/lib/fonts.ts
- * defines --cd-face-*; the stacks keep the kit's fallbacks), the page title in Instrument Serif (the kit's one place
- * for the serif in the docs), light code cards with a hairline and no resting shadow (BD-5), the API reference's
- * method colors brought to the kit, and the wordmark. Rules here are unlayered, so they win over Fumadocs'
- * utilities: keep them few and scoped to a class.
+ * defines --cd-face-*; the stacks keep the kit's fallbacks), the marketing site's type in the page (the title and H2
+ * in Instrument Serif, H3 in Inter 600, body in ink, the 720 px article column, links and inline code as the kit
+ * draws them), light code cards with a hairline and no resting shadow (BD-5), the API reference's method colors
+ * brought to the kit, the lockup, the search field, the section switch and the account buttons at the sidebar's
+ * foot. Rules here are unlayered, so they win over Fumadocs' utilities: keep them few and scoped.
  */
+
+/* --cd-size-docs-h2, --cd-size-docs-lede, --cd-text-secondary (light and dark) and --cd-article come from the kit's
+   generated tokens-docs.css. Fumadocs draws cards, code blocks, tabs and callouts with rounded-xl: map it to the
+   kit's 14 px card radius. */
+:root {
+  --radius-xl: var(--cd-radius-lg);
+}
 
 :root {
   --font-sans: var(--cd-face-sans, "Inter"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -61,9 +69,71 @@
   text-wrap: balance;
 }
 
-/* Section headings stay in Inter 600, balanced so a short last line does not dangle. */
-.prose :where(h2, h3, h4) {
+/* The page's type, matched to the marketing article (DESIGN.md 3.2): H2 in the serif at 26 to 28 px (never under 24),
+   H3 and H4 in Inter 600, body in full ink at the kit's 1.625 leading, the lede in ink soft. Headings inside a
+   not-prose block (cards, the API reference's own panels) keep Fumadocs' type. */
+.prose :where(h2, h3, h4):not(:where([class~=not-prose], [class~=not-prose] *)) {
   text-wrap: balance;
+}
+
+.prose :where(h2):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  font-family: var(--cd-font-serif);
+  font-weight: 400;
+  font-size: var(--cd-size-docs-h2);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  margin-top: 2.25em;
+  margin-bottom: 0.6em;
+}
+
+.prose :where(h3):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  font-size: 1.125rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.prose :where(h4):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.prose {
+  --tw-prose-body: var(--color-fd-foreground);
+  line-height: 1.625;
+}
+
+.cd-docs-lede {
+  color: var(--cd-text-secondary);
+  font-size: var(--cd-size-docs-lede);
+  line-height: 1.5;
+}
+
+/* The article column: 720 px of text like a marketing article (DESIGN.md 4), on every page but the full-width API
+   reference. The page keeps Fumadocs' padding around it. */
+#nd-page[data-full="false"] {
+  max-width: calc(var(--cd-article) + 3rem);
+}
+
+@media (min-width: 1280px) {
+  #nd-page[data-full="false"] {
+    max-width: calc(var(--cd-article) + 4rem);
+  }
+}
+
+/* Links as the kit draws them: ink, weight 500, a 1 px underline 3 px under the text, 2 px on hover. */
+.prose :where(a:not([data-card])):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.prose :where(a:not([data-card])):not(:where([class~=not-prose], [class~=not-prose] *)):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Inline code: Geist Mono 13 px on paper 2 with a hairline, the kit's 6 px chip radius. */
+.prose :where(code):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  border-radius: 6px;
 }
 
 /* Counts, limits and prices line up in tables. */
@@ -71,8 +141,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Code cards and callouts: the kit's light card with a 1 px line and no resting shadow. A Fumadocs callout has no
-   class of its own, only the --callout-color it sets inline. */
+/* Code cards and callouts: the kit's light card with a 1 px line, the 14 px card radius and no resting shadow. A
+   Fumadocs callout has no class of its own, only the --callout-color it sets inline. */
 figure.shiki,
 div[style*="--callout-color"] {
   box-shadow: none;
@@ -92,10 +162,12 @@ div[style*="--callout-color"] {
   font-weight: var(--shiki-dark-font-weight, inherit);
 }
 
-/* The wordmark in the sidebar and the phone header (src/components/wordmark.tsx). */
+/* The lockup in the sidebar and the phone header (src/components/wordmark.tsx): the marketing header's cdk-brand
+   (oak 28 px, Inter 600 16 px), a 1 px rule, then "Docs" in Inter 500 14 px ink soft. */
 .cd-wordmark {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   font-size: 1rem;
   line-height: 1;
   white-space: nowrap;
@@ -110,6 +182,7 @@ div[style*="--callout-color"] {
 }
 
 .cd-wordmark__name {
+  font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -121,8 +194,204 @@ div[style*="--callout-color"] {
   font-weight: 500;
 }
 
+.cd-wordmark__rule {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin-inline: 12px 10px;
+  background: color-mix(in oklab, var(--color-fd-foreground) 22%, transparent);
+}
+
 .cd-wordmark__docs {
-  margin-inline-start: 0.3em;
-  font-weight: 400;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cd-text-secondary);
+}
+
+/* The sidebar's top block: the lockup row is 64 px tall to its hairline, the marketing header's height. */
+#nd-sidebar div.flex:has(> a .cd-wordmark) {
+  align-items: center;
+  min-height: 48px;
+  margin: -6px -16px 4px;
+  padding: 0 10px 2px 16px;
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+#nd-sidebar div.flex:has(> a .cd-wordmark) > button {
+  margin-block: 0;
+}
+
+/* Search: a 40 px field on paper with a hairline, the shortcut in Geist Mono on paper 2. */
+[data-search-full] {
+  min-height: 40px;
+  padding-inline: 12px 8px;
+  border-radius: 8px;
+  border-color: var(--color-fd-border);
+  background: var(--color-fd-background);
   color: var(--color-fd-muted-foreground);
+  font-size: 0.875rem;
+}
+
+[data-search-full]:hover {
+  border-color: var(--cd-text-secondary);
+  background: var(--color-fd-background);
+  color: var(--color-fd-foreground);
+}
+
+[data-search-full] kbd {
+  min-width: 22px;
+  padding-inline: 5px;
+  border-radius: 4px;
+  border-color: var(--color-fd-border);
+  background: var(--color-fd-muted);
+  color: var(--cd-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* The section switch (src/components/section-switch.tsx): four links in a two by two grid of hairline cells; the
+   current one is filled with ink. 36 px cells, 44 px where the pointer is coarse. */
+.cd-sections ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-fd-border);
+}
+
+.cd-sections li {
+  display: flex;
+  background: var(--color-fd-card);
+}
+
+.cd-sections__link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-height: 36px;
+  padding-inline: 10px;
+  color: var(--cd-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 150ms, color 150ms;
+}
+
+.cd-sections__link:hover {
+  background: var(--color-fd-muted);
+  color: var(--color-fd-foreground);
+}
+
+.cd-sections__link[aria-current="true"] {
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+}
+
+.cd-sections__link:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: -4px;
+  border-radius: 6px;
+}
+
+@media (pointer: coarse) {
+  .cd-sections__link {
+    min-height: 44px;
+  }
+}
+
+/* The sidebar's foot (src/components/sidebar-account.tsx): the account buttons above the icon row, then the two
+   site links. The kit's buttons: primary ink, secondary card with a muted border, radius 8. */
+.cd-account {
+  order: -1;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cd-account__buttons {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+
+.cd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.cd-btn--primary {
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+}
+
+.cd-btn--primary:hover {
+  background: var(--cd-text-secondary);
+}
+
+.cd-btn--secondary {
+  background: var(--color-fd-card);
+  color: var(--color-fd-foreground);
+  border-color: var(--color-fd-muted-foreground);
+}
+
+.cd-btn--secondary:hover {
+  border-color: var(--color-fd-foreground);
+}
+
+.cd-btn:focus-visible,
+.cd-account__links a:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
+}
+
+.cd-account__links {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding-inline: 2px;
+  font-size: 0.875rem;
+}
+
+.cd-account__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--color-fd-muted-foreground);
+  text-decoration: none;
+}
+
+.cd-account__links a:hover {
+  color: var(--color-fd-foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .cd-btn {
+    min-height: 44px;
+  }
+
+  .cd-account__links a {
+    min-height: 44px;
+  }
 }

@@ -1,8 +1,9 @@
 /**
- * The docs title in the sidebar and the phone header: the oak mark and "CustomDomain™ docs", per the brand kit
- * (D-10): the oak at 28 px in the text color, the name in Inter 600 with the ™ in its own aria-hidden superscript,
- * sentence case, translate="no" so a page translator leaves the name alone. The oak is the flat mark from the
- * kit's icon sprite, drawn in currentColor so it is ink on paper and paper on ink. Styles are in src/app/brand.css.
+ * The docs lockup in the sidebar and the phone header, the same lockup as the marketing header (the design kit's
+ * cdk-brand: the oak at 28 px in the text color, "CustomDomain™" in Inter 600 at 16 px, ™ in its own aria-hidden
+ * superscript, translate="no"), then a 1 px divider and "Docs" in Inter 500 at 14 px, ink soft. The accessible name
+ * stays "CustomDomain docs". The oak is the flat mark from the kit's icon sprite, drawn in currentColor so it is ink
+ * on paper and paper on ink; never recolor or redraw it. Styles are in src/app/brand.css (.cd-wordmark).
  */
 
 function Oak() {
@@ -27,8 +28,9 @@ export function Wordmark() {
       <span className="cd-wordmark__name">
         CustomDomain<sup aria-hidden="true">™</sup>
       </span>
-      {/* The leading space keeps the accessible name "CustomDomain docs"; the margin in brand.css does the visual spacing. */}
-      <span className="cd-wordmark__docs">{" "}docs</span>
+      <span className="cd-wordmark__rule" aria-hidden="true" />
+      {/* The leading space keeps the accessible name "CustomDomain docs"; the rule and its margins do the spacing. */}
+      <span className="cd-wordmark__docs">{" "}Docs</span>
     </span>
   );
 }

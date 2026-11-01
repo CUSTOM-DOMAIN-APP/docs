@@ -1,9 +1,18 @@
+/**
+ * The /docs layout: Fumadocs' DocsLayout with the page tree split into four sections (Documentation, Providers,
+ * API reference, Changelog). The sections are shown as four links at the top of the sidebar and the phone drawer
+ * (src/components/section-switch.tsx, the sidebar banner) instead of Fumadocs' dropdown, so `tabs` is off for the
+ * layout itself. The account buttons and site links sit at the sidebar's foot (src/components/sidebar-account.tsx).
+ */
+
 import type { ReactNode } from "react";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { source } from "@/lib/source";
 import { baseOptions } from "@/lib/layout.shared";
+import { SectionSwitch } from "@/components/section-switch";
+import { SidebarAccount } from "@/components/sidebar-account";
 
 // The sidebar has four tabs: Documentation, Providers, API reference and
 // Changelog. Providers and API reference are folders marked "root": true in
@@ -66,7 +75,12 @@ function docsTree(): { tree: PageTree.Root; tabs: LayoutTab[] } {
 export default function DocsRouteLayout({ children }: { children: ReactNode }) {
   const { tree, tabs } = docsTree();
   return (
-    <DocsLayout tree={tree} tabs={tabs} {...baseOptions()}>
+    <DocsLayout
+      tree={tree}
+      tabs={false}
+      sidebar={{ banner: <SectionSwitch tabs={tabs} />, footer: <SidebarAccount /> }}
+      {...baseOptions()}
+    >
       {children}
     </DocsLayout>
   );
