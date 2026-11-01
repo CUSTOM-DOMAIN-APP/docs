@@ -7190,6 +7190,17 @@ paths:
       description: >-
         A viewer reads it without `agent_key.account` and
         `agent_key.session_id`.
+
+
+        For whoever manages the account (`can_manage`, and never a viewer), it
+        also carries `more_domains`: the domains the key lists at the provider
+        that the workspace has not connected, to offer them with `POST
+        /provider-accounts/{id}/connect`. Listing them is a use of the key, so
+        it is asked of the provider on this read (kept for a minute) and left
+        out for anyone else, for a key an end user's secure sign-in made, and
+        for an account with no usable key. The read changes nothing: a key the
+        provider refuses, or a list that fails, leaves `more_domains` out and
+        the account as it was.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7419,9 +7430,22 @@ paths:
       summary: Connect domains with the account
       tags: [Provider accounts]
       description: >-
-        Creates a connection for each domain under the application and writes
+        Creates a connection for each domain under its application and writes
         its records with the account's key (keeping the CAA and TXT values
-        already there and recording what each write replaced). Each domain is
+        already there and recording what each write replaced).
+
+
+        A domain goes into the application named for it, else the call's
+        `application_id`, else the application that already holds it in the
+        workspace (its own connection's, so a domain the workspace already
+        serves is linked where it lives). A domain none of those names answers
+        `400`, and so does one two applications hold; so does a domain named
+        for two different applications. A call takes at most 200 domains (a
+        domain named twice is one; `400` beyond). Every application used must
+        be the workspace's (`404` otherwise) and one the key serves, and every
+        domain must be inside the key's scope: a call that is refused for any
+        of this changes nothing, because all of it is checked before the first
+        write. Each domain is
         linked to the account once its records are written; a domain whose
         write fails is not linked and keeps the access it had. A continuous
         account then keeps the linked domains in sync. A domain the
@@ -7439,12 +7463,15 @@ paths:
         applications an admin shared it with (`application_ids`); naming any
         other application's id answers `403` (this key is not shared with this
         application; an admin or an owner can share it). A domain outside the
-        key's scope answers `400`, except for a key a member of the
-        workspace made at a sign in started in the console (the console's
-        signed call, not an API key that names the console): when a read of
-        the domain's zone with the key works, the domain is connected with no
-        new sign in, and the zone is added to the key's scope once a write
-        there works (`provider_account.domain_added` in the audit log). A key
+        key's scope answers `400`, naming the domains, except for a key a
+        member of the workspace made at a sign in started in the console (the
+        console's signed call, not an API key that names the console): when a
+        read of the domain's zone with the key works, the domain is connected
+        with no new sign in, and the zone is added to the key's scope once a
+        write there works (`provider_account.domain_added` in the audit log).
+        A call reads at most 20 such zones, one read for each, and answers
+        `400` `too_many_domains_to_check` before the first read beyond that;
+        `PATCH /provider-accounts/{id}` is the other way to widen a scope. A key
         an end user's secure sign-in made in the widget, or one a sign in
         started through the API made, answers `403`: it connects domains only
         through that end user's own widget session. A domain the
@@ -7460,12 +7487,31 @@ paths:
           application/json:
             schema:
               type: object
-              required: [application_id, domains]
+              required: [domains]
               properties:
-                application_id: { type: string }
+                application_id:
+                  type: string
+                  description: >-
+                    The application for a domain that names none of its own.
+                    Leave it out when every domain names its own or is already
+                    held by an application of the workspace: that application is
+                    the default.
                 domains:
                   type: array
-                  items: { type: string }
+                  description: >-
+                    The domains to connect, at most 200. Each is a name, or an
+                    object naming the application that one domain goes into.
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: object
+                        required: [domain]
+                        additionalProperties: false
+                        properties:
+                          domain: { type: string }
+                          application_id:
+                            type: string
+                            description: The application this domain goes into, one the key serves.
                 www_redirect: { type: boolean }
       responses:
         '200':
@@ -9599,6 +9645,24 @@ components:
             policy on Route 53). `customdomain`: the key reaches the whole
             account at the provider, and CustomDomain™ uses it only for the
             domains in the scope.
+        more_domains:
+          type: array
+          items: { type: string }
+          description: >-
+            The domains the key lists at the provider that the workspace has
+            not connected, sorted: "This account holds 11 more domains".
+            A domain counts as connected when the workspace has a connection
+            for it or for a name under it, in any application; a failed
+            connection and a test mode one count for nothing. Only on `GET
+            /provider-accounts/{id}` and on the answer of a secure sign-in's
+            keep (`POST /browser-sessions/{sid}:keep`), and only for whoever
+            manages the account (`can_manage`; never a viewer): listing a key's
+            domains is a use of the key. It lists domains outside the account's
+            scope too, which a connect refuses until the scope covers them.
+            Empty for a provider that cannot list the domains of a key. Absent
+            for anyone else, on the list, for a key an end user's secure sign-in
+            made, for an account with no usable key, and when the provider
+            could not be asked.
         id: { type: string }
         kind: { type: string, enum: [api_key] }
         provider: { type: string }
@@ -10807,6 +10871,9 @@ components:
       required: [domain, status]
       properties:
         domain: { type: string }
+        application_id:
+          type: string
+          description: The application the domain was connected into (`POST /provider-accounts/{id}/connect`).
         connection_id: { type: string }
         status: { type: string, enum: [connected, already, failed] }
         message: { type: string }
