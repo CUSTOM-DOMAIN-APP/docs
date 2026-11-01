@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
+  The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
+  SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another
+  workspace's record does not open, and it names the key it was sealed under, so a key can be added, made current and
+  retired without a gap. Nothing changes until it is turned on: `GRANT_ENCRYPTION_KEY` works as before and
+  `GRANT_ENCRYPTION_WRITE` still writes the old format. New settings `GRANT_ENCRYPTION_KEYS`, `GRANT_ENCRYPTION_WRITE`,
+  `GRANT_ENCRYPTION_READ_V1` and `WEBHOOK_ENCRYPTION_KEYS`, and a `credctl` tool in the control plane image
+  (`status`, `verify`, `rewrap`) move stored secrets between formats and keys and check them. See
+  [Encryption keys](/docs/security/overview#encryption-keys-self-hosted).
 - **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
   When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
   scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
