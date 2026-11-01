@@ -184,7 +184,7 @@ checklist until they answer the welcome too. Your customers' domains are on
 | Section | What it's for |
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
-| **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
+| **Domains** | Every connected domain with its live status, who runs its DNS and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
 | **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
 | **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
@@ -351,7 +351,10 @@ A test mode application has none. The section has:
 - **Hosted domains**, under the section once it is on: how many are
   hosted, being set up and need attention, the typical setup time, why some
   stopped, and one row per domain (who runs it, its status in plain words, the
-  records copied, when it was last checked), each opening the domain.
+  records copied, when it was last checked), each opening the domain. It lists
+  moves only: a domain whose zone you started and never moved is not in it, and
+  **DNS hosted by us** on **Domains** ([below](#hosting-and-access-filters)) lists
+  every hosted domain.
 
 The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
 `target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
@@ -639,6 +642,31 @@ have no badge and are listed under **All** only.
 The API returns the same fact as `created_via` on every connection
 (`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). The
 **Overview** shows the split too, under the counts.
+
+## See which domains we host, and which we keep no access to [#hosting-and-access-filters]
+
+Under the filters on **Domains**, two buttons narrow the list in one click. Each shows
+how many domains it lists in the application you are looking at, counted before
+search and the other filters, and turns off with a second click. A button shows
+while it lists something or is on, and on a phone it is not behind **Filters**, so
+from **Overview** it is one click to **Domains** and one on the button.
+
+| Button | Lists | Address |
+| --- | --- | --- |
+| **DNS hosted by us** | The domains whose [DNS hosting](/docs/dns/managed-dns) is live: a zone of ours serves them, whoever runs its nameservers. A move that is still under way is not in it. | `?dns_hosting=hosted` |
+| **No saved access** | The domains where we keep nothing to change the DNS for you: no connected account, no kept sign-in or one-click setup, no AWS access role, and no zone of ours. A test domain keeps nothing and serves nothing, so it is not listed. The **?** beside it explains [saved access](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access). | `?access=none` |
+
+The two combine with each other and with the status, source, application and client
+filters; a domain whose DNS we host is never under **No saved access**, because
+hosting is how we change its records. The same addresses work as links.
+
+From a laptop up, the list has a **DNS host** column: who runs the domain's DNS.
+It says **CustomDomain™** (with a note, **DNS hosting** or **at Cloudflare**)
+for a hosted domain, **Your own nameservers** when the platform's own serve it, and
+otherwise the provider the domain is at, with **moving to CustomDomain™** while a
+move is under way and **DNS hosting needs a look** when one failed. A hosted domain
+no longer shows the provider it came from. On a phone and a tablet the same words
+sit beside the status. **Export CSV** has the same **DNS host** column.
 
 ## Design the widget
 
