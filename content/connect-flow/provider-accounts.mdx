@@ -71,13 +71,79 @@ provider's sign-in.
 When you leave them out, `access` is `continuous` (`one_time` for a
 [credential that is used once](#credentials-that-are-used-once)), and `scope`
 is `selected` if you send `domains` and `all` if you do not. `POST /v1/provider-accounts/{id}/connect`
-takes at most 200 domains per call (`400` beyond that).
+takes at most 200 domains per call (`400` beyond that; see [connect many domains at
+once](#connect-many-domains-at-once)).
 
 ## Scope
 
 All of the account's domains (`"scope": "all"`, including ones added later), or
 a selected list (`"scope": "selected"`, `domains`) picked from the provider's
 own list where it has one.
+
+## Connect many domains at once
+
+`POST /v1/provider-accounts/{id}/connect` connects up to 200 domains with the account's key in one call. Each entry
+in `domains` is a name, or an object that puts that one domain into an application of its own:
+
+```json
+{
+  "application_id": "app_web",
+  "domains": [
+    "www.example.com",
+    { "domain": "shop.example.com", "application_id": "app_store" },
+    "docs.example.com"
+  ]
+}
+```
+
+A domain goes into the first of these that names an application:
+
+1. the application named for that domain;
+2. the call's `application_id`, which you can leave out;
+3. the application that already holds the domain in your workspace (its connection's own), so a domain you already
+   serve is linked to the account where it lives, not connected a second time.
+
+A domain none of those names answers `400`, and so does one that two applications hold or that the call names for two
+different applications. A name written twice is one domain, and the 200 counts domains, not entries.
+
+Everything below is checked before the first record is written, so a call that is refused changes nothing:
+
+- **The caller may manage the account.** An admin, an owner or the member who connected it. Anyone else gets `403`
+  before the body is read, so a member cannot use or widen a key they may not manage.
+- **The key serves every application the call uses.** A key made at a secure sign-in serves its own application and the
+  ones an admin shared it with (`application_ids`); any other application answers `403` ("this key is not shared with
+  this application; an admin or an owner can share it"). An application that is not your workspace's answers `404`.
+- **Every domain is inside the account's scope.** A domain outside it answers `400` and names the domains. A key made
+  at a secure sign-in in the console is the one exception: when a read of the domain's zone (the part of a domain
+  that your DNS provider holds, such as `example.com` for `shop.example.com`) works with that key, the domain is
+  connected with no new sign-in and the zone joins the scope once a write there works. A call reads at most 20 such
+  zones, once each, and answers `400` `too_many_domains_to_check` beyond that. To widen the scope on its own, use
+  `PATCH /v1/provider-accounts/{id}`.
+
+Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
+or `failed`. A domain whose write fails does not stop the others. See the
+[API reference](/docs/api-reference/provider-accounts/connectWithProviderAccount).
+
+## More domains in the account
+
+An account's key often reaches more domains at the provider than your workspace has connected. For whoever manages the
+account, `GET /v1/provider-accounts/{id}` and the answer of a [secure sign-in's
+keep](/docs/api-reference/provider-accounts/keepBrowserSessionAccount) carry `more_domains`: the domains the key
+lists, minus the ones your workspace has connected. A console can ask "This IONOS account holds 11 more domains.
+Connect them?" and send the list to the connect call above.
+
+- A domain counts as connected when your workspace has a connection for it, or for a name under it, in any
+  application. A failed connection and a test mode one count for nothing.
+- The list is sorted. It is empty for a provider that cannot list the domains of a key (see [which providers list
+  their domains](#which-providers-list-their-domains)).
+- It can include domains outside the account's scope, such as a key made for one domain that reaches the whole
+  account at the provider. The connect call refuses those until the scope covers them.
+- Listing a key's domains is a use of the key, so only the account's manager gets it: it is left out for a viewer,
+  for a member who did not connect the account, for a key your customer's sign-in made, and for an account with no
+  usable key. The account list never carries it.
+- The read changes nothing. If the provider refuses the key or the list fails, `more_domains` is left out and the
+  account stays as it was; [Check now](#health-checks) is where a refused key is found. The provider's list is kept
+  for a minute, so reading the account again does not call the provider again.
 
 ## Which providers list their domains
 
@@ -180,7 +246,8 @@ owner may, not the member who connected the key. See
 | `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, [what needs you](#what-needs-you) first, plus kept sign-ins and Domain Connect authorizations grouped by provider. `?owner=workspace` or `end_user`, `?q=`, `?limit=` and `?cursor=` filter, search and page the list; `end_user_keys` counts your customers' keys. |
 | `PATCH /v1/provider-accounts/{id}` | Change label, access or scope, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. |
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
-| `POST /v1/provider-accounts/{id}/connect` | Connect domains to an application with the key: `{ application_id, domains }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
+| `GET /v1/provider-accounts/{id}` | One account with its domains. For its manager it also carries [`more_domains`](#more-domains-in-the-account). |
+| `POST /v1/provider-accounts/{id}/connect` | [Connect domains](#connect-many-domains-at-once), each into its own application: `{ application_id?, domains }`, where a domain is a name or `{ domain, application_id }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
 | `POST /v1/provider-accounts/{id}/reconnect` | A new key, for an account the provider stopped accepting: `{ credential: { token, params? }, access?, check_domain? }`. Checked before it is kept; `params` replace the kept ones. |
 | `POST /v1/provider-accounts/{id}:check` | [Check now](#health-checks): read the key against its provider and answer `{ account, result }`. Once a minute for an account. |
 | `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. |
