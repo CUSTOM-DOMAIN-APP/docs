@@ -654,11 +654,11 @@ from **Overview** it is one click to **Domains** and one on the button.
 | Button | Lists | Address |
 | --- | --- | --- |
 | **DNS hosted by us** | The domains whose [DNS hosting](/docs/dns/managed-dns) is live: a zone of ours serves them, whoever runs its nameservers. A move that is still under way is not in it. | `?dns_hosting=hosted` |
-| **No saved access** | The domains where we keep nothing to change the DNS for you: no connected account, no kept sign-in or one-click setup, no AWS access role, and no zone of ours. A test domain keeps nothing and serves nothing, so it is not listed. The **?** beside it explains [saved access](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access). | `?access=none` |
+| **No saved access** | The domains where we keep nothing to change the DNS for you: no connected account, no kept sign-in or one-click setup, no AWS access role, and no hosting of ours (a hosted domain, or a zone of ours being set up or failed). A move to a DNS host or to your own nameservers links no zone of ours, so the domain is listed until it is hosted. A test domain keeps nothing and serves nothing, and a domain whose hosting we could not read is unknown, so neither is listed. An account whose key was revoked or needs reconnecting still counts as access in this list; the domain's page says what is wrong. The **?** beside it explains [saved access](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access). | `?access=none` |
 
 The two combine with each other and with the status, source, application and client
 filters; a domain whose DNS we host is never under **No saved access**, because
-hosting is how we change its records. The same addresses work as links.
+hosting is how we change its records, and neither is a zone of ours that is being set up. The same addresses work as links.
 
 From a laptop up, the list has a **DNS host** column: who runs the domain's DNS.
 It says **CustomDomain™** (with a note, **DNS hosting** or **at Cloudflare**)
