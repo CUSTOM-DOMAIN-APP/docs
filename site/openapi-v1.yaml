@@ -3028,20 +3028,26 @@ paths:
         `consent_required`). The end user is e-mailed before anything is
         written, once for each key and domain, and with no e-mail that can be
         sent nothing is used (`409` `saved_access_not_usable`, the same code as
-        a key that is not theirs). A domain that another account keeps is left
+        a key that is not theirs). The e-mail counts as sent only once it was
+        sent: a call that finds it still being sent by another call for the
+        same key and domain (a double tap, a retry) is `409`
+        `reuse_mail_pending`, nothing was written, and the call is made again
+        in a moment; a send that never finished is sent again by the first
+        call after five minutes. A domain that another account keeps is left
         with it, and a domain already serving is linked only by a key whose
         scope holds it (`409`). After a use that linked the key, the key
         records the consent (`reuse_consent`, `reuse_consent_at`) and takes the
         zone into its scope when it only reached it. Every use that wrote or
         linked, or whose write the provider answered with an error, is one
-        `provider_account.domain_added` row in the audit log, the actor
-        `end_user:<end_user_ref>`, naming the domain, the connection, the
-        consent id and `via` `end_user_reuse` (never the key). The answer is
+        `provider_account.domain_added` row in the audit log and no other row,
+        the actor `end_user:<end_user_ref>`, naming the domain, the connection,
+        the consent id and `via` `end_user_reuse` (never the key). The answer is
         `result` alone: no `account`, so nothing of the key, its customer
         number, a member or another end user reaches the browser, and the
-        provider's own words in `result.message` or a `502` are cleaned of
-        the key's secret, name and customer number. An API key, an agent
-        token or any other caller ignores `consent_version`.
+        provider's own words in `result.message` or a `502`, and the error
+        recorded on the domain, are cleaned of the key's secret, name and
+        customer number before they are kept. An API key, an agent token or
+        any other caller ignores `consent_version`.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -3081,7 +3087,16 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `saved_access_not_usable`: the account is not one that may act for
+            this domain for the caller, or an end user's e-mail could not be
+            sent so nothing was used. `reuse_mail_pending`: an end user's
+            e-mail for this key and domain is still being sent by another
+            call; nothing was written, try again in a moment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: >-
             `consent_required`: an end user's widget token sent no

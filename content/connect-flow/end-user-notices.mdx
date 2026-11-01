@@ -81,15 +81,21 @@ When a customer who signed in securely for one domain comes back with another, t
 can be offered the key their own sign-in kept instead of signing in again (see
 [A returning customer's own key](/docs/connect-flow/provider-accounts#a-returning-customers-own-key)).
 Before that key writes anything, the same address gets one email, titled "Your
-Namecheap access was used for shop.acme.com" (the provider and the domain). It names
-your application, says the customer agreed to use their saved access for that
-domain, names the key as the provider lists it, and says where to delete it at the
-provider; there is no button. It goes out once for each key and domain, and counts
-toward the same 3 per connection in 30 days.
+Namecheap access is being used for shop.acme.com" (the provider and the domain). It
+says CustomDomain™ is connecting the domain for your application, that the customer
+agreed to use their saved access, and which saved access it is (the one that
+already connects another of their domains). It names the key as the provider lists
+it, says where to delete it at the provider, and says that deleting it ends the
+access for every domain it connects, which will then ask to be connected again.
+There is no button. It goes out once for each key and domain, and counts toward
+the same 3 per connection in 30 days.
 
-A saved key is offered to a customer only when this email can be sent (the feature on, an address held for the token or
-on a connection that names this customer, and a sender that is not `none`), and a
-use is refused (`409 saved_access_not_usable`) when it cannot be sent. With the
+A saved key is offered to a customer only when this email can be sent (the feature
+on, an address held for the token or on a connection that names this customer, and
+a sender that is not `none`), and a use is refused (`409 saved_access_not_usable`)
+when it cannot be sent. The email counts as sent only once it was sent: if the
+customer taps twice, the second call is answered `409 reuse_mail_pending` while the
+first is still sending, and nothing is written until the email exists. With the
 sender set to `none`, customers are offered no saved key at all.
 
 ## Who sends it
