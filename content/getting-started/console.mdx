@@ -189,7 +189,7 @@ checklist until they answer the welcome too. Your customers' domains are on
 | **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, with the **Authenticate with** switch for the token step; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
-| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
+| **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Every email we send**, on **Notifications** and on **General**, opens **Emails we send**: every email CustomDomain™ sends, who gets it and how to stop it (with the new menu it is **Settings → Notifications**; see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 | **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
 
@@ -607,9 +607,9 @@ provider, the domain's page has a **Provider API key** card:
 
 **Connected accounts** lists such a key with the badge **Made at sign in**. Its
 sheet shows the domain, when the key ends, its name, scopes, when it was checked
-and the account's name or number at the provider where the page showed one, never the key. It
-belongs to one application and serves only that domain, and it is renewed by your
-customer's sign-in, never by pasting a key, so its only action is **Remove**.
+and the account's name or number at the provider where the page showed one, never the key. A key
+your customer's sign-in made serves only that customer's domains. Either kind is renewed by a
+new sign-in, never by pasting a key, so its only action is **Remove**.
 Removing it deletes CustomDomain™'s copy; the key itself stays at the provider
 until it is revoked there. A domain's timeline says when the key was made,
 renewed, nearing its end or refused.
@@ -717,6 +717,37 @@ otherwise the provider the domain is at, with **moving to CustomDomain™** whil
 move is under way and **DNS hosting needs a look** when one failed. A hosted domain
 no longer shows the provider it came from. On a phone and a tablet the same words
 sit beside the status. **Export CSV** has the same **DNS host** column.
+
+## Connected accounts [#connected-accounts]
+
+**Connected accounts** is every provider key and kept sign-in we hold so your domains can be changed for you. It is one list, a line for each account. Open a line for the account's sheet: its facts, and the buttons to connect domains, change them, replace the key or remove it.
+
+### What needs you
+
+The accounts that need you come first, under **Needs you**, and each one says why and what to do. With nothing to do, there is one list and no heading.
+
+| It says | What it means | What to do |
+| --- | --- | --- |
+| The provider refused this key | The provider no longer accepts the key (deleted, rotated or switched off). | **Reconnect** with a new key, or remove the account. A key a sign-in made is replaced by a new sign-in: one a member started, by starting another; your customer's key, when your customer signs in again. |
+| This key has ended | The key reached its end date, or a one time key's hour passed unused. | The same: reconnect, or sign in again (your customer signs in again for their key). |
+| We could not check this key lately | The daily check of the key failed a few times in a row without the provider refusing it. The key may still work. | Nothing yet. We try again by ourselves, and a key the provider refuses moves to the first row. |
+| This key ends on a date | A key a sign-in made ends within 30 days. | A new sign-in renews it: yours for a key a member started, your customer's for their key. |
+| Connect your domains before a time | A one time key waits for its domains and is deleted when they are connected or its hour is up. | Connect the domains. |
+| No domain uses this account yet | A key you saved that no domain uses. | Connect domains with it, or remove it. A key a sign-in made has **Remove** alone. |
+
+### What every line says
+
+- **How it was made and by whom.** A pasted key says who pasted it (a teammate's e-mail, or the API key's name). A key a secure sign-in made says who started the sign-in, or that it was made when **a customer** signed in. It never names your customer.
+- **What it can do.** In plain words: put back records it wrote that disappeared (where automatic repair is on), remove them when a domain is removed, and re-apply them when asked. A one time key says it connects the domains you chose now and is then deleted. A key a sign-in made also says what it can do beyond DNS records, such as transferring the domain away or making charges on the account, when the provider gave it that right.
+- **Its domains, last use and end.** How many domains it keeps in sync, when it was last used, and when it ends: **No end date** for a pasted key, the key's own date for a sign-in key, and the hour a one time key is deleted by.
+
+### Your customers' keys [#customers-keys]
+
+The keys your customers made when they signed in to their own provider in the widget are one line, for example **12 keys from your customers**, so a product with thousands of customers keeps a short list. It opens **Keys from your customers**: one line per key, the same facts as above, a search by name, domain or customer id (a viewer searches by name and domain), and **Show more** for the next 25. A customer's key serves only that customer's domains and acts only in their own sign-in; its sheet offers **Remove** alone, so when one needs attention its line says your customer signs in again. The line says **Made when a customer signed in**.
+
+### Domains with no saved access
+
+Under the list, **Domains with no saved access** opens [Domains](#hosting-and-access-filters) filtered to the domains where we keep nothing to change the DNS for you. The **?** beside it says what saved access is.
 
 ## Design the widget
 
