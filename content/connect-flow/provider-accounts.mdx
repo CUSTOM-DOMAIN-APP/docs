@@ -359,8 +359,10 @@ so a flow this long works on a phone. Nothing is chosen for you.
 
 1. **Which company.** A searchable list of the companies that have a way to add an account here (the ones
    whose `account_ways` in [`GET /v1/providers`](/docs/api-reference/providers/listProviders) is not empty), or a typed
-   domain found through the domain check. A company with no way, such as one that signs in domain by domain, is named
-   and sent to the connect page. The address `/app/accounts/new?provider=<id>` opens at step 2.
+   domain found through the domain check. The step says what a registrar (where you bought the domain) and a DNS host
+   (it runs the records that say where a name goes) are. A company with no way, such as one that signs in domain by domain, is named
+   and sent to the connect page. The address `/app/accounts/new?provider=<id>` opens at step 2, and for a company with no way
+   step 2 says so and links the connect page.
 2. **How to connect.** Only that company's ways, easiest first, as `account_ways` lists them:
    - **Sign in** opens the secure sign-in over the page, as the connect page's does. You sign in at the company, we make
      the key and check it by listing the domains it reaches, and the key waits in memory, never in an account, for ten
@@ -383,13 +385,16 @@ so a flow this long works on a phone. Nothing is chosen for you.
 
 Then **Connect N domains now** calls `POST /v1/provider-accounts/{id}/connect` ([Connect many domains at once](#connect-many-domains-at-once)):
 each ticked domain goes into the application you choose among the ones the key may use, at most 200 a call, and each
-domain's result is shown (**Connected**, **Already connected** or why not), with a retry of the ones that failed. After a
+domain's result is shown (**Connected**, **Already connected** or why not), with a retry of the ones that failed. If a call
+after the first is refused (too many requests, say), the domains it and the later calls would have carried are listed as
+failed with the reason, so **Try the ones that failed again** offers them; if the first call is refused nothing is connected
+and the page stays as it was, with the reason. After a
 sign-in, the offer is the key's domains the workspace has not connected yet ([More domains in the account](#more-domains-in-the-account)).
 **Later** leaves them for the account's own page.
 
 A sign-in that stops before the keep (the window closed, **Back**, **Start again**, leaving the page, or the ten minutes
 passing) is cancelled, and the page says which key it made, with the provider's page that deletes it
-(`left_key`, see below). The page needs the member role or above.
+(`left_key`, see below); **Start again** keeps saying so even when the key was made a moment before the page read it. The page needs the member role or above.
 
 ## Add an account by secure sign-in
 
