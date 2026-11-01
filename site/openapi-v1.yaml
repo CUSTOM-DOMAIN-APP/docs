@@ -3588,7 +3588,13 @@ paths:
         mode. A share link's token never starts one (`403` `forbidden`, before the
         key is looked at): a share link sets a domain up and cannot renew the end
         user's key. It starts a sign in only on a connection its sharer owned,
-        for a domain it is bound to (`token_wrong_end_user` otherwise).
+        for a domain it is bound to (`token_wrong_end_user` otherwise). A key an
+        end user's own sign in made is renewed only by that end user's own
+        session: any other session is refused with `403` `forbidden` before it
+        starts (nothing is paid for and nobody signs in), such as a reconnect link
+        on a connection that names no end user while the key was made at a sign in
+        by a token that names one, an API key without the console's signed
+        forward, the console or a member.
 
 
         Returns the address of the popup page that shows the browser. Its
@@ -5590,12 +5596,17 @@ paths:
         bound to (`createSharedFlow`). So it sets the connection the link was made
         for up as the end user would (the secure sign in, managed DNS, a
         nameserver move, the monitoring reads), and acts on a connection that
-        names no end user only when the sharer could have. A link made before
-        the sharer was recorded (before this release), and one whose shared
+        names no end user only when the sharer could have (a link from a sharer
+        that names no end user and is bound to no domain may start the secure
+        sign in on the connection it owns, the one a call is about). A link made
+        before the sharer was recorded (before this release), and one whose shared
         domains are all outside the sharer's binding, mints no `widget_token`; the
         first is answered `404` like an expired link, whose answer the console
-        words as "invalid or expired, ask for a fresh link", and a reconnect link
-        is unchanged. It is a credential for that one setup, not the end user, so it
+        words as "invalid or expired, ask for a fresh link". A reconnect link is
+        the end user's own and keeps working, except that one whose key was
+        replaced by another, or whose connection is gone, now answers `404` too
+        (it used to open the plain flow). A share link is a credential for that
+        one setup, not the end user, so it
         never removes the domain (`403` `forbidden`, on every connection), never
         sets the end user's contact address (on any connection), is never offered
         the end user's kept keys (saved access) and is not the maker of a key as
