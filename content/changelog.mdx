@@ -15,6 +15,28 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: one customer's widget token never gets, reads or changes another customer's connection, zone or nameserver move.**
+  Two customers (end users) of one application, each with a widget token for their own domain, could reach each other's
+  connection. `POST /v1/connections` for a domain the application already had answered the existing connection, so a
+  token for another customer's exact domain was handed that connection's id, and the managed DNS and nameserver
+  routes then read that customer's whole zone, wrote records into it, and resumed, confirmed or rolled back their
+  nameserver move. Now `POST /v1/connections` answers a widget token whose `end_user_ref` is not the existing
+  connection's, or that has none while the connection names one, `403 token_wrong_end_user` and shows nothing of
+  it (a failed connection is not revived for it either). A connection that names no customer, your API key, an `app`
+  scope token, a delegated agent token and the customer's own repeat call are answered as before. Every managed DNS route
+  and every nameserver route (`GET`, `:migrate`, `:rollback`) answers `403 token_wrong_end_user` for a connection that
+  names another customer; a zone that holds another customer's connection (or one you made with your API key for
+  another name) answers `409` "the DNS of acme.com is already hosted by CustomDomain™ for someone else"; a nameserver
+  move whose connection was removed is never taken over by a customer's call, and only your API key resumes it.
+  `DELETE /v1/connections/{id}/grant`, `:reapply` and `:recheck` also refuse another customer's token with `403`
+  `token_wrong_end_user`. For managed DNS and nameserver moves a connection you made with your API key (it names no
+  customer) is a token's only when the token is bound to its `domain`, so a token with an `end_user_ref` and no
+  `domain` owns none of those. Not additive for one case: a token minted for another customer, or without an
+  `end_user_ref`, that connects a domain a customer already connected now gets `403` where it got `200`; mint each
+  token with the customer's `end_user_ref` and its `domain`. See
+  [Idempotency](/docs/connect-flow/create-a-connection#idempotency),
+  [Whose zone it is](/docs/dns/managed-dns#who-can-call-what) and
+  [Widget tokens](/docs/authentication/widget-tokens).
 - **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
   CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
   where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a

@@ -110,6 +110,16 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
   the token; a connection created with the token takes it, unless the connection
   already has an address (the stored one stays) or belongs to another end user
   than this token's `end_user_ref` (it stores none).
+- A token acts only on its own customer's connections. A connection that names a
+  customer is the token's when that is the token's `end_user_ref`. Creating a
+  connection for a domain another customer connected, removing it, re-applying it,
+  rechecking it, turning off its managed mode (`DELETE /v1/connections/{id}/grant`),
+  and every managed DNS and nameserver move route answer `403 token_wrong_end_user`
+  to another customer's token, or to a token with no `end_user_ref` when the
+  connection names one. A connection you made with your API key names no customer:
+  for managed DNS and nameserver moves it is a token's only when the token is bound
+  to its `domain`, so a token with an `end_user_ref` and no `domain` owns none of
+  those. Mint each token with the customer's `end_user_ref` and the `domain` it is for.
 - Only the creation response shows a client secret. If you lost it, rotate it
   (`POST /v1/applications/{id}/client-secret:rotate`, needs `keys:manage`),
   except for a console-created application (see above).

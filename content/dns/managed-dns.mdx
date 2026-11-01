@@ -270,6 +270,25 @@ Once a zone is `active` it answers for the whole domain, email included, so an
 end user's **connect-scoped** widget token may only read it. Records can still
 be changed with an API key or an app-scoped token.
 
+**Whose zone it is.** One zone serves a whole registrable domain (`acme.com` for
+`shop.acme.com` and `blog.acme.com`), so an end user's widget token acts only on
+what is its own. The connection the call is about must be the token's: a
+connection that names another customer (its `end_user_ref` is not the token's)
+answers `403 token_wrong_end_user` on every managed DNS route (`POST` and `GET`
+`.../managed-dns`, `POST .../managed-dns/records`, `DELETE
+.../managed-dns/records/{record_id}`) and on the nameserver routes
+(`GET .../nameservers`, `:migrate`, `:rollback`), before anything is read, created,
+linked or changed. A connection you made with your API key names no customer and is
+a token's only when the token is bound to its `domain`. A zone that already exists
+is started, joined, read or changed only when every connection linked to it is the
+token's too; another customer's zone, a zone that also holds a connection you made
+with your API key for another name, and a zone nobody is linked to answer `409`
+with "the DNS of acme.com is already hosted by CustomDomain™ for someone else",
+and show none of the zone. A nameserver move whose connection was removed names no
+connection: an end user's call on it answers `403 token_wrong_end_user` and never
+takes it over, and only your API key resumes it. An API key and an app-scoped token
+are not limited by any of this.
+
 ### Limits
 
 | Limit | Value |
@@ -287,6 +306,7 @@ be changed with an API key or an app-scoped token.
 | `400` | `invalid_request` | Both or neither of `zone_file` and `records` were sent, or more than 500 `records` in one request |
 | `409` | `conflict` | The zone belongs to another account, a hand-added record would override a `customdomain` record, a `customdomain` record was deleted, or another change to the zone is in progress |
 | `403` | `forbidden` | An end user's widget token started managed DNS for an application that doesn't offer DNS hosting, or that hosts its users' DNS on its own DNS host or nameservers |
+| `403` | `token_wrong_end_user` | An end user's widget token acted on a connection that names another customer, or on a nameserver move that is not its own |
 | `413` | `payload_too_large` | The zone file is over 256 KB |
 | `422` | `managed_dns_unavailable` | Managed DNS isn't available for this domain (see the availability `reason`) |
 | `422` | `managed_dns_limit` | The account already holds its maximum number of zones |
