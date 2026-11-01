@@ -207,9 +207,10 @@ link keeps working on a connection that names a customer. The link is a credenti
 for finishing that one setup, not the customer: it cannot remove the domain, cannot
 set the customer's contact address, and is never offered the customer's kept keys
 (saved access); a key made at a sign-in it starts is not the customer's own and
-never replaces theirs. A widget token can share only a domain whose connection it
-owns, and a link never gives its recipient more than the sharer's token had. See
-[Widget tokens](/docs/authentication/widget-tokens).
+never replaces theirs. One rule governs a link: its token owns exactly what the token
+that made it owned, and may touch only the shared domains. A widget token can share
+only a domain whose connection it owns. A link made before this release stops working:
+ask for a new one. See [Widget tokens](/docs/authentication/widget-tokens).
 
 **Let your platform keep the domain working.** The row reads "Let Acme Sites
 keep your domain working", with your `applicationName`. Offered only when your application
