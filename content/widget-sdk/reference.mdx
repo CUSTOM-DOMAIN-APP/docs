@@ -200,6 +200,18 @@ the last still hands over the link. *Copy link instead* mints a link and copies
 it. If you configured `customProperties.forwardLink.url`, the row opens your
 page with the link instead, as before.
 
+The person who opens the link acts as the end user who shared it: a widget token
+shares as its own `end_user_ref`, and your API key (or an `app` scope token) shares
+as the `end_user_ref` of your connection for the one domain the link names, so the
+link keeps working on a connection that names a customer. The link is a credential
+for finishing that one setup, not the customer: it cannot remove the domain, cannot
+set the customer's contact address, and is never offered the customer's kept keys
+(saved access); a key made at a sign-in it starts is not the customer's own and
+never replaces theirs. One rule governs a link: its token owns exactly what the token
+that made it owned, and may touch only the shared domains. A widget token can share
+only a domain whose connection it owns. A link made before this release stops working:
+ask for a new one. See [Widget tokens](/docs/authentication/widget-tokens).
+
 **Let your platform keep the domain working.** The row reads "Let Acme Sites
 keep your domain working", with your `applicationName`. Offered only when your application
 turns on [Domain maintenance](/docs/guides/nameserver-migration) (its

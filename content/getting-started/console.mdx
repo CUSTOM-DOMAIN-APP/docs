@@ -184,13 +184,13 @@ checklist until they answer the welcome too. Your customers' domains are on
 | Section | What it's for |
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing. |
-| **Domains** | Every connected domain with its live status and exactly what is left to fix. Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
+| **Domains** | Every connected domain with its live status, who runs its DNS and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Edge, Traffic and History tabs. |
 | **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
-| **Widget** | Install (code for your framework, with the **Authenticate with** switch for the token step), Design (the widget itself, every screen, light and dark, with a look for each application) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
+| **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, with the **Authenticate with** switch for the token step; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). |
-| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
+| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Every email we send**, on **Notifications** and on **General**, opens **Emails we send**: every email CustomDomain™ sends, who gets it and how to stop it (with the new menu it is **Settings → Notifications**; see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
 | **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
 
 Every page opens with one line on what it is for and a **Docs** link to the part of
@@ -299,7 +299,8 @@ browser. Pages that list or count show every application: **Overview**,
 applications to start with) and the keys on **API & SDK**, each key named with
 its application. Pages that set one up act on the active application: **Widget**,
 **Domain routing**, **Connect a domain** (a new domain lands in it) and adding a
-webhook endpoint. An API key works across the whole workspace (a test mode
+webhook endpoint. A link to **Widget** with `?app=<application id>` switches to
+that application first. An API key works across the whole workspace (a test mode
 application's keys work only there), and a domain it connects lands in the key's
 application unless the call names another.
 
@@ -332,7 +333,9 @@ certificates renew, problems get fixed) once each user agrees in the widget. One
 setting where the user bought the domain changes, its *nameservers*, which say
 who runs the domain's DNS. The guide is
 [the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
-A test mode application has none. The section has:
+A test mode application has none. You can also change the setting from
+[Widget → Ways to connect](#ways-to-connect), which is where it sits next to the
+other choices your users get; both write the same setting. The section has:
 
 - **Host your users' DNS**, a switch, off by default. Nothing changes for
   your users until you **Save**; once saved, each user is asked when they connect
@@ -351,7 +354,10 @@ A test mode application has none. The section has:
 - **Hosted domains**, under the section once it is on: how many are
   hosted, being set up and need attention, the typical setup time, why some
   stopped, and one row per domain (who runs it, its status in plain words, the
-  records copied, when it was last checked), each opening the domain.
+  records copied, when it was last checked), each opening the domain. It lists
+  moves only: a domain whose zone you started and never moved is not in it, and
+  **DNS hosted by us** on **Domains** ([below](#hosting-and-access-filters)) lists
+  every hosted domain.
 
 The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
 `target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
@@ -482,6 +488,53 @@ a connection even when a record looks right, such as the full hostname typed
 into the Name field or Cloudflare's proxy turned on. It is the same check the
 widget runs for your customers (`GET /v1/connections/{id}/diagnose`), and the
 page to send a customer whose domain is stuck.
+
+### How CustomDomain™ reaches the domain, and who runs its DNS [#how-we-reach-a-domain]
+
+Under the actions, a domain's page says two things in plain words.
+
+**Who runs its DNS** is the first fact. It names the company whose servers answer for
+the domain (its [DNS host](/docs/concepts/glossary#dns-host)), or CustomDomain™ once we
+host the zone ([DNS hosting](/docs/dns/managed-dns)). A move to DNS hosting that is
+under way still shows the old company, with "moving to CustomDomain™" beside it, and a
+move that failed says it needs a look.
+
+**How CustomDomain™ reaches this domain** is a card. It says which access we keep to
+change the domain's records, in one line each:
+
+| The card says | What it means |
+| --- | --- |
+| **Kept by your IONOS account "Acme"** | A [connected account](/docs/connect-flow/provider-accounts) with its label. We use its key. |
+| **Kept by your Cloudflare sign-in** | You approved us once at the provider, in a popup, and we kept that approval. |
+| **Kept by your one-click setup at GoDaddy** | You approved the change once at the provider, and we kept that approval. |
+| **Through DNS hosting** | We run the domain's DNS, so we write its records ourselves. |
+| **DNS hosting, setting up** | The nameservers have not moved yet. We hold its records and they go live once its nameservers point to us. |
+| **DNS hosting needs a look** | Hosting stopped working for this domain. Open its DNS tab to see why. |
+| **Kept by your AWS access role** | A role in your AWS account. It can add and change records, not delete them. |
+| **Not kept** | We keep no access, so a change to the records needs you at the provider. |
+
+The card's buttons follow from that. **Re-apply now** writes the records again, and
+shows for any kept access that can write right now. **Stop managing** shows whenever the
+domain is managed and drops the sign-in or one-click setup we hold, leaving the records
+where they are. It shows even when the card says DNS hosting or **Not kept**: a managed
+domain that moved to DNS hosting keeps its old sign-in, and this is the way to let go of
+it. **Make this domain
+managed** shows only where it can run: nothing is kept yet, and the provider signs in
+or the deployment can offer one-click setup for it. **Change** opens a menu:
+
+- **Use another account** (**Use a saved account** when none is kept) lists the saved
+  accounts that may act for this domain and writes its records with the one you pick. An
+  account has to be at the same DNS provider and still work. Admins and owners see the
+  workspace's accounts for the domain's application, and a member sees the ones they
+  connected, so the list can be empty.
+- **Add an account** opens [Connected accounts](/docs/connect-flow/provider-accounts).
+- **Host its DNS instead** opens the domain's DNS tab, where DNS hosting starts. A domain
+  whose DNS is already ours shows **See its DNS hosting** in its place.
+
+A viewer sees the card with its buttons off, and the reason under them: members, admins
+and owners can change domains. The **Management** line under **Details** reads
+**Managed** whenever any access is kept, and **Not managed** only when none is. See
+[Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
 
 ## 6. Serve something
 
@@ -640,6 +693,31 @@ The API returns the same fact as `created_via` on every connection
 (`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). The
 **Overview** shows the split too, under the counts.
 
+## See which domains we host, and which we keep no access to [#hosting-and-access-filters]
+
+Under the filters on **Domains**, two buttons narrow the list in one click. Each shows
+how many domains it lists in the application you are looking at, counted before
+search and the other filters, and turns off with a second click. A button shows
+while it lists something or is on, and on a phone it is not behind **Filters**, so
+from **Overview** it is one click to **Domains** and one on the button.
+
+| Button | Lists | Address |
+| --- | --- | --- |
+| **DNS hosted by us** | The domains whose [DNS hosting](/docs/dns/managed-dns) is live: a zone of ours serves them, whoever runs its nameservers. A move that is still under way is not in it. | `?dns_hosting=hosted` |
+| **No saved access** | The domains where we keep nothing to change the DNS for you: no connected account, no kept sign-in or one-click setup, no AWS access role, and no hosting of ours (a hosted domain, or a zone of ours being set up or failed). A move to a DNS host or to your own nameservers links no zone of ours, so the domain is listed until it is hosted. A test domain keeps nothing and serves nothing, and a domain whose hosting we could not read is unknown, so neither is listed. An account whose key was revoked or needs reconnecting still counts as access in this list; the domain's page says what is wrong. The **?** beside it explains [saved access](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access). | `?access=none` |
+
+The two combine with each other and with the status, source, application and client
+filters; a domain whose DNS we host is never under **No saved access**, because
+hosting is how we change its records, and neither is a zone of ours that is being set up. The same addresses work as links.
+
+From a laptop up, the list has a **DNS host** column: who runs the domain's DNS.
+It says **CustomDomain™** (with a note, **DNS hosting** or **at Cloudflare**)
+for a hosted domain, **Your own nameservers** when the platform's own serve it, and
+otherwise the provider the domain is at, with **moving to CustomDomain™** while a
+move is under way and **DNS hosting needs a look** when one failed. A hosted domain
+no longer shows the provider it came from. On a phone and a tablet the same words
+sit beside the status. **Export CSV** has the same **DNS host** column.
+
 ## Design the widget
 
 **Widget → Design** is where the widget gets your look. The preview is the
@@ -665,10 +743,43 @@ be connected, so you can see them all without a domain that needs each one:
 | **DNS hosting: moving** | The steps while it moves (copy settings, security check, make the change, live), here waiting for a sign-in where they bought the domain. |
 | **Reconnect** | One sign-in that renews the access we keep for a domain. |
 
-Their buttons only say that this is a preview: no window opens and nothing is
-sent. A link to the Design tab can name one of these screens with `stage=`
-(`secure-sign-in`, `one-click`, `dns-hosting-first`, `dns-hosting`,
-`dns-hosting-move` or `reconnect`), so another page can open the preview on it.
+Their buttons only say that this is a preview and send nothing, except the
+secure sign-in's, which opens a sample of the sign-in window (below). A link to
+the Design tab can name one of these screens with `stage=` (`secure-sign-in`,
+`one-click`, `dns-hosting-first`, `dns-hosting`, `dns-hosting-move` or
+`reconnect`), so another page can open the preview on it:
+**Preview this** on [Ways to connect](#ways-to-connect) does.
+
+### See the sign-in window [#see-the-sign-in-window]
+
+On the **Secure sign-in** screen, the button opens the window your customers
+sign in to their provider in, so you can see it without a provider account or a
+domain. It is a sample: it runs on example data (IONOS and `app.acme.com`), it
+sends nothing, it keeps nothing, and it never hands the widget a result. Every
+field in it is locked and filled in, and a **Sample** bar under the title says so,
+so nobody types a real password into it.
+
+With the preview at computer width the sample opens in the same modal a customer
+sees on a computer: a centred card over the dimmed widget. With the preview at
+phone width, or on a phone, it opens as a sheet over the whole widget, as it
+does for a customer on a phone. Either way it opens inside the preview and never
+as a window of its own. Press its buttons (**Sign in**, **Continue**, **Approve
+and make these changes**) or **Back** and **Next** at the foot to go through its
+six screens:
+
+1. **Sign in**, the form with the provider's own words for its fields.
+2. **One-time code**, the code the provider emails, here already filled in.
+3. **Signed in**.
+4. **Creating your API key**, the key we make so your domains keep working.
+5. **Review the changes**, every record we would add or remove, in full.
+6. **Done**, with the records ticked.
+
+While **Secure sign-in** is open, the row above the preview names the same six screens. Only a page of
+the console itself, shown by the console, can open the sample: the same address
+opened any other way (a link, a window opened by any page, another site's page,
+or a customer's own page that holds the widget) shows an empty page, and the
+real sign-in window never turns into the sample. Closing the sample, or picking
+another screen of the preview, ends it; it has no effect on any domain.
 
 | Group | What you set |
 | --- | --- |
@@ -704,6 +815,33 @@ Earlier uploads stay available at their URLs (your 20 most recent, and any an
 application still uses), because a widget you already shipped keeps the logo
 URL it was pasted with until you update its code. You can still paste the URL of
 a logo you host yourself (HTTPS) instead.
+
+## Ways to connect
+
+**Widget → Ways to connect** shows what your users are offered when they connect
+a domain, one row per way, for the application named under the title. Each row
+has one line on what it is and a link to its docs page. A person's provider is
+the company that runs the domain's DNS, the settings that point it at your
+product.
+
+| Row | What it is | Who can change it |
+| --- | --- | --- |
+| **Sign in with their provider** | Used wherever the provider lets people approve access in a popup. Always on. | Nobody: it is not a setting. |
+| **Secure sign-in** | For providers with no popup sign-in: they sign in inside a secure window we run ([the guide](/docs/guides/secure-sign-in)). It reads **On** or **Off** for your workspace and says why when it is off (the deployment has it off, or it is on for a list of workspaces yours is not on). | Nobody: it is read only. |
+| **Use their saved access** | A switch, on by default. A returning customer is offered a key they kept before, for their other domains ([the setting](/docs/guides/secure-sign-in#saved-access)). It saves when you flip it. | Owners, admins and members. |
+| **Add the records** | They copy a few rows into their provider's panel, and we check them. Always on. | Nobody. |
+| **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **N domains hosted** opens the domains it hosts in a sheet. | Owners, admins and members. |
+
+A viewer sees every control off with the reason, and can still open the hosted
+domains. A test mode application keeps no saved access and never offers DNS
+hosting, and its rows say so.
+
+Every row the widget has a screen for has **Preview this**. It opens **Design**
+on that screen (Sign in, Secure sign-in, Manual setup, and for DNS hosting the
+offered-first or the consent screen, whichever your setting shows), the same as a
+link to `/app/embed?tab=branding&stage=secure-sign-in`. The preview only follows
+what is on: a way that is off for your workspace has no **Preview this**. A link
+to `/app/embed?tab=ways#dns-hosting` opens this tab at the DNS hosting row.
 
 ## Try it live
 

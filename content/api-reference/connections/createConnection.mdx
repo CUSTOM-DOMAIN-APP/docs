@@ -16,6 +16,17 @@ _openapi:
           if the app already has a non-failed connection for the domain, that
           existing connection is replayed with `200`.
 
+          A widget token is never handed another end user's connection. When the
+          application already has a connection for the domain (live, or failed
+          and about to be resumed) that names another end user than the token's
+          `end_user_ref`, or names one while the token names none, the call
+          answers `403` `token_wrong_end_user` and shows nothing of it: no id,
+          no field, and a failed connection is not resumed. Mint the token with
+          the end user's `end_user_ref`. The replay is unchanged for the end
+          user's own token, for a connection that names no end user (an API key
+          made it), for an API key, an app-scoped token and a delegated agent
+          token.
+
           A domain another application already serves live is refused with `409
           domain_already_connected` before anything is written: move it by
           disconnecting it there first. When the ownership TXT flow is on the

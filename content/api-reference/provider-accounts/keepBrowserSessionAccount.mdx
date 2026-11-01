@@ -18,11 +18,10 @@ _openapi:
           `selected` ones), and each selected domain must be one the key lists (`422`
           `domain_not_listed`). A call that is refused keeps nothing and leaves the
           session waiting inside its ten minutes. The key is claimed for the call, so
-          a double press stores it once (`409` `browser_wrong_state` for the second). A
-          workspace an operator suspended keeps nothing (`403` `workspace_suspended`)
-          and the key still waits.
-
-
+          a double press stores it once (`409` `browser_wrong_state` for the second).
+          A workspace an operator suspended keeps nothing (`403`
+          `workspace_suspended`) and the key still waits.
+      - content: >-
           The account is the workspace's own, made by secure sign in in the console
           (`origin: browser_agent`, `made_by.how: console_sign_in`), for the
           application the sign in named, or for every application when it named none.
@@ -32,8 +31,7 @@ _openapi:
           key with other applications of the workspace (decision D5): an admin or an
           owner only (`403`), every id one of the workspace's (`404` otherwise), and a
           key for every application takes none (`422` `serves_every_application`).
-
-
+      - content: >-
           When the workspace already holds a continuous key for the same provider
           account, for the same application, the new key is swapped into that account
           instead of adding a row: the answer is `200` with `swapped: true`, the
@@ -43,16 +41,29 @@ _openapi:
           never narrow it. Every swap takes an admin, an owner or the member who
           connected the account, as replacing the key by `POST
           /provider-accounts/{id}/reconnect` does: another member's keep is `403`
-          whether or not it widens the account, and the key still waits, so the
-          member can cancel the sign in and be told which key to delete. The two keys
-          carry different names (an account sign in names its key to the second), so
-          the one to delete is never the one in use. GoDaddy is the exception until
-          its written permission is on file: its second sign in adds a second row.
-          Every account made, swapped or shared is in the audit log
+          whether or not it widens the account, and the key still waits, so the member
+          can cancel the sign in and be told which key to delete. The two keys carry
+          different names (an account sign in names its key to the second), so the one
+          to delete is never the one in use. GoDaddy is the exception until its
+          written permission is on file: its second sign in adds a second row. Every
+          account made, swapped or shared is in the audit log
           (`provider_account.created`, `.key_replaced` with the name of the key it
           replaced as `old_key_name`, `.updated`, `.shared`).
-
-
+      - content: >-
+          A sign in that renews an account (`POST /provider-accounts/{id}/reconnect`
+          with `method` `secure_sign_in`; the session's `renews_account_id` names the
+          account) is kept with an empty body, `{}`: the key swaps into that account's
+          own row and the account keeps its domains, scope, access and applications,
+          so a body that names `scope`, `domains`, `access` or `application_ids` is
+          `400` (the account is changed by `PATCH /provider-accounts/{id}`). It is
+          refused, keeping the key pending, with `404` for an account removed
+          meanwhile, `403` for a member who no longer manages it, `422`
+          `different_account` for a key of another provider account (`domains`, when
+          the proof was the list, names the domains the account holds that the new key
+          does not list), and `422` `account_not_verifiable` for an account that holds
+          no domain and has no account number to compare the key with (remove it and
+          add it again with a new sign in).
+      - content: >-
           A session of another workspace or member, a connect session and an unknown
           id are `404`; a session that is not waiting for the keep step is `409`, and
           one whose ten minutes passed `410`.

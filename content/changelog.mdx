@@ -25,6 +25,106 @@ never change meaning or disappear without a new major version. See the
   made); its `name` and `expires_at` are then the earlier key's. Additive and optional. Nothing the customer is
   asked to accept changes: the key has the rights and the end date it was made with. GoDaddy never reuses a key.
   See [secure sign-in](/docs/guides/secure-sign-in#reusing-a-key-of-ours).
+- **November 1, 2026: connecting domains with a key made at a secure sign-in answers like changing its scope does.**
+  When `POST /v1/provider-accounts/{id}/connect` has to read a domain's zone because the domain is outside the key's
+  scope, a zone the key does not reach now answers `422` `zone_not_reached` with those domains in `domains` (it was `400`
+  with "change its scope first"), and a provider that times out or answers with a server error answers `503` and says to
+  try again, where it used to be taken for a refusal of the key. Nothing is written in either case. A call still reads
+  at most 20 such zones and answers `400` `too_many_domains_to_check` beyond that. See
+  [Connect many domains at once](/docs/connect-flow/provider-accounts#connect-many-domains-at-once).
+- **November 1, 2026: the MCP server says what its answers mean.** `connect-domain` now answers `linkKind`, which says who opens its `link`: `domain_connect` (the provider's one click page) and `guided_setup` (a single use setup page for that one domain, which the user opens with no account) are for the user, and `console` needs a login to the workspace. An API key or a client credentials token gets `guided_setup` where the provider has no one click page, except for a domain that is already live or that one of your end users connected; an agent token always gets `console`, with the `records` to hand the user. `consoleLink` is the console page when `link` is another kind. `discover-provider` now names every way it returns, secure sign in and DNS hosting included, and says that `secureSignIn` reads `caller_cannot_start` for an agent even where the provider offers it, because a person starts it. `check-connection-status`, `reapply-connection` and `list-connections` no longer say that `managed: false` means a repair needs the person at their DNS provider: re-apply also works through a DNS zone CustomDomain™ hosts and a connected provider account, and `use-saved-access` writes with a saved key. Additive: no tool or argument changed. See [MCP overview](/docs/mcp/overview#repair).
+- **November 1, 2026: Widget has a Ways to connect tab.** **Widget** now has four tabs: Design, Ways to connect, Install
+  and Try it live (a link to Widget still opens Install). Ways to connect shows what your users are offered when they
+  connect a domain, one row per way with a line and a docs link: sign in with their provider and adding the records
+  (always on), secure sign-in (read only: on or off for your workspace, with why), **Use their saved access** (a switch
+  for `end_user_saved_access`, on by default, off for a test mode application) and **DNS hosting** (Off, Offer it, Offer
+  it first, who runs it, and how many domains it hosts). The DNS hosting setting is the same one as on an
+  application's Settings tab. Each row that the widget has a screen for has **Preview this**, which opens the Design
+  preview on it. Owners, admins and members can change the settings; a viewer sees them off with the reason. A link to
+  Widget with `?app=<application id>` switches to that application first. See the
+  [console guide](/docs/getting-started/console#ways-to-connect) and
+  [secure sign-in](/docs/guides/secure-sign-in#saved-access).
+- **November 1, 2026: a key made at a secure sign-in widens only to domains it reaches, an account is renewed by signing in again, and removing one says what it leaves.** `PATCH /v1/provider-accounts/{id}` on a key made at a sign-in in the console now reads each domain it adds with the key before storing anything: a domain the key does not reach answers `422` `zone_not_reached` with those domains in `domains`, and none of the call's domains are stored. The scope `all` needs the provider to list the key's domains (`422` `scope_all_needs_list` otherwise). A pasted key may still be given any scope, and a key your customer's sign-in made is still never widened. `POST /v1/provider-accounts/{id}/reconnect` takes `method`: `api_key` (the default) or `secure_sign_in`, which starts a sign-in whose key swaps into the same account when kept, so the account keeps its id and its domains; a key of another provider account is `422` `different_account`. `DELETE /v1/provider-accounts/{id}` now answers `used_by`, the number of domains that used the account, and `revoke_url`, the provider's page where the key itself is deleted, for a pasted key too. It also now takes whoever manages the account, like every other change to it: an admin, an owner or the member who connected it (a key your customer's sign-in made, only an admin or an owner), and answers `403` to any other member and to a viewer. Until now any member who operates applications could remove any account. Additive except the stricter widening of a key made at a sign-in and the removal rule. See [What each kind allows](/docs/connect-flow/provider-accounts#what-each-kind-of-account-allows), [Renew an account by signing in again](/docs/connect-flow/provider-accounts#renew-an-account-by-signing-in-again) and [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
+- **November 1, 2026: Domains shows which domains we host and which we keep no access to.** In the console, **Domains**
+  has two buttons under its filters, **DNS hosted by us** and **No saved access**, each with its number and a **?**, and
+  a **DNS host** column that says who runs each domain's DNS: CustomDomain™ for a hosted domain, otherwise the provider
+  it is at. **DNS hosted by us** lists the domains a zone of ours serves, the same ones `GET /v1/connections?dns_hosting=hosted`
+  returns; **No saved access** lists the domains with no connected account, no kept sign-in or one-click setup, no AWS
+  access role and no hosting of ours (a hosted domain, or a zone of ours being set up or failed). From **Overview** it is one click to **Domains** and one on the button, on a phone too.
+  The Export CSV's **DNS host** column says the same. Console only: no API field changed. See
+  [the Domains filters](/docs/getting-started/console#hosting-and-access-filters).
+- **November 1, 2026: a domain's page says how CustomDomain™ reaches it and who runs its DNS.** The first fact
+  on a domain's page is **Who runs its DNS**: the company it is at, or CustomDomain™ once we host the zone. A new
+  card, **How CustomDomain™ reaches this domain**, says in a line which access we keep to change its records (a
+  connected account with its label, a sign-in, a one-click setup, DNS hosting, the AWS access role, or none), with
+  **Re-apply now** for any kept access that can write, **Stop managing** whenever the domain is managed,
+  and **Change**: use another saved account that may act for the domain, add an account, or host its DNS instead.
+  **Make this domain managed** shows only where it can run, so it no longer ends in "Managed setup isn't
+  available", and a domain kept by an account reads **Managed** instead of **Not managed**. Console only: the API
+  already sent `reach` and `dns_hosting` on `GET /v1/connections/{id}`. See
+  [the domain's page](/docs/getting-started/console#how-we-reach-a-domain) and
+  [Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
+- **November 1, 2026: the console lists every email we send, and the notifications guide says where to find it.**
+  The console page is read only and open to every role: **Settings → Notifications** with the new menu, and
+  **Emails we send** with the classic menu, from **Every email we send** on **Settings → Notifications** and on
+  **Settings → General**. For each email it says what it is and when it goes, who gets it, whether the bell and push
+  ring at the same moment, whether it is always sent or optional, and how to stop it. The guide's new
+  [Email](/docs/guides/notifications#email) section has the same list, grouped into domain, billing, agent and
+  account emails. Security and account email is always sent. Tips and product updates, domain alerts and the weekly
+  digest each have one switch in your email preferences, and email to your customers is set for each application
+  with **Don't send** under **Who sends DNS update emails**. Nothing here switches an email on or off, and no email,
+  setting or API changed. The console's [Settings](/docs/getting-started/console#the-console-at-a-glance) row names
+  the page.
+- **November 1, 2026: one customer's widget token never gets, reads or changes another customer's connection, zone or nameserver move.**
+  Two customers (end users) of one application, each with a widget token for their own domain, could reach each other's
+  connection. `POST /v1/connections` for a domain the application already had answered the existing connection, so a
+  token for another customer's exact domain was handed that connection's id, and the managed DNS and nameserver
+  routes then read that customer's whole zone, wrote records into it, and resumed, confirmed or rolled back their
+  nameserver move. Now `POST /v1/connections` answers a widget token whose `end_user_ref` is not the existing
+  connection's, or that has none while the connection names one, `403 token_wrong_end_user` and shows nothing of
+  it (a failed connection is not revived for it either). A connection that names no customer, your API key, an `app`
+  scope token, a delegated agent token and the customer's own repeat call are answered as before. Every managed DNS route
+  and every nameserver route (`GET`, `:migrate`, `:rollback`) answers `403 token_wrong_end_user` for a connection that
+  names another customer; a zone that holds another customer's connection (or one you made with your API key for
+  another name) answers `409` "the DNS of acme.com is already hosted by CustomDomain™ for someone else"; a nameserver
+  move whose connection was removed is never taken over by a customer's call, and only your API key resumes it.
+  Every other route that takes a connection's id now answers the same `403 token_wrong_end_user` to another customer's
+  token before it reads or changes anything: the connection read and its records, certificate, diagnosis, SSL and Power
+  reads; applying records, starting a sign in, Domain Connect or the Route 53 role; and `DELETE
+  /v1/connections/{id}/grant`, `:reapply` and `:recheck`. An id handed out while the bug was live no longer reads or
+  writes anything for another customer. Removing a domain and reading its monitoring, services or timeline keep their
+  rule and answer `403 forbidden`. For managed DNS and nameserver moves a connection you made with your API key (it
+  names no customer) is a token's only when its domain is one the token is bound to, so a token with an `end_user_ref`
+  and no `domain` owns none of those, and a token with neither counts only the domain of the connection the call is
+  about. Share links keep working: the person who opens a link acts as the end user who shared it (your API key shares
+  as the customer of your connection for the one domain the link names). One rule governs a link: its token owns exactly
+  what the token that made it owned, and may touch only the shared domains. A link made by a token that names no
+  customer and is bound to no domain counts only the one connection a call is about as its own, so a zone that links
+  several of the shared domains is not its own; a link made by a token that names a customer and is bound to no domain
+  owns none of your connections that name no customer, and reaches only the domain it was made for, not the customer's
+  others. A widget token can share only a domain whose connection it owns by the rules above (`403
+  token_wrong_end_user` and no link otherwise; a domain with no connection yet can be shared), so a customer's token
+  that is bound to no domain cannot share your connection's domain to itself and read its zone. A link is a credential
+  to set that one domain up and nothing more: it cannot remove the domain (`DELETE`, `:disconnect` and the sign-in to
+  remove answer `403 forbidden`), cannot set the customer's contact address on any connection, cannot start a sign-in
+  in reconnect mode to renew the customer's key, is never offered the customer's kept keys, and a key made at a sign-in
+  it starts is not the customer's own and never replaces a key the customer already keeps. A sign-in in reconnect mode
+  on a key the customer's own sign-in made is refused with `403 forbidden` before it starts unless it is that
+  customer's own session (a reconnect link on a connection that names no customer, an API key without the console's
+  signed forward, the console), and a reconnect link whose key was replaced by another, or whose connection is gone,
+  answers `404` like an expired link instead of opening the plain flow.
+
+  **Compatibility.** A widget token with no `end_user_ref` that acts on a connection that names a customer now gets
+  `403 token_wrong_end_user` on the repeat `POST /v1/connections`, `:recheck`, `:reapply`, `DELETE .../grant`, the
+  connection reads and writes above, and every managed DNS and nameserver move route, where it got `200`. That includes a
+  connection the same token created by sending `end_user_ref` in the request body. If you create connections with an
+  `end_user_ref`, mint each widget token with the same `end_user_ref` and the `domain` it is for. Share links keep
+  working, with two changes: a share link can no longer remove a connection that names no customer (it could before),
+  and links made before this release stop working (opening one answers `404` like an expired link and spends it, which
+  the console words as "invalid or expired, ask for a fresh link"), so ask for a new one. See
+  [Idempotency](/docs/connect-flow/create-a-connection#idempotency),
+  [Whose zone it is](/docs/dns/managed-dns#who-can-call-what) and
+  [Widget tokens](/docs/authentication/widget-tokens).
 - **October 31, 2026: a key you pasted gets a daily health check, and you can check it now.** Once a day
   CustomDomain™ now reads each continuous provider account's key with one cheap call (the provider's list of domains
   where it gives one, else a read of one domain the account covers), so a key the provider revoked is found within a
@@ -40,6 +140,13 @@ never change meaning or disappear without a new major version. See the
   for it. Additive: nothing that was there changed. See
   [Health checks](/docs/connect-flow/provider-accounts#health-checks) and
   [Check now](/docs/api-reference/provider-accounts/checkProviderAccount).
+- **October 31, 2026: the console's widget preview shows the sign-in window.** In **Widget → Design**, the **Secure
+  sign-in** screen's button now opens a sample of the window your customers sign in to their provider in: the same
+  modal a customer sees on a computer with the preview at computer width, the sheet over the widget at phone width. It
+  steps through its six screens (sign in, a one-time code, signed in, creating your API key, the review of the changes,
+  done) on example data, with every field locked under a **Sample** bar. It sends nothing and gives the widget no
+  result, and only the console's own pages can open it: the same address from a link or another site shows an empty
+  page. See [See the sign-in window](/docs/getting-started/console#see-the-sign-in-window).
 - **October 31, 2026: 28 more registrars are named in the census.** OnlineNIC, EuroDNS, Safenames, IHS Telekom,
   P.A Vietnam, LWS, Rumahweb, acens, Mat Bao, Above.com, cdmon, Fabulous, 35.com, Bizcn, Netim, ZZY, TierraNet,
   Hosting Ukraine, Whois, Longming, 22.cn, IDwebhost, Tecnocrática (Neodigit and Virtualname), Abion, Northwest

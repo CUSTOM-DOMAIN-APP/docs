@@ -441,7 +441,9 @@ Every connection carries `dns_hosting` (`state` `none`, `moving`, `hosted` or
 say), on the connection list and on `GET /v1/connections/{id}`. Ask the list for
 the domains whose DNS CustomDomain™ runs with `?dns_hosting=hosted`; `moving`
 keeps those being set up or moved, and `any` keeps hosted, moving and failed. A
-page is always full and `next_cursor` keeps walking the matching rows.
+page is always full and `next_cursor` keeps walking the matching rows. In the
+console, **Domains** has the same list as a button, **DNS hosted by us**
+([the Domains filters](/docs/getting-started/console#hosting-and-access-filters)).
 
 This finds a domain whose DNS is hosted by a move, and also one whose zone you
 started with [managed DNS](/docs/dns/managed-dns) and never moved: the list of
