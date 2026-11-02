@@ -448,7 +448,10 @@ paths:
         end user's nameservers and where to (`{"mode": "off"}` clears it). A
         `dns_host` target names a connected provider account of the workspace
         with continuous access at a DNS host whose API creates zones; only this
-        application's migrations ever use it.
+        application's migrations ever use it. The account is chosen under the
+        same rule as an account a move uses: an admin or an owner may name any,
+        a member the accounts they connected, and another member's is refused
+        `403 forbidden` with nothing saved.
 
 
         `end_user_saved_access` sets whether a returning end user may reuse the
@@ -2744,9 +2747,12 @@ paths:
         use" is the move's own rule (`POST /connections/{id}/nameservers:migrate`
         applies it to an account it is given and to one it picks): an API key
         may use the accounts of an admin or an owner and the ones its own member
-        connected, never another member's; an app scoped token and a delegated
-        agent token may use any account of the workspace that serves the
-        application. An agent token reads a key made for another application
+        connected, never another member's; a delegated agent token may use any
+        account of the workspace that serves the application (an admin or an
+        owner approved its grant); an app scoped token may use none, for it has
+        no member behind it and a member can make one (a member holds
+        `app:write`), so it is offered none and moves by hand, by the cloud
+        browser or with a key it sends. An agent token reads a key made for another application
         and shared with its own as "<provider> key", with no application. The
         reasons are the move's own: `missing_scope` (a delegated agent token
         that holds `domains:read` and not `domains:connect`, which the move
@@ -2853,9 +2859,19 @@ paths:
         one the caller may not use: it takes the connection's linked account,
         or one at the registrar that holds the domain, among the accounts the
         caller may use, and goes on without one when there is none (`path`
-        `api` then answers `400`). An app scoped token and a delegated agent
-        token may use any account of the workspace that serves the application.
+        `api` then answers `400`). A delegated agent token may use any account
+        of the workspace that serves the application. An app scoped token may
+        use none: it has no member behind it, and a member can make one (a
+        member holds `app:write`: they can create an application and mint such
+        a token for it), so it names no kept account, picks none and is offered
+        none; it moves by hand, by the cloud browser, or with a `credential` it
+        sends, used once and never kept.
         The same rule holds for the account a resume and `:rollback` are given.
+        A resume that only sets `skip_zone_check`, naming no account and sending
+        no key, sends the move on to the registrar at once with the account it
+        was started with, so it needs someone who may use that account (`403
+        forbidden` otherwise: mark the zone ready with `zone_ready` instead,
+        which does not).
         A move on path `agent` keeps no account: the cloud browser changes the
         nameservers, so none is stored for a later move back to use.
         `GET /connections/{id}/nameservers:offer` lists exactly the accounts
@@ -12226,7 +12242,7 @@ components:
       properties:
         kind: { type: string, enum: [managed, dns_host, custom] }
         provider: { type: string, description: 'For `dns_host`: the DNS host (an adapter id such as `cloudflare`). Set from the account.' }
-        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access).' }
+        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access). Saving it takes an admin, an owner or the member who connected it (`403 forbidden` for another member''s).' }
         nameservers:
           type: array
           minItems: 2
@@ -12604,9 +12620,11 @@ components:
             request is the registrar sign in's start. `retry`: the move
             failed before anything was changed at the registrar
             (`can_rollback` is false); the start call with this `body` begins
-            the same move again, on the same path and, for `api`, with the same
-            account, where a start with no body picks them afresh (the end user's
-            start also sends `consent`). `rollback`: the move
+            the same move again, on the same path and, for `api` with a
+            connected account, with that account, where a start with no body
+            picks them afresh (a move made with a key sent once keeps no
+            account: its retry is `{path: api}` and the key is sent again; the
+            end user's start also sends `consent`). `rollback`: the move
             failed after the registrar was changed or asked
             (`can_rollback` is true), and moving back is the safe way out,
             to where a move back without a choice goes (`rollback_default`).
@@ -12625,9 +12643,10 @@ components:
             `sign_in`: `purpose` `nameservers` and the registrar's `provider`
             (the caller adds `return_origin` and `consent_version`).
             `rollback`: `rollback_target`. `retry`: the move's `path`, and for
-            `api` the connected account's `provider_account_id` (a widget token
-            reads the path only: it may not name an account), absent when the
-            move recorded no path. A caller who may not use that account is
+            `api` with a connected account that account's `provider_account_id`
+            (a widget token reads the path only: it may not name an account; a
+            move made with a key sent once has none, so only `{path: api}`),
+            absent when the move recorded no path. A caller who may not use that account is
             refused `403 forbidden`.
     NameserverMigrationStats:
       type: object

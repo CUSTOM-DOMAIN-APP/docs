@@ -57,23 +57,32 @@ _openapi:
           one the caller may not use: it takes the connection's linked account,
           or one at the registrar that holds the domain, among the accounts the
           caller may use, and goes on without one when there is none (`path`
-          `api` then answers `400`). An app scoped token and a delegated agent
-          token may use any account of the workspace that serves the
-          application. The same rule holds for the account a resume and
-          `:rollback` are given. A move on path `agent` keeps no account: the
-          cloud browser changes the nameservers, so none is stored for a later
-          move back to use. `GET /connections/{id}/nameservers:offer` lists
-          exactly the accounts a caller may name. **A lost answer**: a
-          registrar's error is not taken at its word, since a timeout can come
-          after the registrar acted. The registrar (then the registry) is read
-          back: the nameservers asked for mean the change happened; others mean
-          it didn't (`registrar_refused`); no answer leaves the move in
-          `setting` with `waiting_for: registrar_confirm`, still possible to
-          move back, and the next check reads back first. **DNSSEC**: when the
-          registry publishes a DS record for the domain, the nameservers do not
-          move until it is gone and its TTL has passed, or the domain would stop
-          resolving. With a connected account (lasting access) whose registrar
-          API removes DS records, we remove it; otherwise the migration waits in
+          `api` then answers `400`). A delegated agent token may use any account
+          of the workspace that serves the application. An app scoped token may
+          use none: it has no member behind it, and a member can make one (a
+          member holds `app:write`: they can create an application and mint such
+          a token for it), so it names no kept account, picks none and is
+          offered none; it moves by hand, by the cloud browser, or with a
+          `credential` it sends, used once and never kept. The same rule holds
+          for the account a resume and `:rollback` are given. A resume that only
+          sets `skip_zone_check`, naming no account and sending no key, sends
+          the move on to the registrar at once with the account it was started
+          with, so it needs someone who may use that account (`403 forbidden`
+          otherwise: mark the zone ready with `zone_ready` instead, which does
+          not). A move on path `agent` keeps no account: the cloud browser
+          changes the nameservers, so none is stored for a later move back to
+          use. `GET /connections/{id}/nameservers:offer` lists exactly the
+          accounts a caller may name. **A lost answer**: a registrar's error is
+          not taken at its word, since a timeout can come after the registrar
+          acted. The registrar (then the registry) is read back: the nameservers
+          asked for mean the change happened; others mean it didn't
+          (`registrar_refused`); no answer leaves the move in `setting` with
+          `waiting_for: registrar_confirm`, still possible to move back, and the
+          next check reads back first. **DNSSEC**: when the registry publishes a
+          DS record for the domain, the nameservers do not move until it is gone
+          and its TTL has passed, or the domain would stop resolving. With a
+          connected account (lasting access) whose registrar API removes DS
+          records, we remove it; otherwise the migration waits in
           `needs_dnssec_off` for the person (or the cloud browser's
           `remove_dnssec` step). **A widget token** (the end user) may start a
           migration only when the application's `nameserver_migration.mode` is

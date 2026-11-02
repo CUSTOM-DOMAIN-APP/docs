@@ -204,6 +204,10 @@ curl -X PATCH https://api.customdomain.ai/v1/applications/<APP_ID> \
   -d '{ "nameserver_migration": { "mode": "prefer", "target": { "kind": "managed" } } }'
 ```
 
+An admin or an owner may name any connected account as the DNS host account. A member may
+name the accounts they connected, and another member's is refused `403 forbidden` with
+nothing saved: the account gets a zone for every domain moved to it.
+
 Send `{"nameserver_migration": {"mode": "off"}}` to turn it off. Once it is on,
 `POST /v1/domains:check` carries `nameserver_migration` for the domain (`mode`,
 `target`, `available`, `path`, `provider`, `registrar`, and `reason` when
@@ -584,7 +588,8 @@ A person starts the move for one domain from the console, whatever the applicati
 DNS hosting setting says: the setting decides what the application's *users* are
 offered, and only an agent token is held to it. Before it offers a way, the console
 asks `GET /v1/connections/{id}/nameservers:offer`, so it offers nothing the move would
-refuse. An API key, an app scoped token and an agent token with `domains:read` may ask.
+refuse. An API key, an app scoped token and an agent token with `domains:read` may ask
+(an app scoped token is offered no saved account).
 An end user's widget token may not (`403`): it is offered the move in the domain check
 and starts it with its consent. The answer is read-only and changes nothing.
 
@@ -622,7 +627,7 @@ offer lists by, whether the call names the account or the start picks one:
 | Caller | May use |
 | --- | --- |
 | An API key (the console's, or a member's) | The accounts an admin or an owner connected, and the ones the key's own member connected. Never another member's. |
-| An app scoped token | Any account of the workspace that serves the application. |
+| An app scoped token | None. It has no member behind it, and a member can make one, so it names no saved account, picks none and is offered none. It moves by hand, by the secure sign-in, or with a key it sends with the call (used once, never kept). |
 | An agent token | The same, for the application its grant is bound to. |
 | An end user's widget token | None. It names no account. |
 
@@ -634,6 +639,12 @@ refused `400`. A resume and a [move back](#moving-back) that name an account are
 the same rule, and a move back also refuses an account at another company than the
 registrar the move named (`422 registrar_mismatch`). A move by the secure sign-in keeps no
 account.
+
+A resume that only sets `skip_zone_check` sends the move on to the registrar at once, with
+the account it was started with, so it needs someone who may use that account (`403
+forbidden` otherwise). Marking the zone ready with `zone_ready` does not, and stays open.
+A call that fails changes nothing on the move: not the connection, not the account it named,
+not the provider.
 
 When `available` is `false`, `reason` says why:
 
@@ -672,7 +683,8 @@ is the same for every caller.
 
 A retry repeats **the same move**. A start with no body picks its path afresh, which is
 not what failed: after a move by hand it could take a saved key, and with two keys at the
-registrar it could take the newer one. Send the `body` as it is.
+registrar it could take the newer one. Send the `body` as it is. A move made with a key
+sent with the call keeps no account, so its retry is `{"path": "api"}` and you send the key again.
 
 It is `null` while the move copies, waits for a copy review (`copy_reviewed`), for the
 registry, for DNSSEC or the change to be made by a person at the registrar, or for a
