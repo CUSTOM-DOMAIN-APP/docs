@@ -206,7 +206,9 @@ curl -X PATCH https://api.customdomain.ai/v1/applications/<APP_ID> \
 
 An admin or an owner may name any connected account as the DNS host account. A member may
 name the accounts they connected, and another member's is refused `403 forbidden` with
-nothing saved: the account gets a zone for every domain moved to it.
+nothing saved: the account gets a zone for every domain moved to it. Keeping the account the
+application already has is not a new choice, so a member may change the mode and send the
+same target.
 
 Send `{"nameserver_migration": {"mode": "off"}}` to turn it off. Once it is on,
 `POST /v1/domains:check` carries `nameserver_migration` for the domain (`mode`,
@@ -474,7 +476,8 @@ nameservers: if someone changed them since, the answer is
 `409 changed_elsewhere` and nothing is written. A list already where the move
 back goes (an earlier answer lost) counts as done. A registrar error is read back
 too: `502 registrar_refused` when nothing changed, `504 registrar_unconfirmed`
-when it cannot tell, and nothing is recorded then, so try again. Any secure
+when it cannot tell, and nothing is recorded then, so try again (the move stays stopped, so a
+later check does not send the new nameservers again). Any secure
 sign-in still working on the move is ended first. It is idempotent, and the
 `nameservers.rolled_back` webhook says where it went (`rollback_target`).
 

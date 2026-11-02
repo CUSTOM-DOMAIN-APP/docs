@@ -451,7 +451,9 @@ paths:
         application's migrations ever use it. The account is chosen under the
         same rule as an account a move uses: an admin or an owner may name any,
         a member the accounts they connected, and another member's is refused
-        `403 forbidden` with nothing saved.
+        `403 forbidden` with nothing saved. Keeping the account the application
+        already has is not a new choice: a member may change the mode and send
+        the same target.
 
 
         `end_user_saved_access` sets whether a returning end user may reuse the
@@ -3071,7 +3073,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '504':
-          description: '`registrar_unconfirmed`: the registrar''s answer was lost and it could not be read back, so whether the move back happened is not known. Nothing is recorded; try again.'
+          description: '`registrar_unconfirmed`: the registrar''s answer was lost and it could not be read back, so whether the move back happened is not known. Nothing is recorded, but the move stays stopped (its checks end), so nothing sends the new nameservers again meanwhile; try again.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -12242,7 +12244,7 @@ components:
       properties:
         kind: { type: string, enum: [managed, dns_host, custom] }
         provider: { type: string, description: 'For `dns_host`: the DNS host (an adapter id such as `cloudflare`). Set from the account.' }
-        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access). Saving it takes an admin, an owner or the member who connected it (`403 forbidden` for another member''s).' }
+        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access). Saving it takes an admin, an owner or the member who connected it (`403 forbidden` for another member''s); the account the application already has may be kept by anyone who may change the setting.' }
         nameservers:
           type: array
           minItems: 2
