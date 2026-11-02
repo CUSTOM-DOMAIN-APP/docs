@@ -74,6 +74,38 @@ is `selected` if you send `domains` and `all` if you do not. `POST /v1/provider-
 takes at most 200 domains per call (`400` beyond that; see [connect many domains at
 once](#connect-many-domains-at-once)).
 
+### Checks at the provider have an hourly limit
+
+Some calls ask a provider what a key reaches, with the key you saved: the list
+of the domains a key reaches (`POST /v1/provider-accounts/{id}/zones`), the read
+of each new domain's zone when you widen a key made at a secure sign-in
+(`PATCH /v1/provider-accounts/{id}`, or a domain outside its scope in `connect`),
+Check now, and the reads that find which saved key can act for a domain. They
+share one budget for the workspace: **60 reads an hour** on the hosted service
+(self-hosters set `REACH_CHECKS_PER_TENANT_HOUR`; `0` turns it off). One
+workspace's budget is its own, so another workspace cannot use it up.
+
+- An answer CustomDomain™ kept from a read in the last ten minutes costs
+  nothing, and a call refused before it reached the provider (not allowed, no
+  key) costs nothing.
+- When the budget is spent, those calls answer `429` `reach_quota` with
+  `Retry-After`, the seconds until the hour ends, when the count starts again.
+  Nothing was read at the provider and nothing changed. A call that needs several
+  reads (a change naming ten new domains) is refused whole when they do not all
+  fit, instead of checking some of them.
+
+```json
+{ "code": "reach_quota", "title": "Too many checks at DNS providers this hour.", "details": "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes" }
+```
+
+- Finding saved keys for a domain never fails for it. Once the budget is spent,
+  the saved access list offers the keys it can show without a read, which are
+  the keys that already cover the domain and the answers it kept, so it offers
+  fewer. The next hour it reads the rest.
+- The [daily health check](#health-checks) is outside the budget. It is not
+  counted and it is never refused for it, so checks you run by hand cannot keep
+  a key from being checked, and the daily check does not use up your hour.
+
 ## Scope
 
 All of the account's domains (`"scope": "all"`, including ones added later), or
@@ -599,7 +631,11 @@ agent token is refused. It answers the account and a `result`:
   is not a refusal. `message` says what. The failure counts toward the backoff.
 
 An account's key can be checked once a minute: a second call answers `429`
-`rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
+`rate_limited` with `Retry-After: 60`. Each check is also one read of the
+workspace's [hourly limit](#checks-at-the-provider-have-an-hourly-limit): once it
+is spent the call answers `429` `reach_quota`, asks the provider nothing, records
+nothing and keeps no minute, so the same account can be checked as soon as the
+hour turns. A key your customer's sign-in made answers
 `403` (the daily check reads it, as above), a one time key `409`, and an account whose provider cannot list its
 domains and which covers none answers `409` `nothing_to_check` (connect a domain
 with it first).
