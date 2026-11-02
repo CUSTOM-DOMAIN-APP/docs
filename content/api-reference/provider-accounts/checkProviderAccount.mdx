@@ -37,7 +37,8 @@ _openapi:
           A call that never asked the provider (a `403`, a `429`, a `409` because
           the account is a one time key, holds no key or has nothing to read the key
           against, or a request that ended before the provider was asked, which
-          answers `503` and gives its minute back) writes nothing.
+          answers `503`, gives its minute back and spends nothing from the hourly
+          budget of reach checks) writes nothing.
 
           Takes the workspace's API key and an admin, an owner or the member who
           connected the account (`403` otherwise). A key an end user's own
