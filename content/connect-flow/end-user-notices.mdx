@@ -41,7 +41,10 @@ The end user can skip it.
 - A widget token bound to another end user than the connection's (`end_user_ref`)
   sets none: the `PUT` answers `403`, the create stores neither this address nor
   one given when the token was minted, and the create does not ask for one.
-- Turn the field off with the widget option `askEndUserEmail: false`.
+- Turn the field off with the widget option `askEndUserEmail: false`
+  (customdomain-js 0.5.9 or later passes it to the widget).
+- An application whose email sender is **Don't send** (`none`) is never asked:
+  it tells its end users itself, so the widget does not collect an address.
 
 ## What the end user gets
 

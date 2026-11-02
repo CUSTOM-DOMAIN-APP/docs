@@ -256,7 +256,7 @@ and two layout behaviors:
 | `hideLogo` | Hide the powered-by footer. |
 | `hideConfetti` | Disable the success confetti. |
 | `tokens` | Override any of the ~90 raw design tokens (`modal-width`, `color-primary`, `radius-md`, `shadow-modal`, …). |
-| `screens.disable` | Array of optional screens to hide. |
+| `screens.disable` | Array of optional screens to skip: `existingRecords`, `dkim`, `email`, `manualConfiguration`, `unsupported`, `provider-list` and `congratulations`. A skipped screen moves on as its main button would. With `congratulations` skipped, `onSuccess` still fires for each domain, then the widget opens the next queued domain or closes, and that close is not counted as abandoned. |
 | `delegateClose` | The widget never tears itself down; it posts `customdomain:request-close` and you call `close()`. |
 | `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
 | `darkMode` / `darkTokens` | `"disabled"` (default), `"enabled"` or `"auto"` (follows the OS); `darkTokens` fine-tunes the dark palette. |
