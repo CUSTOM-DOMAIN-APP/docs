@@ -49,9 +49,11 @@ _openapi:
           **Two requests at once.** Redirect changes of one workspace are made one
           at a time, each checked against the domains as they are when its turn
           comes, so two changes made together cannot make a circle between them:
-          the second is refused (`422` `redirect_loop`). A request writes only the
-          settings it changes, and a value it sends back as it read it is not a
-          change, so a setting another request has changed since is not undone.
+          the second is refused (`422` `redirect_loop`). A change that waits too
+          long for its turn answers `503` `redirects_busy` (`Retry-After`) and
+          changes nothing. A request writes only the settings it changes, and a
+          value it sends back as it read it is not a change, so a setting another
+          request has changed since is not undone.
 
           **When something fails.** The redirects are stored before the name. When
           `client_label` is sent with `www_redirect` or `redirect_to` and only the
