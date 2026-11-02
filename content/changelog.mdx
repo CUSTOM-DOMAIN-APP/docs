@@ -21,6 +21,72 @@ never change meaning or disappear without a new major version. See the
   `quota_window_months`, `GET /v1/billing/usage` adds `quota_used` and `quota_window_months`, and the usage on
   `GET /v1/billing/status` and `GET /v1/billing/standing` now covers the window and says so in `window_months`. See
   [Plans and quotas](/docs/billing/plans-and-quotas).
+- **November 2, 2026: the account's sheet in the console, and who may change an account.** Opening a connected account
+  shows one sheet: rename it, change which domains its key may configure, choose which applications may use it,
+  connect more of its domains, renew it by signing in again, remove it, and run Check now. Only an admin, an owner or
+  the member who connected the account can do these, and the control plane enforces the same rule (a customer's key:
+  admins and owners only). A name is 1 to 80 characters with no control or invisible characters. Check now and
+  connecting more domains are recorded in the audit log (`provider_account.checked` and
+  `provider_account.domains_connected`) under whoever made the call. See
+  [The account's sheet in the console](/docs/connect-flow/provider-accounts#the-accounts-sheet-in-the-console) and
+  [Who can manage an account](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
+- **November 2, 2026: Overview follows the application you picked, and you can bring the setup list back.** With the
+  new menu (**Settings → General → Navigation**) and two or more applications, picking one in the switcher makes
+  **Overview** count only its domains and show only its widget figures. Its links to pages that narrow by application keep it: a count,
+  **View all**, the source links and a platform's **Keys and webhooks** shortcut open the same application's list, so the
+  number you click is the number you land on (the widget, your team and your connected accounts open as they are). The
+  **Usage** card and the setup list are still the whole workspace's. **Dismiss** on the setup list hides it
+  for you on every device; **Help → Show the setup list** brings it back and it stays through a reload. See
+  [Console](/docs/getting-started/console#navigation).
+- **November 2, 2026: checks at a DNS provider have an hourly limit for each workspace.** A workspace can now make 60
+  reads an hour at DNS providers to find out what a key reaches: the list of a key's domains, the read of a new domain's
+  zone when a key made at a secure sign-in is widened or connects a domain outside its scope, Check now, and the reads
+  that find which saved key can act for a domain. When the hour's reads are spent, those calls answer `429`
+  `reach_quota` with a `Retry-After` of the seconds until the hour ends, read nothing, change nothing and spend nothing
+  from the hour (a call that needs several reads takes them all or none, so a smaller call that fits is still answered);
+  finding saved keys simply offers fewer until the hour turns, and using a saved key by name
+  (`POST /v1/connections/{id}:use-saved-access`) that was not read for that reason answers `429` too, not
+  `409 saved_access_not_usable`. An answer kept from a read in the last ten minutes costs nothing, and
+  the daily health check of every kept key is outside the limit, so it is never held back. Self-hosters set it with
+  `REACH_CHECKS_PER_TENANT_HOUR` (`0` turns it off). See
+  [Checks at the provider have an hourly limit](/docs/connect-flow/provider-accounts#checks-at-the-provider-have-an-hourly-limit).
+- **November 2, 2026: "Host its DNS instead" starts one domain's DNS hosting from the console, and a waiting move has its buttons.**
+  On a domain's page, **Change** then **Host its DNS instead** (and a line on the connect page) opens a sheet that
+  lists only the ways that would work for that domain: a saved account at the registrar that you may use, **Secure
+  sign-in**, or **Change it yourself**. When the move cannot start, such as the plan's limit of hosted domains or a
+  registrar that keeps its own nameservers, the sheet says why and has nothing to start. A move that waits for the
+  registrar sign-in now shows **Sign in at** the registrar on the domain's DNS tab, a move that stopped before the
+  registrar changed shows **Try again**, which starts the same move again (the same way, and the same saved account),
+  and one that stopped after shows **Move back** first. The API gains
+  `GET /v1/connections/{id}/nameservers:offer`, which says what a start would accept; an agent token reads it too, and
+  sees that it may not start a move while the application's DNS hosting is off, or that its grant lacks
+  `domains:connect`. A move uses only a saved account its caller may use: a member's key may use the accounts they
+  connected and the ones an admin or an owner connected, never another member's (`403 forbidden`, before any move
+  exists), for a start, a resume and a move back, whether the call names the account or the start picks one. An app
+  scoped token uses none (it moves by hand, by the secure sign-in or with a key it sends), skipping the zone check on
+  a resume takes someone who may use the account the move was started with, and the DNS host account of an
+  application's setting is chosen under the same rule (a member may still change only the mode and keep the account
+  the application has). A move back whose answer the registrar lost and that could not be read back leaves the move
+  stopped, so a later check does not send the new nameservers again. A failed
+  move's `next_action` for `retry` now carries the move's `path` and, for `api`, its `provider_account_id`. See
+  [Start one domain's move](/docs/guides/nameserver-migration#start-one-domain) and the
+  [console guide](/docs/getting-started/console#how-we-reach-a-domain).
+- **November 2, 2026: a domain's client name, www redirect and forwarding can be changed after setup.** On a
+  domain's **Settings** tab, **Who it is for**, **www redirect** and **Forwarding** are now fields, each with its own
+  **Save**. Rename the client or take the name off (up to 200 characters); switch the www redirect of a root domain
+  on or off, and the tab says whether we added the `www` record for you or you add it where you manage DNS; set or
+  clear the address a domain forwards to. A refused forwarding address says why: it must be `https://`, a public
+  domain name, not one that has a user name or password, not a domain another CustomDomain™ workspace has connected
+  or claimed (a domain your own workspace serves is fine), not a circle back to where visitors started, and not
+  more than 8 forwards in a row. A client name with nothing readable in it is refused. Members, admins and owners
+  can change them, and every change is in the audit log as **Domain settings changed**. For the API, the new
+  [`PATCH /v1/connections/{id}`](/docs/api-reference/connections/updateConnection) takes `client_label`,
+  `www_redirect` and `redirect_to`; `POST /v1/connections`, `POST /v1/connections:bulk` and the account connect take
+  `client_label`; and `redirect_to` on `POST /v1/connections/{id}/power` and `power:repower` is held to the same
+  checks (an `http://` address is now refused). `end_user_ref` is not the client's name: it stays your id for the end
+  user and is still set once. A client's name written before this is shown as that id until a name is given. See
+  [A domain's settings](/docs/getting-started/console#domain-settings) and
+  [forwarding](/docs/connect-flow/forwarding#from-the-console).
 - **November 2, 2026: two widget fixes for platforms that tell their own end users.** An application whose email
   sender is **Don't send** no longer shows end users the optional email field, and `askEndUserEmail: false` reaches
   the widget from customdomain-js 0.5.9. Skipping the congratulations screen with

@@ -31,6 +31,18 @@ info:
 
     A `429` (`rate_limited`) from the request limiter carries a `Retry-After`
     header: the seconds to wait before the next request.
+
+
+    A `429` `reach_quota` is not the request limiter's: it says the workspace
+    has made as many reads at DNS providers, to find out what a key reaches, as
+    it may in an hour (60 by default on the hosted service). Five routes can
+    answer it (`PATCH /provider-accounts/{id}`, `POST
+    /provider-accounts/{id}/connect`, `POST /provider-accounts/{id}/zones`, `POST
+    /provider-accounts/{id}:check` and `POST /connections/{id}:use-saved-access`);
+    its `Retry-After` is the seconds until the hour ends, when the count starts
+    again, and the call read nothing, changed nothing and spent nothing from the
+    hour, so a smaller call that fits is still answered. The daily check of every
+    kept key is not counted and is never refused for it.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -448,7 +460,12 @@ paths:
         end user's nameservers and where to (`{"mode": "off"}` clears it). A
         `dns_host` target names a connected provider account of the workspace
         with continuous access at a DNS host whose API creates zones; only this
-        application's migrations ever use it.
+        application's migrations ever use it. The account is chosen under the
+        same rule as an account a move uses: an admin or an owner may name any,
+        a member the accounts they connected, and another member's is refused
+        `403 forbidden` with nothing saved. Keeping the account the application
+        already has is not a new choice: a member may change the mode and send
+        the same target.
 
 
         `end_user_saved_access` sets whether a returning end user may reuse the
@@ -1350,7 +1367,25 @@ paths:
                     The integrator's OWN identifier for the end user this connect
                     is attributed to, so the console can render "Connected by …"
                     and search by customer. Empty ⇒ a console/direct connect.
-                    Set once at create and never mutated.
+                    Set once at create and never mutated. It binds a widget
+                    token and saved access to the connection, so it is an id and
+                    not a name: to name the client a domain is for, send
+                    `client_label`.
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client or customer this domain is for, shown
+                    in the console beside the domain and used by its client
+                    filter. Trimmed to one line, at most 200 characters, with
+                    characters that draw nothing dropped; a name with nothing
+                    left stores no name. Unlike
+                    `end_user_ref` nothing is bound to it, and
+                    `PATCH /connections/{id}` changes it later. Only an API key
+                    or an `app`-scoped token may send it: an end user's widget
+                    token or a delegated agent token that does is refused with
+                    `403`. A replay of a domain that already exists keeps the
+                    name it has.
                 end_user_email:
                   type: string
                   format: email
@@ -1617,6 +1652,138 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: updateConnection
+      summary: Change a domain's client name, www redirect or forwarding
+      tags: [Connections]
+      description: >-
+        Changes the settings of a domain a person edits after it is set up:
+        `client_label` (the name of the client it is for), `www_redirect` (a
+        root domain's redirect to `www`) and `redirect_to` (forward every visit
+        to another site). Send only what changes. A body that changes nothing
+        answers `200` and writes nothing.
+
+
+        **Who may call it.** A server side credential only: an API key of a
+        member who may change domains (member, admin or owner; a viewer's key
+        is `403`), or an `app`-scoped token for a connection of its own
+        application. An end user's `connect`-scoped widget token is refused
+        `403`, its own connection included, and so is a delegated agent token:
+        the name, the `www` redirect and above all the forward decide where the
+        domain's visitors go, so the platform that owns the domain decides,
+        not the person connecting it or an agent acting for them. A connection
+        of another workspace answers `404`.
+
+
+        A test mode domain takes `client_label` only (`403`
+        `sandbox_not_allowed` for the redirects).
+
+
+        **The www redirect** changes the records the domain needs. A zone we
+        host is rewritten at once; a domain whose records were written through
+        a connected provider account is rewritten when `move_rewrite` is on;
+        any other domain is reported with `connection.records_outdated` and the
+        answer's `customer_action_required` is `true` when a record was added.
+        A live domain stays live while that record is missing.
+
+
+        **Forwarding** is held to one validator, the same one
+        `POST /connections/{id}/power` and `/power:repower` use for their
+        `redirect_to`: see `redirect_to` in the body. A value equal to the one
+        stored is not checked again.
+
+
+        Every change is recorded in the audit log as `connection.updated`, with
+        the before and after of the fields that changed, by the member or key
+        that made it (`widget:<application id>` for an `app`-scoped token).
+
+
+        **Two requests at once.** Redirect changes of one workspace are made one
+        at a time, each checked against the domains as they are when its turn
+        comes, so two changes made together cannot make a circle between them:
+        the second is refused (`422` `redirect_loop`). A change that waits too
+        long for its turn answers `503` `redirects_busy` (`Retry-After`) and
+        changes nothing. A request writes only the settings it changes, and a
+        value it sends back as it read it is not a change, so a setting another
+        request has changed since is not undone.
+
+
+        **When something fails.** The redirects are stored before the name. When
+        `client_label` is sent with `www_redirect` or `redirect_to` and only the
+        name cannot be written, the answer is `500`, the redirect change is
+        stored and is in the audit log, and sending the same body again writes
+        the name.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConnectionUpdate' }
+      responses:
+        '200':
+          description: The connection as it is now, with its records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionUpdated' }
+        '400':
+          description: >-
+            `invalid_request`: an unknown field, a field of the wrong type, no
+            field at all, a `client_label` over 200 characters or with nothing
+            in it a person can read (only `""` clears a name), or a
+            `redirect_to` that is not a plain https address of a public domain
+            (the reason is in `details`). `payload_too_large`: see the error
+            envelope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden`: a viewer's key, an end user's widget token or an agent
+            token. `sandbox_not_allowed`: `www_redirect` or `redirect_to` on a
+            test mode domain.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the domain is being removed (also when the removal
+            starts while the change waits its turn).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `www_redirect_apex_only`: `www_redirect: true` on a subdomain.
+            `redirect_target_not_allowed`: `redirect_to` names a domain
+            another workspace has connected or claimed, whether or not it is
+            serving yet (a domain your own workspace serves is yours to forward
+            to, whoever else has a pending or failed claim on it).
+            `redirect_loop`: a visit would go round in a circle (taking a forward
+            off a domain whose `www` redirect is on counts: the visit then goes
+            to the `www` name), or through more than 8 forwards in a row (the
+            `title` says "too many forwards" for that); `details` lists the
+            hosts, naming only the
+            ones you may see (your workspace's, and for an `app`-scoped token
+            its own application's) and `another domain` for the rest.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: >-
+            `internal_error`: a store failed, or a check could not be made, so
+            the change was refused (a forward is never stored when the owner of
+            its domain cannot be read). When only `client_label` could not be
+            written, the redirect change sent with it is stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
     delete:
       operationId: disconnectConnection
       summary: Remove a domain, removing or keeping the DNS records we added
@@ -2686,9 +2853,11 @@ paths:
         what it waits on (`waiting_for`) and what a person does next
         (`next_step`) and, when something has to be pressed, which request
         presses it (`next_action`: `sign_in` while the move waits for the cloud
-        browser, `retry` after a stop that changed nothing at the registrar,
-        `rollback` after a stop that did; `null` when nothing is waiting for a
-        press). Poll it while the state is not `active`, `failed` or
+        browser, `retry` after a stop that changed nothing at the registrar
+        (its `body` names the move's `path`, and for `api` its connected
+        account, so posting it repeats the same move), `rollback` after a stop
+        that did; `null` when nothing is waiting for a press). Poll it while
+        the state is not `active`, `failed` or
         `rolled_back`. 404 when no migration was started for this connection.
         Authorized like the other connection routes: an API key within the
         tenant, or a widget token of the connection's own application and end
@@ -2710,6 +2879,84 @@ paths:
           description: >-
             `token_wrong_end_user`: a widget token whose end user is not the
             connection's (mint a token with this domain's `end_user_ref`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/nameservers:offer:
+    get:
+      operationId: getNameserverOffer
+      summary: Whether the domain's nameservers can move now, and how
+      tags: [Nameservers]
+      description: >-
+        What `POST /connections/{id}/nameservers:migrate` would accept for this
+        domain right now, for the caller who asks: whether a move can start
+        (`available`, and `reason` when it cannot), where it would host the
+        zone (`target`, the application's setting, else `managed`), who the
+        domain is registered with, and the three ways the nameservers can
+        change (`paths`): `api` with one of the connected accounts at the
+        registrar listed in `accounts`, `agent` through the cloud browser the
+        person signs in to, and `manual` by the person at the registrar. The
+        console's "Host its DNS instead" sheet reads it, so it offers nothing
+        the move would refuse. It reads and changes nothing.
+
+
+        The accounts are the ones this caller may use, at the registrar RDAP
+        names, whose scope already holds the zone (a key given for one
+        subdomain, `shop.acme.com`, does not hold `acme.com`, so it is not
+        listed for the move of the registrable domain), whose API changes
+        nameservers, that are kept (a one time key is not listed), and never
+        an end user's own key; a registrar we do not route to has none. "May
+        use" is the move's own rule (`POST /connections/{id}/nameservers:migrate`
+        applies it to an account it is given and to one it picks): an API key
+        may use the accounts of an admin or an owner and the ones its own member
+        connected, never another member's; a delegated agent token may use any
+        account of the workspace that serves the application (an admin or an
+        owner approved its grant); an app scoped token may use none, for it has
+        no member behind it and a member can make one (a member holds
+        `app:write`), so it is offered none and moves by hand, by the cloud
+        browser or with a key it sends. An agent token reads a key made for another application
+        and shared with its own as "<provider> key", with no application. The
+        reasons are the move's own: `missing_scope` (a delegated agent token
+        that holds `domains:read` and not `domains:connect`, which the move
+        needs), `ns_not_offered`
+        (an agent token while the application's DNS hosting is off, decision
+        D9: an API key and the console are not held to it),
+        `dns_host_unavailable` (the application's DNS host account no longer
+        works), `move_open` (a move for this zone is already under way),
+        `registrar_locks_nameservers`, the reasons of managed DNS
+        (`disabled`, `platform_subdomain`, `unsupported_tld`, `reserved`),
+        `zone_limit` (a cap of the engine's own: the workspace's or the
+        deployment's) and `plan_zone_limit` (the workspace holds as many
+        hosted zones as its plan counts, decision D8). The plan's count is the
+        offer's limit and the move's start does not refuse at it; the caps are
+        refused there too (`managed_dns_limit`). A domain whose zone already
+        exists adds none, so neither limit applies to it.
+
+
+        An API key, an app scoped token and a delegated agent token with
+        `domains:read` may ask. An end user's widget token may not (`403`):
+        its application offers it the move in the domain check, and it starts
+        it with its consent. A suspended workspace is refused as the move
+        refuses it (`403 workspace_suspended`).
+      security:
+        - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['domains:read']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The offer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverStartOffer' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden` (an end user's widget token), a connection of
+            another application (a delegated agent token), or
+            `workspace_suspended` (see the `ForbiddenOrSuspended` response).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2757,7 +3004,8 @@ paths:
         **How they change** (`path`): `api`, the registrar's own API with a
         key the customer created (`credential` with `provider`, used once and
         never stored, or `provider_account_id`, a connected account; the
-        connection's linked account is used when there is one); `agent`, the
+        connection's linked account, or one at the registrar that holds the
+        domain, is used when there is one the caller may use); `agent`, the
         cloud browser, where the end user signs in to their registrar and
         approves the exact nameservers (start it with `POST
         /connections/{id}/browser:start` and `purpose: nameservers`);
@@ -2765,6 +3013,33 @@ paths:
         is no standard a third party can use to ask a registrar for this
         (Domain Connect edits records only; CDS and CSYNC need the current
         DNS operator and DNSSEC), so these three are the ways.
+
+
+        **Which account**: a caller uses only a connected account it may use.
+        An API key may use the accounts an admin or an owner connected and
+        the ones its own member connected, so a member naming another member's
+        account (`provider_account_id`) is refused `403 forbidden` before any
+        migration exists, and a start or a resume that names none never takes
+        one the caller may not use: it takes the connection's linked account,
+        or one at the registrar that holds the domain, among the accounts the
+        caller may use, and goes on without one when there is none (`path`
+        `api` then answers `400`). A delegated agent token may use any account
+        of the workspace that serves the application. An app scoped token may
+        use none: it has no member behind it, and a member can make one (a
+        member holds `app:write`: they can create an application and mint such
+        a token for it), so it names no kept account, picks none and is offered
+        none; it moves by hand, by the cloud browser, or with a `credential` it
+        sends, used once and never kept.
+        The same rule holds for the account a resume and `:rollback` are given.
+        A resume that only sets `skip_zone_check`, naming no account and sending
+        no key, sends the move on to the registrar at once with the account it
+        was started with, so it needs someone who may use that account (`403
+        forbidden` otherwise: mark the zone ready with `zone_ready` instead,
+        which does not).
+        A move on path `agent` keeps no account: the cloud browser changes the
+        nameservers, so none is stored for a later move back to use.
+        `GET /connections/{id}/nameservers:offer` lists exactly the accounts
+        a caller may name.
 
 
         **A lost answer**: a registrar's error is not taken at its word, since a
@@ -2850,7 +3125,9 @@ paths:
           description: >-
             `forbidden` (the credential may not do this: a widget token that
             sends `target`, a key or the zone flags, the setting is off, a role
-            that cannot write connections), `token_wrong_end_user` (a widget
+            that cannot write connections, a `provider_account_id` the caller
+            may not use because another member connected it, or a key for
+            other domains or another application), `token_wrong_end_user` (a widget
             token whose end user is not the call's connection's or the open
             move's connection's, or the open move names no connection: mint a
             token with this domain's `end_user_ref`), `target_not_allowed` (an
@@ -2902,8 +3179,9 @@ paths:
         to ones that no longer answer is refused (`409 old_dns_gone`). A move
         back to a domain that used the registrar's own DNS at the start goes
         through the registrar's reset call, not its names set as custom ones.
-        With a key (sent once, or the migration's connected account) the
-        registrar's API makes it (`rollback_path: api`); otherwise the cloud
+        With a key (sent once, or the migration's connected account, or
+        `provider_account_id` naming one the caller may use at the registrar the
+        move named) the registrar's API makes it (`rollback_path: api`); otherwise the cloud
         browser (`agent`) or a person (`manual`, `next_step` says what to set
         or choose). A migration that changed nothing at the registrar yet is
         simply stopped (`none`). Any cloud browser session still working on
@@ -2935,11 +3213,17 @@ paths:
           description: >-
             `token_wrong_end_user` (a widget token whose end user is not the
             connection's), or `forbidden` (a widget token sends a key, or a
-            credential that may not do this).
+            credential that may not do this, or `provider_account_id` names an
+            account the caller may not use: another member's).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '422':
+          description: '`registrar_mismatch`: `provider_account_id` names an account at another company than the registrar the move named; nothing was changed.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '409':
           description: '`old_dns_gone`: the old nameservers no longer answer for the zone; move back to the registrar''s own DNS instead. `changed_elsewhere`: the registrar lists other nameservers than the move''s, so a move back would overwrite someone else''s change. Or nothing was changed at the registrar to move back.'
           content:
@@ -2951,7 +3235,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '504':
-          description: '`registrar_unconfirmed`: the registrar''s answer was lost and it could not be read back, so whether the move back happened is not known. Nothing is recorded; try again.'
+          description: '`registrar_unconfirmed`: the registrar''s answer was lost and it could not be read back, so whether the move back happened is not known. Nothing is recorded, but the move stays stopped (its checks end), so nothing sends the new nameservers again meanwhile; try again.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3265,7 +3549,11 @@ paths:
         another provider than the one a live or propagating domain's DNS is
         at, or a key whose scope does not hold such a domain yet (such a
         domain is linked without a write, and a scope widens only after a
-        write). A test mode domain is refused (`403` `sandbox_not_allowed`). A
+        write). A key that has to be read to show it reaches the domain's zone,
+        when the workspace's hourly budget of reach checks is spent, is `429`
+        `reach_quota` with `Retry-After`, not `saved_access_not_usable`: it was
+        not read, so nothing says it cannot act, and nothing was written. A test
+        mode domain is refused (`403` `sandbox_not_allowed`). A
         write that fails links nothing and leaves the key's scope
         as it was, and records the failure on the domain (its `error_code`
         and `error_message`): `502` `saved_access_write_failed`, with the
@@ -3326,6 +3614,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '500': { $ref: '#/components/responses/Error' }
         '502': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
@@ -6207,6 +6496,11 @@ paths:
         12 months, the default for a new workspace, 14 day trial), `startup`, `growth`, and the contact-sales
         `premium` and `enterprise`. The retired `free` plan is not listed; a
         workspace created before it was retired keeps it until it subscribes.
+        The figures above are the defaults: an operator can change a plan's
+        `price_cents`, `domains_per_year` (and so `domains_per_month`),
+        `trial_days` and `hard_cap` without a release, so read them from this
+        response rather than hard coding them. `billing.trial_days` is the
+        default plan's trial.
       security: []
       responses:
         '200':
@@ -6224,7 +6518,7 @@ paths:
                     properties:
                       configured: { type: boolean, description: Whether a Stripe key is configured. }
                       mode: { type: string, enum: ['test', 'live', ''] }
-                      trial_days: { type: integer, description: The trial a new workspace's first subscription starts with. }
+                      trial_days: { type: integer, description: "The trial a new workspace's first subscription to the default plan starts with (0: no trial)." }
   /billing/usage:
     get:
       operationId: getUsage
@@ -6993,7 +7287,21 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the call changes a redirect or the root path access of a
+            domain that is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_target_not_allowed` or `redirect_loop` for `redirect_to`
+            or `www_redirect`: the same checks as `PATCH /connections/{id}`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
     delete:
       operationId: disableConnectionPower
       summary: Remove Power (drop the origin, clear config, tear down the cert)
@@ -7002,11 +7310,33 @@ paths:
         - widgetJWT: []
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
+      description: >-
+        Clears the forward and the root path access, drops the origin and tears
+        down the certificate. Clearing a forward is checked like any redirect
+        change: on a domain whose `www` redirect is on, the visit that went to the
+        forward now goes to the `www` name, and when that would come back (`www`
+        forwards to the root) the call is refused with `422` `redirect_loop` and
+        nothing is changed, the origin included. The `www` redirect itself is not
+        cleared here (`PATCH /connections/{id}` turns it off).
       responses:
         '204': { description: Power removed }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the domain's forward or root path access is set and the
+            domain is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_loop`: taking the forward off would send a visit round a
+            circle through the `www` redirect.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
   /applications/{id}/power:default:
     get:
       operationId: getApplicationDefaultOrigin
@@ -7206,7 +7536,21 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the call changes a redirect or the root path access of a
+            domain that is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_target_not_allowed` or `redirect_loop` for `redirect_to`
+            or `www_redirect`: the same checks as `PATCH /connections/{id}`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
   /power:
     get:
       operationId: listPoweredConnections
@@ -7248,11 +7592,13 @@ paths:
         application of the same tenant. A viewer's key is refused.
 
 
-        `end_user_ref` labels every connection the call creates, the way it does
-        on a single create: an agency adds a client's domains together under the
-        client's name, and the Domains page shows, filters and exports the
-        label. It is set once, when the connection is created. A domain that
-        already exists keeps the label it has and is reported `already`.
+        `client_label` names the client every connection the call creates is
+        for, the way it does on a single create: an agency adds a client's
+        domains together under the client's name, and the Domains page shows,
+        filters and exports it. `PATCH /connections/{id}` changes it later.
+        `end_user_ref` is your own id for the end user, set once and never
+        changed. A domain that already exists keeps what it has and is reported
+        `already`.
 
 
         A workspace with no subscription yet connects its first ten domains, or
@@ -7282,10 +7628,20 @@ paths:
                   type: string
                   maxLength: 256
                   description: >-
-                    Your own label for these domains, such as a client's name or
-                    your id for the customer they belong to. Stored on each
-                    connection this call creates and echoed back by the
-                    connection reads.
+                    Your own id for the customer these domains belong to.
+                    Stored on each connection this call creates and echoed back
+                    by the connection reads. Set once; it binds widget tokens to
+                    the connection, so it is not a name (send `client_label`).
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client these domains are for, such as an
+                    agency's client. Trimmed to one line, at most 200
+                    characters, with characters that draw nothing dropped; a
+                    name with nothing left stores no name. Stored on each
+                    connection this call creates;
+                    `PATCH /connections/{id}` changes it later.
                 application_id:
                   type: string
                   description: >-
@@ -7333,13 +7689,15 @@ paths:
 
 
         Anyone whose role operates applications may connect a key and read the
-        accounts. Changing an account's access, scope or domains, listing the
-        domains its key reaches, connecting domains with it, replacing its key,
-        renewing it by signing in again and removing it take an admin, an owner
-        or the member who connected it (`can_manage`); a key a customer's sign-in
-        made, which no member connected, is managed by an admin or an owner
-        alone. Every change is recorded in the audit log
-        (`provider_account.*`, `GET /audit`).
+        accounts. Renaming an account, changing its access, scope or domains,
+        listing the domains its key reaches, connecting domains with it,
+        replacing its key, renewing it by signing in again, checking it and
+        removing it take an admin, an owner or the member who connected it
+        (`can_manage`); a key a customer's sign-in made, which no member
+        connected, is managed by an admin or an owner alone. Every change, every
+        Check now (`provider_account.checked`) and every call that connects
+        domains (`provider_account.domains_connected`) is recorded in the audit
+        log (`provider_account.*`, `GET /audit`).
       security:
         - apiKey: []
       requestBody:
@@ -7668,9 +8026,16 @@ paths:
         Narrowing the scope detaches the domains it no longer covers; they stay
         connected, without continuous access. Switching to `one_time` deletes
         the key now. Switching to `continuous` needs the key still held.
-        Changing `access`, `scope` or `domains` takes an admin, an owner or the
-        member who connected the account (`403` otherwise); the label is
-        anyone's who operates applications. `continuous` access for a credential
+        Changing the `label`, `access`, `scope` or `domains` takes whoever manages
+        the account: an admin, an owner or the member who connected it (`403`
+        otherwise, with nothing stored and nothing audited); for a key an end
+        user's own sign-in made, which no member connected, an admin or an owner
+        alone. A `label` is one to 80 characters once trimmed (spaces, line
+        breaks and the byte order mark at its ends are removed), counted in
+        characters, and holds no control or invisible character: no NUL, tab or
+        line break, zero width space, byte order mark or text direction override
+        (`400` `invalid_request` otherwise, and nothing in the call is
+        stored). `continuous` access for a credential
         that is used once and never kept answers `422` `use_once_credential`. A
         change is recorded in the audit log (`provider_account.updated`, with
         the label, access, scope, domains and applications before and after).
@@ -7711,6 +8076,14 @@ paths:
         matches what was read, answers `409` and nothing is written.
 
 
+        Those reads (one for each new domain's zone, and the list the scope `all`
+        needs) are taken from the workspace's hourly budget of reach checks; a
+        zone whose answer CustomDomain™ kept from a read in the last ten minutes
+        costs none. A change whose reads do not fit in what is left of the hour
+        answers `429` `reach_quota` with `Retry-After`, reads nothing and writes
+        nothing.
+
+
         `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
         is never widened, whoever asks. A change that adds a domain or sets `scope`
         to `all` answers `403`; renaming, narrowing and removing still work.
@@ -7744,7 +8117,13 @@ paths:
             schema:
               type: object
               properties:
-                label: { type: string }
+                label:
+                  type: string
+                  description: >-
+                    The account's name: one to 80 characters once trimmed, with no control
+                    or invisible character in it (`400` `invalid_request` otherwise).
+                    Whoever manages the account may change it, as for `access`, `scope` and
+                    `domains` (`403` otherwise).
                 access: { type: string, enum: [continuous, one_time] }
                 scope:
                   type: string
@@ -7776,9 +8155,26 @@ paths:
                 type: object
                 properties:
                   account: { $ref: '#/components/schemas/ProviderAccount' }
-        '400': { $ref: '#/components/responses/Error' }
+        '400':
+          description: >-
+            `invalid_request` (a `label` that is empty once trimmed, longer than 80
+            characters or holds a control or invisible character, or a change that
+            leaves no domain and no scope `all`) or
+            `too_many_domains_to_check`. Nothing is stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden`: a viewer, or a member who did not connect the account asking
+            to change its `label`, `access`, `scope` or `domains`; anyone but an admin
+            or an owner asking for `application_ids`, or to change a key an end user's
+            sign-in made; or a change that would widen such a key. Nothing is stored
+            and nothing is audited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422':
@@ -7789,6 +8185,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DomainsRefusedError' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
@@ -7847,6 +8244,9 @@ paths:
         `409`, and its key is deleted then if the hourly cleanup has not
         deleted it yet. A key an end user's secure sign-in made in the widget
         answers `403`: it never lists the domains of the end user's account.
+        The list is one read of the workspace's hourly budget of reach checks:
+        once it is spent the call answers `429` `reach_quota` with `Retry-After`
+        and asks the provider nothing.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7868,6 +8268,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { description: "The provider refused the key; the account is flagged `needs_reconnect`" }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}/connect:
     post:
@@ -7919,14 +8320,25 @@ paths:
         answers `503`, never a refusal of the key: the same two answers
         `PATCH /provider-accounts/{id}` gives, with nothing written. A call
         reads at most 20 such zones, one read for each, and answers `400`
-        `too_many_domains_to_check` before the first read beyond that;
+        `too_many_domains_to_check` before the first read beyond that; those
+        reads are taken from the workspace's hourly budget of reach checks, and a
+        call whose reads do not fit in what is left answers `429` `reach_quota`
+        with `Retry-After`, with nothing read or written;
         `PATCH /provider-accounts/{id}` is the other way to widen a scope. A key
         an end user's secure sign-in made in the widget, or one a sign in
         started through the API made, answers `403`: it connects domains only
         through that end user's own widget session. A domain the
         application already has, kept by such a key, is left as it is
         (`already`, not re-linked). Takes an admin, an owner or the member who
-        connected the account.
+        connected the account. A call that connected at least one domain (its
+        records written with the key, or a domain already serving now linked to
+        the account) is recorded in the audit log as one
+        `provider_account.domains_connected` row naming those domains, by name
+        only, beside the `provider_account.relinked` and
+        `provider_account.domain_added` rows it may also write; a call that
+        connected none writes no such row. A domain already serving that was
+        linked to this account before the call is left as it is (`already`), is
+        not named in the row, and does not make one.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7962,6 +8374,15 @@ paths:
                             type: string
                             description: The application this domain goes into, one the key serves.
                 www_redirect: { type: boolean }
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client every domain of this call is for,
+                    as `POST /connections:bulk` takes it (a name with nothing
+                    readable left stores no name). A domain the
+                    application already has keeps its own name.
+
       responses:
         '200':
           description: Per domain results and the account
@@ -7980,6 +8401,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}/reconnect:
     post:
@@ -8124,13 +8546,30 @@ paths:
         sign-in made keeps its status: it is renewed by signing in again.
 
 
+        Every check that asked the provider is recorded in the audit log as
+        `provider_account.checked`: who asked (`actorId`), the account (`target`),
+        the `provider` and the `result` (`ok`, `refused` or `unreachable`), never
+        the key and never the provider's own words. It is written whatever
+        happens to the verdict afterwards, so a check whose verdict was dropped
+        (`409` because the account changed while the provider answered) is on
+        record too. A call that never asked the provider (a `403`, a `429`, a
+        `409` because the account is a one time key, holds no key or has nothing
+        to read the key against, or a request that ended before the provider was
+        asked, which answers `503`, gives its minute back and spends nothing from
+        the hourly budget of reach checks) writes nothing.
+
+
         Takes the workspace's API key and an admin, an owner or the member who
         connected the account (`403` otherwise). A key an end user's own
         sign-in made is never used for it (`403`), and a one time key is used
         once and never checked (`409`). An account whose provider cannot list
         its domains and which covers none answers `409` `nothing_to_check`.
         One check a minute for an account: a second answers `429`
-        `rate_limited` with `Retry-After: 60`.
+        `rate_limited` with `Retry-After: 60`. Each check is also one read of the
+        workspace's hourly budget of reach checks: once it is spent the call
+        answers `429` `reach_quota` with `Retry-After`, asks the provider nothing,
+        records nothing and keeps no minute, so the same account can be checked
+        as soon as the hour turns. The daily check is outside that budget.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -8156,7 +8595,11 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The account holds no key, it is a one time account, nothing could be read the key against (`nothing_to_check`), or it changed while it was checked" }
         '429':
-          description: "`rate_limited`: this account's key was checked less than a minute ago."
+          description: >-
+            `rate_limited`: this account's key was checked less than a minute ago
+            (`Retry-After: 60`), or `reach_quota`: the workspace has made as many
+            reach checks at providers as it may this hour (`Retry-After` is the
+            seconds until the hour ends).
           headers:
             Retry-After: { schema: { type: integer }, description: "Seconds until the key can be checked again." }
           content:
@@ -8803,6 +9246,37 @@ components:
   responses:
     Error:
       description: 'Error envelope: {code, title, details}.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ReachQuota:
+      description: >-
+        `reach_quota`: the workspace has made as many reads at DNS providers, to
+        find out what a key reaches, as it may this hour (the saved key resolver's
+        reads, a key's reach check when its scope is widened, the list of a key's
+        domains and Check now share one budget). Nothing was read at the provider,
+        nothing changed and nothing was spent from the hour. `Retry-After` is the
+        seconds until the hour ends, when the count starts again.
+      headers:
+        Retry-After: { schema: { type: integer }, description: "Seconds until the hour ends and the workspace's count starts again." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: reach_quota
+            title: Too many checks at DNS providers this hour.
+            details: "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes"
+    RedirectsBusy:
+      description: >-
+        `redirects_busy`: another change to this workspace's forwarding is still
+        being saved (redirect changes of one workspace are made one at a time),
+        and this one waited for it in vain. Nothing was changed; send it again
+        after the `Retry-After` seconds. `service_unavailable`: edge serving is
+        off in this deployment, so a forward cannot be set.
+      headers:
+        Retry-After:
+          description: Seconds to wait before sending the call again (on `redirects_busy`).
+          schema: { type: integer }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -10459,8 +10933,20 @@ components:
           type: string
           description: >-
             The integrator's own identifier for the end user who connected this
-            domain. Omitted for a console/direct connect, and from every answer
-            a delegated agent token reads.
+            domain. Set once at create and never changed: it binds widget
+            tokens and saved access to the connection. Omitted for a
+            console/direct connect, and from every answer a delegated agent
+            token reads. The name of the client a domain is for is
+            `client_label`.
+        client_label:
+          type: string
+          maxLength: 200
+          description: >-
+            The name of the client or customer the domain is for, set at create
+            or with `PATCH /connections/{id}`. Omitted when none is set. It is
+            the platform's own note about the client: it is left out of every
+            answer an end user's widget token or a delegated agent token reads,
+            and an API key or an `app`-scoped token reads it.
         retried_at:
           type: string
           format: date-time
@@ -10672,6 +11158,75 @@ components:
             domain's records are ours (not a record set you supplied). It reads
             stored facts only; the provider's own answer comes when setup
             starts. When `false`, do not offer that upgrade.
+    ConnectionUpdate:
+      type: object
+      description: >-
+        The settings of a domain `PATCH /connections/{id}` changes. Every field
+        is optional and a field left out is unchanged; at least one is
+        required. The body is decoded with unknown fields REJECTED, so the
+        properties below are exactly the accepted set.
+      properties:
+        client_label:
+          type: string
+          maxLength: 200
+          description: >-
+            The name of the client or customer the domain is for. Characters
+            that draw nothing (a right to left override, a zero width space,
+            the blank fillers, variation selectors, private use characters) are
+            dropped, control characters and runs of white space become one
+            space, and the name is trimmed. Only `""` clears it: a value that
+            is not empty but has nothing readable left (white space, or only
+            invisible characters) is `400`, so it cannot take a name off. More
+            than 200 characters is `400`.
+        www_redirect:
+          type: boolean
+          description: >-
+            Send visitors of the root domain (`acme.com`) to `www.acme.com`.
+            Root domains only: `true` on a subdomain is `422`
+            `www_redirect_apex_only`. Available on every plan. Turning it on
+            adds a `www` record to the records the domain needs; turning it off
+            takes it out, and the edge then answers for `www.acme.com` only if
+            you connected it as its own domain. Not for a test mode domain
+            (`403` `sandbox_not_allowed`).
+        redirect_to:
+          type: string
+          maxLength: 2048
+          description: >-
+            Where the edge sends every visit to the domain (a `301`, keeping
+            the visit's path and query): a plain `https://` address of a public
+            domain, `""` to clear it. It needs edge serving, which comes with
+            Growth and up: `402` `plan_upgrade_required` on a plan without it
+            and `503` where the deployment has it off (clearing a forward needs
+            neither). `400` for an address that is not https (`http:`,
+            `javascript:`, `data:`, a scheme-less address), has a username or
+            password (`https://acme.com@evil.example`), names an IP address, a
+            name with no dot or a reserved name (`localhost`, `.local`,
+            `.internal`, `.test`), or contains spaces, backslashes or hidden
+            characters. The port is read as a number and stored once: `:443`
+            is dropped and a leading zero is not kept (`:0443` is `443`), and a
+            target that names this domain on port 80 or 443 is the domain itself,
+            as the edge reads it. `422` `redirect_target_not_allowed` for a
+            domain another workspace has connected or claimed (unless your own
+            workspace serves it), and `422`
+            `redirect_loop` when the target is the domain itself or a visit
+            would come back to a host it has been through, through this
+            domain's `www` redirect or any forward of your own domains, or goes
+            through more than 8 forwards in a row. Not for a test mode domain.
+    ConnectionUpdated:
+      allOf:
+        - { $ref: '#/components/schemas/ConnectionWithRecords' }
+        - type: object
+          required: [customer_action_required]
+          properties:
+            customer_action_required:
+              type: boolean
+              description: >-
+                `true` when the change adds a record that CustomDomain™ does not
+                write: the domain's DNS is not ours and no kept access can write
+                it (a kept account with `move_rewrite` on does), so the person
+                adds the `www` record shown in `records` at their DNS provider,
+                and `connection.records_outdated` was sent. `false` for every
+                other change, a hosted zone's and a rewrite's included.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }
@@ -12145,7 +12700,7 @@ components:
       properties:
         kind: { type: string, enum: [managed, dns_host, custom] }
         provider: { type: string, description: 'For `dns_host`: the DNS host (an adapter id such as `cloudflare`). Set from the account.' }
-        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access).' }
+        account_id: { type: string, description: 'For `dns_host`: the connected provider account (`POST /provider-accounts`, continuous access). Saving it takes an admin, an owner or the member who connected it (`403 forbidden` for another member''s); the account the application already has may be kept by anyone who may change the setting.' }
         nameservers:
           type: array
           minItems: 2
@@ -12209,6 +12764,78 @@ components:
           type: array
           items: { type: string }
           description: The new nameservers for target `custom`. For `managed` and `dns_host` they are known once the zone exists (the migration's `new_nameservers`).
+    NameserverStartOffer:
+      type: object
+      description: >-
+        Whether one domain's nameservers can move to DNS hosting now and how
+        (`GET /connections/{id}/nameservers:offer`).
+      required: [available, zone, setting, target, registrar, paths]
+      properties:
+        available: { type: boolean }
+        reason:
+          type: string
+          enum:
+            - missing_scope
+            - ns_not_offered
+            - dns_host_unavailable
+            - move_open
+            - registrar_locks_nameservers
+            - disabled
+            - platform_subdomain
+            - unsupported_tld
+            - reserved
+            - zone_limit
+            - plan_zone_limit
+          description: Why the move cannot start, when `available` is false.
+        zone: { type: string, description: "The registrable domain whose nameservers move." }
+        setting:
+          type: string
+          enum: ['off', offer, prefer]
+          description: >-
+            The application's DNS hosting mode. A start from an API key or the
+            console is allowed whatever it says.
+        target:
+          type: string
+          enum: [managed, dns_host, custom]
+          description: "Where the move hosts the zone: the application's setting, else `managed`."
+        dns_host: { type: string, description: 'The DNS host of target `dns_host` (an adapter id).' }
+        nameservers:
+          type: array
+          items: { type: string }
+          description: The platform's own nameservers, for target `custom`.
+        registrar:
+          description: Who the domain is registered with, from RDAP; null when unknown or not looked up (an earlier `reason` held).
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        paths:
+          type: object
+          required: [api, agent, manual]
+          properties:
+            api:
+              type: object
+              required: [available, accounts]
+              properties:
+                available: { type: boolean, description: 'True when at least one account may be named.' }
+                accounts:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, label, provider, provider_name, how]
+                    properties:
+                      id: { type: string, description: 'Send it as `provider_account_id`.' }
+                      label: { type: string }
+                      provider: { type: string }
+                      provider_name: { type: string }
+                      how: { type: string, enum: [api_key, secure_sign_in], description: 'How the key came: a person pasted it, or the cloud browser made it at a secure sign in.' }
+            agent:
+              type: object
+              required: [available]
+              properties:
+                available: { type: boolean, description: 'The cloud browser can change this registrar''s nameservers.' }
+            manual:
+              type: object
+              required: [available]
+              properties:
+                available: { type: boolean, description: 'Always true when the move can start.' }
     NameserverRegistrar:
       type: object
       description: >-
@@ -12242,7 +12869,7 @@ components:
           enum: [api, agent, manual]
           description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
         provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
-        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -12287,7 +12914,7 @@ components:
             browser, or the person. Omitted: `previous` while the old
             nameservers still answer, else `registrar_default` (the migration's
             `rollback_default`).
-        provider_account_id: { type: string }
+        provider_account_id: { type: string, description: 'A connected account the caller may use, at the registrar the move named (`403 forbidden` for another member''s, `422 registrar_mismatch` for another company''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -12357,14 +12984,16 @@ components:
             is copying, waiting for the registry, waiting for a person at the
             registrar, DNSSEC or the copy review (`copy_reviewed`), or over.
             Because it is the same for every caller, it can name a request
-            the caller who reads it is refused. Three cases: `sign_in` points
+            the caller who reads it is refused. Four cases: `sign_in` points
             at `POST /v1/connections/{id}/browser:start`, which runs only from
             a customer's browser or the console and refuses every agent token
             and every API key without the console's client label (`403
             browser_customer_present_only`); `retry` is refused `403
             ns_not_offered` to an agent token while the application's DNS
-            hosting is off; and `retry` is refused `403 forbidden` to a widget
-            token when the setting is off. A caller in one of those cases
+            hosting is off; `retry` is refused `403 forbidden` to a widget
+            token when the setting is off; and `retry` of a move made with a
+            connected account is refused `403 forbidden` to an API key whose
+            member may not use that account (another member's). A caller in one of those cases
             tells the person (`next_step` says what to do) and does not send
             the request. `rollback` is open to all three callers whatever the
             setting says.
@@ -12448,8 +13077,12 @@ components:
             signs in to their registrar and approves what will change. The
             request is the registrar sign in's start. `retry`: the move
             failed before anything was changed at the registrar
-            (`can_rollback` is false); the same start call begins it again
-            (the end user's start also sends `consent`). `rollback`: the move
+            (`can_rollback` is false); the start call with this `body` begins
+            the same move again, on the same path and, for `api` with a
+            connected account, with that account, where a start with no body
+            picks them afresh (a move made with a key sent once keeps no
+            account: its retry is `{path: api}` and the key is sent again; the
+            end user's start also sends `consent`). `rollback`: the move
             failed after the registrar was changed or asked
             (`can_rollback` is true), and moving back is the safe way out,
             to where a move back without a choice goes (`rollback_default`).
@@ -12467,7 +13100,12 @@ components:
             The fields the route needs beyond the ones the caller always sends.
             `sign_in`: `purpose` `nameservers` and the registrar's `provider`
             (the caller adds `return_origin` and `consent_version`).
-            `rollback`: `rollback_target`. Absent for `retry`.
+            `rollback`: `rollback_target`. `retry`: the move's `path`, and for
+            `api` with a connected account that account's `provider_account_id`
+            (a widget token reads the path only: it may not name an account; a
+            move made with a key sent once has none, so only `{path: api}`),
+            absent when the move recorded no path. A caller who may not use that account is
+            refused `403 forbidden`.
     NameserverMigrationStats:
       type: object
       required: [by_state, by_path, by_target, by_registrar, by_old_dns_host, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]

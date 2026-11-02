@@ -6,7 +6,12 @@ description: "The plan catalog and entitlements, trials and subscriptions, how m
 ## Plans
 
 The public catalog is returned by `GET /v1/plans` (along with a
-`billing: { configured, mode, trial_days }` block).
+`billing: { configured, mode, trial_days }` block). The figures it returns are
+the defaults: the operator of a deployment can change a plan's price
+(`price_cents`), its domain allowance (`domains_per_year`, and so
+`domains_per_month`), its trial (`trial_days`) and whether it blocks at quota
+(`hard_cap`) without a release. Read them from `GET /v1/plans` rather than hard
+coding them. `billing.trial_days` is the default plan's trial.
 
 Entitlements gate which products a tenant may use. **Enforced today:** `Power`
 (serving domains through the CustomDomain™ edge: the `/v1/connections/{id}/power*`

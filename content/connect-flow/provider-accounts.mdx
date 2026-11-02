@@ -74,6 +74,45 @@ is `selected` if you send `domains` and `all` if you do not. `POST /v1/provider-
 takes at most 200 domains per call (`400` beyond that; see [connect many domains at
 once](#connect-many-domains-at-once)).
 
+### Checks at the provider have an hourly limit
+
+Some calls ask a provider what a key reaches, with the key you saved: the list
+of the domains a key reaches (`POST /v1/provider-accounts/{id}/zones`), the read
+of each new domain's zone when you widen a key made at a secure sign-in
+(`PATCH /v1/provider-accounts/{id}`, or a domain outside its scope in `connect`),
+Check now, and the reads that find which saved key can act for a domain. They
+share one budget for the workspace: **60 reads an hour** on the hosted service
+(self-hosters set `REACH_CHECKS_PER_TENANT_HOUR`; `0` turns it off). One
+workspace's budget is its own, so another workspace cannot use it up.
+
+- An answer CustomDomain™ kept from a read in the last ten minutes costs
+  nothing, and a call refused before it reached the provider (not allowed, no
+  key) costs nothing.
+- When the budget is spent, those calls answer `429` `reach_quota` with
+  `Retry-After`, the seconds until the hour ends, when the count starts again.
+  Nothing was read at the provider, nothing changed and nothing was spent from
+  the hour. A call that needs several reads (a change naming ten new domains)
+  takes them all or none: when they do not all fit it is refused whole, instead of
+  checking some of them, and the reads that were left stay for a smaller call.
+  Keep a self-hosted budget at 21 or more, because one change reads up to 20
+  zones and the list of a key's domains.
+
+```json
+{ "code": "reach_quota", "title": "Too many checks at DNS providers this hour.", "details": "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes" }
+```
+
+- Finding saved keys for a domain never fails for it. Once the budget is spent,
+  the saved access list offers the keys it can show without a read, which are
+  the keys that already cover the domain and the answers it kept, so it offers
+  fewer. The next hour it reads the rest. A shorter list is not an answer that a
+  key cannot act: using a key by name (`POST /v1/connections/{id}:use-saved-access`)
+  that was not read because the budget was spent answers `429` `reach_quota` and
+  writes nothing, not `409` `saved_access_not_usable`. Wait for `Retry-After` and
+  send it again.
+- The [daily health check](#health-checks) is outside the budget. It is not
+  counted and it is never refused for it, so checks you run by hand cannot keep
+  a key from being checked, and the daily check does not use up your hour.
+
 ## Scope
 
 All of the account's domains (`"scope": "all"`, including ones added later), or
@@ -164,7 +203,10 @@ Everything below is checked before the first record is written, so a call that i
   the scope on its own, use `PATCH /v1/provider-accounts/{id}`.
 
 Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
-or `failed`. A domain whose write fails does not stop the others. See the
+or `failed`. A domain whose write fails does not stop the others. A call that connected at least one domain is one
+`provider_account.domains_connected` row in the [audit log](#audit-log), naming those domains and no others. A
+domain that was already serving and already linked to this account is left as it is (`already`), and a call that
+only names such domains leaves no row. See the
 [API reference](/docs/api-reference/provider-accounts/connectWithProviderAccount).
 
 ## More domains in the account
@@ -219,17 +261,24 @@ call answers `422` `ProviderAuthenticationError` and the account is marked as ne
 
 ## Who can manage an account
 
-Anyone whose role operates applications may connect a key, read the accounts and
-rename one. Changing an account's access, scope or domains, listing the
+Anyone whose role operates applications may connect a key and read the accounts.
+Renaming an account, changing its access, scope or domains, listing the
 domains its key reaches, connecting domains with it, giving it a new key,
-[renewing it by signing in again](#renew-an-account-by-signing-in-again) and
+[renewing it by signing in again](#renew-an-account-by-signing-in-again),
+[checking it](#check-now) and
 [removing it](#remove-an-account) take an admin, an owner or the member who
 connected it, because the key reaches zones the others were never given and
 removing it deletes the key and detaches every domain that used it; anyone else
-gets `403`. A key your customer's own sign-in made, which no member connected, is
-managed by an admin or an owner alone. Each account says whether you may
-(`can_manage`), and the console shows a member who did not connect an account no
-buttons on it.
+gets `403`, and nothing is stored or audited. A key your customer's own sign-in made, which no
+member connected, is managed by an admin or an owner alone. Each account says whether you may
+(`can_manage`), and the console shows a member who did not connect an account, and
+a viewer, the buttons off with one line that says why.
+
+A name (`label`) is one to 80 characters once spaces at its ends are removed (line breaks and a
+byte order mark there too), counted in characters, and holds no control or invisible character:
+no NUL, tab or line break, zero width space, byte order mark or text direction override. An empty
+name, a longer one or one with such a character answers `400` `invalid_request` and nothing in the
+call is stored. The console says the same words before it asks.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -292,7 +341,7 @@ owner may, not the member who connected the key. See
 | --- | --- |
 | `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
 | `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, [what needs you](#what-needs-you) first, plus kept sign-ins and Domain Connect authorizations grouped by provider. `?owner=workspace` or `end_user`, `?q=`, `?limit=` and `?cursor=` filter, search and page the list; `end_user_keys` counts your customers' keys. |
-| `PATCH /v1/provider-accounts/{id}` | Change label, access, scope or domains, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. What [each kind allows](#what-each-kind-of-account-allows) when it widens the account differs. |
+| `PATCH /v1/provider-accounts/{id}` | Rename (one to 80 characters), change access, scope or domains, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. What [each kind allows](#what-each-kind-of-account-allows) when it widens the account differs. |
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
 | `GET /v1/provider-accounts/{id}` | One account with its domains. For its manager it also carries [`more_domains`](#more-domains-in-the-account). |
 | `POST /v1/provider-accounts/{id}/connect` | [Connect domains](#connect-many-domains-at-once), each into its own application: `{ application_id?, domains }`, where a domain is a name or `{ domain, application_id }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
@@ -387,14 +436,22 @@ Then **Connect N domains now** calls `POST /v1/provider-accounts/{id}/connect` (
 each ticked domain goes into the application you choose among the ones the key may use, at most 200 a call, and each
 domain's result is shown (**Connected**, **Already connected** or why not), with a retry of the ones that failed. If a call
 after the first is refused (too many requests, say), the domains it and the later calls would have carried are listed as
-failed with the reason, so **Try the ones that failed again** offers them; if the first call is refused nothing is connected
-and the page stays as it was, with the reason. After a
+failed with the reason, so **Try the ones that failed again** offers them. A call that answers `200` with no result for its
+domains says nothing about them: the page lists them as "not confirmed" ("No result came back, so we can't say if it
+connected.") and offers them again with the failed ones, and trying them again is safe, because the control plane answers **Already connected** for a domain it has. With more than one
+application, **Put them in** is held while any are not confirmed ("Trying again puts them in the same application."), so a
+domain that did connect is never connected into a second application. If the first call is refused nothing is connected and the page stays as it was,
+with the reason; if every call came back with no result it stays as it was too and says so, with a link to the account's
+page. After a
 sign-in, the offer is the key's domains the workspace has not connected yet ([More domains in the account](#more-domains-in-the-account)).
 **Later** leaves them for the account's own page.
 
 A sign-in that stops before the keep (the window closed, **Back**, **Start again**, leaving the page, or the ten minutes
 passing) is cancelled, and the page says which key it made, with the provider's page that deletes it
-(`left_key`, see below); **Start again** keeps saying so even when the key was made a moment before the page read it. The page needs the member role or above.
+(`left_key`, see below); **Start again** keeps saying so even when the key was made a moment before the page read it. **Back** to
+the first step takes the notice with it and shows it above **Which company**, because the key is still live at the company. Choosing
+that company again names the key on its step 2 until you start another sign-in; choosing another company leaves the notice behind.
+The page needs the member role or above.
 
 ## Add an account by secure sign-in
 
@@ -513,6 +570,50 @@ Removing an account takes whoever manages it: an admin, an owner or the member
 who connected it, and for a key your customer's sign-in made, an admin or an owner.
 Anyone else, a viewer included, gets `403`, and nothing is deleted or detached.
 
+## The account's sheet in the console
+
+Open an account in **Connected accounts** for its sheet. It has everything above for
+that account, in one place, and offers each thing to exactly the people who may do it.
+What it offers depends on how the key was made:
+
+| | A key you pasted | A key made at a secure sign-in | A key your customer made |
+| --- | --- | --- | --- |
+| **Rename** | Yes | Yes | Yes |
+| **Domains it may configure** | Tick from the provider's list, or type them where the provider cannot list | Tick from the provider's list; each domain you add is read with the key first, and one it does not reach is named and nothing is saved | Take domains out. Never added to, and the provider is never asked |
+| **Applications that may use it** | Every application may use it | Its own application, and any other an admin or an owner ticks | Its own application only. Never shared |
+| **Connect more domains** | Yes | Yes | No |
+| **Check now** | Yes, for a key we hold (not a one time key) | Yes | No. The daily check reads it |
+| **New key** | **Replace key**: paste one | **Sign in again**: the same account, a new key | Your customer signs in again |
+| **Remove** | Yes | Yes | Yes |
+
+- **Change which domains an account may configure** is open the account, tick,
+  **Save**: the list is in the sheet, not behind a button. **Save** stays off until
+  something changed and at least one domain is chosen; to stop using an account
+  altogether, remove it.
+- **Connect more domains** lists the domains the key reaches that you have not
+  connected (`more_domains`). Type any other domain or subdomain, choose the
+  application, and connect. Each domain says what happened, and you can try the failed
+  ones again.
+- **Sign in again** opens the provider's sign-in over the page and makes a new key for the
+  same account. When it is made, **Use the new key** swaps it in: the account keeps its
+  name, domains and settings, and the old key is named with the page where you delete it.
+  See [renewing an account](#renew-an-account-by-signing-in-again).
+- **Remove** says how many domains use the account (they stay connected), then links the
+  provider's page where the key itself is deleted. See [removing an account](#remove-an-account).
+- **Check now** reads the key at the provider and says it works, was refused, or could not be
+  reached. A line under the facts says what the last check found. See [Check now](#check-now).
+- **Who holds the limit** is one line, from `enforced_by`: for a provider whose key reaches the
+  whole account, "CustomDomain™ uses this key only for the domains you pick. GoDaddy itself lets it reach
+  the whole account."; for one whose key is made for chosen domains, "Cloudflare itself limits this key to
+  the domains it was made for." See [who enforces the limit](#who-enforces-the-limit).
+
+A button you may not use is shown off, with the reason under the buttons: **Only admins, owners and whoever
+connected this account can change it** for a member who did not connect it, **Only admins and owners can change a key
+your customers made** for a customer's key, **Only admins and owners can choose which applications use a key**
+for the applications, and **Members, admins and owners can change domains** for a viewer. Every change is in the
+[audit log](#audit-log) under who made it: a member under their own member ID, and the person who created the
+workspace, who works in the console with the workspace's key, under that key's ID (never the key itself).
+
 ## What needs you
 
 `GET /v1/provider-accounts` lists the accounts that need someone first, each
@@ -598,8 +699,19 @@ agent token is refused. It answers the account and a `result`:
 - `unreachable`: the provider could not be asked, or answered with an error that
   is not a refusal. `message` says what. The failure counts toward the backoff.
 
+Every check that asked the provider is in the [audit log](#audit-log) as
+`provider_account.checked`, with who asked, the account and the `result` (`ok`,
+`refused` or `unreachable`), whatever the answer was. The row never holds the key or
+the provider's own words. A call that never asked the provider (`403`, `429`, or a
+`409` for a one time key, an account with no key, or nothing to read the key against, or a
+request that had ended before the provider was asked) leaves no row.
+
 An account's key can be checked once a minute: a second call answers `429`
-`rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
+`rate_limited` with `Retry-After: 60`. Each check is also one read of the
+workspace's [hourly limit](#checks-at-the-provider-have-an-hourly-limit): once it
+is spent the call answers `429` `reach_quota`, asks the provider nothing, records
+nothing and keeps no minute, so the same account can be checked as soon as the
+hour turns. A key your customer's sign-in made answers
 `403` (the daily check reads it, as above), a one time key `409`, and an account whose provider cannot list its
 domains and which covers none answers `409` `nothing_to_check` (connect a domain
 with it first).
@@ -608,7 +720,9 @@ An account that changed while its key was being checked (its key was replaced, o
 someone edited it in that moment) also answers `409`. Nothing is recorded for it
 and the minute is not used up, so call Check now again at once. A call that ends
 after the provider was asked, because the connection dropped before the answer or
-the answer was a `500`, does use up the minute.
+the answer was a `500`, does use up the minute. A request that had already ended when the
+check was about to start answers `503`, asks the provider nothing, takes nothing from the
+[hourly limit](#checks-at-the-provider-have-an-hourly-limit) and does not use up the minute.
 
 ## How a key was made and who added it
 
@@ -719,7 +833,9 @@ place, so a second domain at the same provider does not start a second sign-in:
   `502 saved_access_write_failed`, with the provider's words. A provider that
   writes one record set at a time can fail after the first, so the zone may
   hold some of the records even though the call failed. An account that
-  cannot act for the domain is `409 saved_access_not_usable`.
+  cannot act for the domain is `409 saved_access_not_usable`; a key that was not
+  read because the workspace's [hourly limit](#checks-at-the-provider-have-an-hourly-limit)
+  was spent is `429 reach_quota` instead, and nothing is written.
 - `rails.saved_access` on `POST /v1/domains:check` is the same list for an API
   key caller, and `recommended_rail` is then `saved_access`. An end user's
   widget token gets it only for that customer's own keys, under the rules in
@@ -805,7 +921,10 @@ when it is not the registrar, is never used for the change.
 
 Every change to a provider account, and every use of its key beyond the records
 it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
-**Activity** page), with who did it as the server knows them, never the key:
+**Activity** page), with who did it as the server knows them, never the key. A call with a
+member's own key is recorded under that member's ID. A call with any other API key (the workspace's
+key, which the person who created the workspace uses in the console, or one an integration holds)
+is recorded under that key's ID, and an agent under `agent:<grant id>`:
 
 | Event | When |
 | --- | --- |
@@ -816,6 +935,8 @@ it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
 | `provider_account.key_replaced` | It gets a new key: pasted, or made when someone signed in again. |
 | `provider_account.shared` | An admin or an owner lets another application use the key. Names the applications it serves before and after, and the ones just shared (`application_ids`). |
 | `provider_account.unshared` | An admin or an owner takes that back. Same fields. |
+| `provider_account.checked` | A key is checked on request ([Check now](#check-now)). The `provider` and the `result`: `ok`, `refused` or `unreachable`. One row for each check that asked the provider, never the key or the provider's words. |
+| `provider_account.domains_connected` | A [call to connect many domains](#connect-many-domains-at-once) connected at least one. The `provider` and the names of the domains connected, in one row for the call. A call that connected none leaves no row. |
 | `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
 | `agent.acted` | An agent changed a domain's DNS under its grant: it used a saved key for a domain (`used a saved key`), re-applied a domain's records (`re-applied a domain's records`) or moved a domain's nameservers, or back (`moved a domain's nameservers`, `moved a domain's nameservers back`). The row is `agent:<grant id>` in the actor. |
 | `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |
