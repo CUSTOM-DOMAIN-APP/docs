@@ -169,8 +169,9 @@ that fit the domain, the recommended one first:
   enters the code GoDaddy texts when the token is made. Our software makes a
   Personal Access Token on GoDaddy's developer page, CustomDomain™ checks it and
   keeps it, and the domain is connected through GoDaddy's API. If no token can be
-  made, the same session edits the domain's DNS page once your customer approves
-  the exact changes. It is offered to selected workspaces, and the domain check
+  made, the same session edits the domain's DNS page: a change that only adds
+  records goes ahead by itself, and one that replaces or removes a record waits
+  for your customer's approval. It is offered to selected workspaces, and the domain check
   says whether it runs for a domain (`rails.cloud_browser`). See
   [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
 - **A token you make yourself.** GoDaddy's API documentation grants domain
@@ -235,7 +236,8 @@ recommended one first:
   CustomDomain™ keeps the account's own key; Namecheap shows its API terms and asks
   for the account password, and both are your customer's to answer in the window.
   For an account that does not qualify, the same session edits the domain's DNS
-  page once your customer approves the exact changes, and a domain whose DNS is
+  page (an added record goes ahead by itself; a replaced or removed one waits for
+  your customer's approval), and a domain whose DNS is
   somewhere else ends the session with a message saying so. It is offered to
   selected workspaces, and the domain check says whether it runs for a domain
   (`rails.cloud_browser`). See [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).

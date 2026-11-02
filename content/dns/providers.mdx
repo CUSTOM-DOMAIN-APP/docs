@@ -18,8 +18,9 @@ offered in this order:
 3. **Secure sign-in**: for a provider that offers no sign-in a third party can
    use. The customer signs in to the provider in a temporary browser, and where
    the provider allows it our software makes a lasting API key there; otherwise
-   it edits the provider's DNS page for that one domain once the customer
-   approves the exact changes. Offered to selected workspaces for now (see
+   it edits the provider's DNS page for that one domain. A change that only adds
+   records goes ahead by itself; one that replaces or removes a record waits for
+   the customer's approval. Offered to selected workspaces for now (see
    [With secure sign-in](#with-secure-sign-in)).
 4. **An API key**: the customer creates a scoped credential at the provider and
    pastes it; we write the records for them. At Amazon Route 53 an **access
