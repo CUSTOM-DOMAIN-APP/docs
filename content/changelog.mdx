@@ -81,6 +81,12 @@ never change meaning or disappear without a new major version. See the
   user and is still set once. A client's name written before this is shown as that id until a name is given. See
   [A domain's settings](/docs/getting-started/console#domain-settings) and
   [forwarding](/docs/connect-flow/forwarding#from-the-console).
+- **November 2, 2026: two widget fixes for platforms that tell their own end users.** An application whose email
+  sender is **Don't send** no longer shows end users the optional email field, and `askEndUserEmail: false` reaches
+  the widget from customdomain-js 0.5.9. Skipping the congratulations screen with
+  `whiteLabel.screens.disable: ["congratulations"]` now fires `onSuccess` for each domain before the widget moves on
+  or closes, and that close is no longer counted as abandoned. The `screens.disable` names are now listed in the
+  [widget reference](/docs/widget-sdk/reference).
 - **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
   The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
   SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another
