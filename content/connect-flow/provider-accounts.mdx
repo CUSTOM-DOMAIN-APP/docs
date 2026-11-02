@@ -387,14 +387,22 @@ Then **Connect N domains now** calls `POST /v1/provider-accounts/{id}/connect` (
 each ticked domain goes into the application you choose among the ones the key may use, at most 200 a call, and each
 domain's result is shown (**Connected**, **Already connected** or why not), with a retry of the ones that failed. If a call
 after the first is refused (too many requests, say), the domains it and the later calls would have carried are listed as
-failed with the reason, so **Try the ones that failed again** offers them; if the first call is refused nothing is connected
-and the page stays as it was, with the reason. After a
+failed with the reason, so **Try the ones that failed again** offers them. A call that answers `200` with no result for its
+domains says nothing about them: the page lists them as "not confirmed" ("No result came back, so we can't say if it
+connected.") and offers them again with the failed ones, and trying them again is safe, because the control plane answers **Already connected** for a domain it has. With more than one
+application, **Put them in** is held while any are not confirmed ("Trying again puts them in the same application."), so a
+domain that did connect is never connected into a second application. If the first call is refused nothing is connected and the page stays as it was,
+with the reason; if every call came back with no result it stays as it was too and says so, with a link to the account's
+page. After a
 sign-in, the offer is the key's domains the workspace has not connected yet ([More domains in the account](#more-domains-in-the-account)).
 **Later** leaves them for the account's own page.
 
 A sign-in that stops before the keep (the window closed, **Back**, **Start again**, leaving the page, or the ten minutes
 passing) is cancelled, and the page says which key it made, with the provider's page that deletes it
-(`left_key`, see below); **Start again** keeps saying so even when the key was made a moment before the page read it. The page needs the member role or above.
+(`left_key`, see below); **Start again** keeps saying so even when the key was made a moment before the page read it. **Back** to
+the first step takes the notice with it and shows it above **Which company**, because the key is still live at the company. Choosing
+that company again names the key on its step 2 until you start another sign-in; choosing another company leaves the notice behind.
+The page needs the member role or above.
 
 ## Add an account by secure sign-in
 
