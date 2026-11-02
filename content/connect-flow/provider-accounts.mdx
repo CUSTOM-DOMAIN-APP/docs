@@ -74,6 +74,45 @@ is `selected` if you send `domains` and `all` if you do not. `POST /v1/provider-
 takes at most 200 domains per call (`400` beyond that; see [connect many domains at
 once](#connect-many-domains-at-once)).
 
+### Checks at the provider have an hourly limit
+
+Some calls ask a provider what a key reaches, with the key you saved: the list
+of the domains a key reaches (`POST /v1/provider-accounts/{id}/zones`), the read
+of each new domain's zone when you widen a key made at a secure sign-in
+(`PATCH /v1/provider-accounts/{id}`, or a domain outside its scope in `connect`),
+Check now, and the reads that find which saved key can act for a domain. They
+share one budget for the workspace: **60 reads an hour** on the hosted service
+(self-hosters set `REACH_CHECKS_PER_TENANT_HOUR`; `0` turns it off). One
+workspace's budget is its own, so another workspace cannot use it up.
+
+- An answer CustomDomain™ kept from a read in the last ten minutes costs
+  nothing, and a call refused before it reached the provider (not allowed, no
+  key) costs nothing.
+- When the budget is spent, those calls answer `429` `reach_quota` with
+  `Retry-After`, the seconds until the hour ends, when the count starts again.
+  Nothing was read at the provider, nothing changed and nothing was spent from
+  the hour. A call that needs several reads (a change naming ten new domains)
+  takes them all or none: when they do not all fit it is refused whole, instead of
+  checking some of them, and the reads that were left stay for a smaller call.
+  Keep a self-hosted budget at 21 or more, because one change reads up to 20
+  zones and the list of a key's domains.
+
+```json
+{ "code": "reach_quota", "title": "Too many checks at DNS providers this hour.", "details": "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes" }
+```
+
+- Finding saved keys for a domain never fails for it. Once the budget is spent,
+  the saved access list offers the keys it can show without a read, which are
+  the keys that already cover the domain and the answers it kept, so it offers
+  fewer. The next hour it reads the rest. A shorter list is not an answer that a
+  key cannot act: using a key by name (`POST /v1/connections/{id}:use-saved-access`)
+  that was not read because the budget was spent answers `429` `reach_quota` and
+  writes nothing, not `409` `saved_access_not_usable`. Wait for `Retry-After` and
+  send it again.
+- The [daily health check](#health-checks) is outside the budget. It is not
+  counted and it is never refused for it, so checks you run by hand cannot keep
+  a key from being checked, and the daily check does not use up your hour.
+
 ## Scope
 
 All of the account's domains (`"scope": "all"`, including ones added later), or
@@ -607,7 +646,11 @@ agent token is refused. It answers the account and a `result`:
   is not a refusal. `message` says what. The failure counts toward the backoff.
 
 An account's key can be checked once a minute: a second call answers `429`
-`rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
+`rate_limited` with `Retry-After: 60`. Each check is also one read of the
+workspace's [hourly limit](#checks-at-the-provider-have-an-hourly-limit): once it
+is spent the call answers `429` `reach_quota`, asks the provider nothing, records
+nothing and keeps no minute, so the same account can be checked as soon as the
+hour turns. A key your customer's sign-in made answers
 `403` (the daily check reads it, as above), a one time key `409`, and an account whose provider cannot list its
 domains and which covers none answers `409` `nothing_to_check` (connect a domain
 with it first).
@@ -727,7 +770,9 @@ place, so a second domain at the same provider does not start a second sign-in:
   `502 saved_access_write_failed`, with the provider's words. A provider that
   writes one record set at a time can fail after the first, so the zone may
   hold some of the records even though the call failed. An account that
-  cannot act for the domain is `409 saved_access_not_usable`.
+  cannot act for the domain is `409 saved_access_not_usable`; a key that was not
+  read because the workspace's [hourly limit](#checks-at-the-provider-have-an-hourly-limit)
+  was spent is `429 reach_quota` instead, and nothing is written.
 - `rails.saved_access` on `POST /v1/domains:check` is the same list for an API
   key caller, and `recommended_rail` is then `saved_access`. An end user's
   widget token gets it only for that customer's own keys, under the rules in

@@ -21,7 +21,11 @@ _openapi:
           another provider than the one a live or propagating domain's DNS is
           at, or a key whose scope does not hold such a domain yet (such a
           domain is linked without a write, and a scope widens only after a
-          write). A test mode domain is refused (`403` `sandbox_not_allowed`). A
+          write). A key that has to be read to show it reaches the domain's zone,
+          when the workspace's hourly budget of reach checks is spent, is `429`
+          `reach_quota` with `Retry-After`, not `saved_access_not_usable`: it was
+          not read, so nothing says it cannot act, and nothing was written. A test
+          mode domain is refused (`403` `sandbox_not_allowed`). A
           write that fails links nothing and leaves the key's scope as it was,
           and records the failure on the domain (its `error_code` and
           `error_message`): `502` `saved_access_write_failed`, with the

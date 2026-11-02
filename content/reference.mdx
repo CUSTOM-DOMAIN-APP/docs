@@ -51,6 +51,7 @@ string:
 | `not_found` | 404 | Object doesn't exist or isn't in your tenant. |
 | `conflict` | 409 | The request conflicts with the resource's current state. |
 | `rate_limited` | 429 | Too many requests; slow down and retry shortly. |
+| `reach_quota` | 429 | The workspace has made as many reads at DNS providers, to find out what a key reaches, as it may this hour. `Retry-After` is the seconds until the hour ends. See [provider accounts](/docs/connect-flow/provider-accounts#checks-at-the-provider-have-an-hourly-limit). |
 | `billing_required` | 402 | The workspace has no active subscription or trial, so new connections and new credentials (API keys, applications, rotated secrets) are refused (existing ones keep working). A new workspace's first ten domains (its free domains) are the exception: they connect without a card, and the next one is refused. `details` says why and where an owner or admin can fix it. See [Plans & quotas](/docs/billing/plans-and-quotas#what-a-refusal-looks-like). |
 | `connections_unavailable` | 402 | The same refusal as the tenant's end users see it, with a neutral message that says nothing about the tenant's billing or account. A connect-scoped widget token (your customer in the widget) gets it in place of `billing_required`, `quota_exceeded` and `workspace_suspended`. |
 | `quota_exceeded` | 402 | A Starter workspace connected its monthly allowance (only where the deployment enforces quotas). |

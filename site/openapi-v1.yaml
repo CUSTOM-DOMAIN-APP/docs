@@ -31,6 +31,18 @@ info:
 
     A `429` (`rate_limited`) from the request limiter carries a `Retry-After`
     header: the seconds to wait before the next request.
+
+
+    A `429` `reach_quota` is not the request limiter's: it says the workspace
+    has made as many reads at DNS providers, to find out what a key reaches, as
+    it may in an hour (60 by default on the hosted service). Five routes can
+    answer it (`PATCH /provider-accounts/{id}`, `POST
+    /provider-accounts/{id}/connect`, `POST /provider-accounts/{id}/zones`, `POST
+    /provider-accounts/{id}:check` and `POST /connections/{id}:use-saved-access`);
+    its `Retry-After` is the seconds until the hour ends, when the count starts
+    again, and the call read nothing, changed nothing and spent nothing from the
+    hour, so a smaller call that fits is still answered. The daily check of every
+    kept key is not counted and is never refused for it.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -3265,7 +3277,11 @@ paths:
         another provider than the one a live or propagating domain's DNS is
         at, or a key whose scope does not hold such a domain yet (such a
         domain is linked without a write, and a scope widens only after a
-        write). A test mode domain is refused (`403` `sandbox_not_allowed`). A
+        write). A key that has to be read to show it reaches the domain's zone,
+        when the workspace's hourly budget of reach checks is spent, is `429`
+        `reach_quota` with `Retry-After`, not `saved_access_not_usable`: it was
+        not read, so nothing says it cannot act, and nothing was written. A test
+        mode domain is refused (`403` `sandbox_not_allowed`). A
         write that fails links nothing and leaves the key's scope
         as it was, and records the failure on the domain (its `error_code`
         and `error_message`): `502` `saved_access_write_failed`, with the
@@ -3326,6 +3342,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '500': { $ref: '#/components/responses/Error' }
         '502': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
@@ -7711,6 +7728,14 @@ paths:
         matches what was read, answers `409` and nothing is written.
 
 
+        Those reads (one for each new domain's zone, and the list the scope `all`
+        needs) are taken from the workspace's hourly budget of reach checks; a
+        zone whose answer CustomDomain™ kept from a read in the last ten minutes
+        costs none. A change whose reads do not fit in what is left of the hour
+        answers `429` `reach_quota` with `Retry-After`, reads nothing and writes
+        nothing.
+
+
         `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
         is never widened, whoever asks. A change that adds a domain or sets `scope`
         to `all` answers `403`; renaming, narrowing and removing still work.
@@ -7789,6 +7814,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DomainsRefusedError' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
@@ -7847,6 +7873,9 @@ paths:
         `409`, and its key is deleted then if the hourly cleanup has not
         deleted it yet. A key an end user's secure sign-in made in the widget
         answers `403`: it never lists the domains of the end user's account.
+        The list is one read of the workspace's hourly budget of reach checks:
+        once it is spent the call answers `429` `reach_quota` with `Retry-After`
+        and asks the provider nothing.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -7868,6 +7897,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { description: "The provider refused the key; the account is flagged `needs_reconnect`" }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}/connect:
     post:
@@ -7919,7 +7949,10 @@ paths:
         answers `503`, never a refusal of the key: the same two answers
         `PATCH /provider-accounts/{id}` gives, with nothing written. A call
         reads at most 20 such zones, one read for each, and answers `400`
-        `too_many_domains_to_check` before the first read beyond that;
+        `too_many_domains_to_check` before the first read beyond that; those
+        reads are taken from the workspace's hourly budget of reach checks, and a
+        call whose reads do not fit in what is left answers `429` `reach_quota`
+        with `Retry-After`, with nothing read or written;
         `PATCH /provider-accounts/{id}` is the other way to widen a scope. A key
         an end user's secure sign-in made in the widget, or one a sign in
         started through the API made, answers `403`: it connects domains only
@@ -7980,6 +8013,7 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}/reconnect:
     post:
@@ -8130,7 +8164,11 @@ paths:
         once and never checked (`409`). An account whose provider cannot list
         its domains and which covers none answers `409` `nothing_to_check`.
         One check a minute for an account: a second answers `429`
-        `rate_limited` with `Retry-After: 60`.
+        `rate_limited` with `Retry-After: 60`. Each check is also one read of the
+        workspace's hourly budget of reach checks: once it is spent the call
+        answers `429` `reach_quota` with `Retry-After`, asks the provider nothing,
+        records nothing and keeps no minute, so the same account can be checked
+        as soon as the hour turns. The daily check is outside that budget.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -8156,7 +8194,11 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { description: "The account holds no key, it is a one time account, nothing could be read the key against (`nothing_to_check`), or it changed while it was checked" }
         '429':
-          description: "`rate_limited`: this account's key was checked less than a minute ago."
+          description: >-
+            `rate_limited`: this account's key was checked less than a minute ago
+            (`Retry-After: 60`), or `reach_quota`: the workspace has made as many
+            reach checks at providers as it may this hour (`Retry-After` is the
+            seconds until the hour ends).
           headers:
             Retry-After: { schema: { type: integer }, description: "Seconds until the key can be checked again." }
           content:
@@ -8806,6 +8848,23 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    ReachQuota:
+      description: >-
+        `reach_quota`: the workspace has made as many reads at DNS providers, to
+        find out what a key reaches, as it may this hour (the saved key resolver's
+        reads, a key's reach check when its scope is widened, the list of a key's
+        domains and Check now share one budget). Nothing was read at the provider,
+        nothing changed and nothing was spent from the hour. `Retry-After` is the
+        seconds until the hour ends, when the count starts again.
+      headers:
+        Retry-After: { schema: { type: integer }, description: "Seconds until the hour ends and the workspace's count starts again." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: reach_quota
+            title: Too many checks at DNS providers this hour.
+            details: "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes"
     ForbiddenOrSuspended:
       description: >-
         `forbidden`: the credential may not do this. `workspace_suspended`:

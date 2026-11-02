@@ -23,6 +23,18 @@ never change meaning or disappear without a new major version. See the
   **Usage** card and the setup list are still the whole workspace's. **Dismiss** on the setup list hides it
   for you on every device; **Help → Show the setup list** brings it back and it stays through a reload. See
   [Console](/docs/getting-started/console#navigation).
+- **November 2, 2026: checks at a DNS provider have an hourly limit for each workspace.** A workspace can now make 60
+  reads an hour at DNS providers to find out what a key reaches: the list of a key's domains, the read of a new domain's
+  zone when a key made at a secure sign-in is widened or connects a domain outside its scope, Check now, and the reads
+  that find which saved key can act for a domain. When the hour's reads are spent, those calls answer `429`
+  `reach_quota` with a `Retry-After` of the seconds until the hour ends, read nothing, change nothing and spend nothing
+  from the hour (a call that needs several reads takes them all or none, so a smaller call that fits is still answered);
+  finding saved keys simply offers fewer until the hour turns, and using a saved key by name
+  (`POST /v1/connections/{id}:use-saved-access`) that was not read for that reason answers `429` too, not
+  `409 saved_access_not_usable`. An answer kept from a read in the last ten minutes costs nothing, and
+  the daily health check of every kept key is outside the limit, so it is never held back. Self-hosters set it with
+  `REACH_CHECKS_PER_TENANT_HOUR` (`0` turns it off). See
+  [Checks at the provider have an hourly limit](/docs/connect-flow/provider-accounts#checks-at-the-provider-have-an-hourly-limit).
 - **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
   The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
   SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another

@@ -53,6 +53,12 @@ _openapi:
           account that lost its key, or whose change no longer matches what was read,
           answers `409` and nothing is written.
       - content: >-
+          Those reads (one for each new domain's zone, and the list the scope `all`
+          needs) are taken from the workspace's hourly budget of reach checks; a zone
+          whose answer CustomDomain™ kept from a read in the last ten minutes costs
+          none. A change whose reads do not fit in what is left of the hour answers
+          `429` `reach_quota` with `Retry-After`, reads nothing and writes nothing.
+      - content: >-
           `widget_sign_in`, a key an end user's secure sign-in made in the widget: it
           is never widened, whoever asks. A change that adds a domain or sets `scope`
           to `all` answers `403`; renaming, narrowing and removing still work.
