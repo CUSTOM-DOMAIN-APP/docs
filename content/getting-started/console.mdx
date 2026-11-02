@@ -510,8 +510,17 @@ or the deployment can offer one-click setup for it. **Change** opens a menu:
   workspace's accounts for the domain's application, and a member sees the ones they
   connected, so the list can be empty.
 - **Add an account** opens [Add an account](#add-an-account), where you can connect the provider's account once and use it for this domain and others.
-- **Host its DNS instead** opens the domain's DNS tab, where DNS hosting starts. A domain
-  whose DNS is already ours shows **See its DNS hosting** in its place.
+- **Host its DNS instead** opens a sheet that starts [DNS hosting](/docs/guides/nameserver-migration#start-one-domain)
+  for this one domain, whatever the application's DNS hosting setting says. It lists the
+  ways that would work for it: a saved account at the registrar (the company the domain is
+  registered with) that you may use, **Secure sign-in**, and **Change it yourself**, with
+  nothing picked until you pick. When the move cannot start (the plan's limit of hosted
+  domains, a registrar that keeps its own nameservers, a move already under way), the
+  sheet says why and has nothing to start. Once it has started, the page goes to the
+  domain's DNS tab, where the move is shown. A domain whose DNS is already ours shows
+  **See its DNS hosting** in its place, and one whose move is under way or failed shows
+  **See the DNS hosting move**. The connect page has the same button under the detected
+  DNS host.
 
 A viewer sees the card with its buttons off, and the reason under them: members, admins
 and owners can change domains. The **Management** line under **Details** reads
