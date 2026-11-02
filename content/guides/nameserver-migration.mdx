@@ -578,6 +578,60 @@ as `agent.acted` (`moved a domain's nameservers`, `moved a domain's nameservers
 back`) under `agent:<grant id>`, whichever key it used; a call that only read the
 move leaves no row.
 
+### Start one domain's move [#start-one-domain]
+
+A person starts the move for one domain from the console, whatever the application's
+DNS hosting setting says: the setting decides what the application's *users* are
+offered, and only an agent token is held to it. Before it offers a way, the console
+asks `GET /v1/connections/{id}/nameservers:offer`, so it offers nothing the move would
+refuse. An API key, an app scoped token and an agent token with `domains:read` may ask.
+An end user's widget token may not (`403`): it is offered the move in the domain check
+and starts it with its consent. The answer is read-only and changes nothing.
+
+```json
+{
+  "available": true,
+  "zone": "acme.com",
+  "setting": "off",
+  "target": "managed",
+  "registrar": { "name": "GoDaddy", "provider": "godaddy", "source": "rdap" },
+  "paths": {
+    "api": { "available": true, "accounts": [
+      { "id": "pacct_...", "label": "Acme", "provider": "godaddy", "provider_name": "GoDaddy", "how": "api_key" }
+    ] },
+    "agent": { "available": true },
+    "manual": { "available": true }
+  }
+}
+```
+
+`target` is where the move hosts the zone: the application's setting, else CustomDomain™
+(`managed`). The three `paths` are the ways the nameservers change: `api` with one of the
+`accounts` as `provider_account_id`, `agent` through the secure sign-in, and `manual` by
+the person at the registrar. The accounts are the connected accounts at the registrar RDAP
+names that the caller may use: kept keys of the workspace that serve the application and
+already hold the zone, at a registrar whose API changes nameservers, never an end user's
+own key and never the key itself. A registrar CustomDomain™ does not connect to has none.
+
+When `available` is `false`, `reason` says why:
+
+| `reason` | Meaning |
+| --- | --- |
+| `platform_subdomain`, `unsupported_tld`, `reserved` | The domain's nameservers cannot be changed at a registrar. |
+| `registrar_locks_nameservers` | The registrar requires its own nameservers (Cloudflare Registrar). Moving them takes a transfer first. |
+| `ns_not_offered` | An agent token asked while DNS hosting is off. An API key and the console are never held to this. |
+| `dns_host_unavailable` | The application's DNS host account no longer works. |
+| `move_open` | A move for this domain is already under way. |
+| `disabled` | The deployment has no managed DNS for target `managed`. |
+| `zone_limit` | A cap of the engine's own is reached: the workspace's, or the deployment's. |
+| `plan_zone_limit` | The workspace holds as many hosted zones as its plan counts. |
+
+A domain whose zone exists already adds none, so neither limit applies to it. The
+offer is stricter than the move in three places, on purpose: it stops at the plan's count
+where the move stops only at its caps, it lists the accounts the caller may use where the
+move accepts any account of the workspace that serves the application, and it lists kept
+keys only, since a move waits hours for the registry and a one time key ends in an hour.
+
 ### What to press next [#next-action]
 
 Every answer that carries a move has `next_action`: the one request to press next,
@@ -675,6 +729,21 @@ copy's warnings and they agreed, and `rollback-nameservers` takes `target`
   hosted for the application ([find them](/docs/getting-started/console#hosting-and-access-filters)),
   where **DNS hosted by us** and the **DNS host** column say who runs each one and
   which moves need a look.
+- **Host its DNS instead**, on a domain's page under **Change**, and on the connect page
+  under the detected DNS host, opens a sheet that starts the move for that one domain,
+  from what the offer above allows. It lists one choice, with nothing picked: a row for
+  each saved account at the registrar, **Secure sign-in**, and **Change it yourself**
+  (the nameservers to set, shown for you to set at the registrar). With no account you
+  may use, a line says so and links **Add an account**. When the move cannot start, the
+  sheet says why in one line, with a link where there is a place (**See plans** for the
+  plan's limit), and has nothing to start. Members, admins and owners can start it; a
+  viewer sees the buttons off. Once it has started, the sheet goes to the domain's DNS
+  tab.
+- **The waiting card's buttons** come from `next_action` ([above](#next-action)). While a
+  move waits for the registrar sign-in the card shows **Sign in at GoDaddy**, which opens
+  the secure sign-in over the page and closes it when the move moves on. After a stop
+  that changed nothing at the registrar it shows **Try again**. After one that did,
+  **Move back** is the first button. A viewer sees none of them.
 - **A domain's DNS tab**: a **Domain maintenance** section with its status, the
   three steps, the next thing to do, for a copy to check what to check and **The
   records look right, continue**, the domain's two parts (naming the registrar,

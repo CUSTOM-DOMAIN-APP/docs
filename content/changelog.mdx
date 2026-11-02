@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 2, 2026: "Host its DNS instead" starts one domain's DNS hosting from the console, and a waiting move has its buttons.**
+  On a domain's page, **Change** then **Host its DNS instead** (and a line on the connect page) opens a sheet that
+  lists only the ways that would work for that domain: a saved account at the registrar that you may use, **Secure
+  sign-in**, or **Change it yourself**. When the move cannot start, such as the plan's limit of hosted domains or a
+  registrar that keeps its own nameservers, the sheet says why and has nothing to start. A move that waits for the
+  registrar sign-in now shows **Sign in at** the registrar on the domain's DNS tab, a move that stopped before the
+  registrar changed shows **Try again**, and one that stopped after shows **Move back** first. The API gains
+  `GET /v1/connections/{id}/nameservers:offer`, which says what a start would accept; an agent token reads it too, and
+  sees that it may not start a move while the application's DNS hosting is off. See
+  [Start one domain's move](/docs/guides/nameserver-migration#start-one-domain) and the
+  [console guide](/docs/getting-started/console#how-we-reach-a-domain).
 - **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
   The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
   SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another

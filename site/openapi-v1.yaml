@@ -2715,6 +2715,66 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/nameservers:offer:
+    get:
+      operationId: getNameserverOffer
+      summary: Whether the domain's nameservers can move now, and how
+      tags: [Nameservers]
+      description: >-
+        What `POST /connections/{id}/nameservers:migrate` would accept for this
+        domain right now, for the caller who asks: whether a move can start
+        (`available`, and `reason` when it cannot), where it would host the
+        zone (`target`, the application's setting, else `managed`), who the
+        domain is registered with, and the three ways the nameservers can
+        change (`paths`): `api` with one of the connected accounts at the
+        registrar listed in `accounts`, `agent` through the cloud browser the
+        person signs in to, and `manual` by the person at the registrar. The
+        console's "Host its DNS instead" sheet reads it, so it offers nothing
+        the move would refuse. It reads and changes nothing.
+
+
+        The accounts are the ones this caller may use, at the registrar RDAP
+        names, whose scope already holds the zone, whose API changes
+        nameservers, and never an end user's own key; a registrar we do not
+        route to has none. The reasons are the move's own: `ns_not_offered`
+        (an agent token while the application's DNS hosting is off, decision
+        D9: an API key and the console are not held to it),
+        `dns_host_unavailable` (the application's DNS host account no longer
+        works), `move_open` (a move for this zone is already under way),
+        `registrar_locks_nameservers`, the reasons of managed DNS
+        (`disabled`, `platform_subdomain`, `unsupported_tld`, `reserved`),
+        `zone_limit` (a cap of the engine's own: the workspace's or the
+        deployment's) and `plan_zone_limit` (the workspace holds as many
+        hosted zones as its plan counts, decision D8). The plan's count is the
+        offer's limit and the move's start does not refuse at it; the caps are
+        refused there too (`managed_dns_limit`). A domain whose zone already
+        exists adds none, so neither limit applies to it.
+
+
+        An API key, an app scoped token and a delegated agent token with
+        `domains:read` may ask. An end user's widget token may not (`403`):
+        its application offers it the move in the domain check, and it starts
+        it with its consent.
+      security:
+        - apiKey: []
+        - agentToken: ['domains:read']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The offer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverStartOffer' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden` (an end user's widget token), or a connection of
+            another application (a delegated agent token).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/nameservers:migrate:
     post:
       operationId: migrateNameservers
@@ -12186,6 +12246,77 @@ components:
           type: array
           items: { type: string }
           description: The new nameservers for target `custom`. For `managed` and `dns_host` they are known once the zone exists (the migration's `new_nameservers`).
+    NameserverStartOffer:
+      type: object
+      description: >-
+        Whether one domain's nameservers can move to DNS hosting now and how
+        (`GET /connections/{id}/nameservers:offer`).
+      required: [available, zone, setting, target, registrar, paths]
+      properties:
+        available: { type: boolean }
+        reason:
+          type: string
+          enum:
+            - ns_not_offered
+            - dns_host_unavailable
+            - move_open
+            - registrar_locks_nameservers
+            - disabled
+            - platform_subdomain
+            - unsupported_tld
+            - reserved
+            - zone_limit
+            - plan_zone_limit
+          description: Why the move cannot start, when `available` is false.
+        zone: { type: string, description: "The registrable domain whose nameservers move." }
+        setting:
+          type: string
+          enum: ['off', offer, prefer]
+          description: >-
+            The application's DNS hosting mode. A start from an API key or the
+            console is allowed whatever it says.
+        target:
+          type: string
+          enum: [managed, dns_host, custom]
+          description: "Where the move hosts the zone: the application's setting, else `managed`."
+        dns_host: { type: string, description: 'The DNS host of target `dns_host` (an adapter id).' }
+        nameservers:
+          type: array
+          items: { type: string }
+          description: The platform's own nameservers, for target `custom`.
+        registrar:
+          description: Who the domain is registered with, from RDAP; null when unknown or not looked up (an earlier `reason` held).
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        paths:
+          type: object
+          required: [api, agent, manual]
+          properties:
+            api:
+              type: object
+              required: [available, accounts]
+              properties:
+                available: { type: boolean, description: 'True when at least one account may be named.' }
+                accounts:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, label, provider, provider_name, how]
+                    properties:
+                      id: { type: string, description: 'Send it as `provider_account_id`.' }
+                      label: { type: string }
+                      provider: { type: string }
+                      provider_name: { type: string }
+                      how: { type: string, enum: [api_key, secure_sign_in], description: 'How the key came: a person pasted it, or the cloud browser made it at a secure sign in.' }
+            agent:
+              type: object
+              required: [available]
+              properties:
+                available: { type: boolean, description: 'The cloud browser can change this registrar''s nameservers.' }
+            manual:
+              type: object
+              required: [available]
+              properties:
+                available: { type: boolean, description: 'Always true when the move can start.' }
     NameserverRegistrar:
       type: object
       description: >-
