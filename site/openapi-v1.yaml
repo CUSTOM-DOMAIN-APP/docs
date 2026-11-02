@@ -6496,6 +6496,11 @@ paths:
         workspace, 14 day trial), `startup`, `growth`, and the contact-sales
         `premium` and `enterprise`. The retired `free` plan is not listed; a
         workspace created before it was retired keeps it until it subscribes.
+        The figures above are the defaults: an operator can change a plan's
+        `price_cents`, `domains_per_year` (and so `domains_per_month`),
+        `trial_days` and `hard_cap` without a release, so read them from this
+        response rather than hard coding them. `billing.trial_days` is the
+        default plan's trial.
       security: []
       responses:
         '200':
@@ -6513,7 +6518,7 @@ paths:
                     properties:
                       configured: { type: boolean, description: Whether a Stripe key is configured. }
                       mode: { type: string, enum: ['test', 'live', ''] }
-                      trial_days: { type: integer, description: The trial a new workspace's first subscription starts with. }
+                      trial_days: { type: integer, description: "The trial a new workspace's first subscription to the default plan starts with (0: no trial)." }
   /billing/usage:
     get:
       operationId: getUsage
