@@ -34,9 +34,10 @@ _openapi:
           the key and never the provider's own words. It is written whatever happens
           to the verdict afterwards, so a check whose verdict was dropped (`409`
           because the account changed while the provider answered) is on record too.
-          A call that never asked the provider (a `403`, a `429`, or a `409` because
+          A call that never asked the provider (a `403`, a `429`, a `409` because
           the account is a one time key, holds no key or has nothing to read the key
-          against) writes nothing.
+          against, or a request that ended before the provider was asked, which
+          answers `503` and gives its minute back) writes nothing.
 
           Takes the workspace's API key and an admin, an owner or the member who
           connected the account (`403` otherwise). A key an end user's own

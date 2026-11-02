@@ -165,7 +165,9 @@ Everything below is checked before the first record is written, so a call that i
 
 Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
 or `failed`. A domain whose write fails does not stop the others. A call that connected at least one domain is one
-`provider_account.domains_connected` row in the [audit log](#audit-log), naming those domains and no others. See the
+`provider_account.domains_connected` row in the [audit log](#audit-log), naming those domains and no others. A
+domain that was already serving and already linked to this account is left as it is (`already`), and a call that
+only names such domains leaves no row. See the
 [API reference](/docs/api-reference/provider-accounts/connectWithProviderAccount).
 
 ## More domains in the account
@@ -233,8 +235,11 @@ member connected, is managed by an admin or an owner alone. Each account says wh
 (`can_manage`), and the console shows a member who did not connect an account, and
 a viewer, the buttons off with one line that says why.
 
-A name (`label`) is one to 80 characters once spaces at its ends are removed, counted in
-characters. An empty or longer name answers `400` and nothing in the call is stored.
+A name (`label`) is one to 80 characters once spaces at its ends are removed (line breaks and a
+byte order mark there too), counted in characters, and holds no control or invisible character:
+no NUL, tab or line break, zero width space, byte order mark or text direction override. An empty
+name, a longer one or one with such a character answers `400` `invalid_request` and nothing in the
+call is stored. The console says the same words before it asks.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -559,7 +564,8 @@ A button you may not use is shown off, with the reason under the buttons: **Only
 connected this account can change it** for a member who did not connect it, **Only admins and owners can change a key
 your customers made** for a customer's key, **Only admins and owners can choose which applications use a key**
 for the applications, and **Members, admins and owners can change domains** for a viewer. Every change is in the
-[audit log](#audit-log) under the person's own name.
+[audit log](#audit-log) under who made it: a member under their own member ID, and the person who created the
+workspace, who works in the console with the workspace's key, under that key's ID (never the key itself).
 
 ## What needs you
 
@@ -650,8 +656,8 @@ Every check that asked the provider is in the [audit log](#audit-log) as
 `provider_account.checked`, with who asked, the account and the `result` (`ok`,
 `refused` or `unreachable`), whatever the answer was. The row never holds the key or
 the provider's own words. A call that never asked the provider (`403`, `429`, or a
-`409` for a one time key, an account with no key, or nothing to read the key against)
-leaves no row.
+`409` for a one time key, an account with no key, or nothing to read the key against, or a
+request that had ended before the provider was asked) leaves no row.
 
 An account's key can be checked once a minute: a second call answers `429`
 `rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
@@ -663,7 +669,8 @@ An account that changed while its key was being checked (its key was replaced, o
 someone edited it in that moment) also answers `409`. Nothing is recorded for it
 and the minute is not used up, so call Check now again at once. A call that ends
 after the provider was asked, because the connection dropped before the answer or
-the answer was a `500`, does use up the minute.
+the answer was a `500`, does use up the minute. A request that had already ended when the
+check was about to start answers `503`, asks the provider nothing and does not use it up.
 
 ## How a key was made and who added it
 
@@ -860,7 +867,10 @@ when it is not the registrar, is never used for the change.
 
 Every change to a provider account, and every use of its key beyond the records
 it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
-**Activity** page), with who did it as the server knows them, never the key:
+**Activity** page), with who did it as the server knows them, never the key. A call with a
+member's own key is recorded under that member's ID. A call with any other API key (the workspace's
+key, which the person who created the workspace uses in the console, or one an integration holds)
+is recorded under that key's ID, and an agent under `agent:<grant id>`:
 
 | Event | When |
 | --- | --- |

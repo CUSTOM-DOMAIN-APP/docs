@@ -18,8 +18,11 @@ _openapi:
           an admin, an owner or the member who connected it (`403` otherwise, with
           nothing stored and nothing audited); for a key an end user's own sign-in
           made, which no member connected, an admin or an owner alone. A `label` is
-          one to 80 characters once trimmed, counted in characters (`400`
-          `invalid_request` otherwise, and nothing in the call is stored).
+          one to 80 characters once trimmed (spaces, line breaks and the byte order
+          mark at its ends are removed), counted in characters, and holds no control
+          or invisible character: no NUL, tab or line break, zero width space, byte
+          order mark or text direction override (`400` `invalid_request` otherwise,
+          and nothing in the call is stored).
           `continuous` access for a credential that is used once and never kept
           answers `422` `use_once_credential`. A change is recorded in the audit log
           (`provider_account.updated`, with the label, access, scope, domains and

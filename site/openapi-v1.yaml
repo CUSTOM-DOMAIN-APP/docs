@@ -7674,8 +7674,11 @@ paths:
         the account: an admin, an owner or the member who connected it (`403`
         otherwise, with nothing stored and nothing audited); for a key an end
         user's own sign-in made, which no member connected, an admin or an owner
-        alone. A `label` is one to 80 characters once trimmed, counted in
-        characters (`400` `invalid_request` otherwise, and nothing in the call is
+        alone. A `label` is one to 80 characters once trimmed (spaces, line
+        breaks and the byte order mark at its ends are removed), counted in
+        characters, and holds no control or invisible character: no NUL, tab or
+        line break, zero width space, byte order mark or text direction override
+        (`400` `invalid_request` otherwise, and nothing in the call is
         stored). `continuous` access for a credential
         that is used once and never kept answers `422` `use_once_credential`. A
         change is recorded in the audit log (`provider_account.updated`, with
@@ -7753,7 +7756,8 @@ paths:
                 label:
                   type: string
                   description: >-
-                    The account's name: one to 80 characters once trimmed (`400` otherwise).
+                    The account's name: one to 80 characters once trimmed, with no control
+                    or invisible character in it (`400` `invalid_request` otherwise).
                     Whoever manages the account may change it, as for `access`, `scope` and
                     `domains` (`403` otherwise).
                 access: { type: string, enum: [continuous, one_time] }
@@ -7789,8 +7793,9 @@ paths:
                   account: { $ref: '#/components/schemas/ProviderAccount' }
         '400':
           description: >-
-            `invalid_request` (a `label` that is empty once trimmed or longer than 80
-            characters, or a change that leaves no domain and no scope `all`) or
+            `invalid_request` (a `label` that is empty once trimmed, longer than 80
+            characters or holds a control or invisible character, or a change that
+            leaves no domain and no scope `all`) or
             `too_many_domains_to_check`. Nothing is stored.
           content:
             application/json:
@@ -7959,7 +7964,9 @@ paths:
         `provider_account.domains_connected` row naming those domains, by name
         only, beside the `provider_account.relinked` and
         `provider_account.domain_added` rows it may also write; a call that
-        connected none writes no such row.
+        connected none writes no such row. A domain already serving that was
+        linked to this account before the call is left as it is (`already`), is
+        not named in the row, and does not make one.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -8163,9 +8170,10 @@ paths:
         the key and never the provider's own words. It is written whatever
         happens to the verdict afterwards, so a check whose verdict was dropped
         (`409` because the account changed while the provider answered) is on
-        record too. A call that never asked the provider (a `403`, a `429`, or a
+        record too. A call that never asked the provider (a `403`, a `429`, a
         `409` because the account is a one time key, holds no key or has nothing
-        to read the key against) writes nothing.
+        to read the key against, or a request that ended before the provider was
+        asked, which answers `503` and gives its minute back) writes nothing.
 
 
         Takes the workspace's API key and an admin, an owner or the member who
