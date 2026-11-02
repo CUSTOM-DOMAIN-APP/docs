@@ -12,6 +12,21 @@ application and follow the steps below with its `client_secret` and a name such 
 `www.acme.test`. The widget runs end to end on a simulated DNS, with no card, no free
 domain used and nothing billed.
 
+## Have your coding agent do it
+
+The **Install** tab on **Widget** in the console starts with **Hand it to your
+coding agent**. **Copy prompt** gives you one block of text to paste into Claude
+Code, Cursor, Codex or any agent that edits your project. It names your
+application ID, the install guide, the SDK reference and the docs index
+(`llms.txt`), picks up the server language and page framework you chose on the
+tab, and lists the steps in order: the server route, the button, the result
+handling. The agent shows you each change before it makes it.
+
+The prompt never contains a secret. It tells the agent that the API key lives in
+your server's environment, that you set it yourself, and that it must never ask
+you to paste it into the chat or write it into code. Your application ID is the
+only identifier in it, and that one is public.
+
 <Steps>
 
 <Step>
@@ -20,8 +35,9 @@ domain used and nothing billed.
 
 Your server trades a credential for a short-lived widget token, and only that
 token reaches the browser. If you signed up in the console (most customers),
-create an API key on **API & SDK** with **Create key** and call the console's
-token endpoint. This is what the **Install** tab on the **Widget** page generates
+create an API key on **API & SDK** with **Create key** (the **Install** tab's
+**Get your API key** button opens the same form) and call the console's
+token endpoint. You see the key once: store it as `CUSTOMDOMAIN_API_KEY`. This is what the **Install** tab on the **Widget** page generates
 by default:
 
 ```bash
@@ -99,7 +115,7 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 | Vercel | **Install CustomDomain™ on Vercel**, on the team that owns the domain | nothing |
 | Porkbun | **Approve access at Porkbun** (API access must be on for the domain) | nothing |
 | NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider, which sends them back when they approve | nothing |
-| GoDaddy, Namecheap, Name.com, IONOS, Squarespace, Hover, Spaceship, Hostinger | **Secure sign-in** (offered to selected workspaces for now, and only where the token is bound to the domain and the end user): they sign in to the provider in a secure window and approve the exact changes. Where the provider allows it, a lasting API key is made and kept, so the domain stays connected through the provider's API. Where no key can be made, our software makes the changes on the provider's DNS page once they approve them. If the sign-in does not finish, or secure sign-in is not on for the workspace, the modal shows the records, as in the next row | their provider login, and a code if the provider asks for one (we never see the password) |
+| GoDaddy, Namecheap, Name.com, IONOS, Squarespace, Hover, Spaceship, Hostinger | **Secure sign-in** (offered to selected workspaces for now, and only where the token is bound to the domain and the end user): they sign in to the provider in a secure window. Where the provider allows it, a lasting API key is made and kept, so the domain stays connected through the provider's API. Where no key can be made, our software makes the changes on the provider's DNS page. A change that only adds records goes ahead by itself; one that replaces or removes a record is shown first and waits for their approval ([details](/docs/guides/secure-sign-in#review)). If the sign-in does not finish, or secure sign-in is not on for the workspace, the modal shows the records, as in the next row | their provider login, and a code if the provider asks for one (we never see the password) |
 | OVHcloud, Route 53, Network Solutions, Wix, a site builder or shop that sold the domain (Shopify, Canva and more), everything else | **Add the records**, with *why* the automatic ways aren't available, the Name to type in their panel, step-by-step instructions for their provider (135 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where your application turns on [DNS hosting](/docs/dns/managed-dns)) let you keep the domain working for them by moving its nameservers | the records (about two minutes), or nothing |
 | Unknown provider | a provider picker, then the records | the records |
 

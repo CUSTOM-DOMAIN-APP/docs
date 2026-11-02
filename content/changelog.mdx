@@ -15,6 +15,30 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
+  - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
+    workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**
+    under them, and **Settings → General** shows the console's version with the time it was built. See
+    [Navigation](/docs/getting-started/console#navigation).
+  - **Secure sign-in.** A plan that only adds records is approved by the sign-in window itself, with no Review screen:
+    your customer sees "Getting things ready", then "Making the changes", then Done. Review still appears when a record
+    is replaced or removed, when the plan changed, or after an approval that failed. The window no longer mentions an
+    API or a key. At Squarespace, the code it emails before a DNS change now waits for your customer instead of failing
+    the run. See [When your customer approves a change](/docs/guides/secure-sign-in#review).
+  - **Widget.** **Try it live** leads with **Open the widget**. **Install** has **Get your API key** and **Hand it to
+    your coding agent**, a prompt that never contains a secret. The Design preview adds the screens **Instructions
+    sent**, **Email setup** and **Remove a domain**. See [Install the widget](/docs/getting-started/console#install).
+  - **Domains.** The attention banner is gone (the **Needs attention** filter shows its count), each row says who
+    added the domain, and a domain waiting on DNS reads **Checking DNS**, **Records found** or **Not finished**.
+  - **Analytics.** **Most common stopping point** now names the real last step instead of "Closed the widget".
+    **Traffic** says what a request is and counts the pages the edge writes itself in **Data sent to visitors**; our own
+    domain checks are not counted. **Providers** shows started, connected, rate and top reason stuck, plus **Time to go
+    live** and **How domains connect**. The API adds `top_stuck`, `top_stuck_count`, `median_seconds_to_live` and
+    `time_to_live` to [`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics). See
+    [Analytics](/docs/getting-started/console#analytics).
+  - **Sign in and sign up.** Passkey, Google and GitHub are one row of icon buttons, and Google One Tap shows where
+    Google sign in is set up. On sign up it waits for the Terms box. See
+    [Sign up and verify](/docs/getting-started/console#1-sign-up-and-verify).
 - **November 2, 2026: the account's sheet in the console, and who may change an account.** Opening a connected account
   shows one sheet: rename it, change which domains its key may configure, choose which applications may use it,
   connect more of its domains, renew it by signing in again, remove it, and run Check now. Only an admin, an owner or

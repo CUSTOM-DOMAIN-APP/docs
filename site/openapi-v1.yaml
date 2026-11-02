@@ -9993,9 +9993,16 @@ components:
                   live: { type: integer }
                   pending: { type: integer }
                   failed: { type: integer }
+                  top_stuck: { type: string, description: 'The most common reason this provider''s not-live domains are stuck (a key of stuck). Absent when none are.' }
+                  top_stuck_count: { type: integer }
+                  median_seconds_to_live: { type: integer, description: Median over this provider's live domains; 0 when none. }
             by_method: { type: array, items: { $ref: '#/components/schemas/AnalyticsGroup' } }
             by_kind: { type: array, items: { $ref: '#/components/schemas/AnalyticsGroup' } }
             stuck: { type: array, items: { $ref: '#/components/schemas/AnalyticsCount' } }
+            time_to_live:
+              type: array
+              description: 'Domains that went live by how long they took from being added: under_5m, 5m_to_1h, 1h_to_1d, over_1d, always all four in that order.'
+              items: { $ref: '#/components/schemas/AnalyticsCount' }
         daily:
           type: array
           items:
@@ -10088,6 +10095,7 @@ components:
         key: { type: string }
         total: { type: integer }
         live: { type: integer }
+        median_seconds_to_live: { type: integer, description: Median over this group's live domains; 0 when none. }
     TrafficStatusCounts:
       type: object
       description: Requests by the status class of the answer the visitor got.
@@ -10137,7 +10145,7 @@ components:
           properties:
             requests: { type: integer }
             status: { $ref: '#/components/schemas/TrafficStatusCounts' }
-            bytes_out: { type: integer, description: Response body bytes relayed to visitors. }
+            bytes_out: { type: integer, description: "Response body bytes sent to visitors: bodies relayed from the origin plus pages the edge wrote itself (redirects, the no-origin page). Not counted before 2026-11-02 for the edge-written pages." }
             error_rate: { type: number, description: 'Share of requests answered with a 5xx, 0 to 1.' }
             latency_ms: { oneOf: [ { $ref: '#/components/schemas/TrafficLatency' }, { type: 'null' } ] }
             visitors: { type: integer, description: 'Approximate unique visitors; one seen on two UTC days counts once on each.' }
