@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 2, 2026: the account's sheet in the console, and who may change an account.** Opening a connected account
+  shows one sheet: rename it, change which domains its key may configure, choose which applications may use it,
+  connect more of its domains, renew it by signing in again, remove it, and run Check now. Only an admin, an owner or
+  the member who connected the account can do these, and the control plane enforces the same rule (a customer's key:
+  admins and owners only). A name is 1 to 80 characters with no control or invisible characters. Check now and
+  connecting more domains are recorded in the audit log (`provider_account.checked` and
+  `provider_account.domains_connected`) under whoever made the call. See
+  [The account's sheet in the console](/docs/connect-flow/provider-accounts#the-accounts-sheet-in-the-console) and
+  [Who can manage an account](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
 - **November 2, 2026: Overview follows the application you picked, and you can bring the setup list back.** With the
   new menu (**Settings → General → Navigation**) and two or more applications, picking one in the switcher makes
   **Overview** count only its domains and show only its widget figures. Its links to pages that narrow by application keep it: a count,
