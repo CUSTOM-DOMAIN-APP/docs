@@ -232,20 +232,22 @@ one of two ways, in this order:
 
 1. **A lasting API key.** Where the provider has an API page we have reviewed,
    the account qualifies and the hosted service has the key turned on for that
-   provider ([which ones](#which-providers)), the popup reads "Creating your API
-   key" over the records still to add, with "This takes about half a minute.",
-   then "Adding records", then **Done.** Our software makes a key on the
-   provider's own API page, CustomDomain™ checks it and keeps it, and the records
-   are added through the provider's API, as they are for a key someone pasted.
+   provider ([which ones](#which-providers)), the popup reads "Getting things
+   ready" over the records still to add, with "This takes about half a minute.",
+   then "Adding records", then **Done.** The popup's own steps and the
+   sign-in form no longer mention an API or a key: your customer is told the work is
+   being prepared, not how. (A provider's own page, such as IONOS's checkout, still
+   says what it says.) Our software makes
+   a key on the provider's own API page, CustomDomain™ checks it and keeps it, and
+   the records are added through the provider's API, as they are for a key someone
+   pasted.
 2. **The DNS page.** Where no key can be made (no reviewed API page, an account
    that does not qualify, a key that fails its check, an API page that wants a
    new sign-in, or the key turned off for that provider), the same session goes on to the provider's DNS page for the
    domain. The popup shows one line for each step ("Reading your DNS records",
    "Making the changes", "Checking the result") over the records, which tick as
-   they are made. The changes are first shown in full on a **Review** screen
-   ("Review the changes for acme.com"), and nothing changes until your customer
-   presses **Approve and make these changes**. Then **Done.** Nothing is kept,
-   so a later change at that provider needs another sign-in.
+   they are made. Then **Done.** Nothing is kept, so a later change at that
+   provider needs another sign-in.
 
 Your customer never loses a step: whatever stops the first way, the second one
 runs in the same session, without another sign-in. The first way is tried once
@@ -294,6 +296,23 @@ chooses what is typed: our code fills in each value. They never see a password
 field or anything typed, and email addresses, keys and secrets in the outline are
 masked. Every click passes the same checks whichever way it was chosen: only the
 pages it needs, and only the changes approved.
+
+### When your customer approves a change [#review]
+
+A plan that only **adds** records needs no approval screen. The popup approves it
+by itself, once, and your customer sees "Making the changes" and then **Done.**
+The plan is still checked: the popup sends the approval with a fingerprint (a
+hash) of the exact plan, and the control plane refuses it if the plan is not the
+one it made, as it does for an approval your customer presses.
+
+Your customer sees a **Review** screen ("Review the changes for acme.com", with
+the exact changes) and nothing changes until they press **Approve and make these
+changes** in three cases:
+
+- the plan **replaces or removes** a record the domain already has;
+- the plan changed after it was first made, so what your customer would approve
+  is not what they were shown;
+- an approval the popup sent by itself failed. It never sends a second one.
 
 ### Signed in to the wrong account
 
@@ -382,9 +401,8 @@ goes on to the DNS page, so no token is left that could not work.
 At Namecheap the key is the account's own: if the account's API access is off,
 our software turns it on and adds our address to its allowed list. Namecheap then
 shows its API terms and asks for the account password, and both are your
-customer's: the window shows Namecheap's page for them. Under the sign-in button
-the window says "We also turn on Namecheap's API for this account if it is off,
-and let our address use it."
+customer's: the window shows Namecheap's page for them. The sign-in form itself
+says nothing about an API.
 
 A key can be made and then not kept: the provider refuses it when we check it,
 or the first change made with it fails. The key is then still in your customer's
@@ -423,9 +441,9 @@ checkout with "Finish IONOS's free API order on the page: accept its terms and
 place it. We go on after.", they finish it there, and the key is made. They have
 about 4 minutes, and may step off the checkout and back (to add a payment
 method, or when IONOS asks them to verify it's them); our software presses
-nothing on the checkout. Under the
-sign-in button the window says "If IONOS's API is off for this account, we open
-its free order and you confirm it." with a link to IONOS's terms. Our software
+nothing on the checkout. The line that used to sit under the sign-in button about
+IONOS's free order is gone: the order is explained only at the point where
+IONOS's checkout appears. Our software
 never presses anything on a page that shows a price above zero, asks for payment
 details or asks to hold a sum on a card, ticks no box, and types nothing; if
 anything on IONOS's page is not as expected, the session goes on to the DNS page
@@ -732,9 +750,13 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
 - At Squarespace, the records Squarespace adds itself (Squarespace Defaults: the
   root of the domain and `www`) can only be removed together, so a change there is
   refused and your customer gets the manual steps; records on a subdomain are
-  changed as usual. Squarespace asks for the account password or a code again
-  before each change, which your customer answers in the popup; the review
-  says so before they approve, and asks them to keep the window open.
+  changed as usual. Squarespace asks for the account password again, or for a
+  code it emails to the account, before it lets a DNS change through. Your
+  customer answers it in the popup: the code opens as a small dialog from
+  Squarespace over the DNS page, and the popup waits for your customer for as long
+  as it is shown. Our software presses nothing meanwhile, and does not close the
+  dialog. Ask your customer to keep the window open and to check their email for
+  the code.
 - A session lasts at most 15 minutes, or 20 once a code or a link was asked for.
   Signing in with another account starts the sign-in window again but does not
   extend that limit, and three accounts at most can be tried.

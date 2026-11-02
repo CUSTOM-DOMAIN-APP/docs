@@ -33,8 +33,22 @@ existing account that has it: sign in with your password, then add Google or
 GitHub under **Settings, Security** (the provider must have confirmed the
 address for that too).
 
+Under the form, passkey, Google and GitHub are one row of square icon buttons
+(hover or focus one for its name). Where Google sign in is set up, Google also
+shows its own **Sign in with Google** card at the top right of the sign in and
+sign up pages (Google One Tap). On the sign in page it can sign a returning
+person in without a click, unless you signed out on that browser since you last
+used it. On the sign up page it only offers: creating an account is always a
+click. It does not show on the invite page, inside a frame, or when your browser
+sends Do Not Track or Global Privacy Control, or you turned analytics off in
+cookie settings. It follows every rule the Google button does, including the
+email rule below.
+
 Tick the box under the heading to agree to the Terms of Service and Privacy
-Policy. Email, Google and GitHub all wait for it. If you already had an account
+Policy. Email, Google, GitHub and the Google card all wait for it. If you pick a
+Google account on the card before ticking, nothing is sent: the box says "Tick
+this box to continue with the Google account you chose", and ticking it
+signs you in with that account and records your agreement. If you already had an account
 before the box existed, or you came in through an invite or a Google or GitHub
 sign in from the sign in page, the console asks once, on a page of its own, and
 then takes you where you were going.
@@ -183,14 +197,14 @@ checklist until they answer the welcome too. Your customers' domains are on
 
 | Section | What it's for |
 | --- | --- |
-| **Overview** | The setup checklist and how your customers' domains are doing. |
-| **Domains** | Every connected domain with its live status, who runs its DNS and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Serving, Traffic, History and Settings tabs. |
-| **Analytics** | The widget funnel on its own tab, with **Devices and places** under it, a Traffic tab for what your domains receive at the edge (and the busiest domains), and a Providers tab for where customers drop off by DNS provider and by root versus subdomain, with **Secure sign-in** under it. |
-| **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, with the **Authenticate with** switch for the token step; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
+| **Overview** | The setup checklist and how your customers' domains are doing: four counts, each with a line saying what it counts, one bar for who added the domains, and, if you use the widget, a world map of widget sessions by country over 30 days (the top 8 countries; no visitor address is read or kept). |
+| **Domains** | Every connected domain with its live status, who runs its DNS, who added it and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Serving, Traffic, History and Settings tabs. |
+| **Analytics** | Three tabs: the widget funnel, with **Devices and places** under it and the step people most often stop at; **Traffic**, for what your domains receive at the edge; and **Providers**, for how many domains each DNS provider started and connected, how long it took and why the rest are stuck, with **Secure sign-in** under it. See [Analytics](#analytics). |
+| **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, a **Get your API key** button, and **Hand it to your coding agent**; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). **Connect an account** adds one in [three steps](#add-an-account). |
-| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Every email we send**, on **Notifications** and on **General**, opens **Emails we send**: every email CustomDomain™ sends, who gets it and how to stop it (with the new menu it is **Settings → Notifications**; see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), and its **Workspace ID** and **Default application ID** for support. **Team**, **Billing**, **Usage** and **Applications** open under it. |
+| **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Notifications** holds your own switches (push on this device, and the bell and push switch for each kind of alert) with **What we send** under them: one line per kind of email, and a closed row listing every email, who gets it and how to stop it (see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), its **Workspace ID** and **Default application ID** for support, the workspace, your role and the plan, and the console's version with the time it was built (for example "Nov 2, 2026, 14:05 UTC"). **Team**, **Billing**, **Usage** and **Applications** open under it. |
 | **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
 
 Every page opens with one line on what it is for and a **Docs** link to the part of
@@ -200,12 +214,27 @@ and a link. The words the console uses are listed in the [Glossary](/docs/concep
 
 ### Navigation
 
-**Settings → General → Navigation** picks which menu everyone in the workspace sees.
-**Classic** is the menu this page describes. **New (preview)** puts search first, shows
-fewer menu items, and on a phone adds a bar along the bottom of the screen; every page
-is still there, one tap away. An owner or admin chooses it for the whole workspace: it
-changes at once for them and on the next page load for everyone else. While we hold a
-workspace on the classic menu, the card says so and the choice waits.
+The console has one menu, and every workspace uses it. Since 2026-11-02 there is
+no **Classic** or **New (preview)** choice under **Settings → General**: that card
+is gone, and a workspace that had picked Classic now sees the same menu as
+everyone else.
+
+The menu is grouped by what you are doing. At the top are the workspace, the
+application picker (from two applications), search and the main button. Then
+**Overview**, **Widget**, **Domains**, **Connected accounts**, **Activity** and
+**Analytics**; an **Integrate** group for **API keys & webhooks** and **Routing**;
+and **Settings**. **Buy a domain** and **MCP & agents** appear when you have
+switched them on. Docs, Help and your account menu (Profile, Security,
+Notification settings, Privacy, the theme, Sign out) are at the bottom. Related
+pages share one tab bar: **Settings** has General, Team & roles, Applications,
+Billing & usage, Notifications and Features; **Activity** has Inbox, History and
+DNS checks. On a phone, a top bar and a bar along the bottom of the screen carry
+the same places. The order follows who your domains are for (below), and no page
+is hidden.
+
+Activity and its DNS checks are always on, so **Settings → Features** no longer
+lists them as switches. Where this page says **API & SDK**, the menu now says **API keys &
+webhooks**, and **Monitor** is the **DNS checks** tab of **Activity**.
 
 ### API keys and widget tokens
 
@@ -271,7 +300,7 @@ for you to fix, when its provider stopped accepting our access, or when it is **
 but has nothing to serve**: it points at our edge, but no app address is set, so its
 visitors see an error page. The console uses this one rule for the **Needs attention**
 count and card on **Overview** (the card is there in every mode when a domain needs
-attention, and each row says why, such as "Waiting for DNS, 6 days" or "HTTPS
+attention, and each row says why, such as "Not finished, 6 days" or "HTTPS
 certificate: The certificate expired."), the **Needs attention** filter and the
 **Needs attention first** order on **Domains**, and the counts per client. A live domain
 that needs attention is under both **Live** and **Needs attention**.
@@ -381,7 +410,7 @@ the domain. The recommended one is open; the others are closed one-line rows und
 3. **Secure sign-in**: at Namecheap, GoDaddy, IONOS,
    Name.com, Squarespace, Hover, Spaceship and Hostinger, where neither of the
    two above runs. **Open secure sign-in** opens the provider's own sign-in in a
-   secure window; you approve the exact changes and we add the records. See
+   secure window, and we add the records. Changes that replace or remove a record wait for the customer's approval. See
    [Secure sign-in](/docs/guides/secure-sign-in).
 4. **API key**: paste a scoped provider credential, one labeled field per part,
    with a link to where it is created, the steps and the one requirement that
@@ -432,6 +461,21 @@ own nameservers instead. You can leave and come back:
 **Domains** shows every connection with its reason and a **Resume** link.
 After three minutes of waiting the page offers a fallback. A stalled
 connection is *paused*, not failed: it keeps being checked every six hours.
+
+While a domain waits for its DNS, its row on **Domains** and the header of its
+page say how long it has waited, in three words:
+
+| Status | When | What it means |
+| --- | --- | --- |
+| **Checking DNS** | The first 30 minutes after the domain was added | We look for the records on our own. Usually a few minutes. |
+| **Records found** | Our check has seen the records and DNS is still updating | Waiting for DNS to update. Usually minutes, sometimes a few hours. |
+| **Not finished** | After 30 minutes without the records, or a check that stalled | The row says "Started 3 days ago" and gives the next step, with **Finish setup** to open the domain's connect page. |
+
+These words describe the wait only. The connection's status in the API is
+unchanged (`pending`, `propagating`, `live`, `failed`), and a domain that is
+adding its records or waiting for its HTTPS certificate keeps its own label.
+"Started" means when the domain was added, since nothing records when you added
+the records.
 
 Every domain in your workspace opens on its detail page, whichever
 application it belongs to; the page names the application. A domain that
@@ -535,11 +579,17 @@ shows whether the edge serves it and where your application runs. Root-domain re
 
 Once the CustomDomain™ edge serves a domain, its detail page has a
 **Traffic** tab: requests by the kind of answer visitors got (success,
-redirects, client errors, server errors), bandwidth sent to visitors, how
+redirects, client errors, server errors), data sent to visitors, how
 fast your origin answered (p95 and median time to first byte), approximate
 visitors, and when the last request arrived, over 24 hours, 7, 30 or 90 days.
 **Analytics** has a **Traffic** tab for the whole workspace (or one
-application), with the busiest domains.
+application), with the busiest domains ([below](#analytics)).
+
+Data sent to visitors counts the response bodies the edge relayed from your
+application and the pages the edge wrote itself: redirects, the page a domain
+shows when it has no application address yet, and its error page. Before
+2026-11-02 the edge's own pages were not counted, so a domain whose requests were
+all "nothing to serve" pages showed 0 B beside thousands of requests.
 
 Only traffic that passes through the edge is counted. A domain connected for
 DNS only points at your own servers, so its visitors never reach us; its page
@@ -550,6 +600,74 @@ stored: visitors are estimated from a sketch of keyed hashes, and someone who
 visits on two days counts once on each. Hourly detail is kept 14 days and
 daily totals 400 days. The API has the same figures:
 `GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
+
+## Analytics [#analytics]
+
+**Analytics** has three tabs. All follow the date range and the application picker.
+
+### Widget
+
+The widget funnel: sessions, how many entered a domain, were offered a rail, were
+shown records, and connected. **Most common stopping point** names the step people
+most often stopped at, and how many of the sessions that did not finish stopped
+there. The step is the last one a person saw before closing the widget. Until
+2026-11-02 the card nearly always read "Closed the widget", because closing
+overwrote the step; the control plane now keeps the step before the close, and
+sessions recorded earlier read correctly once it is updated. Steps with the same
+label add up.
+
+### Traffic
+
+What the edge answered for your domains. The tab opens with what a request is: one
+page, image or file a visitor's browser asked for. Crawlers and scanners count.
+Visits to a domain that only uses CustomDomain™ for DNS are not counted, and
+neither are our own domain checks (they identify as `CustomDomainBot/`).
+
+Then three figures:
+
+- **Requests**, the number of requests.
+- **Served or redirected**, the share that got a page, a file or a redirect.
+  Under it, how many were not served or failed.
+- **Data sent to visitors**, the size of the response bodies (headers are not
+  counted).
+
+**How requests were answered** splits the requests by what the visitor got, each
+with a one-line explanation: **Served (2xx)**, **Redirected (3xx)**, **Not served
+(4xx)** (the page does not exist, was refused, or the domain has no application
+address set yet) and **Application errors (5xx)** (your application did not answer
+or failed). The table of busiest domains has four columns: **Domain**,
+**Requests**, **Not served** (the share answered with a 4xx or 5xx) and **Last
+request**. The API has the same figures
+([`GET /v1/traffic`](/docs/api-reference/analytics/getTrafficSummary)).
+
+### Providers
+
+Where domains stall, by the DNS provider they are with:
+
+- A table with a row per provider and five columns: **DNS provider**, **Started**
+  (domains added in the period), **Connected** (how many are live now), **Rate**
+  and **Top reason stuck**, the most common reason that provider's unfinished
+  domains are stuck, or "Nothing stuck".
+- **Time to go live** counts the live domains by how long they took from being
+  added: under 5 minutes, 5 minutes to 1 hour, 1 hour to 1 day, over a day.
+- **How domains connect** lists each way of connecting and each domain type (root
+  domain, subdomain) with domains added, how many are live and the median time to
+  go live.
+
+The API returns the same on
+[`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics):
+`top_stuck`, `top_stuck_count` and `median_seconds_to_live` on each provider,
+`median_seconds_to_live` on each method and domain type, and `time_to_live`
+beside `stuck`, all under `connections`.
+
+#### The numbers in the API [#analytics-api]
+
+| Field | Where | Meaning |
+| --- | --- | --- |
+| `top_stuck` | each entry of `connections.by_provider` | The most common reason that provider's not-live domains are stuck (a key of `stuck`). Absent when none are. |
+| `top_stuck_count` | the same | How many domains have that reason. |
+| `median_seconds_to_live` | the same, and each entry of `by_method` and `by_kind` | Median seconds from adding a domain to it going live, over that group's live domains. `0` when none are live. |
+| `time_to_live` | `connections` | Live domains by how long they took: `under_5m`, `5m_to_1h`, `1h_to_1d`, `over_1d`. Always all four, in that order. |
 
 ## Who opens the widget, and secure sign-in
 
@@ -686,26 +804,30 @@ nothing is kept and the page names the key it already made, with the provider's 
 A viewer cannot add an account. The same steps, with the calls behind them, are in
 [Provider accounts](/docs/connect-flow/provider-accounts#add-an-account-in-the-console).
 
-## Where each domain came from
+## Who added each domain [#where-each-domain-came-from]
 
-Every row on **Domains** carries a small badge for where it was created, and
-the tabs above the list filter by it (counts are for the selected
-application):
+Every row on **Domains** says who added the domain, under **Added by**, with a
+small icon for the way it was created. The tabs above the list filter by it
+(counts are for the selected application):
 
-| Tab | Badges | Created by |
+| Tab | **Added by** reads | Created by |
 | --- | --- | --- |
-| **From your product (widget)** | Widget | A customer, in the widget inside your product. |
-| **Added in the console** | Console | You or a teammate, here. |
-| **Via the API or agents** | API, Agent, MCP | Your server with an API key, an AI agent you authorized, or the MCP server. |
+| **From your product (widget)** | **Your customer**, with the end user id your code gave the widget | A customer, in the widget inside your product. |
+| **Added in the console** | **Console** | You or a teammate, here. A domain you opened with **Try it live** reads **Console, try it live** and names the member. |
+| **Via the API or agents** | **API**, **Agent** or **MCP** | Your server with an API key, an AI agent you authorized, or the MCP server. |
 
-The list opens on **All**. The first visit explains the two paths with the same
-small diagram the **Connect a domain** question uses (on a phone, one line that
-opens it; the status, application and sort filters and **Export CSV** wait behind
-**Filters** there). Domains added before sources were recorded (September 2026)
-have no badge and are listed under **All** only.
+A row does not say a name twice: the client name you typed when you added a
+domain here shows only where **Added by** has no name of its own. The list opens
+on **All**, and nothing sits above it but the filters (on a phone, the status,
+application and sort filters and **Export CSV** wait behind **Filters**). What
+needs someone is under the **Needs attention** filter, which shows how many
+domains it holds. Domains added before sources were recorded (September 2026) say
+nothing and are listed under **All** only.
+
 The API returns the same fact as `created_via` on every connection
-(`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). The
-**Overview** shows the split too, under the counts.
+(`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). A member
+or key name is not part of that field yet, so **Added by** cannot show one. The
+**Overview** shows the split too, as one bar with a link to each tab.
 
 ## See which domains we host, and which we keep no access to [#hosting-and-access-filters]
 
@@ -771,8 +893,14 @@ here is sent anywhere, and no domain or connection is needed.
 
 Step through the journey with the row above the preview (enter the domain,
 detect the provider, sign in, apply, connected), open the other screens under
-**More screens** (existing records, manual setup, email records, an error and
-more), and pick the steps of a checklist. Each screen says which status it
+**More screens** (existing records, manual setup, an error and more), and pick
+the steps of a checklist. Three screens that your code only reaches in some
+cases are there too, each with a line saying when: **Instructions sent** (after
+the person emails the records to someone with access, which reports
+`FINISHED_SUCCESSFULLY_LINK_SHARED`), **Email setup** (only when you open the
+widget with `enableEmail`: the mail records to add first) and **Remove a
+domain** (only when you open it with `mode: "remove"`: what happens to the
+records). Each screen says which status it
 reports to your code. Look at the widget in light or dark, on a computer or a
 phone, and in any language it speaks.
 
@@ -815,9 +943,13 @@ six screens:
 1. **Sign in**, the form with the provider's own words for its fields.
 2. **One-time code**, the code the provider emails, here already filled in.
 3. **Signed in**.
-4. **Creating your API key**, the key we make so your domains keep working.
-5. **Review the changes**, every record we would add or remove, in full.
+4. **Getting things ready**, the step where we prepare the work. It does not mention an API or a key.
+5. **Review, only if a record is replaced**, every record we would add or remove, in full.
 6. **Done**, with the records ticked.
+
+The sample's plan replaces a record, so it shows Review, and a note under the screens says so. A real sign-in whose
+plan only adds records skips Review: it goes from "Getting things ready" to "Making the changes", then Done
+([when your customer approves](/docs/guides/secure-sign-in#review)).
 
 While **Secure sign-in** is open, the row above the preview names the same six screens. Only a page of
 the console itself, shown by the console, can open the sample: the same address
@@ -945,6 +1077,22 @@ records are, its nameservers under **Technical details**, and the ways back:
 it, or in its place once the old nameservers no longer answer
 ([what moving back does](/docs/guides/nameserver-migration#moving-back)).
 
+## Install the widget [#install]
+
+**Widget → Install** is the tab a link to **Widget** opens. It has two ways in:
+
+- **Hand it to your coding agent.** **Copy prompt** copies one block of text for
+  Claude Code, Cursor, Codex or any agent that edits your project. **See the
+  prompt** shows it first. It holds your application ID, the install guide, the SDK
+  reference, the `llms.txt` index, the agent skill and the MCP server, the server
+  language and page framework you picked below, and the steps in order. It never
+  holds a secret: the key stays in your server's environment, you set it yourself,
+  and the prompt tells the agent never to ask you to paste it.
+- **Four steps by hand**, with code for your language on tabs (each tab has its
+  language's mark). The first step, minting a token on your server, has **Get your
+  API key**: it opens the form that makes a key on **API keys & webhooks**. You see
+  the key once; store it as `CUSTOMDOMAIN_API_KEY`.
+
 ## Try it live
 
 **Widget → Try it live** opens the real widget, the one your customers get, over
@@ -952,7 +1100,12 @@ the console page, with the look you saved and a short-lived token the console
 mints for you. Everything it connects is real: the domain shows under
 **Domains** and counts as one of your domains.
 
-Type a domain you own in **Domain to try** and press **Open the widget**. The
+The card leads with **Open the widget** and a small picture of the widget in your
+brand color. The language and the **Root domains also connect www** switch are
+under **Options**, and a line under the card links to **Design the widget** (or
+**Edit the design**) to change the look.
+
+Type a domain you own in **Domain to try** (optional) and press **Open the widget**. The
 token is then bound to that domain, and the widget starts on it, so the whole
 flow runs as it does for a customer who arrived with a domain: the provider is
 found, and where the DNS host offers it, the
