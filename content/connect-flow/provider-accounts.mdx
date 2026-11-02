@@ -228,8 +228,10 @@ connected it, because the key reaches zones the others were never given and
 removing it deletes the key and detaches every domain that used it; anyone else
 gets `403`. A key your customer's own sign-in made, which no member connected, is
 managed by an admin or an owner alone. Each account says whether you may
-(`can_manage`), and the console shows a member who did not connect an account no
-buttons on it.
+(`can_manage`), and the console shows a member who did not connect an account, and
+a viewer, the buttons off with one line that says why. The API lets any member who
+operates applications rename an account; the console offers **Rename** to whoever
+manages it.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -512,6 +514,49 @@ the account. It says what that leaves:
 Removing an account takes whoever manages it: an admin, an owner or the member
 who connected it, and for a key your customer's sign-in made, an admin or an owner.
 Anyone else, a viewer included, gets `403`, and nothing is deleted or detached.
+
+## The account's sheet in the console
+
+Open an account in **Connected accounts** for its sheet. It has everything above for
+that account, in one place, and offers each thing to exactly the people who may do it.
+What it offers depends on how the key was made:
+
+| | A key you pasted | A key made at a secure sign-in | A key your customer made |
+| --- | --- | --- | --- |
+| **Rename** | Yes | Yes | Yes |
+| **Domains it may configure** | Tick from the provider's list, or type them where the provider cannot list | Tick from the provider's list; each domain you add is read with the key first, and one it does not reach is named and nothing is saved | Take domains out. Never added to, and the provider is never asked |
+| **Applications that may use it** | Every application may use it | Its own application, and any other an admin or an owner ticks | Its own application only. Never shared |
+| **Connect more domains** | Yes | Yes | No |
+| **Check now** | Yes, for a key we hold (not a one time key) | Yes | No. The daily check reads it |
+| **New key** | **Replace key**: paste one | **Sign in again**: the same account, a new key | Your customer signs in again |
+| **Remove** | Yes | Yes | Yes |
+
+- **Change which domains an account may configure** is open the account, tick,
+  **Save**: the list is in the sheet, not behind a button. **Save** stays off until
+  something changed and at least one domain is chosen; to stop using an account
+  altogether, remove it.
+- **Connect more domains** lists the domains the key reaches that you have not
+  connected (`more_domains`). Type any other domain or subdomain, choose the
+  application, and connect. Each domain says what happened, and you can try the failed
+  ones again.
+- **Sign in again** opens the provider's sign-in over the page and makes a new key for the
+  same account. When it is made, **Use the new key** swaps it in: the account keeps its
+  name, domains and settings, and the old key is named with the page where you delete it.
+  See [renewing an account](#renew-an-account-by-signing-in-again).
+- **Remove** says how many domains use the account (they stay connected), then links the
+  provider's page where the key itself is deleted. See [removing an account](#remove-an-account).
+- **Check now** reads the key at the provider and says it works, was refused, or could not be
+  reached. A line under the facts says what the last check found. See [Check now](#check-now).
+- **Who holds the limit** is one line, from `enforced_by`: for a provider whose key reaches the
+  whole account, "CustomDomain™ uses this key only for the domains you pick. GoDaddy itself lets it reach
+  the whole account."; for one whose key is made for chosen domains, "Cloudflare itself limits this key to
+  the domains it was made for." See [who enforces the limit](#who-enforces-the-limit).
+
+A button you may not use is shown off, with the reason under the buttons: **Only admins, owners and whoever
+connected this account can change it** for a member who did not connect it, **Only admins and owners can change a key
+your customers made** for a customer's key, **Only admins and owners can choose which applications use a key**
+for the applications, and **Members, admins and owners can change domains** for a viewer. Every change is in the
+[audit log](#audit-log) under the person's own name.
 
 ## What needs you
 

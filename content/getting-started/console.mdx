@@ -734,7 +734,7 @@ sit beside the status. **Export CSV** has the same **DNS host** column.
 
 ## Connected accounts [#connected-accounts]
 
-**Connected accounts** is every provider key and kept sign-in we hold so your domains can be changed for you. It is one list, a line for each account. Open a line for the account's sheet: its facts, and the buttons to connect domains, change them, replace the key or remove it.
+**Connected accounts** is every provider key and kept sign-in we hold so your domains can be changed for you. It is one list, a line for each account. Open a line for the account's sheet: its facts, its name, the domains it may configure, and the buttons to connect more domains, check the key, give it a new key or remove it. [What the sheet does](#account-sheet) depends on how the key was made.
 
 ### What needs you
 
@@ -754,6 +754,19 @@ The accounts that need you come first, under **Needs you**, and each one says wh
 - **How it was made and by whom.** A pasted key says who pasted it (a teammate's e-mail, or the API key's name). A key a secure sign-in made says who started the sign-in, or that it was made when **a customer** signed in. It never names your customer.
 - **What it can do.** In plain words: put back records it wrote that disappeared (where automatic repair is on), remove them when a domain is removed, and re-apply them when asked. A one time key says it connects the domains you chose now and is then deleted. A key a sign-in made also says what it can do beyond DNS records, such as transferring the domain away or making charges on the account, when the provider gave it that right.
 - **Its domains, last use and end.** How many domains it keeps in sync, when it was last used, and when it ends: **No end date** for a pasted key, the key's own date for a sign-in key, and the hour a one time key is deleted by.
+
+### The account's sheet [#account-sheet]
+
+- **Rename.** **Rename** beside the badges changes the account's name, one to 80 characters. A name can be an e-mail address, so it is hidden when a session is recorded.
+- **Domains it may configure.** The list of domains is in the sheet: open the account, tick the domains, **Save**. A pasted key and a key a secure sign-in made list the domains the key reaches. For a key a sign-in made, each domain you add is read with the key first, and one the key does not reach is named and nothing is saved. A key your customer made can only lose domains: it lists the ones it has, never asks the provider, and is never given more. [What each kind of key allows](/docs/connect-flow/provider-accounts#what-each-kind-of-account-allows).
+- **Applications that may use it.** A key a sign-in made belongs to one application. An admin or an owner ticks the others that may use it. A pasted key serves every application, and a customer's key only its own. [Which applications may use it](/docs/connect-flow/provider-accounts#which-applications-may-use-it).
+- **Connect more domains.** Lists what the key reaches that you have not connected, and any other domain you type. Choose the application and connect; each domain says what happened.
+- **Check now.** Reads the key at the provider and says it works, was refused, or could not be reached. A key is checked once a day by itself.
+- **Sign in again.** For a key a sign-in made. You sign in to the provider again over the page and **Use the new key** swaps it in: the same account, with its name, domains and settings. We name the old key and link the provider's page where you delete it. A pasted key is replaced with **Replace key**, by pasting a new one; a customer's key is renewed when your customer signs in again.
+- **Remove.** Says how many domains use the account (they stay connected, but we can no longer repair them or remove their records) and, once done, links the page at the provider that deletes the key.
+- **Who holds the limit.** One line says whether the provider or CustomDomain™ keeps the key to the domains you picked, for example "CustomDomain™ uses this key only for the domains you pick. GoDaddy itself lets it reach the whole account." [Who enforces the limit](/docs/connect-flow/provider-accounts#who-enforces-the-limit).
+
+An admin, an owner or the member who connected the account may do all of this; for a key your customer made, an admin or an owner. A member who did not connect the account, and a viewer, see each button off with the reason under them.
 
 ### Your customers' keys [#customers-keys]
 
