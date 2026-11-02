@@ -1675,7 +1675,23 @@ paths:
 
 
         Every change is recorded in the audit log as `connection.updated`, with
-        the before and after of the fields that changed.
+        the before and after of the fields that changed, by the member or key
+        that made it (`widget:<application id>` for an `app`-scoped token).
+
+
+        **Two requests at once.** The forward and `www` checks read your other
+        domains, so after a change is stored they run again on what is stored.
+        When another request changed a domain in the meantime and the two
+        together make a circle, the one that wrote second is put back and
+        answers `422` `redirect_loop`; the other keeps its change. Change the
+        other redirect first, then send it again.
+
+
+        **When something fails.** The redirects are stored before the name. When
+        `client_label` is sent with `www_redirect` or `redirect_to` and only the
+        name cannot be written, the answer is `500`, the redirect change is
+        stored and is in the audit log, and sending the same body again writes
+        the name.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -1721,8 +1737,21 @@ paths:
           description: >-
             `www_redirect_apex_only`: `www_redirect: true` on a subdomain.
             `redirect_target_not_allowed`: `redirect_to` names a domain
-            another workspace has connected. `redirect_loop`: a visit would go
-            round in a circle; `details` lists the hosts.
+            another workspace has connected or claimed, whether or not it is
+            serving yet. `redirect_loop`: a visit would go round in a circle, or
+            through more than 8 forwards in a row (the `title` says "too many
+            forwards" for that); `details` lists the hosts, naming only the
+            ones you may see (your workspace's, and for an `app`-scoped token
+            its own application's) and `another domain` for the rest.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: >-
+            `internal_error`: a store failed, or a check could not be made, so
+            the change was refused (a forward is never stored when the owner of
+            its domain cannot be read) or put back. When only `client_label`
+            could not be written, the redirect change sent with it is stored.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -10815,9 +10844,11 @@ components:
           type: string
           maxLength: 200
           description: >-
-            The name of the client or customer the domain is for. Control
-            characters and runs of white space become one space, and the name is
-            trimmed; `""` clears it. More than 200 characters is `400`.
+            The name of the client or customer the domain is for. Invisible
+            format characters (a right to left override, a zero width space)
+            are dropped, control characters and runs of white space become one
+            space, and the name is trimmed; `""` clears it. More than 200
+            characters is `400`.
         www_redirect:
           type: boolean
           description: >-
@@ -10842,11 +10873,14 @@ components:
             password (`https://acme.com@evil.example`), names an IP address, a
             name with no dot or a reserved name (`localhost`, `.local`,
             `.internal`, `.test`), or contains spaces, backslashes or hidden
-            characters. `422` `redirect_target_not_allowed` for a domain
-            another workspace has connected, and `422` `redirect_loop` when the
-            target is the domain itself or a visit would come back to a host it
-            has been through, through this domain's `www` redirect or any
-            forward of your own domains. Not for a test mode domain.
+            characters. The port is read as a number and stored once: `:443`
+            is dropped and a leading zero is not kept (`:0443` is `443`, the
+            domain itself). `422` `redirect_target_not_allowed` for a domain
+            another workspace has connected or claimed, and `422`
+            `redirect_loop` when the target is the domain itself or a visit
+            would come back to a host it has been through, through this
+            domain's `www` redirect or any forward of your own domains, or goes
+            through more than 8 forwards in a row. Not for a test mode domain.
     ConnectionUpdated:
       allOf:
         - { $ref: '#/components/schemas/ConnectionWithRecords' }
