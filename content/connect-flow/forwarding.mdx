@@ -80,8 +80,13 @@ redeploy. When neither is set, the domain is proxied to its origin as usual.
   checked again.
 - **Two requests at once.** Redirect changes of one workspace are made one at a time, each checked against the
   domains as they are when its turn comes, so two changes made together cannot make a circle between them: the
-  second answers `422 redirect_loop`. A request writes only the settings it changes, and a value it sends back as
-  it read it is not a change, so a setting another request has changed since is not undone.
+  second answers `422 redirect_loop`. A change that waits too long for its turn answers `503` with the code
+  `redirects_busy` and a `Retry-After` header, and changes nothing: send it again. A request writes only the
+  settings it changes, and a value it sends back as it read it is not a change, so a setting another request has
+  changed since is not undone. `DELETE /v1/connections/{id}/power` clears the forward and the root path access
+  through the same checks: on a domain whose `www` redirect is on, taking the forward off is refused (`422
+  redirect_loop`) when `www` forwards back to the root. A domain that is being removed answers `409` to all of
+  these, also when the removal starts while the change waits.
 - **The www redirect and its record.** `www_redirect` is for a root domain only (`422 www_redirect_apex_only`
   for a subdomain). Turning it on adds a `www` record to the records the domain needs. A zone CustomDomain™ hosts
   is rewritten at once, and a domain whose records were written through a connected provider account is

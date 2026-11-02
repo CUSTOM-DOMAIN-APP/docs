@@ -1684,9 +1684,11 @@ paths:
         **Two requests at once.** Redirect changes of one workspace are made one
         at a time, each checked against the domains as they are when its turn
         comes, so two changes made together cannot make a circle between them:
-        the second is refused (`422` `redirect_loop`). A request writes only the
-        settings it changes, and a value it sends back as it read it is not a
-        change, so a setting another request has changed since is not undone.
+        the second is refused (`422` `redirect_loop`). A change that waits too
+        long for its turn answers `503` `redirects_busy` (`Retry-After`) and
+        changes nothing. A request writes only the settings it changes, and a
+        value it sends back as it read it is not a change, so a setting another
+        request has changed since is not undone.
 
 
         **When something fails.** The redirects are stored before the name. When
@@ -1732,7 +1734,9 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409':
-          description: '`conflict`: the domain is being removed.'
+          description: >-
+            `conflict`: the domain is being removed (also when the removal
+            starts while the change waits its turn).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1762,7 +1766,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
     delete:
       operationId: disconnectConnection
       summary: Remove a domain, removing or keeping the DNS records we added
@@ -7139,7 +7143,21 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the call changes a redirect or the root path access of a
+            domain that is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_target_not_allowed` or `redirect_loop` for `redirect_to`
+            or `www_redirect`: the same checks as `PATCH /connections/{id}`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
     delete:
       operationId: disableConnectionPower
       summary: Remove Power (drop the origin, clear config, tear down the cert)
@@ -7148,11 +7166,33 @@ paths:
         - widgetJWT: []
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
+      description: >-
+        Clears the forward and the root path access, drops the origin and tears
+        down the certificate. Clearing a forward is checked like any redirect
+        change: on a domain whose `www` redirect is on, the visit that went to the
+        forward now goes to the `www` name, and when that would come back (`www`
+        forwards to the root) the call is refused with `422` `redirect_loop` and
+        nothing is changed, the origin included. The `www` redirect itself is not
+        cleared here (`PATCH /connections/{id}` turns it off).
       responses:
         '204': { description: Power removed }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the domain's forward or root path access is set and the
+            domain is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_loop`: taking the forward off would send a visit round a
+            circle through the `www` redirect.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
   /applications/{id}/power:default:
     get:
       operationId: getApplicationDefaultOrigin
@@ -7352,7 +7392,21 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the call changes a redirect or the root path access of a
+            domain that is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_target_not_allowed` or `redirect_loop` for `redirect_to`
+            or `www_redirect`: the same checks as `PATCH /connections/{id}`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
   /power:
     get:
       operationId: listPoweredConnections
@@ -8970,6 +9024,20 @@ components:
   responses:
     Error:
       description: 'Error envelope: {code, title, details}.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RedirectsBusy:
+      description: >-
+        `redirects_busy`: another change to this workspace's forwarding is still
+        being saved (redirect changes of one workspace are made one at a time),
+        and this one waited for it in vain. Nothing was changed; send it again
+        after the `Retry-After` seconds. `service_unavailable`: edge serving is
+        off in this deployment, so a forward cannot be set.
+      headers:
+        Retry-After:
+          description: Seconds to wait before sending the call again (on `redirects_busy`).
+          schema: { type: integer }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
