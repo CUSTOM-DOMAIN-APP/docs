@@ -2686,9 +2686,11 @@ paths:
         what it waits on (`waiting_for`) and what a person does next
         (`next_step`) and, when something has to be pressed, which request
         presses it (`next_action`: `sign_in` while the move waits for the cloud
-        browser, `retry` after a stop that changed nothing at the registrar,
-        `rollback` after a stop that did; `null` when nothing is waiting for a
-        press). Poll it while the state is not `active`, `failed` or
+        browser, `retry` after a stop that changed nothing at the registrar
+        (its `body` names the move's `path`, and for `api` its connected
+        account, so posting it repeats the same move), `rollback` after a stop
+        that did; `null` when nothing is waiting for a press). Poll it while
+        the state is not `active`, `failed` or
         `rolled_back`. 404 when no migration was started for this connection.
         Authorized like the other connection routes: an API key within the
         tenant, or a widget token of the connection's own application and end
@@ -2734,9 +2736,21 @@ paths:
 
 
         The accounts are the ones this caller may use, at the registrar RDAP
-        names, whose scope already holds the zone, whose API changes
-        nameservers, and never an end user's own key; a registrar we do not
-        route to has none. The reasons are the move's own: `ns_not_offered`
+        names, whose scope already holds the zone (a key given for one
+        subdomain, `shop.acme.com`, does not hold `acme.com`, so it is not
+        listed for the move of the registrable domain), whose API changes
+        nameservers, that are kept (a one time key is not listed), and never
+        an end user's own key; a registrar we do not route to has none. "May
+        use" is the move's own rule (`POST /connections/{id}/nameservers:migrate`
+        applies it to an account it is given and to one it picks): an API key
+        may use the accounts of an admin or an owner and the ones its own member
+        connected, never another member's; an app scoped token and a delegated
+        agent token may use any account of the workspace that serves the
+        application. An agent token reads a key made for another application
+        and shared with its own as "<provider> key", with no application. The
+        reasons are the move's own: `missing_scope` (a delegated agent token
+        that holds `domains:read` and not `domains:connect`, which the move
+        needs), `ns_not_offered`
         (an agent token while the application's DNS hosting is off, decision
         D9: an API key and the console are not held to it),
         `dns_host_unavailable` (the application's DNS host account no longer
@@ -2754,9 +2768,11 @@ paths:
         An API key, an app scoped token and a delegated agent token with
         `domains:read` may ask. An end user's widget token may not (`403`):
         its application offers it the move in the domain check, and it starts
-        it with its consent.
+        it with its consent. A suspended workspace is refused as the move
+        refuses it (`403 workspace_suspended`).
       security:
         - apiKey: []
+        - widgetJWT: []
         - agentToken: ['domains:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
@@ -2768,8 +2784,9 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403':
           description: >-
-            `forbidden` (an end user's widget token), or a connection of
-            another application (a delegated agent token).
+            `forbidden` (an end user's widget token), a connection of
+            another application (a delegated agent token), or
+            `workspace_suspended` (see the `ForbiddenOrSuspended` response).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2817,7 +2834,8 @@ paths:
         **How they change** (`path`): `api`, the registrar's own API with a
         key the customer created (`credential` with `provider`, used once and
         never stored, or `provider_account_id`, a connected account; the
-        connection's linked account is used when there is one); `agent`, the
+        connection's linked account, or one at the registrar that holds the
+        domain, is used when there is one the caller may use); `agent`, the
         cloud browser, where the end user signs in to their registrar and
         approves the exact nameservers (start it with `POST
         /connections/{id}/browser:start` and `purpose: nameservers`);
@@ -2825,6 +2843,23 @@ paths:
         is no standard a third party can use to ask a registrar for this
         (Domain Connect edits records only; CDS and CSYNC need the current
         DNS operator and DNSSEC), so these three are the ways.
+
+
+        **Which account**: a caller uses only a connected account it may use.
+        An API key may use the accounts an admin or an owner connected and
+        the ones its own member connected, so a member naming another member's
+        account (`provider_account_id`) is refused `403 forbidden` before any
+        migration exists, and a start or a resume that names none never takes
+        one the caller may not use: it takes the connection's linked account,
+        or one at the registrar that holds the domain, among the accounts the
+        caller may use, and goes on without one when there is none (`path`
+        `api` then answers `400`). An app scoped token and a delegated agent
+        token may use any account of the workspace that serves the application.
+        The same rule holds for the account a resume and `:rollback` are given.
+        A move on path `agent` keeps no account: the cloud browser changes the
+        nameservers, so none is stored for a later move back to use.
+        `GET /connections/{id}/nameservers:offer` lists exactly the accounts
+        a caller may name.
 
 
         **A lost answer**: a registrar's error is not taken at its word, since a
@@ -2910,7 +2945,9 @@ paths:
           description: >-
             `forbidden` (the credential may not do this: a widget token that
             sends `target`, a key or the zone flags, the setting is off, a role
-            that cannot write connections), `token_wrong_end_user` (a widget
+            that cannot write connections, a `provider_account_id` the caller
+            may not use because another member connected it, or a key for
+            other domains or another application), `token_wrong_end_user` (a widget
             token whose end user is not the call's connection's or the open
             move's connection's, or the open move names no connection: mint a
             token with this domain's `end_user_ref`), `target_not_allowed` (an
@@ -2962,8 +2999,9 @@ paths:
         to ones that no longer answer is refused (`409 old_dns_gone`). A move
         back to a domain that used the registrar's own DNS at the start goes
         through the registrar's reset call, not its names set as custom ones.
-        With a key (sent once, or the migration's connected account) the
-        registrar's API makes it (`rollback_path: api`); otherwise the cloud
+        With a key (sent once, or the migration's connected account, or
+        `provider_account_id` naming one the caller may use at the registrar the
+        move named) the registrar's API makes it (`rollback_path: api`); otherwise the cloud
         browser (`agent`) or a person (`manual`, `next_step` says what to set
         or choose). A migration that changed nothing at the registrar yet is
         simply stopped (`none`). Any cloud browser session still working on
@@ -2995,11 +3033,17 @@ paths:
           description: >-
             `token_wrong_end_user` (a widget token whose end user is not the
             connection's), or `forbidden` (a widget token sends a key, or a
-            credential that may not do this).
+            credential that may not do this, or `provider_account_id` names an
+            account the caller may not use: another member's).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '422':
+          description: '`registrar_mismatch`: `provider_account_id` names an account at another company than the registrar the move named; nothing was changed.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '409':
           description: '`old_dns_gone`: the old nameservers no longer answer for the zone; move back to the registrar''s own DNS instead. `changed_elsewhere`: the registrar lists other nameservers than the move''s, so a move back would overwrite someone else''s change. Or nothing was changed at the registrar to move back.'
           content:
@@ -12257,6 +12301,7 @@ components:
         reason:
           type: string
           enum:
+            - missing_scope
             - ns_not_offered
             - dns_host_unavailable
             - move_open
@@ -12350,7 +12395,7 @@ components:
           enum: [api, agent, manual]
           description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
         provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
-        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -12395,7 +12440,7 @@ components:
             browser, or the person. Omitted: `previous` while the old
             nameservers still answer, else `registrar_default` (the migration's
             `rollback_default`).
-        provider_account_id: { type: string }
+        provider_account_id: { type: string, description: 'A connected account the caller may use, at the registrar the move named (`403 forbidden` for another member''s, `422 registrar_mismatch` for another company''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -12465,14 +12510,16 @@ components:
             is copying, waiting for the registry, waiting for a person at the
             registrar, DNSSEC or the copy review (`copy_reviewed`), or over.
             Because it is the same for every caller, it can name a request
-            the caller who reads it is refused. Three cases: `sign_in` points
+            the caller who reads it is refused. Four cases: `sign_in` points
             at `POST /v1/connections/{id}/browser:start`, which runs only from
             a customer's browser or the console and refuses every agent token
             and every API key without the console's client label (`403
             browser_customer_present_only`); `retry` is refused `403
             ns_not_offered` to an agent token while the application's DNS
-            hosting is off; and `retry` is refused `403 forbidden` to a widget
-            token when the setting is off. A caller in one of those cases
+            hosting is off; `retry` is refused `403 forbidden` to a widget
+            token when the setting is off; and `retry` of a move made with a
+            connected account is refused `403 forbidden` to an API key whose
+            member may not use that account (another member's). A caller in one of those cases
             tells the person (`next_step` says what to do) and does not send
             the request. `rollback` is open to all three callers whatever the
             setting says.
@@ -12556,8 +12603,10 @@ components:
             signs in to their registrar and approves what will change. The
             request is the registrar sign in's start. `retry`: the move
             failed before anything was changed at the registrar
-            (`can_rollback` is false); the same start call begins it again
-            (the end user's start also sends `consent`). `rollback`: the move
+            (`can_rollback` is false); the start call with this `body` begins
+            the same move again, on the same path and, for `api`, with the same
+            account, where a start with no body picks them afresh (the end user's
+            start also sends `consent`). `rollback`: the move
             failed after the registrar was changed or asked
             (`can_rollback` is true), and moving back is the safe way out,
             to where a move back without a choice goes (`rollback_default`).
@@ -12575,7 +12624,11 @@ components:
             The fields the route needs beyond the ones the caller always sends.
             `sign_in`: `purpose` `nameservers` and the registrar's `provider`
             (the caller adds `return_origin` and `consent_version`).
-            `rollback`: `rollback_target`. Absent for `retry`.
+            `rollback`: `rollback_target`. `retry`: the move's `path`, and for
+            `api` the connected account's `provider_account_id` (a widget token
+            reads the path only: it may not name an account), absent when the
+            move recorded no path. A caller who may not use that account is
+            refused `403 forbidden`.
     NameserverMigrationStats:
       type: object
       required: [by_state, by_path, by_target, by_registrar, by_old_dns_host, total, started, active, median_seconds_to_active, dnssec_waits, median_seconds_dnssec_wait, failures_by_code, rolled_back, drifted]

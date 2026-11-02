@@ -11,33 +11,48 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          What `POST /connections/{id}/nameservers:migrate` would accept for this
-          domain right now, for the caller who asks: whether a move can start
-          (`available`, and `reason` when it cannot), where it would host the zone
-          (`target`, the application's setting, else `managed`), who the domain is
-          registered with, and the three ways the nameservers can change (`paths`):
-          `api` with one of the connected accounts at the registrar listed in
-          `accounts`, `agent` through the cloud browser the person signs in to, and
-          `manual` by the person at the registrar. The console's "Host its DNS
-          instead" sheet reads it, so it offers nothing the move would refuse. It
-          reads and changes nothing. The accounts are the ones this caller may use, at
-          the registrar RDAP names, whose scope already holds the zone, whose API
-          changes nameservers, and never an end user's own key; a registrar we do not
-          route to has none. The reasons are the move's own: `ns_not_offered` (an
-          agent token while the application's DNS hosting is off, decision D9: an API
-          key and the console are not held to it), `dns_host_unavailable` (the
-          application's DNS host account no longer works), `move_open` (a move for
-          this zone is already under way), `registrar_locks_nameservers`, the reasons
-          of managed DNS (`disabled`, `platform_subdomain`, `unsupported_tld`,
-          `reserved`), `zone_limit` (a cap of the engine's own: the workspace's or the
-          deployment's) and `plan_zone_limit` (the workspace holds as many hosted
-          zones as its plan counts, decision D8). The plan's count is the offer's
-          limit and the move's start does not refuse at it; the caps are refused there
-          too (`managed_dns_limit`). A domain whose zone already exists adds none, so
-          neither limit applies to it. An API key, an app scoped token and a delegated
-          agent token with `domains:read` may ask. An end user's widget token may not
-          (`403`): its application offers it the move in the domain check, and it
-          starts it with its consent.
+          What `POST /connections/{id}/nameservers:migrate` would accept for
+          this domain right now, for the caller who asks: whether a move can
+          start (`available`, and `reason` when it cannot), where it would host
+          the zone (`target`, the application's setting, else `managed`), who
+          the domain is registered with, and the three ways the nameservers can
+          change (`paths`): `api` with one of the connected accounts at the
+          registrar listed in `accounts`, `agent` through the cloud browser the
+          person signs in to, and `manual` by the person at the registrar. The
+          console's "Host its DNS instead" sheet reads it, so it offers nothing
+          the move would refuse. It reads and changes nothing. The accounts are
+          the ones this caller may use, at the registrar RDAP names, whose scope
+          already holds the zone (a key given for one subdomain,
+          `shop.acme.com`, does not hold `acme.com`, so it is not listed for the
+          move of the registrable domain), whose API changes nameservers, that
+          are kept (a one time key is not listed), and never an end user's own
+          key; a registrar we do not route to has none. "May use" is the move's
+          own rule (`POST /connections/{id}/nameservers:migrate` applies it to
+          an account it is given and to one it picks): an API key may use the
+          accounts of an admin or an owner and the ones its own member
+          connected, never another member's; an app scoped token and a delegated
+          agent token may use any account of the workspace that serves the
+          application. An agent token reads a key made for another application
+          and shared with its own as "<provider> key", with no application. The
+          reasons are the move's own: `missing_scope` (a delegated agent token
+          that holds `domains:read` and not `domains:connect`, which the move
+          needs), `ns_not_offered` (an agent token while the application's DNS
+          hosting is off, decision D9: an API key and the console are not held
+          to it), `dns_host_unavailable` (the application's DNS host account no
+          longer works), `move_open` (a move for this zone is already under
+          way), `registrar_locks_nameservers`, the reasons of managed DNS
+          (`disabled`, `platform_subdomain`, `unsupported_tld`, `reserved`),
+          `zone_limit` (a cap of the engine's own: the workspace's or the
+          deployment's) and `plan_zone_limit` (the workspace holds as many
+          hosted zones as its plan counts, decision D8). The plan's count is the
+          offer's limit and the move's start does not refuse at it; the caps are
+          refused there too (`managed_dns_limit`). A domain whose zone already
+          exists adds none, so neither limit applies to it. An API key, an app
+          scoped token and a delegated agent token with `domains:read` may ask.
+          An end user's widget token may not (`403`): its application offers it
+          the move in the domain check, and it starts it with its consent. A
+          suspended workspace is refused as the move refuses it (`403
+          workspace_suspended`).
 ---
 
 {/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}

@@ -610,8 +610,30 @@ and starts it with its consent. The answer is read-only and changes nothing.
 `accounts` as `provider_account_id`, `agent` through the secure sign-in, and `manual` by
 the person at the registrar. The accounts are the connected accounts at the registrar RDAP
 names that the caller may use: kept keys of the workspace that serve the application and
-already hold the zone, at a registrar whose API changes nameservers, never an end user's
-own key and never the key itself. A registrar CustomDomain™ does not connect to has none.
+already hold the zone (a key given for one subdomain, such as `shop.acme.com`, does not
+hold `acme.com`, so it is not listed for the move of the registrable domain), at a
+registrar whose API changes nameservers, never an end user's own key and never the key
+itself. A registrar CustomDomain™ does not connect to has none. An agent token reads a key
+made for another application and shared with its own as "{provider} key".
+
+**Which account a caller may use.** The move holds every account to the same rule the
+offer lists by, whether the call names the account or the start picks one:
+
+| Caller | May use |
+| --- | --- |
+| An API key (the console's, or a member's) | The accounts an admin or an owner connected, and the ones the key's own member connected. Never another member's. |
+| An app scoped token | Any account of the workspace that serves the application. |
+| An agent token | The same, for the application its grant is bound to. |
+| An end user's widget token | None. It names no account. |
+
+A start that names an account the caller may not use is refused `403 forbidden` before any
+move exists. A start that names none takes the connection's linked account, or one at the
+registrar that holds the domain, only among the accounts the caller may use, and goes on
+without one when there is none: the secure sign-in or by hand, and `path: api` is
+refused `400`. A resume and a [move back](#moving-back) that name an account are held to
+the same rule, and a move back also refuses an account at another company than the
+registrar the move named (`422 registrar_mismatch`). A move by the secure sign-in keeps no
+account.
 
 When `available` is `false`, `reason` says why:
 
@@ -619,6 +641,7 @@ When `available` is `false`, `reason` says why:
 | --- | --- |
 | `platform_subdomain`, `unsupported_tld`, `reserved` | The domain's nameservers cannot be changed at a registrar. |
 | `registrar_locks_nameservers` | The registrar requires its own nameservers (Cloudflare Registrar). Moving them takes a transfer first. |
+| `missing_scope` | An agent token that holds `domains:read` and not `domains:connect`, which the move needs. |
 | `ns_not_offered` | An agent token asked while DNS hosting is off. An API key and the console are never held to this. |
 | `dns_host_unavailable` | The application's DNS host account no longer works. |
 | `move_open` | A move for this domain is already under way. |
@@ -627,10 +650,11 @@ When `available` is `false`, `reason` says why:
 | `plan_zone_limit` | The workspace holds as many hosted zones as its plan counts. |
 
 A domain whose zone exists already adds none, so neither limit applies to it. The
-offer is stricter than the move in three places, on purpose: it stops at the plan's count
-where the move stops only at its caps, it lists the accounts the caller may use where the
-move accepts any account of the workspace that serves the application, and it lists kept
-keys only, since a move waits hours for the registry and a one time key ends in an hour.
+offer is stricter than the move in two places, on purpose: it stops at the plan's count
+where the move stops only at its caps, and it lists kept keys only, since a move waits
+hours for the registry and a one time key ends in an hour. Every account it lists starts a
+move for that caller, and every account it leaves out is refused by the move. A suspended
+workspace is refused the offer (`403 workspace_suspended`), as it is refused the move.
 
 ### What to press next [#next-action]
 
@@ -644,14 +668,18 @@ is the same for every caller.
 | --- | --- | --- |
 | `sign_in` | The move waits for the secure sign-in (`needs_dnssec_off` or `setting` on the `agent` path), or a move back by secure sign-in is not made yet. | `POST /v1/connections/{id}/browser:start` with `{"purpose": "nameservers", "provider": "..."}`. Add the `return_origin` and `consent_version` you send for any sign-in. |
 | `rollback` | The move failed after the registrar was changed or asked (`can_rollback` is `true`), for example `delegation_timeout` or `delegation_drift`. | `POST /v1/connections/{id}/nameservers:rollback` with `{"rollback_target": "..."}`, the default way back. |
-| `retry` | The move failed before anything changed at the registrar (`can_rollback` is `false`), for example `zone_copy_failed` or `credential_refused`. | `POST /v1/connections/{id}/nameservers:migrate` with no body (an end user's start also sends `consent`). |
+| `retry` | The move failed before anything changed at the registrar (`can_rollback` is `false`), for example `zone_copy_failed` or `credential_refused`. | `POST /v1/connections/{id}/nameservers:migrate` with the `body` it carries: `{"path": "..."}`, the move's own path, and for `api` also `"provider_account_id"`, the account it was made with (an end user's start also sends `consent`, and reads the path only). |
+
+A retry repeats **the same move**. A start with no body picks its path afresh, which is
+not what failed: after a move by hand it could take a saved key, and with two keys at the
+registrar it could take the newer one. Send the `body` as it is.
 
 It is `null` while the move copies, waits for a copy review (`copy_reviewed`), for the
 registry, for DNSSEC or the change to be made by a person at the registrar, or for a
 key to be reconnected, once it is `active`, and when it is over.
 
 Because `next_action` is the same for every caller, it can name a request the caller
-who reads it is refused. There are three such cases. A caller in one of them does not
+who reads it is refused. There are four such cases. A caller in one of them does not
 send the request; it tells the person what `next_step` says.
 
 - `sign_in` points at `browser:start`, which runs only from a customer's browser or the
@@ -661,6 +689,8 @@ send the request; it tells the person what `next_step` says.
   (`403 ns_not_offered`), even when the failed move is one a person started.
 - `retry` is refused to a widget token (the end user) when the application's setting is
   off (`403 forbidden`, "this application does not offer nameserver migration").
+- `retry` of a move made with a connected account is refused (`403 forbidden`) to an API
+  key whose member may not use that account: another member's.
 
 `rollback` is open to all of them whatever the setting says.
 
@@ -742,7 +772,9 @@ copy's warnings and they agreed, and `rollback-nameservers` takes `target`
 - **The waiting card's buttons** come from `next_action` ([above](#next-action)). While a
   move waits for the registrar sign-in the card shows **Sign in at GoDaddy**, which opens
   the secure sign-in over the page and closes it when the move moves on. After a stop
-  that changed nothing at the registrar it shows **Try again**. After one that did,
+  that changed nothing at the registrar it shows **Try again**, which starts the same
+  move again, by the same path and with the same account, and does not choose a way
+  afresh. After one that did,
   **Move back** is the first button. A viewer sees none of them.
 - **A domain's DNS tab**: a **Domain maintenance** section with its status, the
   three steps, the next thing to do, for a copy to check what to check and **The

@@ -21,9 +21,14 @@ never change meaning or disappear without a new major version. See the
   sign-in**, or **Change it yourself**. When the move cannot start, such as the plan's limit of hosted domains or a
   registrar that keeps its own nameservers, the sheet says why and has nothing to start. A move that waits for the
   registrar sign-in now shows **Sign in at** the registrar on the domain's DNS tab, a move that stopped before the
-  registrar changed shows **Try again**, and one that stopped after shows **Move back** first. The API gains
+  registrar changed shows **Try again**, which starts the same move again (the same way, and the same saved account),
+  and one that stopped after shows **Move back** first. The API gains
   `GET /v1/connections/{id}/nameservers:offer`, which says what a start would accept; an agent token reads it too, and
-  sees that it may not start a move while the application's DNS hosting is off. See
+  sees that it may not start a move while the application's DNS hosting is off, or that its grant lacks
+  `domains:connect`. A move uses only a saved account its caller may use: a member's key may use the accounts they
+  connected and the ones an admin or an owner connected, never another member's (`403 forbidden`, before any move
+  exists), for a start, a resume and a move back, whether the call names the account or the start picks one. A failed
+  move's `next_action` for `retry` now carries the move's `path` and, for `api`, its `provider_account_id`. See
   [Start one domain's move](/docs/guides/nameserver-migration#start-one-domain) and the
   [console guide](/docs/getting-started/console#how-we-reach-a-domain).
 - **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
