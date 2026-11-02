@@ -35,12 +35,14 @@ info:
 
     A `429` `reach_quota` is not the request limiter's: it says the workspace
     has made as many reads at DNS providers, to find out what a key reaches, as
-    it may in an hour (60 by default on the hosted service). Four routes can
+    it may in an hour (60 by default on the hosted service). Five routes can
     answer it (`PATCH /provider-accounts/{id}`, `POST
-    /provider-accounts/{id}/connect`, `POST /provider-accounts/{id}/zones` and
-    `POST /provider-accounts/{id}:check`); its `Retry-After` is the seconds until
-    the hour ends, when the count starts again, and the call changed nothing.
-    The daily check of every kept key is not counted and is never refused for it.
+    /provider-accounts/{id}/connect`, `POST /provider-accounts/{id}/zones`, `POST
+    /provider-accounts/{id}:check` and `POST /connections/{id}:use-saved-access`);
+    its `Retry-After` is the seconds until the hour ends, when the count starts
+    again, and the call read nothing, changed nothing and spent nothing from the
+    hour, so a smaller call that fits is still answered. The daily check of every
+    kept key is not counted and is never refused for it.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -3275,7 +3277,11 @@ paths:
         another provider than the one a live or propagating domain's DNS is
         at, or a key whose scope does not hold such a domain yet (such a
         domain is linked without a write, and a scope widens only after a
-        write). A test mode domain is refused (`403` `sandbox_not_allowed`). A
+        write). A key that has to be read to show it reaches the domain's zone,
+        when the workspace's hourly budget of reach checks is spent, is `429`
+        `reach_quota` with `Retry-After`, not `saved_access_not_usable`: it was
+        not read, so nothing says it cannot act, and nothing was written. A test
+        mode domain is refused (`403` `sandbox_not_allowed`). A
         write that fails links nothing and leaves the key's scope
         as it was, and records the failure on the domain (its `error_code`
         and `error_message`): `502` `saved_access_write_failed`, with the
@@ -3336,6 +3342,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/ReachQuota' }
         '500': { $ref: '#/components/responses/Error' }
         '502': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
@@ -8846,9 +8853,9 @@ components:
         `reach_quota`: the workspace has made as many reads at DNS providers, to
         find out what a key reaches, as it may this hour (the saved key resolver's
         reads, a key's reach check when its scope is widened, the list of a key's
-        domains and Check now share one budget). Nothing was read at the provider
-        and nothing changed. `Retry-After` is the seconds until the hour ends, when
-        the count starts again.
+        domains and Check now share one budget). Nothing was read at the provider,
+        nothing changed and nothing was spent from the hour. `Retry-After` is the
+        seconds until the hour ends, when the count starts again.
       headers:
         Retry-After: { schema: { type: integer }, description: "Seconds until the hour ends and the workspace's count starts again." }
       content:
