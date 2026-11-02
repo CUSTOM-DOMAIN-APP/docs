@@ -172,6 +172,12 @@ well, since they cannot have connected without the widget opening and your serve
 minting a token. A token minted straight at the API with your client secret is
 not seen by the console; your first customer proves it instead.
 
+**Dismiss** on the list hides it for you, on every device, and a reload shows no
+list. With the new menu (**Settings → General → Navigation**), **Help → Show the
+setup list** at the bottom of the menu brings it back (on a phone or tablet, **More**
+holds Help): it opens **Overview** with the list on it, and it stays through a reload.
+The list is yours to hide, not the workspace's: a teammate's list is theirs.
+
 The list follows what the workspace's owner or an admin said: a teammate you invite
 sees the same go-live list (without the trial row, which is for owners and admins).
 In a workspace for clients or for your own domain, a teammate sees the usual
@@ -206,6 +212,18 @@ fewer menu items, and on a phone adds a bar along the bottom of the screen; ever
 is still there, one tap away. An owner or admin chooses it for the whole workspace: it
 changes at once for them and on the next page load for everyone else. While we hold a
 workspace on the classic menu, the card says so and the choice waits.
+
+With **New (preview)** and two or more applications, the application switcher in the
+menu (in the top bar on a phone) narrows the pages that list or count to one
+application, or **All applications**. **Overview** then counts only that application's
+domains and shows only its widget figures, with a line that says so and a link back to
+all of them. Its links to pages that narrow by application keep it: a count, **View all**
+and the source links open **Domains** on the same application, so the number you click is
+the number you land on, and a platform's **Keys and webhooks** shortcut opens that
+application's keys. The links to the widget, your team and your connected accounts open
+those pages as they are. The **Usage** card stays the workspace's, because the plan's
+domain allowance is, and says so: "This counts every application in your workspace, not
+only" the one you picked. The setup list is the workspace's too, so it does not narrow.
 
 ### API keys and widget tokens
 
@@ -254,8 +272,9 @@ what **Overview** and **Domains** lead with.
 | **Overview** | The go-live list, then the domains that need attention (when any do), your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts and the domains that need attention (when any do) |
 | **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Add your domains", with a button to paste a list | "Connect your domain" |
 
-The counts on **Overview** include every domain of every application, read from the
-same list **Domains** shows, and each count is the number its filter lists there.
+The counts on **Overview** include every domain of every application (or one
+application's, when the new menu is narrowed to it, see [Navigation](#navigation)),
+read from the same list **Domains** shows, and each count is the number its filter lists there.
 **Domains** opens on **All** whoever the domains are for, so a count on **Overview**
 opens the domains it counted, and a domain you look for is there whichever way it
 was connected. The source tabs narrow the list from there. The first-run tour
@@ -491,8 +510,17 @@ or the deployment can offer one-click setup for it. **Change** opens a menu:
   workspace's accounts for the domain's application, and a member sees the ones they
   connected, so the list can be empty.
 - **Add an account** opens [Add an account](#add-an-account), where you can connect the provider's account once and use it for this domain and others.
-- **Host its DNS instead** opens the domain's DNS tab, where DNS hosting starts. A domain
-  whose DNS is already ours shows **See its DNS hosting** in its place.
+- **Host its DNS instead** opens a sheet that starts [DNS hosting](/docs/guides/nameserver-migration#start-one-domain)
+  for this one domain, whatever the application's DNS hosting setting says. It lists the
+  ways that would work for it: a saved account at the registrar (the company the domain is
+  registered with) that you may use, **Secure sign-in**, and **Change it yourself**, with
+  nothing picked until you pick. When the move cannot start (the plan's limit of hosted
+  domains, a registrar that keeps its own nameservers, a move already under way), the
+  sheet says why and has nothing to start. Once it has started, the page goes to the
+  domain's DNS tab, where the move is shown. A domain whose DNS is already ours shows
+  **See its DNS hosting** in its place, and one whose move is under way or failed shows
+  **See the DNS hosting move**. The connect page has the same button under the detected
+  DNS host.
 
 A viewer sees the card with its buttons off, and the reason under them: members, admins
 and owners can change domains. The **Management** line under **Details** reads
@@ -504,22 +532,39 @@ and owners can change domains. The **Management** line under **Details** reads
 A domain's page has seven tabs: **Overview**, **DNS**, **Certificate**, **Serving**, **Traffic**,
 **History** and **Settings**. On a phone the last ones sit under **More**. **Serving** is the tab that
 was called **Edge**: it keeps its address, so old links still open it. **Settings** holds what belongs to
-the domain itself, one card each:
+the domain itself, one card each. The first three are fields with their own **Save**, so you can change
+them any time after the domain is set up:
 
-- **Who it is for** shows the client or customer name the **Domains** list filters by. It is set when
-  the domain is added and is not changed here ([whose a domain is](#many-domains-and-whose-they-are)).
-- **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), says whether visitors to
-  the root go on to `www.` that domain. It is the choice made when the domain was connected, or the
-  one set later with the API, and the **www redirect** fact on the **Overview** opens this card.
-- **Forwarding** shows the address the edge sends every visit to, with the same path, or **Not set**.
-  Forwarding is part of edge serving, so a workspace without it reads **Included on Growth and up.**,
-  a domain that points at your own servers reads **Not on the edge**, and a deployment with edge serving
-  off has no card. The redirects change through the API ([forwarding](/docs/connect-flow/forwarding)).
+- **Who it is for** is the client or customer name the **Domains** list shows and filters by. Type a
+  name and **Save**; empty the field and **Save** to take it off. The name is yours: it is not shown to
+  your customers, and it is not the id your product gave the customer, which is shown under the field and
+  stays as it is ([whose a domain is](#many-domains-and-whose-they-are)). It can be up to 200 characters, and
+  characters that draw nothing (a right to left override, a zero width space, blank fillers) are dropped. A
+  name with nothing readable in it is refused; to take the name off, empty the field.
+- **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), is a switch that sends visitors
+  of the root on to `www.` that domain. It is on every plan, and the **www redirect** fact on the
+  **Overview** opens this card. Turning it on adds a `www` record to the records the domain needs. After
+  **Save**, the card says whether we added the record for you (CustomDomain™ runs the domain's DNS, or a
+  connected account we keep can write it) or whether you add it where you manage DNS, with the record and a
+  link to the **DNS** tab. The domain stays live meanwhile. Turning it off also stops us answering for
+  `www.` that domain, unless you connected it as its own domain.
+- **Forwarding** sends every visit to another address, with the same path: type an `https://` address and
+  **Save**, or **Clear**. Forwarding is part of edge serving, so a workspace without it reads **Included on
+  Growth and up.**, a domain that points at your own servers reads **Not on the edge** (and its www redirect
+  does nothing there), and a deployment with edge serving off has no card. A refused address says why: it
+  must start with `https://`, it can't hold a user name or password, it must be a public domain name (not an
+  IP address, `localhost` or an internal name), it can't be a domain another CustomDomain™ workspace has
+  connected or claimed (one your own workspace serves is fine), and it can't send visitors round in a circle (to the domain itself, or through the
+  `www` redirect or your other forwards back to where they started) or through more than 8 forwards in a row.
+  See
+  [forwarding](/docs/connect-flow/forwarding#from-the-console).
 - **Remove this domain** opens the same removal dialog as the **Overview**'s menu, and links
   [what removing does](/docs/connect-flow/offboarding).
 
-A viewer reads the same cards with **Remove domain** turned off, and the reason under it. A test mode
-domain has **Who it is for** and **Remove this domain** only.
+Members, admins and owners can change a domain's settings. A viewer reads the same cards as values, with
+**Remove domain** turned off and the reason under it. A test mode domain has **Who it is for** and
+**Remove this domain** only. Every change is recorded in the [audit log](/docs/security/overview) as
+**Domain settings changed**.
 
 ## 6. Serve something
 
@@ -614,9 +659,8 @@ several**, up to 200 at a time.
 - **Whose it is.** A name typed above the box is shown next to every domain
   below it. A name after a comma or a tab on a line (`beta.org, Beta Bakery`) is
   used for that domain instead. A domain already in your workspace is left as it
-  was. The name is set when the domain is added and cannot be changed afterwards,
-  so to rename a client or give a domain to another, remove the domain and add it
-  again. The domain's **Settings** tab shows it.
+  was. The name can be changed later: open the domain's **Settings** tab, type
+  another name and **Save**, or empty the field to take it off.
 - **The first ten domains are free.** A new workspace connects its first ten
   domains without a card, and the rest once the free trial has started. The box
   says so before you paste, with **Start free trial** beside it (nothing is
@@ -682,7 +726,10 @@ are too long for a pop-up on a phone. Nothing is chosen for you.
 Then **Connect N domains now** writes the records of the domains the account may use, each into
 the application you choose, and says what happened to each one. **Later** leaves them for the
 account's own page. If you close the sign-in window, go back, or take more than ten minutes,
-nothing is kept and the page names the key it already made, with the provider's page that deletes it.
+nothing is kept and the page names the key it already made, with the provider's page that deletes it
+(going back to the first step keeps naming it there, and choosing the same company again names it on its step 2).
+If a domain's result does not come back, the page says it cannot tell whether that domain connected, and
+**Try the ones that failed again** offers it once more, into the same application, so a repeat never connects a domain twice.
 A viewer cannot add an account. The same steps, with the calls behind them, are in
 [Provider accounts](/docs/connect-flow/provider-accounts#add-an-account-in-the-console).
 
@@ -734,7 +781,7 @@ sit beside the status. **Export CSV** has the same **DNS host** column.
 
 ## Connected accounts [#connected-accounts]
 
-**Connected accounts** is every provider key and kept sign-in we hold so your domains can be changed for you. It is one list, a line for each account. Open a line for the account's sheet: its facts, and the buttons to connect domains, change them, replace the key or remove it.
+**Connected accounts** is every provider key and kept sign-in we hold so your domains can be changed for you. It is one list, a line for each account. Open a line for the account's sheet: its facts, its name, the domains it may configure, and the buttons to connect more domains, check the key, give it a new key or remove it. [What the sheet does](#account-sheet) depends on how the key was made.
 
 ### What needs you
 
@@ -754,6 +801,19 @@ The accounts that need you come first, under **Needs you**, and each one says wh
 - **How it was made and by whom.** A pasted key says who pasted it (a teammate's e-mail, or the API key's name). A key a secure sign-in made says who started the sign-in, or that it was made when **a customer** signed in. It never names your customer.
 - **What it can do.** In plain words: put back records it wrote that disappeared (where automatic repair is on), remove them when a domain is removed, and re-apply them when asked. A one time key says it connects the domains you chose now and is then deleted. A key a sign-in made also says what it can do beyond DNS records, such as transferring the domain away or making charges on the account, when the provider gave it that right.
 - **Its domains, last use and end.** How many domains it keeps in sync, when it was last used, and when it ends: **No end date** for a pasted key, the key's own date for a sign-in key, and the hour a one time key is deleted by.
+
+### The account's sheet [#account-sheet]
+
+- **Rename.** **Rename** beside the badges changes the account's name, one to 80 characters with no line breaks or invisible characters in it. A name can be an e-mail address, so it is hidden when a session is recorded.
+- **Domains it may configure.** The list of domains is in the sheet: open the account, tick the domains, **Save**. A pasted key and a key a secure sign-in made list the domains the key reaches. For a key a sign-in made, each domain you add is read with the key first, and one the key does not reach is named and nothing is saved. A key your customer made can only lose domains: it lists the ones it has, never asks the provider, and is never given more. [What each kind of key allows](/docs/connect-flow/provider-accounts#what-each-kind-of-account-allows).
+- **Applications that may use it.** A key a sign-in made belongs to one application. An admin or an owner ticks the others that may use it. A pasted key serves every application, and a customer's key only its own. [Which applications may use it](/docs/connect-flow/provider-accounts#which-applications-may-use-it).
+- **Connect more domains.** Lists what the key reaches that you have not connected, and any other domain you type. Choose the application and connect; each domain says what happened.
+- **Check now.** Reads the key at the provider and says it works, was refused, or could not be reached. A key is checked once a day by itself.
+- **Sign in again.** For a key a sign-in made. You sign in to the provider again over the page and **Use the new key** swaps it in: the same account, with its name, domains and settings. We name the old key and link the provider's page where you delete it. A pasted key is replaced with **Replace key**, by pasting a new one; a customer's key is renewed when your customer signs in again.
+- **Remove.** Says how many domains use the account (they stay connected, but we can no longer repair them or remove their records) and, once done, links the page at the provider that deletes the key.
+- **Who holds the limit.** One line says whether the provider or CustomDomain™ keeps the key to the domains you picked, for example "CustomDomain™ uses this key only for the domains you pick. GoDaddy itself lets it reach the whole account." [Who enforces the limit](/docs/connect-flow/provider-accounts#who-enforces-the-limit).
+
+An admin, an owner or the member who connected the account may do all of this; for a key your customer made, an admin or an owner. A member who did not connect the account, and a viewer, see each button off with the reason under them.
 
 ### Your customers' keys [#customers-keys]
 
