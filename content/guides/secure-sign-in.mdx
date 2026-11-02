@@ -238,7 +238,8 @@ one of two ways, in this order:
    provider's own API page, CustomDomain™ checks it and keeps it, and the records
    are added through the provider's API, as they are for a key someone pasted.
 2. **The DNS page.** Where no key can be made (no reviewed API page, an account
-   that does not qualify, a key that fails its check, an API page that wants a
+   that does not qualify, an account already at the provider's [key limit](#key-limits),
+   a key that fails its check, an API page that wants a
    new sign-in, or the key turned off for that provider), the same session goes on to the provider's DNS page for the
    domain. The popup shows one line for each step ("Reading your DNS records",
    "Making the changes", "Checking the result") over the records, which tick as
@@ -430,6 +431,38 @@ never presses anything on a page that shows a price above zero, asks for payment
 details or asks to hold a sum on a card, ticks no box, and types nothing; if
 anything on IONOS's page is not as expected, the session goes on to the DNS page
 instead.
+
+### A provider's key limit [#key-limits]
+
+Some providers cap how many API keys one account can hold. IONOS may allow about
+5 per account. We have not confirmed the number, so we work with 5 until we have.
+CustomDomain™ counts the keys it made for each owner: your workspace, or one end
+user of one application. A key the provider refuses, or that has ended, stops
+counting. It never makes the last one under the limit, so your customer's own key
+still fits: at IONOS it makes a key while 3 or fewer of ours are counted, and none
+once there are 4.
+
+IONOS's keys page does not say which account a key belongs to, so every IONOS
+account of one owner counts as one. If your team connected domains in four
+different IONOS accounts, the next IONOS sign-in makes no key, even in a fifth
+account that holds none of ours, until one of the four is deleted or ends.
+
+At the limit, a key of ours is used again where the provider's page lists it
+([below](#reusing-a-key-of-ours)). IONOS's page does not, so there the session goes
+on to the DNS page instead: no second key is made, and nothing is left in the
+account. A reconnect that cannot make its new key for this reason ends, and the
+current key is unchanged. Adding an account ends with "No account was added."
+
+A reconnect or an added account that stops here says why: "IONOS allows about 5
+API keys in one account and CustomDomain has already made 4 of them, so it did not
+make another. Delete the ones you no longer use on IONOS's keys page, then try
+again." A connect does not stop, so your customer sees the DNS page and no message
+about the key. Your console's **Activity** page records every stop as "Secure
+sign-in to IONOS did not make an API key", with the same numbers and a link to the
+provider's keys page. The keys we make are
+named "CustomDomain" and your application's name, so they are easy to pick out. A
+key deleted on the provider's page stops counting once our daily check finds it
+refused.
 
 ### Every domain scope, said in `rights`
 
