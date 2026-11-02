@@ -71,17 +71,17 @@ redeploy. When neither is set, the domain is proxied to its origin as usual.
   whether or not it is serving yet: two workspaces could forward to each other and neither could see the circle.
   A domain your own workspace serves is yours to forward to, whoever else has a pending or failed claim on it.
   `422 redirect_loop` is an address that would send a visit round in a circle: the domain itself, or a chain
-  through the `www` redirect and your other forwards that comes back to a host it went through, or a chain of
+  through the `www` redirect and your other forwards that comes back to a host it went through (taking a forward
+  off a domain whose `www` redirect is on counts: the visit then goes to the `www` name), or a chain of
   more than 8 forwards in a row (the title then says "too many forwards"). The answer names only the domains you
   can see, your workspace's and, for an `app` token, its own application's; any other reads "another domain".
   If a check cannot read who owns the address's domain, the answer is `500` and nothing is stored. The same
   checks apply to `redirect_to` on `/power` and `/power:repower`. An address equal to the one already set is not
   checked again.
-- **Two requests at once.** A request writes only the settings it sends, so two requests that change different
-  settings of one domain both keep theirs. The checks read your other domains, so after a change is stored they
-  run again on what is stored. If another request changed a domain in the meantime and the two make a circle, the
-  one that wrote second is put back and answers `422 redirect_loop`; a value the other request stored since is
-  kept, and no circle is left standing. Change the other redirect first, then send it again.
+- **Two requests at once.** Redirect changes of one workspace are made one at a time, each checked against the
+  domains as they are when its turn comes, so two changes made together cannot make a circle between them: the
+  second answers `422 redirect_loop`. A request writes only the settings it changes, and a value it sends back as
+  it read it is not a change, so a setting another request has changed since is not undone.
 - **The www redirect and its record.** `www_redirect` is for a root domain only (`422 www_redirect_apex_only`
   for a subdomain). Turning it on adds a `www` record to the records the domain needs. A zone CustomDomain™ hosts
   is rewritten at once, and a domain whose records were written through a connected provider account is
@@ -94,8 +94,7 @@ redeploy. When neither is set, the domain is proxied to its origin as usual.
   that changed, by the member or key that made it (`widget:<application id>` for an `app` token). A domain that
   is being removed answers `409`. The redirects are stored before the name: if only `client_label` cannot be
   written, the answer is `500`, the redirect change is stored and recorded, and sending the same body again writes
-  the name. If a change that makes a circle cannot be put back because a store failed, the answer is `500` too,
-  and what is stored is recorded.
+  the name.
 
 ## The redirect template (provider-written)
 

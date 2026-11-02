@@ -179,8 +179,9 @@ With a key, the connections are created on the key's application, or on
 `application_id` when that names another application of the same workspace.
 
 `client_label` is the name of the client the whole list is for, up to 200
-characters, such as an agency's client. It is stored on every connection the call
-creates, and the Domains page shows it, filters by it and includes it in an
+characters, such as an agency's client. Characters that draw nothing are dropped,
+and a name with nothing left stores no name. It is stored on every connection the
+call creates, and the Domains page shows it, filters by it and includes it in an
 export. A person can rename or clear it later in the domain's **Settings** tab,
 or with `PATCH /v1/connections/{id}`
 ([change a domain's settings](/docs/api-reference/connections/updateConnection)).
