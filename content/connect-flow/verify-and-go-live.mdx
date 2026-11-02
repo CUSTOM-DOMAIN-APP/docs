@@ -178,12 +178,18 @@ The call takes a widget token with the `app` scope or your workspace's API key.
 With a key, the connections are created on the key's application, or on
 `application_id` when that names another application of the same workspace.
 
-`end_user_ref` is your own label for the whole list, up to 256 characters: a
-client's name if you connect domains for clients, or your id for the customer
-they belong to. It is stored on every connection the call creates, and the
-Domains page shows it, filters by it and includes it in an export. It is set when
-a connection is created and is not changed afterwards, so a domain that already
-exists keeps the label it has and comes back as `already`.
+`client_label` is the name of the client the whole list is for, up to 200
+characters, such as an agency's client. Characters that draw nothing are dropped,
+and a name with nothing left stores no name. It is stored on every connection the
+call creates, and the Domains page shows it, filters by it and includes it in an
+export. A person can rename or clear it later in the domain's **Settings** tab,
+or with `PATCH /v1/connections/{id}`
+([change a domain's settings](/docs/api-reference/connections/updateConnection)).
+`end_user_ref` is a different field: your own id for the customer the domains
+belong to, up to 256 characters. It is set when a connection is created and is not
+changed afterwards, because it ties a customer's widget token and saved access to
+the connection. A domain that already exists keeps the name and the id it has and
+comes back as `already`.
 
 A workspace that has not subscribed yet connects its first ten domains, or the
 number an operator set, without a card; the rest of a list come back `failed`

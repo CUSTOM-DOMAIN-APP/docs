@@ -26,26 +26,80 @@ request and no certificate on the origin side is required for the old hostname
 (only the edge cert, which is issued automatically once the domain is
 [live](/docs/connect-flow/verify-and-go-live#watch-propagation--live)).
 
-## Enabling it (edge-served)
+## From the console
 
-Forwarding is part of the Power feature set and is driven by the control plane:
-the redirect target (`redirect_to`) and the apex→www flag (`www_redirect`) are
-attributes of the connection. Set them with `POST /v1/connections/{id}/power`
-(or `POST /v1/connections/{id}/power:repower` to change a connection that is
-already powered; omitting `application_url` there keeps the current origin):
+Open the domain, then its **Settings** tab ([a domain's settings](/docs/getting-started/console#domain-settings)).
+**Forwarding** is a field: type an `https://` address and **Save**, or **Clear** to stop forwarding.
+**www redirect**, for a root domain, is a switch with its own **Save**. After a save the tab says what it did.
+For the www redirect that is whether we wrote the `www` record for you or you add it where you manage DNS (the
+record is shown, with a link to the **DNS** tab). Members, admins and owners can change them; a viewer reads them.
+
+## Enabling it with the API (edge-served)
+
+Forwarding is part of the Power feature set and is driven by the control plane: the redirect target
+(`redirect_to`) and the apex→www flag (`www_redirect`) are attributes of the connection. Change them with
+`PATCH /v1/connections/{id}` ([API reference](/docs/api-reference/connections/updateConnection)), or with
+`POST /v1/connections/{id}/power` (and `POST /v1/connections/{id}/power:repower` to change a connection that
+is already powered; omitting `application_url` there keeps the current origin):
 
 ```bash
-curl -X POST https://api.customdomain.ai/v1/connections/<ID>/power:repower \
+curl -X PATCH https://api.customdomain.ai/v1/connections/<ID> \
   -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "redirect_to": "https://new.example.com" }'
 ```
 
-Send `"redirect_to": ""` to clear a redirect. The edge picks up the intent
-within one ask-cache TTL, with no redeploy. When neither is set, the domain is
-proxied to its origin as usual. Power is included on Growth, Premium and
-Enterprise; on Starter and Startup these calls return `402` with the code
-`plan_upgrade_required`.
+Send `"redirect_to": ""` to clear a redirect. The edge picks up the intent within one ask-cache TTL, with no
+redeploy. When neither is set, the domain is proxied to its origin as usual.
+
+- **The plan.** `redirect_to` needs edge serving, which is included on Growth, Premium and Enterprise: on
+  Starter and Startup, setting or changing it returns `402` with the code `plan_upgrade_required` (clearing
+  one never does). `www_redirect` is on every plan, and `client_label` too. Where the deployment has edge
+  serving off, `redirect_to` returns `503`.
+- **Who may call it.** An API key of a member, admin or owner, or a token with the `app` scope for a connection
+  of its own application. A viewer's key, an end user's widget token (its own connection too) and a delegated
+  agent token are refused with `403`; the target of a redirect decides where a domain's visitors go, so the
+  platform that owns the domain decides it.
+- **The address is checked.** `redirect_to` must be a plain `https://` address of a public domain. `400
+  invalid_request` names the reason when it is not `https` (`http:`, `javascript:`, `data:` and an address with no
+  scheme are all refused), when it holds a user name or password (`https://acme.com@evil.example`), when it is an
+  IP address or a name that cannot be reached from the internet (`localhost`, `.local`, `.internal`, `.test`),
+  or when it holds spaces, backslashes or hidden characters. The port is read as a number and stored once:
+  `:443` is dropped, and `:0443` is the same port, so it is the domain itself when it names the domain. A
+  target that names the domain on port 80 is the domain itself too, as the edge reads it.
+  `422 redirect_target_not_allowed` is a domain another CustomDomain™ workspace has connected or claimed,
+  whether or not it is serving yet: two workspaces could forward to each other and neither could see the circle.
+  A domain your own workspace serves is yours to forward to, whoever else has a pending or failed claim on it.
+  `422 redirect_loop` is an address that would send a visit round in a circle: the domain itself, or a chain
+  through the `www` redirect and your other forwards that comes back to a host it went through (taking a forward
+  off a domain whose `www` redirect is on counts: the visit then goes to the `www` name), or a chain of
+  more than 8 forwards in a row (the title then says "too many forwards"). The answer names only the domains you
+  can see, your workspace's and, for an `app` token, its own application's; any other reads "another domain".
+  If a check cannot read who owns the address's domain, the answer is `500` and nothing is stored. The same
+  checks apply to `redirect_to` on `/power` and `/power:repower`. An address equal to the one already set is not
+  checked again.
+- **Two requests at once.** Redirect changes of one workspace are made one at a time, each checked against the
+  domains as they are when its turn comes, so two changes made together cannot make a circle between them: the
+  second answers `422 redirect_loop`. A change that waits too long for its turn answers `503` with the code
+  `redirects_busy` and a `Retry-After` header, and changes nothing: send it again. A request writes only the
+  settings it changes, and a value it sends back as it read it is not a change, so a setting another request has
+  changed since is not undone. `DELETE /v1/connections/{id}/power` clears the forward and the root path access
+  through the same checks: on a domain whose `www` redirect is on, taking the forward off is refused (`422
+  redirect_loop`) when `www` forwards back to the root. A domain that is being removed answers `409` to all of
+  these, also when the removal starts while the change waits.
+- **The www redirect and its record.** `www_redirect` is for a root domain only (`422 www_redirect_apex_only`
+  for a subdomain). Turning it on adds a `www` record to the records the domain needs. A zone CustomDomain™ hosts
+  is rewritten at once, and a domain whose records were written through a connected provider account is
+  rewritten when `move_rewrite` is on. For any other domain the response has `customer_action_required: true`
+  and `connection.records_outdated` is sent, and the person adds the record. The domain stays live meanwhile.
+  Turning it off also stops the edge answering for `www.` that domain, unless it is a connection of its own.
+- **Test mode.** A test mode domain takes `client_label` only; the two redirects answer `403
+  sandbox_not_allowed`.
+- **The audit log.** Every change is recorded as `connection.updated`, with the before and after of the fields
+  that changed, by the member or key that made it (`widget:<application id>` for an `app` token). A domain that
+  is being removed answers `409`. The redirects are stored before the name: if only `client_label` cannot be
+  written, the answer is `500`, the redirect change is stored and recorded, and sending the same body again writes
+  the name.
 
 ## The redirect template (provider-written)
 
