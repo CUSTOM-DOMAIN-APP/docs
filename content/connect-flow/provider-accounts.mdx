@@ -164,7 +164,8 @@ Everything below is checked before the first record is written, so a call that i
   the scope on its own, use `PATCH /v1/provider-accounts/{id}`.
 
 Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
-or `failed`. A domain whose write fails does not stop the others. See the
+or `failed`. A domain whose write fails does not stop the others. A call that connected at least one domain is one
+`provider_account.domains_connected` row in the [audit log](#audit-log), naming those domains and no others. See the
 [API reference](/docs/api-reference/provider-accounts/connectWithProviderAccount).
 
 ## More domains in the account
@@ -219,19 +220,21 @@ call answers `422` `ProviderAuthenticationError` and the account is marked as ne
 
 ## Who can manage an account
 
-Anyone whose role operates applications may connect a key, read the accounts and
-rename one. Changing an account's access, scope or domains, listing the
+Anyone whose role operates applications may connect a key and read the accounts.
+Renaming an account, changing its access, scope or domains, listing the
 domains its key reaches, connecting domains with it, giving it a new key,
-[renewing it by signing in again](#renew-an-account-by-signing-in-again) and
+[renewing it by signing in again](#renew-an-account-by-signing-in-again),
+[checking it](#check-now) and
 [removing it](#remove-an-account) take an admin, an owner or the member who
 connected it, because the key reaches zones the others were never given and
 removing it deletes the key and detaches every domain that used it; anyone else
-gets `403`. A key your customer's own sign-in made, which no member connected, is
-managed by an admin or an owner alone. Each account says whether you may
+gets `403`, and nothing is stored or audited. A key your customer's own sign-in made, which no
+member connected, is managed by an admin or an owner alone. Each account says whether you may
 (`can_manage`), and the console shows a member who did not connect an account, and
-a viewer, the buttons off with one line that says why. The API lets any member who
-operates applications rename an account; the console offers **Rename** to whoever
-manages it.
+a viewer, the buttons off with one line that says why.
+
+A name (`label`) is one to 80 characters once spaces at its ends are removed, counted in
+characters. An empty or longer name answers `400` and nothing in the call is stored.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -294,7 +297,7 @@ owner may, not the member who connected the key. See
 | --- | --- |
 | `POST /v1/provider-accounts` | Connect a key: `{ provider, credential: { token }, access, scope, domains?, check_domain? }`. Answers the provider's domains when it lists them. |
 | `GET /v1/provider-accounts` | Every account with access, domains, last use and expiry, [what needs you](#what-needs-you) first, plus kept sign-ins and Domain Connect authorizations grouped by provider. `?owner=workspace` or `end_user`, `?q=`, `?limit=` and `?cursor=` filter, search and page the list; `end_user_keys` counts your customers' keys. |
-| `PATCH /v1/provider-accounts/{id}` | Change label, access, scope or domains, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. What [each kind allows](#what-each-kind-of-account-allows) when it widens the account differs. |
+| `PATCH /v1/provider-accounts/{id}` | Rename (one to 80 characters), change access, scope or domains, or the applications the key is shared with (`application_ids`, admin or owner only). A domain taken out stays connected, without continuous access. What [each kind allows](#what-each-kind-of-account-allows) when it widens the account differs. |
 | `POST /v1/provider-accounts/{id}/zones` | The domains the key reaches. Takes whoever may manage the account. |
 | `GET /v1/provider-accounts/{id}` | One account with its domains. For its manager it also carries [`more_domains`](#more-domains-in-the-account). |
 | `POST /v1/provider-accounts/{id}/connect` | [Connect domains](#connect-many-domains-at-once), each into its own application: `{ application_id?, domains }`, where a domain is a name or `{ domain, application_id }`. A domain is linked to the account once its records are written; a domain in a zone the key does not reach fails alone (`zone_not_reached`) and is not linked. |
@@ -643,6 +646,13 @@ agent token is refused. It answers the account and a `result`:
 - `unreachable`: the provider could not be asked, or answered with an error that
   is not a refusal. `message` says what. The failure counts toward the backoff.
 
+Every check that asked the provider is in the [audit log](#audit-log) as
+`provider_account.checked`, with who asked, the account and the `result` (`ok`,
+`refused` or `unreachable`), whatever the answer was. The row never holds the key or
+the provider's own words. A call that never asked the provider (`403`, `429`, or a
+`409` for a one time key, an account with no key, or nothing to read the key against)
+leaves no row.
+
 An account's key can be checked once a minute: a second call answers `429`
 `rate_limited` with `Retry-After: 60`. A key your customer's sign-in made answers
 `403` (the daily check reads it, as above), a one time key `409`, and an account whose provider cannot list its
@@ -861,6 +871,8 @@ it wrote, is in the workspace's audit log (`GET /v1/audit`, and the console's
 | `provider_account.key_replaced` | It gets a new key: pasted, or made when someone signed in again. |
 | `provider_account.shared` | An admin or an owner lets another application use the key. Names the applications it serves before and after, and the ones just shared (`application_ids`). |
 | `provider_account.unshared` | An admin or an owner takes that back. Same fields. |
+| `provider_account.checked` | A key is checked on request ([Check now](#check-now)). The `provider` and the `result`: `ok`, `refused` or `unreachable`. One row for each check that asked the provider, never the key or the provider's words. |
+| `provider_account.domains_connected` | A [call to connect many domains](#connect-many-domains-at-once) connected at least one. The `provider` and the names of the domains connected, in one row for the call. A call that connected none leaves no row. |
 | `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
 | `agent.acted` | An agent changed a domain's DNS under its grant: it used a saved key for a domain (`used a saved key`), re-applied a domain's records (`re-applied a domain's records`) or moved a domain's nameservers, or back (`moved a domain's nameservers`, `moved a domain's nameservers back`). The row is `agent:<grant id>` in the actor. |
 | `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |

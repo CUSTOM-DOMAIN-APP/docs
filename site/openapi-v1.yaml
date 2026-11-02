@@ -7333,13 +7333,15 @@ paths:
 
 
         Anyone whose role operates applications may connect a key and read the
-        accounts. Changing an account's access, scope or domains, listing the
-        domains its key reaches, connecting domains with it, replacing its key,
-        renewing it by signing in again and removing it take an admin, an owner
-        or the member who connected it (`can_manage`); a key a customer's sign-in
-        made, which no member connected, is managed by an admin or an owner
-        alone. Every change is recorded in the audit log
-        (`provider_account.*`, `GET /audit`).
+        accounts. Renaming an account, changing its access, scope or domains,
+        listing the domains its key reaches, connecting domains with it,
+        replacing its key, renewing it by signing in again, checking it and
+        removing it take an admin, an owner or the member who connected it
+        (`can_manage`); a key a customer's sign-in made, which no member
+        connected, is managed by an admin or an owner alone. Every change, every
+        Check now (`provider_account.checked`) and every call that connects
+        domains (`provider_account.domains_connected`) is recorded in the audit
+        log (`provider_account.*`, `GET /audit`).
       security:
         - apiKey: []
       requestBody:
@@ -7668,9 +7670,13 @@ paths:
         Narrowing the scope detaches the domains it no longer covers; they stay
         connected, without continuous access. Switching to `one_time` deletes
         the key now. Switching to `continuous` needs the key still held.
-        Changing `access`, `scope` or `domains` takes an admin, an owner or the
-        member who connected the account (`403` otherwise); the label is
-        anyone's who operates applications. `continuous` access for a credential
+        Changing the `label`, `access`, `scope` or `domains` takes whoever manages
+        the account: an admin, an owner or the member who connected it (`403`
+        otherwise, with nothing stored and nothing audited); for a key an end
+        user's own sign-in made, which no member connected, an admin or an owner
+        alone. A `label` is one to 80 characters once trimmed, counted in
+        characters (`400` `invalid_request` otherwise, and nothing in the call is
+        stored). `continuous` access for a credential
         that is used once and never kept answers `422` `use_once_credential`. A
         change is recorded in the audit log (`provider_account.updated`, with
         the label, access, scope, domains and applications before and after).
@@ -7744,7 +7750,12 @@ paths:
             schema:
               type: object
               properties:
-                label: { type: string }
+                label:
+                  type: string
+                  description: >-
+                    The account's name: one to 80 characters once trimmed (`400` otherwise).
+                    Whoever manages the account may change it, as for `access`, `scope` and
+                    `domains` (`403` otherwise).
                 access: { type: string, enum: [continuous, one_time] }
                 scope:
                   type: string
@@ -7776,9 +7787,25 @@ paths:
                 type: object
                 properties:
                   account: { $ref: '#/components/schemas/ProviderAccount' }
-        '400': { $ref: '#/components/responses/Error' }
+        '400':
+          description: >-
+            `invalid_request` (a `label` that is empty once trimmed or longer than 80
+            characters, or a change that leaves no domain and no scope `all`) or
+            `too_many_domains_to_check`. Nothing is stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden`: a viewer, or a member who did not connect the account asking
+            to change its `label`, `access`, `scope` or `domains`; anyone but an admin
+            or an owner asking for `application_ids`, or to change a key an end user's
+            sign-in made; or a change that would widen such a key. Nothing is stored
+            and nothing is audited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422':
@@ -7926,7 +7953,13 @@ paths:
         through that end user's own widget session. A domain the
         application already has, kept by such a key, is left as it is
         (`already`, not re-linked). Takes an admin, an owner or the member who
-        connected the account.
+        connected the account. A call that connected at least one domain (its
+        records written with the key, or a domain already serving now linked to
+        the account) is recorded in the audit log as one
+        `provider_account.domains_connected` row naming those domains, by name
+        only, beside the `provider_account.relinked` and
+        `provider_account.domain_added` rows it may also write; a call that
+        connected none writes no such row.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -8122,6 +8155,17 @@ paths:
         `active`, recorded in the audit log as `provider_account.updated`
         (`status` before and after, `via` `check_now`). A key a secure
         sign-in made keeps its status: it is renewed by signing in again.
+
+
+        Every check that asked the provider is recorded in the audit log as
+        `provider_account.checked`: who asked (`actorId`), the account (`target`),
+        the `provider` and the `result` (`ok`, `refused` or `unreachable`), never
+        the key and never the provider's own words. It is written whatever
+        happens to the verdict afterwards, so a check whose verdict was dropped
+        (`409` because the account changed while the provider answered) is on
+        record too. A call that never asked the provider (a `403`, a `429`, or a
+        `409` because the account is a one time key, holds no key or has nothing
+        to read the key against) writes nothing.
 
 
         Takes the workspace's API key and an admin, an owner or the member who

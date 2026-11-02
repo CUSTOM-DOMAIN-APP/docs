@@ -13,13 +13,17 @@ _openapi:
       - content: >-
           Narrowing the scope detaches the domains it no longer covers; they stay
           connected, without continuous access. Switching to `one_time` deletes the
-          key now. Switching to `continuous` needs the key still held. Changing
-          `access`, `scope` or `domains` takes an admin, an owner or the member who
-          connected the account (`403` otherwise); the label is anyone's who operates
-          applications. `continuous` access for a credential that is used once and
-          never kept answers `422` `use_once_credential`. A change is recorded in the
-          audit log (`provider_account.updated`, with the label, access, scope,
-          domains and applications before and after).
+          key now. Switching to `continuous` needs the key still held. Changing the
+          `label`, `access`, `scope` or `domains` takes whoever manages the account:
+          an admin, an owner or the member who connected it (`403` otherwise, with
+          nothing stored and nothing audited); for a key an end user's own sign-in
+          made, which no member connected, an admin or an owner alone. A `label` is
+          one to 80 characters once trimmed, counted in characters (`400`
+          `invalid_request` otherwise, and nothing in the call is stored).
+          `continuous` access for a credential that is used once and never kept
+          answers `422` `use_once_credential`. A change is recorded in the audit log
+          (`provider_account.updated`, with the label, access, scope, domains and
+          applications before and after).
       - content: >-
           What each kind of account allows when `scope` or `domains` widens it
           (`made_by.how` names the kind). Narrowing and renaming ask nothing of the

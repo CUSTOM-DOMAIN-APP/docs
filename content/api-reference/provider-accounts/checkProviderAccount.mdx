@@ -28,6 +28,16 @@ _openapi:
           (`status` before and after, `via` `check_now`). A key a secure sign-in
           made keeps its status: it is renewed by signing in again.
 
+          Every check that asked the provider is recorded in the audit log as
+          `provider_account.checked`: who asked (`actorId`), the account (`target`),
+          the `provider` and the `result` (`ok`, `refused` or `unreachable`), never
+          the key and never the provider's own words. It is written whatever happens
+          to the verdict afterwards, so a check whose verdict was dropped (`409`
+          because the account changed while the provider answered) is on record too.
+          A call that never asked the provider (a `403`, a `429`, or a `409` because
+          the account is a one time key, holds no key or has nothing to read the key
+          against) writes nothing.
+
           Takes the workspace's API key and an admin, an owner or the member who
           connected the account (`403` otherwise). A key an end user's own
           sign-in made is never used for it (`403`), and a one time key is used
