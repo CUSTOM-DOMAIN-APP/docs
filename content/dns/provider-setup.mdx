@@ -280,7 +280,7 @@ A remembered key becomes a continuous
 account's domains, checked against the provider before it is kept. It is:
 
 - **sealed at rest**: encrypted with AES-256-GCM under the control plane's
-  `GRANT_ENCRYPTION_KEY`;
+  `GRANT_ENCRYPTION_KEY` or `GRANT_ENCRYPTION_KEYS`;
 - **server-side only**: the plaintext never leaves the server; the browser only
   ever sees the account's details (provider, a label, its domains and last use);
 - **one-click reusable**: the next time you connect a domain at that provider,
@@ -291,7 +291,7 @@ account's domains, checked against the provider before it is kept. It is:
   accounts** page and choose **Revoke**; the key is deleted and its domains stay
   connected.
 
-A deployment without `GRANT_ENCRYPTION_KEY` cannot keep provider accounts, so
+A deployment with neither `GRANT_ENCRYPTION_KEY` nor `GRANT_ENCRYPTION_KEYS` cannot keep provider accounts, so
 its console keeps the key itself (AES-256-GCM under `WEB_SECRET_KEY`, one per
 workspace and provider), only to connect more domains. Keys saved that way are
 listed under **Keys to move** on the Connected accounts page until you move

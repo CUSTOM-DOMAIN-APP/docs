@@ -15,6 +15,49 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
+  The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
+  SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another
+  workspace's record does not open, and it names the key it was sealed under, so a key can be added, made current and
+  retired without a gap. With none of the new settings set, the control plane writes and reads exactly what it did
+  before: `GRANT_ENCRYPTION_KEY` works as before and `GRANT_ENCRYPTION_WRITE` defaults to the old format (it only
+  counts, at start, how many stored secrets are in each format). The new settings `GRANT_ENCRYPTION_KEYS`,
+  `GRANT_ENCRYPTION_WRITE`, `GRANT_ENCRYPTION_READ_V1` and `WEBHOOK_ENCRYPTION_KEYS` take effect only when you set
+  them, and a combination that cannot work is refused at start instead of guessed: a key list with no
+  `GRANT_ENCRYPTION_KEY` must also set `GRANT_ENCRYPTION_WRITE=v2`, and a valid list beside an unusable
+  `GRANT_ENCRYPTION_KEY` stops the start. A `credctl` tool in the control plane image
+  (`status`, `verify`, `rewrap`) moves stored secrets between formats and keys and checks them. See
+  [Encryption keys](/docs/security/overview#encryption-keys-self-hosted).
+- **November 1, 2026: a domain has a Settings tab, and its Edge tab is called Serving.** A domain's page now has
+  seven tabs: Overview, DNS, Certificate, Serving, Traffic, History and Settings. **Settings** gathers who the domain
+  is for (the client or customer name), the www redirect of a root domain, forwarding and **Remove this domain**, one
+  card each with a line and a docs link. The name and the redirects are shown as they are, because they are set when
+  the domain is added or through the API ([forwarding](/docs/connect-flow/forwarding)); Remove works from the tab.
+  **Serving** is the tab that was called **Edge**, at the same address, so old links and the `#edge` anchor still open it.
+  See [A domain's settings](/docs/getting-started/console#domain-settings).
+- **November 1, 2026: Connected accounts adds an account in three steps, by sign-in or by key, and then connects its domains.**
+  **Connect an account** is now a page instead of a pop-up: **Which company** (a list you can search, or a domain
+  we look up), **How to connect** (only that company's ways, easiest first: sign in to the company in a secure window and
+  we make the API key, or paste a key with the company's own steps), and **What it may do** (every domain or the
+  ones you tick, which applications may use the key, and kept or used once). Then **Connect N domains now** writes
+  their records and says what happened to each one. A company that cannot list its domains can now be given every
+  domain, with one domain named to check the key (the old pop-up turned that choice off), and a key the company
+  refuses says why instead of being read as "cannot list". A sign-in you close, go back from or leave waiting drops
+  the key and names it, with the provider's page that deletes it. Console only: no API route changed. See
+  [Add an account](/docs/getting-started/console#add-an-account) and
+  [Provider accounts](/docs/connect-flow/provider-accounts#add-an-account-in-the-console).
+- **November 1, 2026: DNS hosting and saved access show where you need them, with a Change.** The DNS hosting setting
+  is changed in one place, **Widget → Ways to connect**, and every other page now reads it out and links to it. An
+  application's **Settings** has a **DNS hosting** section that says **Off**, **Offered** or **Offered first**, who runs
+  it and **See hosted domains**, with **Change** (a link to `#domain-maintenance` still lands on the setting). The
+  application's summary reads out DNS hosting and **Use their saved access** the same way, each with a line on what it
+  is and a link to its guide. The widget designer's **Change** opens Ways to connect at the row, and the connect page
+  says whether your application offers DNS hosting to its users. **See hosted domains** opens **Domains** narrowed to
+  those domains instead of a sheet, and shows no number, because the list holds every hosted domain and a count of the
+  domains moved would not match it. Search finds **DNS hosting** and **Use their saved access**, and takes you to the
+  row even when you are already on Widget. A viewer sees **View** in place of Change, in the widget designer too. See the
+  [console guide](/docs/getting-started/console#domain-maintenance) and the
+  [DNS hosting guide](/docs/guides/nameserver-migration#turn-it-on).
 - **November 1, 2026: a second secure sign-in uses the key we stored, where the provider's page still lists its row.** When
   your customer signs in again at a provider whose key page lists each key with its name and account (Name.com's
   token table), CustomDomain™ now looks for the row of the key it made the first time: its exact name and its exact
