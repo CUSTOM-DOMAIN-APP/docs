@@ -15,6 +15,21 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 2, 2026: a domain's client name, www redirect and forwarding can be changed after setup.** On a
+  domain's **Settings** tab, **Who it is for**, **www redirect** and **Forwarding** are now fields, each with its own
+  **Save**. Rename the client or take the name off (up to 200 characters); switch the www redirect of a root domain
+  on or off, and the tab says whether we added the `www` record for you or you add it where you manage DNS; set or
+  clear the address a domain forwards to. A refused forwarding address says why: it must be `https://`, a public
+  domain name, not one that has a user name or password, not a domain another CustomDomain™ workspace has connected,
+  and not a circle back to where visitors started. Members, admins and owners can change them, and every change is in
+  the audit log as **Domain settings changed**. For the API, the new
+  [`PATCH /v1/connections/{id}`](/docs/api-reference/connections/updateConnection) takes `client_label`,
+  `www_redirect` and `redirect_to`; `POST /v1/connections`, `POST /v1/connections:bulk` and the account connect take
+  `client_label`; and `redirect_to` on `POST /v1/connections/{id}/power` and `power:repower` is held to the same
+  checks (an `http://` address is now refused). `end_user_ref` is not the client's name: it stays your id for the end
+  user and is still set once. A client's name written before this is shown as that id until a name is given. See
+  [A domain's settings](/docs/getting-started/console#domain-settings) and
+  [forwarding](/docs/connect-flow/forwarding#from-the-console).
 - **November 1, 2026: stored secrets can be bound to their workspace and record, and the encryption key can be rotated.**
   The control plane can now seal provider keys, sign-in grants, MCP sign-in client secrets, webhook signing secrets and
   SMTP passwords in a v2 format: the value is tied to its workspace and record, so a copy of it placed in another

@@ -1350,7 +1350,23 @@ paths:
                     The integrator's OWN identifier for the end user this connect
                     is attributed to, so the console can render "Connected by …"
                     and search by customer. Empty ⇒ a console/direct connect.
-                    Set once at create and never mutated.
+                    Set once at create and never mutated. It binds a widget
+                    token and saved access to the connection, so it is an id and
+                    not a name: to name the client a domain is for, send
+                    `client_label`.
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client or customer this domain is for, shown
+                    in the console beside the domain and used by its client
+                    filter. Trimmed to one line, at most 200 characters. Unlike
+                    `end_user_ref` nothing is bound to it, and
+                    `PATCH /connections/{id}` changes it later. Only an API key
+                    or an `app`-scoped token may send it: an end user's widget
+                    token or a delegated agent token that does is refused with
+                    `403`. A replay of a domain that already exists keeps the
+                    name it has.
                 end_user_email:
                   type: string
                   format: email
@@ -1617,6 +1633,100 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: updateConnection
+      summary: Change a domain's client name, www redirect or forwarding
+      tags: [Connections]
+      description: >-
+        Changes the settings of a domain a person edits after it is set up:
+        `client_label` (the name of the client it is for), `www_redirect` (a
+        root domain's redirect to `www`) and `redirect_to` (forward every visit
+        to another site). Send only what changes. A body that changes nothing
+        answers `200` and writes nothing.
+
+
+        **Who may call it.** A server side credential only: an API key of a
+        member who may change domains (member, admin or owner; a viewer's key
+        is `403`), or an `app`-scoped token for a connection of its own
+        application. An end user's `connect`-scoped widget token is refused
+        `403`, its own connection included, and so is a delegated agent token:
+        the name, the `www` redirect and above all the forward decide where the
+        domain's visitors go, so the platform that owns the domain decides,
+        not the person connecting it or an agent acting for them. A connection
+        of another workspace answers `404`.
+
+
+        A test mode domain takes `client_label` only (`403`
+        `sandbox_not_allowed` for the redirects).
+
+
+        **The www redirect** changes the records the domain needs. A zone we
+        host is rewritten at once; a domain whose records were written through
+        a connected provider account is rewritten when `move_rewrite` is on;
+        any other domain is reported with `connection.records_outdated` and the
+        answer's `customer_action_required` is `true` when a record was added.
+        A live domain stays live while that record is missing.
+
+
+        **Forwarding** is held to one validator, the same one
+        `POST /connections/{id}/power` and `/power:repower` use for their
+        `redirect_to`: see `redirect_to` in the body. A value equal to the one
+        stored is not checked again.
+
+
+        Every change is recorded in the audit log as `connection.updated`, with
+        the before and after of the fields that changed.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConnectionUpdate' }
+      responses:
+        '200':
+          description: The connection as it is now, with its records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionUpdated' }
+        '400':
+          description: >-
+            `invalid_request`: an unknown field, a field of the wrong type, no
+            field at all, a `client_label` over 200 characters, or a
+            `redirect_to` that is not a plain https address of a public domain
+            (the reason is in `details`). `payload_too_large`: see the error
+            envelope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden`: a viewer's key, an end user's widget token or an agent
+            token. `sandbox_not_allowed`: `www_redirect` or `redirect_to` on a
+            test mode domain.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`conflict`: the domain is being removed.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `www_redirect_apex_only`: `www_redirect: true` on a subdomain.
+            `redirect_target_not_allowed`: `redirect_to` names a domain
+            another workspace has connected. `redirect_loop`: a visit would go
+            round in a circle; `details` lists the hosts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: disconnectConnection
       summary: Remove a domain, removing or keeping the DNS records we added
@@ -7248,11 +7358,13 @@ paths:
         application of the same tenant. A viewer's key is refused.
 
 
-        `end_user_ref` labels every connection the call creates, the way it does
-        on a single create: an agency adds a client's domains together under the
-        client's name, and the Domains page shows, filters and exports the
-        label. It is set once, when the connection is created. A domain that
-        already exists keeps the label it has and is reported `already`.
+        `client_label` names the client every connection the call creates is
+        for, the way it does on a single create: an agency adds a client's
+        domains together under the client's name, and the Domains page shows,
+        filters and exports it. `PATCH /connections/{id}` changes it later.
+        `end_user_ref` is your own id for the end user, set once and never
+        changed. A domain that already exists keeps what it has and is reported
+        `already`.
 
 
         A workspace with no subscription yet connects its first ten domains, or
@@ -7282,10 +7394,18 @@ paths:
                   type: string
                   maxLength: 256
                   description: >-
-                    Your own label for these domains, such as a client's name or
-                    your id for the customer they belong to. Stored on each
-                    connection this call creates and echoed back by the
-                    connection reads.
+                    Your own id for the customer these domains belong to.
+                    Stored on each connection this call creates and echoed back
+                    by the connection reads. Set once; it binds widget tokens to
+                    the connection, so it is not a name (send `client_label`).
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client these domains are for, such as an
+                    agency's client. Trimmed to one line, at most 200
+                    characters. Stored on each connection this call creates;
+                    `PATCH /connections/{id}` changes it later.
                 application_id:
                   type: string
                   description: >-
@@ -7962,6 +8082,14 @@ paths:
                             type: string
                             description: The application this domain goes into, one the key serves.
                 www_redirect: { type: boolean }
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client every domain of this call is for,
+                    as `POST /connections:bulk` takes it. A domain the
+                    application already has keeps its own name.
+
       responses:
         '200':
           description: Per domain results and the account
@@ -10450,8 +10578,20 @@ components:
           type: string
           description: >-
             The integrator's own identifier for the end user who connected this
-            domain. Omitted for a console/direct connect, and from every answer
-            a delegated agent token reads.
+            domain. Set once at create and never changed: it binds widget
+            tokens and saved access to the connection. Omitted for a
+            console/direct connect, and from every answer a delegated agent
+            token reads. The name of the client a domain is for is
+            `client_label`.
+        client_label:
+          type: string
+          maxLength: 200
+          description: >-
+            The name of the client or customer the domain is for, set at create
+            or with `PATCH /connections/{id}`. Omitted when none is set. It is
+            the platform's own note about the client: it is left out of every
+            answer an end user's widget token or a delegated agent token reads,
+            and an API key or an `app`-scoped token reads it.
         retried_at:
           type: string
           format: date-time
@@ -10663,6 +10803,65 @@ components:
             domain's records are ours (not a record set you supplied). It reads
             stored facts only; the provider's own answer comes when setup
             starts. When `false`, do not offer that upgrade.
+    ConnectionUpdate:
+      type: object
+      description: >-
+        The settings of a domain `PATCH /connections/{id}` changes. Every field
+        is optional and a field left out is unchanged; at least one is
+        required. The body is decoded with unknown fields REJECTED, so the
+        properties below are exactly the accepted set.
+      properties:
+        client_label:
+          type: string
+          maxLength: 200
+          description: >-
+            The name of the client or customer the domain is for. Control
+            characters and runs of white space become one space, and the name is
+            trimmed; `""` clears it. More than 200 characters is `400`.
+        www_redirect:
+          type: boolean
+          description: >-
+            Send visitors of the root domain (`acme.com`) to `www.acme.com`.
+            Root domains only: `true` on a subdomain is `422`
+            `www_redirect_apex_only`. Available on every plan. Turning it on
+            adds a `www` record to the records the domain needs; turning it off
+            takes it out, and the edge then answers for `www.acme.com` only if
+            you connected it as its own domain. Not for a test mode domain
+            (`403` `sandbox_not_allowed`).
+        redirect_to:
+          type: string
+          maxLength: 2048
+          description: >-
+            Where the edge sends every visit to the domain (a `301`, keeping
+            the visit's path and query): a plain `https://` address of a public
+            domain, `""` to clear it. It needs edge serving, which comes with
+            Growth and up: `402` `plan_upgrade_required` on a plan without it
+            and `503` where the deployment has it off (clearing a forward needs
+            neither). `400` for an address that is not https (`http:`,
+            `javascript:`, `data:`, a scheme-less address), has a username or
+            password (`https://acme.com@evil.example`), names an IP address, a
+            name with no dot or a reserved name (`localhost`, `.local`,
+            `.internal`, `.test`), or contains spaces, backslashes or hidden
+            characters. `422` `redirect_target_not_allowed` for a domain
+            another workspace has connected, and `422` `redirect_loop` when the
+            target is the domain itself or a visit would come back to a host it
+            has been through, through this domain's `www` redirect or any
+            forward of your own domains. Not for a test mode domain.
+    ConnectionUpdated:
+      allOf:
+        - { $ref: '#/components/schemas/ConnectionWithRecords' }
+        - type: object
+          required: [customer_action_required]
+          properties:
+            customer_action_required:
+              type: boolean
+              description: >-
+                `true` when the change adds a record that CustomDomain™ does not
+                write: the domain's DNS is not ours and no kept access can write
+                it (a kept account with `move_rewrite` on does), so the person
+                adds the `www` record shown in `records` at their DNS provider,
+                and `connection.records_outdated` was sent. `false` for every
+                other change, a hosted zone's and a rewrite's included.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }
