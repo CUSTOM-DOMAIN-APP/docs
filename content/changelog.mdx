@@ -15,6 +15,12 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 2, 2026: Starter allows 10 new domains in any 12 months.** Starter (and the retired Free plan) was held
+  to 1 new domain a calendar month; it now counts over a rolling 12 months, so a workspace can connect several domains
+  in one month as long as it stays within 10 in any 12. Other plans are unchanged. `GET /v1/plans` adds `quota` and
+  `quota_window_months`, `GET /v1/billing/usage` adds `quota_used` and `quota_window_months`, and the usage on
+  `GET /v1/billing/status` and `GET /v1/billing/standing` now covers the window and says so in `window_months`. See
+  [Plans and quotas](/docs/billing/plans-and-quotas).
 - **November 2, 2026: two widget fixes for platforms that tell their own end users.** An application whose email
   sender is **Don't send** no longer shows end users the optional email field, and `askEndUserEmail: false` reaches
   the widget from customdomain-js 0.5.9. Skipping the congratulations screen with
