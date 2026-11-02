@@ -1367,7 +1367,25 @@ paths:
                     The integrator's OWN identifier for the end user this connect
                     is attributed to, so the console can render "Connected by …"
                     and search by customer. Empty ⇒ a console/direct connect.
-                    Set once at create and never mutated.
+                    Set once at create and never mutated. It binds a widget
+                    token and saved access to the connection, so it is an id and
+                    not a name: to name the client a domain is for, send
+                    `client_label`.
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client or customer this domain is for, shown
+                    in the console beside the domain and used by its client
+                    filter. Trimmed to one line, at most 200 characters, with
+                    characters that draw nothing dropped; a name with nothing
+                    left stores no name. Unlike
+                    `end_user_ref` nothing is bound to it, and
+                    `PATCH /connections/{id}` changes it later. Only an API key
+                    or an `app`-scoped token may send it: an end user's widget
+                    token or a delegated agent token that does is refused with
+                    `403`. A replay of a domain that already exists keeps the
+                    name it has.
                 end_user_email:
                   type: string
                   format: email
@@ -1634,6 +1652,138 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: updateConnection
+      summary: Change a domain's client name, www redirect or forwarding
+      tags: [Connections]
+      description: >-
+        Changes the settings of a domain a person edits after it is set up:
+        `client_label` (the name of the client it is for), `www_redirect` (a
+        root domain's redirect to `www`) and `redirect_to` (forward every visit
+        to another site). Send only what changes. A body that changes nothing
+        answers `200` and writes nothing.
+
+
+        **Who may call it.** A server side credential only: an API key of a
+        member who may change domains (member, admin or owner; a viewer's key
+        is `403`), or an `app`-scoped token for a connection of its own
+        application. An end user's `connect`-scoped widget token is refused
+        `403`, its own connection included, and so is a delegated agent token:
+        the name, the `www` redirect and above all the forward decide where the
+        domain's visitors go, so the platform that owns the domain decides,
+        not the person connecting it or an agent acting for them. A connection
+        of another workspace answers `404`.
+
+
+        A test mode domain takes `client_label` only (`403`
+        `sandbox_not_allowed` for the redirects).
+
+
+        **The www redirect** changes the records the domain needs. A zone we
+        host is rewritten at once; a domain whose records were written through
+        a connected provider account is rewritten when `move_rewrite` is on;
+        any other domain is reported with `connection.records_outdated` and the
+        answer's `customer_action_required` is `true` when a record was added.
+        A live domain stays live while that record is missing.
+
+
+        **Forwarding** is held to one validator, the same one
+        `POST /connections/{id}/power` and `/power:repower` use for their
+        `redirect_to`: see `redirect_to` in the body. A value equal to the one
+        stored is not checked again.
+
+
+        Every change is recorded in the audit log as `connection.updated`, with
+        the before and after of the fields that changed, by the member or key
+        that made it (`widget:<application id>` for an `app`-scoped token).
+
+
+        **Two requests at once.** Redirect changes of one workspace are made one
+        at a time, each checked against the domains as they are when its turn
+        comes, so two changes made together cannot make a circle between them:
+        the second is refused (`422` `redirect_loop`). A change that waits too
+        long for its turn answers `503` `redirects_busy` (`Retry-After`) and
+        changes nothing. A request writes only the settings it changes, and a
+        value it sends back as it read it is not a change, so a setting another
+        request has changed since is not undone.
+
+
+        **When something fails.** The redirects are stored before the name. When
+        `client_label` is sent with `www_redirect` or `redirect_to` and only the
+        name cannot be written, the answer is `500`, the redirect change is
+        stored and is in the audit log, and sending the same body again writes
+        the name.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConnectionUpdate' }
+      responses:
+        '200':
+          description: The connection as it is now, with its records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionUpdated' }
+        '400':
+          description: >-
+            `invalid_request`: an unknown field, a field of the wrong type, no
+            field at all, a `client_label` over 200 characters or with nothing
+            in it a person can read (only `""` clears a name), or a
+            `redirect_to` that is not a plain https address of a public domain
+            (the reason is in `details`). `payload_too_large`: see the error
+            envelope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            `forbidden`: a viewer's key, an end user's widget token or an agent
+            token. `sandbox_not_allowed`: `www_redirect` or `redirect_to` on a
+            test mode domain.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the domain is being removed (also when the removal
+            starts while the change waits its turn).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `www_redirect_apex_only`: `www_redirect: true` on a subdomain.
+            `redirect_target_not_allowed`: `redirect_to` names a domain
+            another workspace has connected or claimed, whether or not it is
+            serving yet (a domain your own workspace serves is yours to forward
+            to, whoever else has a pending or failed claim on it).
+            `redirect_loop`: a visit would go round in a circle (taking a forward
+            off a domain whose `www` redirect is on counts: the visit then goes
+            to the `www` name), or through more than 8 forwards in a row (the
+            `title` says "too many forwards" for that); `details` lists the
+            hosts, naming only the
+            ones you may see (your workspace's, and for an `app`-scoped token
+            its own application's) and `another domain` for the rest.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: >-
+            `internal_error`: a store failed, or a check could not be made, so
+            the change was refused (a forward is never stored when the owner of
+            its domain cannot be read). When only `client_label` could not be
+            written, the redirect change sent with it is stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
     delete:
       operationId: disconnectConnection
       summary: Remove a domain, removing or keeping the DNS records we added
@@ -7132,7 +7282,21 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the call changes a redirect or the root path access of a
+            domain that is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_target_not_allowed` or `redirect_loop` for `redirect_to`
+            or `www_redirect`: the same checks as `PATCH /connections/{id}`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
     delete:
       operationId: disableConnectionPower
       summary: Remove Power (drop the origin, clear config, tear down the cert)
@@ -7141,11 +7305,33 @@ paths:
         - widgetJWT: []
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
+      description: >-
+        Clears the forward and the root path access, drops the origin and tears
+        down the certificate. Clearing a forward is checked like any redirect
+        change: on a domain whose `www` redirect is on, the visit that went to the
+        forward now goes to the `www` name, and when that would come back (`www`
+        forwards to the root) the call is refused with `422` `redirect_loop` and
+        nothing is changed, the origin included. The `www` redirect itself is not
+        cleared here (`PATCH /connections/{id}` turns it off).
       responses:
         '204': { description: Power removed }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the domain's forward or root path access is set and the
+            domain is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_loop`: taking the forward off would send a visit round a
+            circle through the `www` redirect.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
   /applications/{id}/power:default:
     get:
       operationId: getApplicationDefaultOrigin
@@ -7345,7 +7531,21 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
-        '503': { $ref: '#/components/responses/Error' }
+        '409':
+          description: >-
+            `conflict`: the call changes a redirect or the root path access of a
+            domain that is being removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            `redirect_target_not_allowed` or `redirect_loop` for `redirect_to`
+            or `www_redirect`: the same checks as `PATCH /connections/{id}`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/RedirectsBusy' }
   /power:
     get:
       operationId: listPoweredConnections
@@ -7387,11 +7587,13 @@ paths:
         application of the same tenant. A viewer's key is refused.
 
 
-        `end_user_ref` labels every connection the call creates, the way it does
-        on a single create: an agency adds a client's domains together under the
-        client's name, and the Domains page shows, filters and exports the
-        label. It is set once, when the connection is created. A domain that
-        already exists keeps the label it has and is reported `already`.
+        `client_label` names the client every connection the call creates is
+        for, the way it does on a single create: an agency adds a client's
+        domains together under the client's name, and the Domains page shows,
+        filters and exports it. `PATCH /connections/{id}` changes it later.
+        `end_user_ref` is your own id for the end user, set once and never
+        changed. A domain that already exists keeps what it has and is reported
+        `already`.
 
 
         A workspace with no subscription yet connects its first ten domains, or
@@ -7421,10 +7623,20 @@ paths:
                   type: string
                   maxLength: 256
                   description: >-
-                    Your own label for these domains, such as a client's name or
-                    your id for the customer they belong to. Stored on each
-                    connection this call creates and echoed back by the
-                    connection reads.
+                    Your own id for the customer these domains belong to.
+                    Stored on each connection this call creates and echoed back
+                    by the connection reads. Set once; it binds widget tokens to
+                    the connection, so it is not a name (send `client_label`).
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client these domains are for, such as an
+                    agency's client. Trimmed to one line, at most 200
+                    characters, with characters that draw nothing dropped; a
+                    name with nothing left stores no name. Stored on each
+                    connection this call creates;
+                    `PATCH /connections/{id}` changes it later.
                 application_id:
                   type: string
                   description: >-
@@ -8157,6 +8369,15 @@ paths:
                             type: string
                             description: The application this domain goes into, one the key serves.
                 www_redirect: { type: boolean }
+                client_label:
+                  type: string
+                  maxLength: 200
+                  description: >-
+                    The name of the client every domain of this call is for,
+                    as `POST /connections:bulk` takes it (a name with nothing
+                    readable left stores no name). A domain the
+                    application already has keeps its own name.
+
       responses:
         '200':
           description: Per domain results and the account
@@ -9040,6 +9261,20 @@ components:
             code: reach_quota
             title: Too many checks at DNS providers this hour.
             details: "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes"
+    RedirectsBusy:
+      description: >-
+        `redirects_busy`: another change to this workspace's forwarding is still
+        being saved (redirect changes of one workspace are made one at a time),
+        and this one waited for it in vain. Nothing was changed; send it again
+        after the `Retry-After` seconds. `service_unavailable`: edge serving is
+        off in this deployment, so a forward cannot be set.
+      headers:
+        Retry-After:
+          description: Seconds to wait before sending the call again (on `redirects_busy`).
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     ForbiddenOrSuspended:
       description: >-
         `forbidden`: the credential may not do this. `workspace_suspended`:
@@ -10684,8 +10919,20 @@ components:
           type: string
           description: >-
             The integrator's own identifier for the end user who connected this
-            domain. Omitted for a console/direct connect, and from every answer
-            a delegated agent token reads.
+            domain. Set once at create and never changed: it binds widget
+            tokens and saved access to the connection. Omitted for a
+            console/direct connect, and from every answer a delegated agent
+            token reads. The name of the client a domain is for is
+            `client_label`.
+        client_label:
+          type: string
+          maxLength: 200
+          description: >-
+            The name of the client or customer the domain is for, set at create
+            or with `PATCH /connections/{id}`. Omitted when none is set. It is
+            the platform's own note about the client: it is left out of every
+            answer an end user's widget token or a delegated agent token reads,
+            and an API key or an `app`-scoped token reads it.
         retried_at:
           type: string
           format: date-time
@@ -10897,6 +11144,75 @@ components:
             domain's records are ours (not a record set you supplied). It reads
             stored facts only; the provider's own answer comes when setup
             starts. When `false`, do not offer that upgrade.
+    ConnectionUpdate:
+      type: object
+      description: >-
+        The settings of a domain `PATCH /connections/{id}` changes. Every field
+        is optional and a field left out is unchanged; at least one is
+        required. The body is decoded with unknown fields REJECTED, so the
+        properties below are exactly the accepted set.
+      properties:
+        client_label:
+          type: string
+          maxLength: 200
+          description: >-
+            The name of the client or customer the domain is for. Characters
+            that draw nothing (a right to left override, a zero width space,
+            the blank fillers, variation selectors, private use characters) are
+            dropped, control characters and runs of white space become one
+            space, and the name is trimmed. Only `""` clears it: a value that
+            is not empty but has nothing readable left (white space, or only
+            invisible characters) is `400`, so it cannot take a name off. More
+            than 200 characters is `400`.
+        www_redirect:
+          type: boolean
+          description: >-
+            Send visitors of the root domain (`acme.com`) to `www.acme.com`.
+            Root domains only: `true` on a subdomain is `422`
+            `www_redirect_apex_only`. Available on every plan. Turning it on
+            adds a `www` record to the records the domain needs; turning it off
+            takes it out, and the edge then answers for `www.acme.com` only if
+            you connected it as its own domain. Not for a test mode domain
+            (`403` `sandbox_not_allowed`).
+        redirect_to:
+          type: string
+          maxLength: 2048
+          description: >-
+            Where the edge sends every visit to the domain (a `301`, keeping
+            the visit's path and query): a plain `https://` address of a public
+            domain, `""` to clear it. It needs edge serving, which comes with
+            Growth and up: `402` `plan_upgrade_required` on a plan without it
+            and `503` where the deployment has it off (clearing a forward needs
+            neither). `400` for an address that is not https (`http:`,
+            `javascript:`, `data:`, a scheme-less address), has a username or
+            password (`https://acme.com@evil.example`), names an IP address, a
+            name with no dot or a reserved name (`localhost`, `.local`,
+            `.internal`, `.test`), or contains spaces, backslashes or hidden
+            characters. The port is read as a number and stored once: `:443`
+            is dropped and a leading zero is not kept (`:0443` is `443`), and a
+            target that names this domain on port 80 or 443 is the domain itself,
+            as the edge reads it. `422` `redirect_target_not_allowed` for a
+            domain another workspace has connected or claimed (unless your own
+            workspace serves it), and `422`
+            `redirect_loop` when the target is the domain itself or a visit
+            would come back to a host it has been through, through this
+            domain's `www` redirect or any forward of your own domains, or goes
+            through more than 8 forwards in a row. Not for a test mode domain.
+    ConnectionUpdated:
+      allOf:
+        - { $ref: '#/components/schemas/ConnectionWithRecords' }
+        - type: object
+          required: [customer_action_required]
+          properties:
+            customer_action_required:
+              type: boolean
+              description: >-
+                `true` when the change adds a record that CustomDomain™ does not
+                write: the domain's DNS is not ours and no kept access can write
+                it (a kept account with `move_rewrite` on does), so the person
+                adds the `www` record shown in `records` at their DNS provider,
+                and `connection.records_outdated` was sent. `false` for every
+                other change, a hosted zone's and a rewrite's included.
     ConnectionWithRecords:
       allOf:
         - { $ref: '#/components/schemas/Connection' }

@@ -532,22 +532,39 @@ and owners can change domains. The **Management** line under **Details** reads
 A domain's page has seven tabs: **Overview**, **DNS**, **Certificate**, **Serving**, **Traffic**,
 **History** and **Settings**. On a phone the last ones sit under **More**. **Serving** is the tab that
 was called **Edge**: it keeps its address, so old links still open it. **Settings** holds what belongs to
-the domain itself, one card each:
+the domain itself, one card each. The first three are fields with their own **Save**, so you can change
+them any time after the domain is set up:
 
-- **Who it is for** shows the client or customer name the **Domains** list filters by. It is set when
-  the domain is added and is not changed here ([whose a domain is](#many-domains-and-whose-they-are)).
-- **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), says whether visitors to
-  the root go on to `www.` that domain. It is the choice made when the domain was connected, or the
-  one set later with the API, and the **www redirect** fact on the **Overview** opens this card.
-- **Forwarding** shows the address the edge sends every visit to, with the same path, or **Not set**.
-  Forwarding is part of edge serving, so a workspace without it reads **Included on Growth and up.**,
-  a domain that points at your own servers reads **Not on the edge**, and a deployment with edge serving
-  off has no card. The redirects change through the API ([forwarding](/docs/connect-flow/forwarding)).
+- **Who it is for** is the client or customer name the **Domains** list shows and filters by. Type a
+  name and **Save**; empty the field and **Save** to take it off. The name is yours: it is not shown to
+  your customers, and it is not the id your product gave the customer, which is shown under the field and
+  stays as it is ([whose a domain is](#many-domains-and-whose-they-are)). It can be up to 200 characters, and
+  characters that draw nothing (a right to left override, a zero width space, blank fillers) are dropped. A
+  name with nothing readable in it is refused; to take the name off, empty the field.
+- **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), is a switch that sends visitors
+  of the root on to `www.` that domain. It is on every plan, and the **www redirect** fact on the
+  **Overview** opens this card. Turning it on adds a `www` record to the records the domain needs. After
+  **Save**, the card says whether we added the record for you (CustomDomain™ runs the domain's DNS, or a
+  connected account we keep can write it) or whether you add it where you manage DNS, with the record and a
+  link to the **DNS** tab. The domain stays live meanwhile. Turning it off also stops us answering for
+  `www.` that domain, unless you connected it as its own domain.
+- **Forwarding** sends every visit to another address, with the same path: type an `https://` address and
+  **Save**, or **Clear**. Forwarding is part of edge serving, so a workspace without it reads **Included on
+  Growth and up.**, a domain that points at your own servers reads **Not on the edge** (and its www redirect
+  does nothing there), and a deployment with edge serving off has no card. A refused address says why: it
+  must start with `https://`, it can't hold a user name or password, it must be a public domain name (not an
+  IP address, `localhost` or an internal name), it can't be a domain another CustomDomain™ workspace has
+  connected or claimed (one your own workspace serves is fine), and it can't send visitors round in a circle (to the domain itself, or through the
+  `www` redirect or your other forwards back to where they started) or through more than 8 forwards in a row.
+  See
+  [forwarding](/docs/connect-flow/forwarding#from-the-console).
 - **Remove this domain** opens the same removal dialog as the **Overview**'s menu, and links
   [what removing does](/docs/connect-flow/offboarding).
 
-A viewer reads the same cards with **Remove domain** turned off, and the reason under it. A test mode
-domain has **Who it is for** and **Remove this domain** only.
+Members, admins and owners can change a domain's settings. A viewer reads the same cards as values, with
+**Remove domain** turned off and the reason under it. A test mode domain has **Who it is for** and
+**Remove this domain** only. Every change is recorded in the [audit log](/docs/security/overview) as
+**Domain settings changed**.
 
 ## 6. Serve something
 
@@ -642,9 +659,8 @@ several**, up to 200 at a time.
 - **Whose it is.** A name typed above the box is shown next to every domain
   below it. A name after a comma or a tab on a line (`beta.org, Beta Bakery`) is
   used for that domain instead. A domain already in your workspace is left as it
-  was. The name is set when the domain is added and cannot be changed afterwards,
-  so to rename a client or give a domain to another, remove the domain and add it
-  again. The domain's **Settings** tab shows it.
+  was. The name can be changed later: open the domain's **Settings** tab, type
+  another name and **Save**, or empty the field to take it off.
 - **The first ten domains are free.** A new workspace connects its first ten
   domains without a card, and the rest once the free trial has started. The box
   says so before you paste, with **Start free trial** beside it (nothing is
