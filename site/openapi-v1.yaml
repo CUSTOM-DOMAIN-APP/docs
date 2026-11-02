@@ -4856,6 +4856,58 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:code:
+    post:
+      operationId: codeBrowserSession
+      summary: Send the code a provider's frame asked for
+      tags: [Cloud browser]
+      description: >-
+        While the view says `handback: {reason: code, relay: true}`, the agent
+        waits for a one time code the provider asks for in a frame of its own
+        after the sign in (Squarespace's "Verify to continue"). The popup's own
+        code screen sends it here; the agent types it into the provider's frame
+        and presses its verify button. The code is kept nowhere: it goes to the
+        waiting run and is forgotten, and it is in no log, trace or model prompt.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              additionalProperties: false
+              properties:
+                code:
+                  type: string
+                  description: The code, 4 to 12 letters and digits (spaces and dashes are dropped).
+      responses:
+        '204':
+          description: The agent has the code and types it now.
+        '400':
+          description: The body is not a small JSON object with a code of that shape. The code is never echoed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: no code is asked for now, or one is already on its way.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /connect/oauth/callback:
     get:
       operationId: oauthCallback
@@ -5810,7 +5862,9 @@ paths:
         outcomes (live rate, time to live, per provider and method, why the rest
         are stuck), plus a daily series. `audience` counts the widget sessions
         by device type, country, browser, operating system and embed (no
-        address, no city, no session listed), and `secure_sign_in` the cloud
+        address, no city, no session listed), `install` whether the widget was seen in the
+        builder's own product or only in the console's tests (per application),
+        and `secure_sign_in` the cloud
         browser sessions started in the window: the funnel per provider, the
         failures by reason, and the same with and without a vendor proxy. Both
         are scoped like the rest, to the key's workspace and `app_id` when
@@ -10027,6 +10081,29 @@ components:
             browsers: { type: array, items: { $ref: '#/components/schemas/AudienceRow' } }
             systems: { type: array, items: { $ref: '#/components/schemas/AudienceRow' } }
             embeds: { type: array, items: { $ref: '#/components/schemas/AudienceRow' }, description: 'embedded, modal or unknown.' }
+        install:
+          type: object
+          description: >-
+            Whether the widget has been seen in the builder's own product, per application, from the session each
+            widget open records. A session is a console test when its token's end user is `console:<member>` (the
+            console's Try it live and welcome domain step); every other session is the product's. The console's
+            design preview opens no session. Counts are sessions. `application_id` narrows it like the rest; an
+            application with no session is not listed.
+          required: [applications]
+          properties:
+            applications:
+              type: array
+              items:
+                type: object
+                properties:
+                  application_id: { type: string }
+                  product_sessions: { type: integer, description: 'Every session of the product ever recorded.' }
+                  test_sessions: { type: integer, description: 'Every console test session ever recorded.' }
+                  window_product_sessions: { type: integer, description: 'The product sessions that started inside the window.' }
+                  window_test_sessions: { type: integer, description: 'The console test sessions that started inside the window.' }
+                  last_product_at: { type: [string, 'null'], format: date-time, description: 'When a product session last had an event; null when none ever did.' }
+                  last_product_host: { type: string, description: 'The page origin (scheme, host, port, never a path) the newest product session reported; empty when it reported none.' }
+                  last_test_at: { type: [string, 'null'], format: date-time }
         secure_sign_in:
           type: object
           description: >-
@@ -11671,11 +11748,20 @@ components:
         no_live_page:
           type: boolean
           description: >-
-            The session's vendor never shows its page in the popup (Kernel): a
-            human check, a social sign in and the backup page are the popup's
-            own screens, and only the identity provider's own confirmation,
-            during the `idp` step, is framed. The relay still types for our
-            form. Absent (false) on Browserbase.
+            The popup never shows the provider's page (every session since
+            2026-11-02, Kernel's since 2026-10-30): the sign in, a code, a push,
+            a link wait and the backup are the popup's own screens. The only real
+            pages are a human check (`live_check`), a social provider's own sign
+            in and the provider's terms or order handed back (`handback`
+            `agreement` or `order`). The relay still types for our form. Absent
+            (false) from an older control plane, which keeps the old behaviour.
+        live_check:
+          type: boolean
+          description: >-
+            With `no_live_page`: a human check (a CAPTCHA, a bot wall) is shown on
+            the provider's real page, zoomed to it, because the person answers it
+            there. Absent on Kernel, where the popup's own check screen comes
+            first.
         idp:
           type: object
           required: [provider, domain, state]
@@ -11878,6 +11964,19 @@ components:
         password the provider asks for again keeps `hand_back`.
       properties:
         reason: { type: string, enum: [code, check, agreement, order] }
+        relay:
+          type: boolean
+          description: >-
+            With `reason: code` only: the provider asks for the code in a frame of
+            its own (Squarespace's "Verify to continue") and the code is asked on
+            the popup's own screen, with no live view taking input. The customer
+            types it there and `POST :code` sends it; the agent types it into the
+            provider's frame and presses its verify button. Absent (false) for a
+            code the customer types in the live view.
+        rejected:
+          type: boolean
+          description: >-
+            With `relay`: the provider refused the last code sent, so the screen says so and asks again.
     BrowserViewport:
       type: object
       required: [width, height]

@@ -25,8 +25,9 @@ types share the surface, each with a different blast radius.
   page in a workspace that is older than it), with no card needed. It reaches the whole workspace
   like any key, but it acts with **admin** authority, never an owner's: it cannot create API keys,
   make, unmake or remove an owner, or delete the workspace (`403`). Only an owner
-  sees it at the top of **API & SDK** as `CUSTOMDOMAIN_API_KEY=cd_live_…`, masked; the eye
-  shows it for 30 seconds and **Copy** copies it without showing it. Admins, members and viewers
+  sees it at the top of **API & SDK** in a key bar: `CUSTOMDOMAIN_API_KEY` is a label above the
+  masked key (`cd_live_…`); the eye shows the key for 30 seconds and **Copy** copies the key
+  alone, without the label and without showing it. Admins, members and viewers
   see only its prefix, and only an owner can rotate it. The control plane still keeps only its hash: the console keeps a copy sealed with its own
   secret (AES-256-GCM), and every view is recorded in the audit log, without the key; a view the
   audit log cannot record is refused.
@@ -95,8 +96,16 @@ revokes its keys. It is refused for the tenant's default application, for the
 application the calling key belongs to, and while the application still has
 domains.
 
-Each application also has a `client_secret` (`sk_` plus 32 hex characters),
-returned once at application creation over the API, or from `tenants:provision`.
+### API key or client secret
+
+Two credentials look alike and do different jobs:
+
+| | API key | Client secret |
+| --- | --- | --- |
+| What it is | A workspace key, `cd_live_…` or `cd_test_…`. It proves a call comes from your server. | One application's secret, `sk_` plus 32 hex characters. |
+| Where to find it | **API & SDK** in the console (the default key, or **Create key**), shown once when made. | Returned once at application creation over the API, or from `tenants:provision`. An application made in the console never shows it. |
+| What it can do | Everything its role allows in the workspace (above). Keep it on your server. | Mint [widget JWTs](/docs/authentication/widget-tokens) for that application, and nothing else. |
+
 The `client_secret` is **not** an API key: its only job is to mint
 [widget JWTs](/docs/authentication/widget-tokens), and an API key placed in the
 `client_secret` field is refused with `401`. An application created in the

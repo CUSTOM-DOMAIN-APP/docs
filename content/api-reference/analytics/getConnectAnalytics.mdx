@@ -17,8 +17,10 @@ _openapi:
           connection outcomes (live rate, time to live, per provider and method,
           why the rest are stuck), plus a daily series. `audience` counts the
           widget sessions by device type, country, browser, operating system and
-          embed (no address, no city, no session listed), and `secure_sign_in`
-          the cloud browser sessions started in the window: the funnel per
+          embed (no address, no city, no session listed), `install` whether the
+          widget was seen in the builder's own product or only in the console's
+          tests (per application), and `secure_sign_in` the cloud browser
+          sessions started in the window: the funnel per
           provider, the failures by reason, and the same with and without a
           vendor proxy. Both are scoped like the rest, to the key's workspace
           and `app_id` when given. API key; any member role.
