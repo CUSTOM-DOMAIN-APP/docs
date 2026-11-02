@@ -21,8 +21,9 @@ never change meaning or disappear without a new major version. See the
   on or off, and the tab says whether we added the `www` record for you or you add it where you manage DNS; set or
   clear the address a domain forwards to. A refused forwarding address says why: it must be `https://`, a public
   domain name, not one that has a user name or password, not a domain another CustomDomain™ workspace has connected
-  or claimed, not a circle back to where visitors started, and not more than 8 forwards in a row. Members, admins
-  and owners can change them, and every change is in the audit log as **Domain settings changed**. For the API, the new
+  or claimed (a domain your own workspace serves is fine), not a circle back to where visitors started, and not
+  more than 8 forwards in a row. A client name with nothing readable in it is refused. Members, admins and owners
+  can change them, and every change is in the audit log as **Domain settings changed**. For the API, the new
   [`PATCH /v1/connections/{id}`](/docs/api-reference/connections/updateConnection) takes `client_label`,
   `www_redirect` and `redirect_to`; `POST /v1/connections`, `POST /v1/connections:bulk` and the account connect take
   `client_label`; and `redirect_to` on `POST /v1/connections/{id}/power` and `power:repower` is held to the same

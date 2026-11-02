@@ -1681,17 +1681,24 @@ paths:
 
         **Two requests at once.** The forward and `www` checks read your other
         domains, so after a change is stored they run again on what is stored.
-        When another request changed a domain in the meantime and the two
-        together make a circle, the one that wrote second is put back and
-        answers `422` `redirect_loop`; the other keeps its change. Change the
-        other redirect first, then send it again.
+        A request writes only the settings it sends, so two requests that
+        change different settings of one domain both keep theirs. When another
+        request changed a domain in the meantime and the two together make a
+        circle, the one that wrote second is put back and answers `422`
+        `redirect_loop`; the other keeps its change. Putting back writes only
+        the settings the request changed, and only where they still hold what
+        it wrote, so a value another request has stored since is kept, and no
+        circle is left standing. Change the other redirect first, then send it
+        again.
 
 
         **When something fails.** The redirects are stored before the name. When
         `client_label` is sent with `www_redirect` or `redirect_to` and only the
         name cannot be written, the answer is `500`, the redirect change is
         stored and is in the audit log, and sending the same body again writes
-        the name.
+        the name. When a change that makes a circle cannot be put back because a
+        store failed, the answer is `500` too, and what is stored is recorded in
+        the audit log.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -1710,7 +1717,8 @@ paths:
         '400':
           description: >-
             `invalid_request`: an unknown field, a field of the wrong type, no
-            field at all, a `client_label` over 200 characters, or a
+            field at all, a `client_label` over 200 characters or with nothing
+            in it a person can read (only `""` clears a name), or a
             `redirect_to` that is not a plain https address of a public domain
             (the reason is in `details`). `payload_too_large`: see the error
             envelope.
@@ -1738,7 +1746,9 @@ paths:
             `www_redirect_apex_only`: `www_redirect: true` on a subdomain.
             `redirect_target_not_allowed`: `redirect_to` names a domain
             another workspace has connected or claimed, whether or not it is
-            serving yet. `redirect_loop`: a visit would go round in a circle, or
+            serving yet (a domain your own workspace serves is yours to forward
+            to, whoever else has a pending or failed claim on it).
+            `redirect_loop`: a visit would go round in a circle, or
             through more than 8 forwards in a row (the `title` says "too many
             forwards" for that); `details` lists the hosts, naming only the
             ones you may see (your workspace's, and for an `app`-scoped token
@@ -10844,11 +10854,14 @@ components:
           type: string
           maxLength: 200
           description: >-
-            The name of the client or customer the domain is for. Invisible
-            format characters (a right to left override, a zero width space)
-            are dropped, control characters and runs of white space become one
-            space, and the name is trimmed; `""` clears it. More than 200
-            characters is `400`.
+            The name of the client or customer the domain is for. Characters
+            that draw nothing (a right to left override, a zero width space,
+            the blank fillers, variation selectors, private use characters) are
+            dropped, control characters and runs of white space become one
+            space, and the name is trimmed. Only `""` clears it: a value that
+            is not empty but has nothing readable left (white space, or only
+            invisible characters) is `400`, so it cannot take a name off. More
+            than 200 characters is `400`.
         www_redirect:
           type: boolean
           description: >-
@@ -10874,9 +10887,11 @@ components:
             name with no dot or a reserved name (`localhost`, `.local`,
             `.internal`, `.test`), or contains spaces, backslashes or hidden
             characters. The port is read as a number and stored once: `:443`
-            is dropped and a leading zero is not kept (`:0443` is `443`, the
-            domain itself). `422` `redirect_target_not_allowed` for a domain
-            another workspace has connected or claimed, and `422`
+            is dropped and a leading zero is not kept (`:0443` is `443`), and a
+            target that names this domain on port 80 or 443 is the domain itself,
+            as the edge reads it. `422` `redirect_target_not_allowed` for a
+            domain another workspace has connected or claimed (unless your own
+            workspace serves it), and `422`
             `redirect_loop` when the target is the domain itself or a visit
             would come back to a host it has been through, through this
             domain's `www` redirect or any forward of your own domains, or goes

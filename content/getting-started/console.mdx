@@ -511,7 +511,8 @@ them any time after the domain is set up:
   name and **Save**; empty the field and **Save** to take it off. The name is yours: it is not shown to
   your customers, and it is not the id your product gave the customer, which is shown under the field and
   stays as it is ([whose a domain is](#many-domains-and-whose-they-are)). It can be up to 200 characters, and
-  invisible characters (a right to left override, a zero width space) are dropped.
+  characters that draw nothing (a right to left override, a zero width space, blank fillers) are dropped. A
+  name with nothing readable in it is refused; to take the name off, empty the field.
 - **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), is a switch that sends visitors
   of the root on to `www.` that domain. It is on every plan, and the **www redirect** fact on the
   **Overview** opens this card. Turning it on adds a `www` record to the records the domain needs. After
@@ -525,7 +526,7 @@ them any time after the domain is set up:
   does nothing there), and a deployment with edge serving off has no card. A refused address says why: it
   must start with `https://`, it can't hold a user name or password, it must be a public domain name (not an
   IP address, `localhost` or an internal name), it can't be a domain another CustomDomain™ workspace has
-  connected or claimed, and it can't send visitors round in a circle (to the domain itself, or through the
+  connected or claimed (one your own workspace serves is fine), and it can't send visitors round in a circle (to the domain itself, or through the
   `www` redirect or your other forwards back to where they started) or through more than 8 forwards in a row.
   See
   [forwarding](/docs/connect-flow/forwarding#from-the-console).
