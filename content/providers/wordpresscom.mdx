@@ -28,7 +28,8 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 
 - The OAuth token uses the `global` scope because DNS on WordPress.com is account-wide rather than per-site.
 - The DNS write is diff-based (add/remove), so it changes only the records the connection needs.
-- TXT records longer than 255 characters are not supported.
+- TXT records can be up to 2048 characters, so a long email signing (DKIM) key fits; WordPress.com splits it into 255 character pieces itself.
+- SRV records (for services like calling or chat) are written too, with their priority, weight, port and target.
 - A Tumblr domain is served by WordPress.com's nameservers but edited in Tumblr's own domain settings; detection names Tumblr when the root points at Tumblr, and a WordPress.com sign-in cannot reach it.
 
 ## How you know it worked
