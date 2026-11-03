@@ -18,13 +18,15 @@ below.
 
 <Callout title="Where it is on">
   Secure sign-in runs only where it is switched on for the domain's provider. The
-  hosted service has it on for every workspace at eight providers: Namecheap,
-  GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship and Hostinger. At these the
-  address of the DNS page names the domain, so the session can only open that one
-  domain's records. At ten more (Network Solutions, Dynadot, NameSilo, Gname,
-  OVHcloud, OpenSRS, ResellerClub, Porkbun, Wix and Alibaba Cloud's international
-  site) the DNS page's address is not confirmed yet, so it runs in supervised test
-  sessions only and is not offered to your workspace until it is. Onamae.com,
+  hosted service has it on for every workspace at nine providers: Namecheap,
+  GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship, Hostinger and OpenSRS. At
+  the first eight the address of the DNS page names the domain, so the session can
+  only open that one domain's records. At OpenSRS your customer signs in to the
+  [Manage Web Interface](#opensrs), whose sign-in is for one domain: we fill in the
+  domain, so the whole session is that domain. At nine more (Network Solutions,
+  Dynadot, NameSilo, Gname, OVHcloud, ResellerClub, Porkbun, Wix and Alibaba Cloud's
+  international site) the DNS page's address is not confirmed yet, so it runs in
+  supervised test sessions only and is not offered to your workspace until it is. Onamae.com,
   Registro.br, REG.RU and Alibaba Cloud's China site are not offered: their dashboards
   are not in English and have not been checked signed in. REG.RU can be
   [connected with an API key](/docs/dns/provider-setup#registrars-and-dns-hosts) instead. `POST /v1/domains:check` says so per domain in
@@ -428,6 +430,25 @@ The account name on that screen is the one the provider's page shows (a user
 name, a customer number or an address, with an address masked to its first
 character and its domain). It is shown to your customer only, and never stored
 or logged.
+
+### OpenSRS: a sign-in for one domain [#opensrs]
+
+At OpenSRS your customer signs in to OpenSRS' Manage Web Interface
+(`manage.opensrs.net`), the panel for the person who owns the domain, with the
+user name and password that come with the domain (both are case sensitive). That
+sign-in is for one domain, so our software fills in the domain itself, before the
+page is shown, and the field cannot be changed: your customer types only the user
+name and the password, on our form as usual. Before it reads the records and
+before every change, our software checks that the page it is on shows the
+domain. If it shows another domain, the session ends with nothing changed
+(`browser_wrong_account`, "You signed in for a different domain at the provider,
+so nothing was changed.").
+
+Only OpenSRS' own address is covered. A reseller that runs the same panel under
+its own brand and address, or its own control panel, is not, and neither is the
+Reseller Control Panel (`manage.opensrs.com`) that resellers use: those customers
+get the other ways to connect. The records can be changed there only while the
+domain uses OpenSRS' own name servers.
 
 If the provider's page shows that the domain uses DNS somewhere else, the popup
 says "acme.com does not use Namecheap's DNS, so its records are edited
@@ -875,6 +896,9 @@ counts are the **Secure sign-in** panel on the console's **Analytics** page.
   yourself, are refused before the customer signs in
   (`422 browser_unsupported_records`, with the types named).
 - A lasting API key is made only at the providers [listed above](#which-providers).
+- At OpenSRS only the Manage Web Interface at `manage.opensrs.net` is covered: not
+  a reseller's branded copy of it, a reseller's own panel, or the Reseller Control
+  Panel. No session has yet been run there signed in.
 - At Spaceship, no session has yet been seen to get past the human check the
   provider's pages can show. A session that cannot get past it ends with the other
   ways to connect.

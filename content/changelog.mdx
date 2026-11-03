@@ -21,6 +21,17 @@ never change meaning or disappear without a new major version. See the
   never make two keys of one name at the provider. The session view's `kept_key.name` carries the full name; the
   domain check's `rails.cloud_browser.key.name` names a key without the code, so look for a key that begins with
   it. See [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (evening): secure sign-in at OpenSRS for every workspace.**
+  - Your customer signs in to OpenSRS' Manage Web Interface, the panel for the domain's owner. Its sign-in is for one
+    domain, so CustomDomain™ fills in the domain and your customer types only the user name and password. A sign-in
+    that shows another domain ends with nothing changed. Resellers' branded copies of that panel are not covered.
+    See [Secure sign-in](/docs/guides/secure-sign-in#opensrs).
+
+- **November 3, 2026 (WordPress.com): long TXT and SRV records.** A WordPress.com connect now writes TXT
+  values up to 2048 characters (it was 255), so a long DKIM key goes in with the rest, and writes SRV records the
+  way WordPress.com stores them. See [WordPress.com](/docs/providers/wordpresscom).
+
 - **November 3, 2026 (Google Cloud DNS): Sign in with Google Cloud is on.** On the hosted service, a customer on
   Google Cloud DNS can sign in with the Google account that can edit the domain's public Cloud DNS zone.
   CustomDomain™ finds the Google Cloud project that holds the zone and writes the records. It asks for the scopes
