@@ -3350,6 +3350,7 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the credential (`ProviderAuthenticationError`) or the write (`dns_write_failed`), or, at Porkbun, the domain is not opted in to API access (`porkbun_api_access_disabled`: the account holder switches on API Access for the domain in Porkbun's Domain Management, then tries again)" }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
     post:
@@ -3722,7 +3723,14 @@ paths:
         CustomDomain™ integration's install page; the user picks the Vercel team
         that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
         handoff: the user approves a key named after the domain; no client
-        registration is needed), `ovh_consent` (an OVHcloud consumer key
+        registration is needed), `porkbun_dnsconnect` (Porkbun's DNS Connect,
+        run in place of the handoff for a connect when the deployment holds an
+        application Porkbun approved, `OAUTH_PORKBUN_CLIENT_ID` and
+        `OAUTH_PORKBUN_CLIENT_SECRET`: the domain's records are signed into the
+        request, the user approves them at Porkbun, and Porkbun adds them
+        itself, with no API access switch needed; nothing comes back, so
+        `managed` is always false, and signing in to remove the domain still
+        runs the handoff), `ovh_consent` (an OVHcloud consumer key
         limited to the domain's DNS zone, validated on OVHcloud's page for the
         chosen `region`) or `mcp_oauth` (OAuth through the provider's hosted
         MCP server, for Hostinger, Unstoppable Domains, XServer, Namecheap,
@@ -3825,7 +3833,7 @@ paths:
                   provider: { type: string }
                   flow:
                     type: string
-                    enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent, mcp_oauth]
+                    enum: [oauth2, vercel_integration, porkbun_handoff, porkbun_dnsconnect, ovh_consent, mcp_oauth]
                   managed:
                     type: boolean
                     description: The connect will keep its credential (managed mode).
@@ -4922,12 +4930,19 @@ paths:
         validated consumer key), writes the connection's records with it
         (dropped after, unless kept for managed mode), and returns an HTML page
         that postMessages `{ type: "customdomain:oauth", payload }` to the
-        vetted return origin. `payload` carries `ok`, `managed`, and on failure
+        vetted return origin. After `porkbun_dnsconnect` there is no credential:
+        Porkbun added the records itself and says so in `status` (`applied`,
+        `partial`, `denied` or `error` with its `error`), which is not signed,
+        so the connection only moves to `propagating` and public DNS decides;
+        `payload.partial` is true when Porkbun added only some of them.
+        `payload` carries `ok`, `managed`, and on failure
         a `code` and `message`: besides the provider's own `error` (for example
         `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
         `apex_not_supported`, `forwarding_not_supported`, the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
-        domain at Porkbun), `vercel_team_scope` (install on the team that owns
+        domain at Porkbun), `porkbun_domain_not_in_account` and
+        `porkbun_domain_not_active` (after `porkbun_dnsconnect`: the domain is
+        not in the Porkbun account that signed in, or not active there), `vercel_team_scope` (install on the team that owns
         the domain), `ovh_zone_not_found` (pick the OVHcloud region the
         account lives in), `oauth_scope_not_granted` (a permission was left
         unticked on the provider's consent screen; sign in again and allow
@@ -7897,7 +7912,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`), or a chosen Porkbun domain is not opted in to API access (`porkbun_api_access_disabled`, where `400` would otherwise say the key does not reach it)" }
         '503': { $ref: '#/components/responses/Error' }
     get:
       operationId: listProviderAccounts
@@ -8745,7 +8760,7 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`), or a chosen Porkbun domain is not opted in to API access (`porkbun_api_access_disabled`, where `400` would otherwise say the key does not reach it)" }
         '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:check:
@@ -11366,7 +11381,8 @@ components:
             `domain_already_connected`);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
             `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
-            `apex_not_supported`, `forwarding_not_supported`); the OAuth callback
+            `apex_not_supported`, `forwarding_not_supported`,
+            `porkbun_api_access_disabled`); the OAuth callback
             (which also records `forwarding_not_supported`); and the Domain Connect
             async callback (both e.g. `provider_unavailable`,
             `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or
@@ -12382,7 +12398,7 @@ components:
             treat it as unavailability.
         flow:
           type: string
-          enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent, mcp_oauth]
+          enum: [oauth2, vercel_integration, porkbun_handoff, porkbun_dnsconnect, ovh_consent, mcp_oauth]
           description: >-
             Available `oauth` rail only: the sign-in it runs, so a client can
             label its button (see `POST /connections/{id}/oauth:start`).

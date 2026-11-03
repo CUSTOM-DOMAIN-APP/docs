@@ -23,7 +23,11 @@ _openapi:
           CustomDomain™ integration's install page; the user picks the Vercel
           team that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
           handoff: the user approves a key named after the domain; no client
-          registration is needed), `ovh_consent` (an OVHcloud consumer key
+          registration is needed), `porkbun_dnsconnect` (Porkbun's DNS Connect,
+          run in place of the handoff for a connect when the deployment holds an
+          application Porkbun approved: the user approves the domain's records at
+          Porkbun and Porkbun adds them, with no API access switch needed;
+          nothing comes back, so `managed` is always false), `ovh_consent` (an OVHcloud consumer key
           limited to the domain's DNS zone, validated on OVHcloud's page for the
           chosen `region`) or `mcp_oauth` (OAuth through the provider's hosted
           MCP server, for Hostinger, Unstoppable Domains, XServer, Namecheap,
