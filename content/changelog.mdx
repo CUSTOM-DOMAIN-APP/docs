@@ -15,6 +15,12 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026 (secure sign-in): every key's name ends in a code of its own.** A key the secure sign-in
+  makes is named "CustomDomain", your application's name, the day and minute in UTC and now a four character code
+  of the session's own ("CustomDomain Acme 2026-11-03 1528 3f9a"), so two sign-ins that start in the same minute
+  never make two keys of one name at the provider. The session view's `kept_key.name` carries the full name; the
+  domain check's `rails.cloud_browser.key.name` names a key without the code, so look for a key that begins with
+  it. See [Secure sign-in](/docs/guides/secure-sign-in).
 - **November 3, 2026 (Google Cloud DNS): Sign in with Google Cloud is on.** On the hosted service, a customer on
   Google Cloud DNS can sign in with the Google account that can edit the domain's public Cloud DNS zone.
   CustomDomain™ finds the Google Cloud project that holds the zone and writes the records. It asks for the scopes
