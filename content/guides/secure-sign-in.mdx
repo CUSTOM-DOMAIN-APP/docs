@@ -269,32 +269,74 @@ another way** leads to the manual steps.
 While the provider finishes the sign-in (its own redirects after the last step
 or the code), the popup says **Signing you in** and never shows the sign-in
 form again unless the provider asks for something. Once the sign-in is through,
-the popup says **Signed in**, and our software takes
-one of two ways, in this order:
+the popup says **Signed in**, and our software makes the changes in one of two
+ways.
 
-1. **A lasting API key.** Where the provider has an API page we have reviewed,
-   the account qualifies and the hosted service has the key turned on for that
-   provider ([which ones](#which-providers)), the popup reads "Getting things
-   ready" over the records still to add, with "This takes about half a minute.",
-   then "Adding records", then **Done.** The popup's own steps and the
-   sign-in form no longer mention an API or a key: your customer is told the work is
-   being prepared, not how. (A provider's own page, such as IONOS's checkout, still
-   says what it says.) Our software makes
-   a key on the provider's own API page, CustomDomain™ checks it and keeps it, and
-   the records are added through the provider's API, as they are for a key someone
-   pasted.
-2. **The DNS page.** Where no key can be made (no reviewed API page, an account
-   that does not qualify, an account already at the provider's [key limit](#key-limits),
-   a key that fails its check, an API page that wants a
-   new sign-in, or the key turned off for that provider), the same session goes on to the provider's DNS page for the
-   domain. The popup shows one line for each step ("Reading your DNS records",
-   "Making the changes", "Checking the result") over the records, which tick as
-   they are made. Then **Done.** Nothing is kept, so a later change at that
-   provider needs another sign-in.
+**The DNS page, then the key.** For most providers the records come first. Our
+software goes straight to the provider's DNS page, makes the changes, checks them,
+and the popup says **Done.** Your customer can close the window. Only then, in the
+same browser and without asking your customer anything, our software tries to make
+a [lasting API key](#lasting-api-keys) on the provider's own API page, within 150
+seconds. If it works, CustomDomain™ checks and keeps the key, and the domain moves
+to the provider's API from then on with no second write. If the key page asks for
+anything (a code, a password, an agreement or an order), the attempt ends: nobody
+is watching any more. The records are already in place either way. The key was
+made first until 2026-11-03, and it failed 17 of 21 times in production, which
+cost your customer 25 to 60 seconds of waiting before any record was touched.
+Because **Done.** is shown before the key's outcome is known, a key that was made
+and could not be kept is not named on that last screen. It is named in your
+console's **Activity** and in the session while it lives.
 
-Your customer never loses a step: whatever stops the first way, the second one
-runs in the same session, without another sign-in. The first way is tried once
-per session. Once it has ended without a key, the session goes straight to the
+**The key first.** A provider whose key flow needs your customer (a sign-in on the
+key page, a code, an agreement to tick, or an order) keeps the older order: the
+popup reads "Getting things ready" over the records still to add, with "This takes
+about half a minute.", then "Adding records", then **Done.** Our software makes the
+key on the provider's own API page, CustomDomain™ checks it and keeps it, and the
+records are added through the provider's API, as they are for a key someone pasted.
+The popup's own steps and the sign-in form do not mention an API or a key: your
+customer is told the work is being prepared, not how. (A provider's own page, such
+as IONOS's checkout, still says what it says.) Where the key cannot be made (no
+reviewed API page, an account that does not qualify, an account already at the
+provider's [key limit](#key-limits), a key that fails its check, an API page that
+wants a new sign-in, or the key turned off for that provider), the same session goes
+on to the provider's DNS page for the domain, and nothing is kept, so a later
+change at that provider needs another sign-in.
+
+**Accounts that failed the key are not asked again.** CustomDomain™ remembers, per
+workspace, person and provider, that an account answered "not eligible" for a
+lasting key. The key is not tried again for that account for 14 days, so the
+session starts at the DNS page and the sign-in screen carries no key notice. Two
+failures in a row of any other kind stop it for one day, and a key that is kept
+clears the memory. The memory is held in the service's memory and holds only
+words and times, so a restart forgets it and costs one more attempt.
+
+**GoDaddy's key is paused for now.** Every GoDaddy attempt in the last two weeks
+ended without a key, so a GoDaddy connect session starts on the DNS page and no key
+is made or promised. The text below about GoDaddy's developer portal describes the
+path as it works when it is switched back on. Adding an account from the console
+is not affected.
+
+**What your customer sees while it works.** Every waiting screen draws the same
+four steps: Sign in, Read records, Make changes and Check. The step in progress
+turns and the finished ones are ticked. Under the list there is one line saying
+what is happening, then an estimate, then the records. The estimate appears only
+for the long steps: reading the records says "Usually under half a minute.",
+making the changes says "Usually under a minute. Keep this window open.", and
+making the key says "This takes about half a minute." If a step runs past its
+usual time (45 seconds reading, 60 for the key, 90 making the changes, 45 checking)
+the line changes to "Taking longer than usual. It is still working, so keep this
+window open." Nothing that is still working is red. A session that ended shows a
+neutral mark, one plain line that says what to do, and **Close**. A whole
+successful run takes about one to two minutes, which is why the screen says so
+instead of showing a spinner alone.
+
+The DNS page path shows one line for each step ("Reading your DNS records",
+"Making the changes", "Checking the result") over the records, which tick as they
+are made.
+
+Your customer never loses a step: whatever stops the key, the records still get
+made in the same session, without another sign-in. A key is tried once per
+session. Once it has ended without a key, the session goes straight to the
 DNS page whenever the work goes on again (after a page was handed back, or after
 **Continue signing in**), so no second key is made at the provider. A new
 session tries the key again. When the provider's API page sends the browser
@@ -307,7 +349,7 @@ in 10 minutes, the key is skipped. After such a trip, our software waits up to 6
 seconds for the page to change before it acts again, so a form the provider opens
 after its own check is seen.
 
-**GoDaddy.** When a lasting GoDaddy key can be made, the sign-in opens on
+**GoDaddy (while its key is switched on).** When a lasting GoDaddy key can be made, the sign-in opens on
 GoDaddy's developer portal (the Personal Access Token page), the page GoDaddy's
 own instructions say to sign in to before a token is made. Your customer signs in
 there as usual. When **Generate Token** is pressed, GoDaddy asks to verify it's
@@ -425,7 +467,8 @@ and no customer, until the key nears its end.
 | Hostinger | An API token (Hostinger's tokens have no scopes) | Everything Hostinger's API allows the account (`account`) | The longest Hostinger offers: none where it offers that, else 1 year or less |
 | IONOS, US site only | An API key: a public prefix and a secret | Nothing: it reaches the DNS records only | No end date |
 
-All six are on. GoDaddy's is on with GoDaddy's permission, which its published
+Six providers have a key page we have reviewed. GoDaddy's is paused for now
+([why](#after-the-sign-in)); the other five are on. GoDaddy's was on with GoDaddy's permission, which its published
 API terms require for keys made for its customers by someone else. When a key
 can't be made or checked (an account the provider won't give a key to, say),
 the session goes to the DNS page instead. Every other provider, and IONOS's
