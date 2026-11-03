@@ -12040,8 +12040,8 @@ components:
             2026-11-02, Kernel's since 2026-10-30): the sign in, a code, a push,
             a link wait and the backup are the popup's own screens. The only real
             pages are a human check (`live_check`), a social provider's own sign
-            in and the provider's terms or order handed back (`handback`
-            `agreement` or `order`). The relay still types for our form. Absent
+            in and the provider's terms, order or account details handed back
+            (`handback` `agreement`, `order` or `account`). The relay still types for our form. Absent
             (false) from an older control plane, which keeps the old behaviour.
         live_check:
           type: boolean
@@ -12244,14 +12244,17 @@ components:
         asks the account holder to accept before a key is made, or (`order`)
         is at the customer's part of the free order that turns the provider's
         API on (IONOS's checkout: its terms box and Buy now, which can place a
-        temporary hold on their card). The agent never accepts terms or places
-        an order for them. `interactive` is true and `live_view_url`
+        temporary hold on their card), or (`account`) the provider's account
+        lacks details only the customer may give before its API page makes a
+        key (Gandi: the organization's postal address and phone), which they
+        fill in on the provider's page and save. The agent never accepts terms,
+        places an order or types account details for them. `interactive` is true and `live_view_url`
         is the page's own view: the customer answers in the live view, and the
         keys go from their browser to the vendor, never through the control
         plane. Once the prompt is gone from the page the agent goes on. A
         password the provider asks for again keeps `hand_back`.
       properties:
-        reason: { type: string, enum: [code, check, agreement, order] }
+        reason: { type: string, enum: [code, check, agreement, order, account] }
         relay:
           type: boolean
           description: >-
