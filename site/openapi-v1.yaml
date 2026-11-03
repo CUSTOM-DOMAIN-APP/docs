@@ -3350,6 +3350,7 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the credential (`ProviderAuthenticationError`) or the write (`dns_write_failed`), or, at Porkbun, the domain is not opted in to API access (`porkbun_api_access_disabled`: the account holder switches on API Access for the domain in Porkbun's Domain Management, then tries again)" }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
     post:
@@ -7897,7 +7898,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`), or a chosen Porkbun domain is not opted in to API access (`porkbun_api_access_disabled`, where `400` would otherwise say the key does not reach it)" }
         '503': { $ref: '#/components/responses/Error' }
     get:
       operationId: listProviderAccounts
@@ -8745,7 +8746,7 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`), or a chosen Porkbun domain is not opted in to API access (`porkbun_api_access_disabled`, where `400` would otherwise say the key does not reach it)" }
         '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:check:
@@ -11366,7 +11367,8 @@ components:
             `domain_already_connected`);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
             `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
-            `apex_not_supported`, `forwarding_not_supported`); the OAuth callback
+            `apex_not_supported`, `forwarding_not_supported`,
+            `porkbun_api_access_disabled`); the OAuth callback
             (which also records `forwarding_not_supported`); and the Domain Connect
             async callback (both e.g. `provider_unavailable`,
             `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or

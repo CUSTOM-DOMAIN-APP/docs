@@ -15,6 +15,13 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026 (Porkbun): a plain answer when a domain's API access is off.** Porkbun lets an API key
+  change only domains with **API Access** switched on. Connecting such a domain with a Porkbun key, or adding it
+  to a connected Porkbun account, now says so and shows where to switch it on, instead of a generic failure.
+  The API answers `422` `porkbun_api_access_disabled` on
+  [`POST /v1/connections/{id}/apply`](/docs/api-reference/connections/applyConnection) and when adding or
+  reconnecting a provider account. See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts).
+
 - **November 3, 2026 (later): REG.RU by API key, and secure sign-in for Wix and Alibaba Cloud.**
   - **REG.RU** connects with your REG.RU login and an API password, after you allow our address in its API settings.
     See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts). REG.RU has no sign-in other apps can use.
