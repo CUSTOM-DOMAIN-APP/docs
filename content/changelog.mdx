@@ -21,6 +21,30 @@ never change meaning or disappear without a new major version. See the
     that shows another domain ends with nothing changed. Resellers' branded copies of that panel are not covered.
     See [Secure sign-in](/docs/guides/secure-sign-in#opensrs).
 
+- **November 3, 2026 (WordPress.com): long TXT and SRV records.** A WordPress.com connect now writes TXT
+  values up to 2048 characters (it was 255), so a long DKIM key goes in with the rest, and writes SRV records the
+  way WordPress.com stores them. See [WordPress.com](/docs/providers/wordpresscom).
+
+- **November 3, 2026 (Google Cloud DNS): Sign in with Google Cloud is on.** On the hosted service, a customer on
+  Google Cloud DNS can sign in with the Google account that can edit the domain's public Cloud DNS zone.
+  CustomDomain™ finds the Google Cloud project that holds the zone and writes the records. It asks for the scopes
+  `openid`, `email`, `ndev.clouddns.readwrite` and `cloudplatformprojects.readonly`. Until Google finishes reviewing
+  the app, Google may show a notice that it has not verified the app yet. The project ID and access token way still
+  works as the other option. See [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns).
+- **November 3, 2026 (secure sign-in): account details stay your customer's.** Some providers make no API key
+  until the account holds a detail, such as the postal address Gandi needs on an organization. When the provider's
+  page says one is missing, the popup shows that page with one line asking your customer to fill it in and save,
+  and the setup goes on after. Our software never types an address, a phone number or any other personal detail.
+  The session view says `handback.reason` `account` while it waits. See
+  [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (Porkbun): a plain answer when a domain's API access is off.** Porkbun lets an API key
+  change only domains with **API Access** switched on. Connecting such a domain with a Porkbun key, or adding it
+  to a connected Porkbun account, now says so and shows where to switch it on, instead of a generic failure.
+  The API answers `422` `porkbun_api_access_disabled` on
+  [`POST /v1/connections/{id}/apply`](/docs/api-reference/connections/applyConnection) and when adding or
+  reconnecting a provider account. See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts).
+
 - **November 3, 2026 (later): REG.RU by API key, and secure sign-in for Wix and Alibaba Cloud.**
   - **REG.RU** connects with your REG.RU login and an API password, after you allow our address in its API settings.
     See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts). REG.RU has no sign-in other apps can use.
