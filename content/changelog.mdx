@@ -15,6 +15,12 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026 (Google Cloud DNS): Sign in with Google Cloud is on.** On the hosted service, a customer on
+  Google Cloud DNS can sign in with the Google account that can edit the domain's public Cloud DNS zone.
+  CustomDomain™ finds the Google Cloud project that holds the zone and writes the records. It asks for the scopes
+  `openid`, `email`, `ndev.clouddns.readwrite` and `cloudplatformprojects.readonly`. Until Google finishes reviewing
+  the app, Google may show a notice that it has not verified the app yet. The project ID and access token way still
+  works as the other option. See [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns).
 - **November 3, 2026 (secure sign-in): account details stay your customer's.** Some providers make no API key
   until the account holds a detail, such as the postal address Gandi needs on an organization. When the provider's
   page says one is missing, the popup shows that page with one line asking your customer to fill it in and save,
