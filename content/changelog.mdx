@@ -15,6 +15,26 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026: secure sign-in that is faster, calmer to wait through, and measured.**
+  - **Faster.** The lasting API key is now made after the records. The records are written and checked, your customer
+    sees **Done.**, and the same browser then makes the key without asking them anything (a prompt ends the attempt).
+    Making the key first failed 17 of 21 times in production and added 25 to 60 seconds before any record was touched.
+    An account that answered "not eligible" is not asked again for 14 days, and two other failures in a row pause the key
+    for a day. GoDaddy's key is paused for now: its sessions start on the DNS page. A provider whose key flow needs your
+    customer (a code, terms or an order) keeps the key first. Learned paths are replayed after 2 successes instead of 3, and
+    the software reads the DNS page fewer times while it writes. These are expected savings from production data; they have
+    not yet been measured on live sessions. See [After the sign-in](/docs/guides/secure-sign-in#after-the-sign-in).
+  - **Waiting screens.** Every waiting screen shows the same four steps (Sign in, Read records, Make changes, Check), one
+    line, and an estimate such as "Usually under half a minute." Past the usual time it says "Taking longer than usual. It is
+    still working, so keep this window open." Nothing that is still working is red, and an ended session shows a neutral mark
+    with one line that says what to do. The strings are in all 13 languages.
+  - **Where people stop.** Analytics has a **Secure sign-in** tab: started and finished, typical and slow time to **Done**,
+    the funnel with what was lost at each stage, the median and slowest tenth of each step, why sessions stopped in plain
+    words, and recent runs that open as a timeline. A domain's **History** tab lists its own runs. See
+    [Analytics](/docs/getting-started/console#secure-sign-in-tab). The API adds
+    [`GET /v1/analytics/secure-sign-in`](/docs/api-reference/analytics/getSecureSignInFlow),
+    [`GET /v1/analytics/secure-sign-in/sessions`](/docs/api-reference/analytics/listSecureSignInSessions) and
+    [`GET /v1/analytics/secure-sign-in/sessions/{sid}`](/docs/api-reference/analytics/getSecureSignInTimeline).
 - **November 2, 2026 (evening): secure sign-in with no live page, and the console's keys, install status and sign-up.**
   - **Secure sign-in.** Your customer no longer sees the provider's browser session, for any provider. Codes, emailed
     links, approvals on a phone and device checks are screens of ours. Name.com's "Unrecognized device" and "Remember
