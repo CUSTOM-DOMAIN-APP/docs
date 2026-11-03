@@ -137,8 +137,13 @@ project that holds the zone, signed in with the DNS Administrator role, run
 `gcloud auth print-access-token`, and paste the token with the project ID. The
 token expires within an hour, so it is used once and never kept.
 
-Use the project ID and access token above. The Google Cloud DNS sign-in is not
-offered until Google verifies the app.
+On the hosted service you can also use **Sign in with Google Cloud**: sign in with
+the Google account that can edit the domain's public Cloud DNS zone. CustomDomain™
+finds the Google Cloud project that holds the zone and writes the records. It asks
+for these scopes: `openid`, `email`, `ndev.clouddns.readwrite` and
+`cloudplatformprojects.readonly`. Until Google finishes reviewing the app, Google
+may show a notice that it has not verified the app yet. The project ID and access
+token above stay available as the other option.
 
 ### Azure DNS (`azuredns`)
 
@@ -325,7 +330,9 @@ under your company's identity**, which is a business step, not code. The hosted
 service has one for Cloudflare, DigitalOcean, DNSimple, Azure DNS
 (**Sign in with Azure DNS**; users in other organizations see an unverified
 publisher warning until the app has a verified publisher), Linode, Netlify,
-Vercel (the CustomDomain™ integration) and WordPress.com. It offers Porkbun's **Approve access at Porkbun**, which needs no
+Vercel (the CustomDomain™ integration) and WordPress.com, and one for Google Cloud DNS
+(**Sign in with Google Cloud**; until Google finishes reviewing the app, Google may show a
+notice that it has not verified the app yet). It offers Porkbun's **Approve access at Porkbun**, which needs no
 registration, and the sign-in through Dynadot's and Unstoppable Domains' own
 MCP servers.
 
@@ -340,8 +347,6 @@ apply.
 
 Built, but not yet switched on for the hosted service:
 
-- **Sign in with Google Cloud**, held until Google verifies the app. Connect
-  Google Cloud DNS with a project ID and an access token meanwhile.
 - **Grant access at OVHcloud**, which needs an OVHcloud application for each
   region served.
 - **Sign in through the provider's MCP server** for Hostinger, Namecheap,
