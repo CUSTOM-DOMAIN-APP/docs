@@ -17,7 +17,8 @@ three of the six [ways to connect](/docs/concepts/glossary#ways-to-connect):
 - **A provider sign-in that is kept**, where the deployment keeps that provider's
   sign-in. The hosted service does at some providers (see
   [Managed sign-ins](/docs/connect-flow/managed-connections#managed-sign-in-grants)).
-  These are listed with the accounts, grouped by provider.
+  These are listed with the accounts, grouped by provider. On **Connected accounts** you can also
+  [add an account by signing in to the provider](#add-an-account-by-signing-in-with-the-provider) directly.
 - **A secure sign-in** at a provider that offers no sign-in a third party can use,
   where our software makes a lasting API key after your customer signs in. See
   [Keys made at a secure sign-in](#keys-made-at-a-secure-sign-in), and
@@ -349,6 +350,7 @@ owner may, not the member who connected the key. See
 | `POST /v1/provider-accounts/{id}:check` | [Check now](#health-checks): read the key against its provider and answer `{ account, result }`. Once a minute for an account. |
 | `DELETE /v1/provider-accounts/{id}` | Revoke: the key is deleted; its domains stay connected. Answers [what that leaves](#remove-an-account): `used_by` and `revoke_url`. |
 | `POST /v1/provider-accounts:sign-in` | Start a [secure sign-in that adds an account](#add-an-account-by-secure-sign-in), with no domain. The console only. |
+| `POST /v1/provider-accounts:oauth-start` | Start a [sign-in with the provider that adds an account](#add-an-account-by-signing-in-with-the-provider): `{ provider, application_id?, return_origin }`, answers `{ authorize_url, provider, flow, callback_origin }`. The console only. |
 
 A key the provider refuses marks the account `needs_reconnect` and each of its
 domains records it on its timeline. A refusal that only concerns one zone (the
@@ -413,6 +415,9 @@ so a flow this long works on a phone. Nothing is chosen for you.
    and sent to the connect page. The address `/app/accounts/new?provider=<id>` opens at step 2, and for a company with no way
    step 2 says so and links the connect page.
 2. **How to connect.** Only that company's ways, easiest first, as `account_ways` lists them:
+   - **Sign in with &lt;company&gt;** opens the company's own sign-in window, where you approve access. The account
+     appears in Connected accounts as soon as you do, with every domain the sign-in reaches. See
+     [Add an account by signing in with the provider](#add-an-account-by-signing-in-with-the-provider).
    - **Sign in** opens the secure sign-in over the page, as the connect page's does. You sign in at the company, we make
      the key and check it by listing the domains it reaches, and the key waits in memory, never in an account, for ten
      minutes. See [Add an account by secure sign-in](#add-an-account-by-secure-sign-in).
@@ -453,6 +458,35 @@ the first step takes the notice with it and shows it above **Which company**, be
 that company again names the key on its step 2 until you start another sign-in; choosing another company leaves the notice behind.
 The page needs the member role or above.
 
+## Add an account by signing in with the provider
+
+For providers that offer a sign-in other apps can use (OAuth), **Connected accounts** shows **Sign in with
+&lt;provider&gt;** as the first way to add an account. Pick it, approve access in the provider's own window, and
+the account appears in Connected accounts. You don't make or paste an API key.
+
+- **Which providers.** Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Vercel and WordPress.com.
+  [`GET /v1/providers`](/docs/api-reference/providers/listProviders) lists `oauth` first in a company's
+  `account_ways` where it is offered. Azure DNS, Google Cloud DNS, Porkbun and OVHcloud are not offered,
+  because their sign-in starts from a domain; connect a domain with them from the connect page instead.
+- **What is kept.** The access the provider gives, encrypted, with a refresh token, so the account keeps
+  working without you signing in again. A sign-in that gives no refresh token adds no account.
+- **What it may do.** Every domain the sign-in reaches (scope `all`), continuous access. Connect domains with it
+  right away.
+- **When it stops working.** If the provider refuses the saved sign-in, the account shows **Needs a new
+  sign-in** (`needs_reconnect`). Add it again with **Sign in with &lt;provider&gt;**: for DNSimple and Vercel
+  this renews the same account; for the others it adds a new one, and you remove the old one.
+- **Removing it** also revokes its access at the provider.
+- **Who can start it.** An owner, an admin or a member, from the console only.
+  `POST /v1/provider-accounts:oauth-start` starts it; a pasted key or a secure sign-in cannot replace the key of
+  an account made this way (`409`).
+
+If you decline, close the window, or the provider can't keep you signed in, no account is added and the page
+says so.
+
+Self-hosted deployments offer it for a provider only when that provider's OAuth app is configured
+(`OAUTH_<ID>_CLIENT_ID` and `OAUTH_<ID>_CLIENT_SECRET`) and its sign-in is kept (`OAUTH_MANAGED_PROVIDERS`
+and a grant encryption key).
+
 ## Add an account by secure sign-in
 
 The console's **Connected accounts** can add an account without a pasted key ([the page that does it](#add-an-account-in-the-console)): the person signs in to the provider
@@ -466,7 +500,7 @@ with `403`). The `X-CustomDomain-Client` header and the `Origin` alone start not
 user's token, a delegated agent token and the operator's key are refused with `403` `browser_account_unavailable`.
 Your own backend's API call does not start one; add the key with `POST /v1/provider-accounts` instead.
 [`GET /v1/providers`](/docs/api-reference/providers/listProviders) lists each company's `account_ways`, easiest
-first: `secure_sign_in` where the deployment runs it for that company, then `api_key`.
+first: `oauth` where [signing in with the provider](#add-an-account-by-signing-in-with-the-provider) is offered, then `secure_sign_in` where the deployment runs it for that company, then `api_key`.
 
 Once the key is made, the member who started the sign-in reads it with `GET /v1/browser-sessions/{id}` (state
 `key_ready`, the `zones` the key lists, what the key is, and when the ten minute wait ends) and confirms with
