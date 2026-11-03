@@ -203,7 +203,11 @@ Everything below is checked before the first record is written, so a call that i
   the scope on its own, use `PATCH /v1/provider-accounts/{id}`.
 
 Each result in `results` names the `application_id` the domain went into, with its `status`: `connected`, `already`
-or `failed`. A domain whose write fails does not stop the others. A call that connected at least one domain is one
+or `failed`. A domain whose write fails does not stop the others. The account is read again before each domain: if it was
+removed, its key was replaced (a renewal, a new key pasted, or a switch to one time access that deleted the key) or its
+status changed (the provider refused the key somewhere else) after the earlier domains were taken, each domain not yet
+taken is `failed` with the reason, nothing more is written at the provider or linked, and a one time key is left alone.
+Connect the rest again with the account as it is. A call that connected at least one domain is one
 `provider_account.domains_connected` row in the [audit log](#audit-log), naming those domains and no others. A
 domain that was already serving and already linked to this account is left as it is (`already`), and a call that
 only names such domains leaves no row. See the
@@ -278,7 +282,14 @@ A name (`label`) is one to 80 characters once spaces at its ends are removed (li
 byte order mark there too), counted in characters, and holds no control or invisible character:
 no NUL, tab or line break, zero width space, byte order mark or text direction override. An empty
 name, a longer one or one with such a character answers `400` `invalid_request` and nothing in the
-call is stored. The console says the same words before it asks.
+call is stored. The console says the same words before it asks. The rule holds when an account is added
+(`POST /v1/provider-accounts`) as well: a name that breaks it answers `400` before the key is read at the
+provider, and a name left out or empty becomes `<Provider> account`. The names CustomDomain™ gives a key made at a
+secure sign-in (`<Provider> key for <domain>`) are cut to fit and end with an ellipsis, so you can always rename
+an account to its own name.
+
+A rename, or a change of access, scope or domains, writes only what it changes. A key renewed, or
+refused, while your call is running is kept as it is, and the answer is the account after the change.
 
 A viewer reads the accounts without what identifies your customer at their
 provider: a [key made at a secure sign-in](#keys-made-at-a-secure-sign-in) shows
@@ -697,7 +708,9 @@ agent token is refused. It answers the account and a `result`:
 - `refused`: the provider refused the key, and the account is now
   `needs_reconnect`.
 - `unreachable`: the provider could not be asked, or answered with an error that
-  is not a refusal. `message` says what. The failure counts toward the backoff.
+  is not a refusal. `message` is one fixed sentence ("the provider could not be reached, so the
+  key was not checked; try again in a minute") and never quotes the provider, whose own words can
+  quote the request that carried the key. The failure counts toward the backoff.
 
 Every check that asked the provider is in the [audit log](#audit-log) as
 `provider_account.checked`, with who asked, the account and the `result` (`ok`,
@@ -936,7 +949,7 @@ is recorded under that key's ID, and an agent under `agent:<grant id>`:
 | `provider_account.shared` | An admin or an owner lets another application use the key. Names the applications it serves before and after, and the ones just shared (`application_ids`). |
 | `provider_account.unshared` | An admin or an owner takes that back. Same fields. |
 | `provider_account.checked` | A key is checked on request ([Check now](#check-now)). The `provider` and the `result`: `ok`, `refused` or `unreachable`. One row for each check that asked the provider, never the key or the provider's words. |
-| `provider_account.domains_connected` | A [call to connect many domains](#connect-many-domains-at-once) connected at least one. The `provider` and the names of the domains connected, in one row for the call. A call that connected none leaves no row. |
+| `provider_account.domains_connected` | A [call to connect many domains](#connect-many-domains-at-once) connected at least one. The `provider` and the names of the domains connected, in one row for the call. A call that connected none leaves no row. The rows a connect or a Check now writes after its work (this one, `provider_account.relinked`, `provider_account.domain_added`, and the `provider_account.updated` of a refused key that works again) are written even when the caller has hung up. |
 | `provider_account.removed` | Our copy is deleted: revoked, its last domain removed, or the write after a sign-in failed. |
 | `agent.acted` | An agent changed a domain's DNS under its grant: it used a saved key for a domain (`used a saved key`), re-applied a domain's records (`re-applied a domain's records`) or moved a domain's nameservers, or back (`moved a domain's nameservers`, `moved a domain's nameservers back`). The row is `agent:<grant id>` in the actor. |
 | `credential.used_for_nameservers` | A [nameserver move](/docs/guides/nameserver-migration), or a move back, uses its key. |

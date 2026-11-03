@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026: connecting more domains stops when its account changes, a rename keeps what changed meanwhile, and a
+  demoted creator no longer acts as an owner.** [Connecting many domains](/docs/connect-flow/provider-accounts#connect-many-domains-at-once)
+  reads the account again before each domain: if it was removed, its key was replaced or the provider refused the key
+  elsewhere, the domains not yet taken answer `failed` with the reason and nothing more is written. Renaming an account or
+  changing its access, scope or domains writes only that change, so a new key or a refusal that lands in the same moment is
+  kept. A name given when you add an account follows the rename rule (1 to 80 characters, no control or invisible character),
+  and the names made at a secure sign-in are cut to fit. Check now answers one fixed sentence when the provider cannot be
+  reached instead of the provider's own words, and the audit rows a connect or a Check now writes after its work are kept
+  even if the caller hangs up. Someone who created a workspace and was later made an admin or a member now acts in the
+  console with that role, not with the owner authority of the workspace's first key. See
+  [Who can manage an account](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
 - **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
   - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
     workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**

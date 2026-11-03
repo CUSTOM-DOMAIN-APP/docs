@@ -20,8 +20,10 @@ _openapi:
           account is now `needs_reconnect`, with a timeline event for each
           domain it covers and an inbox item, once), or `unreachable` (the
           provider could not be asked or answered with an error that is not a
-          refusal; `message` says what, and the failure counts toward the
-          backoff and toward `needs_you` `check_failed`).
+          refusal; `message` is one fixed sentence that names no cause, since the
+          provider's own words can quote the request that carried the key and stay
+          in the service's logs, and the failure counts toward the backoff and
+          toward `needs_you` `check_failed`).
 
           A pasted key the provider had refused that works again returns to
           `active`, recorded in the audit log as `provider_account.updated`

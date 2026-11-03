@@ -7709,7 +7709,13 @@ paths:
               required: [provider, credential]
               properties:
                 provider: { type: string }
-                label: { type: string }
+                label:
+                  type: string
+                  description: >-
+                    The account's name: one to 80 characters once trimmed, with no control or
+                    invisible character in it, the rule a rename holds (`400` `invalid_request`
+                    otherwise, before the key is read at the provider). Left out, or empty once
+                    trimmed, it is "<provider> account".
                 access:
                   type: string
                   enum: [continuous, one_time]
@@ -8041,6 +8047,12 @@ paths:
         the label, access, scope, domains and applications before and after).
 
 
+        The call writes only what it changes: the name, the access mode, scope and
+        domains, and the applications are stored one set of columns each, never the
+        whole account as it was read. A key renewed or refused while the call runs
+        is therefore kept as it is, and the answer is the account after the writes.
+
+
         What each kind of account allows when `scope` or `domains` widens it
         (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
         provider, for every kind, with one exception: a key made at a secure
@@ -8338,7 +8350,18 @@ paths:
         `provider_account.domain_added` rows it may also write; a call that
         connected none writes no such row. A domain already serving that was
         linked to this account before the call is left as it is (`already`), is
-        not named in the row, and does not make one.
+        not named in the row, and does not make one. Every row the call writes
+        after its work (the three above) is written even when the caller has
+        gone away by then.
+
+
+        The account is read again before each domain. When it was removed, its
+        key was replaced (a renewal, a new key pasted, or a switch to one time
+        access that deleted the key) or its status moved (the provider refused
+        the key somewhere else) after the earlier domains were taken, each
+        domain not yet taken answers `failed` with the reason in `message`,
+        nothing more is written at the provider or linked, and a one time key is
+        left alone. Connect the rest again with the account as it is.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -8536,8 +8559,10 @@ paths:
         account is now `needs_reconnect`, with a timeline event for each domain
         it covers and an inbox item, once), or `unreachable` (the provider
         could not be asked or answered with an error that is not a refusal;
-        `message` says what, and the failure counts toward the backoff and
-        toward `needs_you` `check_failed`).
+        `message` is one fixed sentence that names no cause, since the provider's
+        own words can quote the request that carried the key and stay in the
+        service's logs, and the failure counts toward the backoff and toward
+        `needs_you` `check_failed`).
 
 
         A pasted key the provider had refused that works again returns to
@@ -8589,7 +8614,9 @@ paths:
                     description: What the check found.
                   message:
                     type: string
-                    description: For `unreachable`, the provider's own words, on one line.
+                    description: >-
+                      For `unreachable`, one fixed sentence (the provider could not be reached, so
+                      the key was not checked, try again in a minute). It never quotes the provider.
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }

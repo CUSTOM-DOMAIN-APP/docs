@@ -27,6 +27,12 @@ _openapi:
           answers `422` `use_once_credential`. A change is recorded in the audit log
           (`provider_account.updated`, with the label, access, scope, domains and
           applications before and after).
+
+
+          The call writes only what it changes: the name, the access mode, scope and
+          domains, and the applications are stored one set of columns each, never the
+          whole account as it was read. A key renewed or refused while the call runs
+          is therefore kept as it is, and the answer is the account after the writes.
       - content: >-
           What each kind of account allows when `scope` or `domains` widens it
           (`made_by.how` names the kind). Narrowing and renaming ask nothing of the
