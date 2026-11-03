@@ -15,6 +15,26 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 2, 2026 (evening): secure sign-in with no live page, and the console's keys, install status and sign-up.**
+  - **Secure sign-in.** Your customer no longer sees the provider's browser session, for any provider. Codes, emailed
+    links, approvals on a phone and device checks are screens of ours. Name.com's "Unrecognized device" and "Remember
+    this device?" pages are pressed for them. A code Squarespace asks for in its "Verify to continue" box is typed on our
+    **Enter your code** screen and entered for them. The provider's page still shows for a human check, an identity
+    provider's own sign-in, the provider's terms or order, and a password asked again after the sign-in. See
+    [No live page](/docs/guides/secure-sign-in#no-live-page). The API adds
+    [`POST /v1/browser-sessions/{sid}:code`](/docs/api-reference/cloud-browser/codeBrowserSession), `handback.relay` and
+    `handback.rejected` on the session view, and `live_check` beside `no_live_page`.
+  - **Keys.** The key bar shows `CUSTOMDOMAIN_API_KEY` as a label above the masked key, and **Copy** gives the key
+    alone. **Install** explains the API key and the client secret side by side. See
+    [API key or client secret](/docs/authentication/overview#api-key-or-client-secret).
+  - **Is the widget installed?** Analytics, the **Overview** widget card and **Install** say "Installed on
+    yourapp.com", "Only seen on localhost" or "Not seen in your product yet", and keep your own console tests apart.
+    `GET /v1/analytics/connect` adds
+    [`install`](/docs/api-reference/analytics/getConnectAnalytics) per application. See
+    [Analytics](/docs/getting-started/console#analytics).
+  - **Sign up and design.** Signing up with GitHub or Google Workspace fills in the welcome's company and website. The
+    Design preview adds **Provider not supported**, **Reconnected**, **Remove: sign in**, **Remove: done** and **Paused
+    session**. See [Design the widget](/docs/getting-started/console#design-the-widget).
 - **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
   - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
     workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**

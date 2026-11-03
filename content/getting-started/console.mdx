@@ -53,6 +53,12 @@ before the box existed, or you came in through an invite or a Google or GitHub
 sign in from the sign in page, the console asks once, on a page of its own, and
 then takes you where you were going.
 
+**Signing up with Google or GitHub fills in the welcome.** When GitHub gives a
+company and a website on the profile, or the Google account is a Google Workspace
+account (a company's own domain, not Gmail), the welcome starts with that company
+name and website. Anything you typed yourself is never overwritten, and an
+address at a free mail service gets no company guess.
+
 The signup form also carries bot protection: a bot-check widget, signup rate
 limits, and disposable-email-address blocking. If the bot check fails, wait a
 moment and try again.
@@ -258,7 +264,11 @@ only" the one you picked. The setup list is the workspace's too, so it does not 
 
 Open **API & SDK**. Every workspace has a **default key** at the top of the page,
 made with the workspace and needing no card: owners can view and rotate it at any
-time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)). For another key, press
+time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)).
+The key bar names the variable first: `CUSTOMDOMAIN_API_KEY` is a label above the
+masked key, and **Copy** copies the key alone, not the label, and says so. The
+same bar is on the welcome step that shows your key and on the **Install** tab, and
+the application ID there reads the same way. For another key, press
 **Create key**, give it a name and pick an **Environment**: Production
 (`cd_live_…`), Development or Staging (both `cd_test_…`). The full key is shown
 once ("Copy your new key now"); only a hash is kept. Admins and owners can create
@@ -268,6 +278,20 @@ says why. Creating one needs a card on file, which starts the 14 day free trial
 card, but another key is not, so a workspace without a card that presses **Create
 key** sees "Start your free trial to create API keys" with an **Add a card**
 link, and the key is created once the card is in.
+
+#### API key or client secret [#key-or-secret]
+
+Two credentials look alike and do different jobs. The **Install** tab's first step
+shows them as two cards.
+
+| | API key | Client secret |
+| --- | --- | --- |
+| **What it is** | The workspace's key, `cd_live_…` or `cd_test_…`. It proves a call comes from your server. | One application's secret, `sk_…`. |
+| **Where to find it** | **API & SDK**: the default key at the top, or **Create key** for more. The key bar on **Install** has **Get your API key**. | Shown once, in the response that creates an application over the API. An application made in the console never shows it. |
+| **What it can do** | Full access to the workspace: domains, connections, keys, webhooks. Keep it on your server. | Mint widget tokens for that application and nothing else. It is not an API key, and an API key in its place is refused with `401`. |
+
+Put the API key in your server's environment as `CUSTOMDOMAIN_API_KEY`. You do
+not need the client secret for an application made in the console: see below.
 
 The application the console made for you has a client secret, but the console
 keeps it sealed and never shows it. To mint widget tokens from your server, send
@@ -661,6 +685,25 @@ overwrote the step; the control plane now keeps the step before the close, and
 sessions recorded earlier read correctly once it is updated. Steps with the same
 label add up.
 
+**Is the widget installed?** Analytics, the widget card on **Overview** and the
+check on the **Install** tab all answer it the same way, from the sessions the
+widget records when it opens. A session is a **console test** when it came from
+your own console (**Try it live** and the welcome's domain step); every other
+session came from your product. You see one of:
+
+- "Installed on yourapp.com, last seen 2 hours ago": the widget opened in your
+  product. The site is the page's address without a path.
+- "Only seen on localhost": it opened only on your own machine so far.
+- "Not seen in your product yet": no session from your product has been recorded.
+
+Sessions are split into **in your product** and **console tests**, so your own
+clicks in **Try it live** never make the widget look installed. The **Design**
+preview opens no session. The API has it as `install` on
+[`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics),
+one entry per application with `product_sessions`, `test_sessions`, the same two
+counts inside the date range, `last_product_at`, `last_product_host` and
+`last_test_at`; an application with no session is not listed.
+
 ### Traffic
 
 What the edge answered for your domains. The tab opens with what a request is: one
@@ -960,7 +1003,11 @@ the person emails the records to someone with access, which reports
 `FINISHED_SUCCESSFULLY_LINK_SHARED`), **Email setup** (only when you open the
 widget with `enableEmail`: the mail records to add first) and **Remove a
 domain** (only when you open it with `mode: "remove"`: what happens to the
-records). Each screen says which status it
+records). Five more are the screens the widget draws in cases your code does not
+control: **Provider not supported**, **Reconnected**, **Remove: sign in**,
+**Remove: done** and **Paused session**. The preview has no "choose how to
+reconnect" screen, because the widget has none, and it does not draw a
+saved-access card yet. Each screen says which status it
 reports to your code. Look at the widget in light or dark, on a computer or a
 phone, and in any language it speaks.
 
@@ -1148,6 +1195,10 @@ it, or in its place once the old nameservers no longer answer
   language and page framework you picked below, and the steps in order. It never
   holds a secret: the key stays in your server's environment, you set it yourself,
   and the prompt tells the agent never to ask you to paste it.
+- **Is it installed?** A line above the steps says whether the widget has opened in
+  your product ("Installed on yourapp.com, last seen 2 hours ago", "Only seen on
+  localhost" or "Not seen in your product yet"). Console tests do not count: see
+  [Analytics](#analytics).
 - **Four steps by hand**, with code for your language on tabs (each tab has its
   language's mark). The first step, minting a token on your server, has **Get your
   API key**: it opens the form that makes a key on **API keys & webhooks**. You see
