@@ -95,6 +95,7 @@ provider's real page appears only where a security rule keeps it there:
 | A human check, such as a CAPTCHA or "Verify you are human" | Only your customer may answer it, on the real page. |
 | An identity provider's own sign-in (Google, Apple, Microsoft, Facebook, GitHub), with its account chooser and consent | It is your customer's own step. Our software never touches an identity provider's page. |
 | The provider's terms or an order, such as an API agreement or IONOS's free order | Only your customer accepts a provider's terms or places an order. |
+| Account details the provider needs before it makes a key, such as the postal address Gandi asks for on an organization | Only your customer gives their own details. Our software never types an address, a phone number or any other personal detail. |
 | A password the provider asks for again after the sign-in | Until our own password screen relays it. |
 
 **Pressed for your customer.** Some provider pages ask nothing and only want a
@@ -283,7 +284,7 @@ same browser and without asking your customer anything, our software tries to ma
 a [lasting API key](#lasting-api-keys) on the provider's own API page, within 150
 seconds. If it works, CustomDomain™ checks and keeps the key, and the domain moves
 to the provider's API from then on with no second write. If the key page asks for
-anything (a code, a password, an agreement or an order), the attempt ends: nobody
+anything (a code, a password, an agreement, an order or account details), the attempt ends: nobody
 is watching any more. The records are already in place either way. The key was
 made first until 2026-11-03, and it failed 17 of 21 times in production, which
 cost your customer 25 to 60 seconds of waiting before any record was touched.
@@ -292,7 +293,7 @@ and could not be kept is not named on that last screen. It is named in your
 console's **Activity** and in the session while it lives.
 
 **The key first.** A provider whose key flow needs your customer (a sign-in on the
-key page, a code, an agreement to tick, or an order) keeps the older order: the
+key page, a code, an agreement to tick, an order, or account details to fill in) keeps the older order: the
 popup reads "Getting things ready" over the records still to add, with "This takes
 about half a minute.", then "Adding records", then **Done.** Our software makes the
 key on the provider's own API page, CustomDomain™ checks it and keeps it, and the
@@ -903,7 +904,7 @@ so you can read what a session did. Every route is in the
 | `POST /v1/connections/{id}:reconnect-link` | A single use link, for 14 days, that opens the reconnect sign-in; `{"send": true}` emails it to your customer when you gave us their address (above). Only an API key may call it: a widget token and an agent token get `403`, because the link signs in as your customer. |
 | `POST /v1/connections/{id}/browser:resume` | Hands the same session to a new popup (above). |
 | `POST /v1/browser-sessions:redeem` | The popup trades its single use code for the session token. |
-| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, `agreement` for a provider's API terms, or `order` for the free order that turns the provider's API on, whose terms and Buy now are your customer's), `handback.relay` that the code is asked on the popup's own screen (`handback.rejected` when the provider refused the last one), `check` that a human check is on screen, `no_live_page` (`true` on every session: the popup shows the provider's page only for what the [list above](#no-live-page) keeps there) with `live_check` (a human check is on the provider's real page), and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
+| `GET /v1/browser-sessions/{sid}` | The session as the popup shows it. While your customer signs in it carries `form` (the provider's reviewed sign-in form, with `forgotUrl`, the provider's own reset page) and `signals` (what the page asks for: a code, a link, an approval, a check, its own error, where to zoom); `handback` says why a page was handed back (`code`, `check`, `agreement` for a provider's API terms, `order` for the free order that turns the provider's API on, whose terms and Buy now are your customer's, or `account` for details the provider's account must hold before it makes a key, which your customer fills in on the provider's page and saves), `handback.relay` that the code is asked on the popup's own screen (`handback.rejected` when the provider refused the last one), `check` that a human check is on screen, `no_live_page` (`true` on every session: the popup shows the provider's page only for what the [list above](#no-live-page) keeps there) with `live_check` (a human check is on the provider's real page), and `wrongAccount` (`account`, `tried`, `max`) that the account signed in does not hold the domain. `signals` and `check` are hints for the popup's words: the server clicks or allows nothing because of them. |
 | `POST /v1/browser-sessions/{sid}:code` | Sends the code the provider asked for in a frame of its own (Squarespace's "Verify to continue"), only while the view's `handback` is `{reason: "code", relay: true}`. Body `{"code": "..."}`, 4 to 12 letters and digits. `204`; `409 browser_wrong_state` when no code is asked for or one is already on its way; `400` for a code of the wrong shape, which is never echoed. |
 | `POST /v1/browser-sessions/{sid}:switch-account` | Signs the remote browser out of the provider and opens its sign-in again, only while the view carries `wrongAccount` (otherwise `409 browser_wrong_state`). `202`; meanwhile the view's `notice` is `switching_account`. One every 10 seconds (`429 browser_rate_limited`). |
 | `POST /v1/browser-sessions/{sid}:viewport` | The popup's new size (above). |
