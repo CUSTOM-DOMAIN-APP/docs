@@ -83,7 +83,12 @@ instead:
   providers. A domain that was bought at Google Domains is Squarespace's now
   and keeps Google's nameservers, which Google Cloud DNS zones use too: `provider`
   is `squarespace` (so its secure sign-in is offered) and `also_provider` is
-  Google Cloud DNS.
+  Google Cloud DNS, with `oauth_available` saying whether Google Cloud's own
+  sign-in can run on the deployment (it is held on the hosted service until Google
+  verifies the app). The console lists Google Cloud DNS as the first row under
+  **Other ways to connect**, and the widget does only where `oauth_available` is
+  true. See [Squarespace and Google
+  Domains](/docs/dns/providers#squarespace-and-google-domains).
 - **`end_user_automatic`**: true only when the recommended rail is OAuth or
   one-click. This is the fact `supports_automatic` was always misread as.
 - **`blocked_reason`**: present when *no* rail can connect the domain:

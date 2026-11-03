@@ -349,6 +349,36 @@ shows its steps: a Shopify store on Google Cloud DNS's nameservers, a Tumblr
 domain on WordPress.com's, and a Canva domain on OpenSRS's shared DNS. The
 domain is then connected by adding the records in the platform's own settings.
 
+## Squarespace and Google Domains
+
+Google sold Google Domains to Squarespace, so a name bought there is Squarespace's
+now. Its DNS usually stayed on Google's nameservers (`ns-cloud-*.googledomains.com`),
+which a zone in your own Google Cloud project gets too, so the nameservers alone
+cannot say who holds the zone. CustomDomain™ asks the registrar. When it names
+Squarespace, the domain is connected as a Squarespace domain: **Secure sign-in**
+where it is offered, or the records by hand. Squarespace is the way to use when the
+records are edited on Squarespace's DNS page, which is the usual case.
+
+If the zone is in a Google Cloud project of yours instead, the console's Connect
+page and the widget also list **Its DNS is also at Google Cloud DNS** as the first
+row under **Other ways to connect**:
+
+- **Where Sign in with Google Cloud runs**, the row signs in with the Google
+  account that can edit the zone, and we add the records. The console uses that
+  sign-in once. The widget lists the row only in this case, because it has no way
+  to paste a key.
+- **Where it is held**, as on the hosted service until Google verifies the app, the
+  console's row is the Google Cloud DNS key card: a project ID and an access token
+  (see [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns)), used once
+  and never kept. The widget shows no row, so a customer there sees Squarespace's way
+  and the records.
+
+A domain whose registrar is not Squarespace, or whose registrar lookup finds
+nothing, is unchanged: it is a Google Cloud DNS domain with no second way. The
+check reports the second way as
+[`also_provider`](/docs/concepts/ownership-and-setup-types), with `oauth_available`
+saying whether its sign-in can run on the deployment.
+
 ## Where keys are kept
 
 Sign-ins and one-click setup store nothing unless the connection is

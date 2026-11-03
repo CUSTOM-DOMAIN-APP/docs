@@ -1097,11 +1097,18 @@ paths:
                       Google Domains name `provider_id` is `squarespace` (the
                       registrar, found over RDAP) and this is `gcpdns`, whose
                       nameservers it keeps. Absent otherwise.
-                    required: [provider, provider_name, reason]
+                    required: [provider, provider_name, reason, oauth_available]
                     properties:
                       provider: { type: string }
                       provider_name: { type: string }
                       reason: { type: string, enum: [former_google_domains] }
+                      oauth_available:
+                        type: boolean
+                        description: >-
+                          Whether that provider's own sign-in can run on this
+                          deployment: its flow is wired and not held. Google
+                          Cloud's is held on the hosted service until Google
+                          verifies the app, so `false` there.
         '400': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/Error' }
 
@@ -12353,11 +12360,20 @@ components:
             (`squarespace`, found over RDAP, so its secure sign-in is offered)
             and this is the nameservers' (`gcpdns`). Absent otherwise, and when
             the registrar lookup answers nothing.
-          required: [provider, provider_name, reason]
+          required: [provider, provider_name, reason, oauth_available]
           properties:
             provider: { type: string }
             provider_name: { type: string }
             reason: { type: string, enum: [former_google_domains] }
+            oauth_available:
+              type: boolean
+              description: >-
+                Whether that provider's own sign-in can run on this
+                deployment: its flow is wired and not held, the same test as
+                the check's own `oauth_available`. Google Cloud's sign-in is
+                held on the hosted service until Google verifies the app, so
+                this is `false` there, and a client offers the second way only
+                where it is `true`.
         recommended_rail:
           type: string
           enum: [saved_access, oauth, domain_connect, cloud_browser, api_key, manual]
