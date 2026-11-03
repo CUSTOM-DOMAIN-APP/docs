@@ -15,6 +15,15 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026: the www redirect is checked when a domain is created, and `/power` changes are in the audit log.**
+  A domain created with `www_redirect: true` (`POST /v1/connections`, or connecting with a kept account) is held to
+  the checks `PATCH /v1/connections/{id}` already made: a subdomain is refused with `422 www_redirect_apex_only`, and a
+  redirect that would send visitors round in a circle is refused with `422 redirect_loop`, before anything is stored.
+  Connecting with an account reports a refused domain as `failed` with the reason and connects the others.
+  `POST /v1/connections/{id}/power`, `power:repower` and `DELETE /v1/connections/{id}/power` now record a
+  `connection.updated` entry for a change to `www_redirect` or `redirect_to`. A forward or www redirect you set is no
+  longer put back by a later check of the domain. See [Forwarding](/docs/connect-flow/forwarding#enabling-it-with-the-api-edge-served)
+  and [Create a connection](/docs/connect-flow/create-a-connection).
 - **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
   - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
     workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**

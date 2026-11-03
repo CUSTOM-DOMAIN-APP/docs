@@ -88,7 +88,10 @@ redeploy. When neither is set, the domain is proxied to its origin as usual.
   redirect_loop`) when `www` forwards back to the root. A domain that is being removed answers `409` to all of
   these, also when the removal starts while the change waits.
 - **The www redirect and its record.** `www_redirect` is for a root domain only (`422 www_redirect_apex_only`
-  for a subdomain). Turning it on adds a `www` record to the records the domain needs. A zone CustomDomain™ hosts
+  for a subdomain), and a domain created with it (`POST /v1/connections`, or each domain of connecting with a kept
+  account) is held to the same checks as a change before it is stored: a subdomain, or a root whose `www` name
+  forwards back to it (`422 redirect_loop`), is refused and nothing is stored. In a connect with an account the
+  refusal is that domain's own `failed` result and the other domains connect. Turning it on adds a `www` record to the records the domain needs. A zone CustomDomain™ hosts
   is rewritten at once, and a domain whose records were written through a connected provider account is
   rewritten when `move_rewrite` is on. For any other domain the response has `customer_action_required: true`
   and `connection.records_outdated` is sent, and the person adds the record. The domain stays live meanwhile.
@@ -96,7 +99,9 @@ redeploy. When neither is set, the domain is proxied to its origin as usual.
 - **Test mode.** A test mode domain takes `client_label` only; the two redirects answer `403
   sandbox_not_allowed`.
 - **The audit log.** Every change is recorded as `connection.updated`, with the before and after of the fields
-  that changed, by the member or key that made it (`widget:<application id>` for an `app` token). A domain that
+  that changed, by the member or key that made it (`widget:<application id>` for an `app` token). A change made
+  with `POST /v1/connections/{id}/power`, `power:repower` or `DELETE /v1/connections/{id}/power` to `www_redirect`
+  or `redirect_to` is recorded the same way; a call that changes neither writes no entry. A domain that
   is being removed answers `409`. The redirects are stored before the name: if only `client_label` cannot be
   written, the answer is `500`, the redirect change is stored and recorded, and sending the same body again writes
   the name.

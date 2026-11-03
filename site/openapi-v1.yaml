@@ -1309,7 +1309,21 @@ paths:
                     part of the Growth plan and up: on a plan without it the
                     create is refused with `402 plan_upgrade_required` and
                     nothing is stored. Omit to leave the edge on its own router.
-                www_redirect: { type: boolean, default: false, description: Serve an apex↔www redirect for this connection. }
+                www_redirect:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Serve an apex↔www redirect for this connection. For a root
+                    domain (`acme.com`) only: `true` on a subdomain is `422`
+                    `www_redirect_apex_only`, new domain or replay. It is held to
+                    the checks of `PATCH /connections/{id}`: when a visit would go
+                    round in a circle through the redirects of your workspace's
+                    other domains (`www.acme.com` forwarding back to `acme.com`,
+                    say) the call is `422` `redirect_loop` and nothing is stored.
+                    The check and the write are made one after the other with the
+                    workspace's other redirect changes, so a call that waits too
+                    long for its turn answers `503` `redirects_busy`. A replay of
+                    a domain that already exists keeps the redirect it has.
                 override_spf:
                   type: boolean
                   default: false
@@ -1454,6 +1468,26 @@ paths:
             record, and the application has no `apex_ipv4` to use instead. Connect a
             subdomain such as `www`, or add root addresses to the application's
             routing (`PUT /applications/{id}/connect-target`).
+            `www_redirect_apex_only`: `www_redirect: true` on a subdomain.
+            `redirect_loop`: `www_redirect: true` would send visitors round in a
+            circle (or through more than 8 forwards in a row); `details` lists the
+            hosts, naming only the ones you may see (your workspace's, and for an
+            `app`-scoped token its own application's) and `another domain` for the
+            rest, and an end user's widget token or an agent token is told only
+            the domain it is connecting.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: >-
+            `redirects_busy`: only for a call with `www_redirect: true`. Another
+            change to this workspace's forwarding is still being saved, and this
+            one waited for it in vain. Nothing was stored; send it again after
+            the `Retry-After` seconds.
+          headers:
+            Retry-After:
+              description: Seconds to wait before sending the call again.
+              schema: { type: integer }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -7266,6 +7300,13 @@ paths:
         Registers the origin the edge reverse-proxies to (SSRF-validated) plus
         the redirect / root-path config the ask answer carries. `application_url`
         is required to enable.
+
+
+        A change to `www_redirect` or `redirect_to` is recorded in the audit log
+        as `connection.updated`, with the before and after of what changed, by
+        the key that made it (`widget:<application id>` for an `app`-scoped
+        token), as `PATCH /connections/{id}` records its own. A call that changes
+        neither writes no entry.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -7317,7 +7358,9 @@ paths:
         forward now goes to the `www` name, and when that would come back (`www`
         forwards to the root) the call is refused with `422` `redirect_loop` and
         nothing is changed, the origin included. The `www` redirect itself is not
-        cleared here (`PATCH /connections/{id}` turns it off).
+        cleared here (`PATCH /connections/{id}` turns it off). A forward taken
+        off is recorded in the audit log as `connection.updated` (the before and
+        after of `redirect_to`); a domain with no forward writes no entry.
       responses:
         '204': { description: Power removed }
         '401': { $ref: '#/components/responses/Error' }
@@ -7515,6 +7558,13 @@ paths:
       description: >-
         Update the origin and/or config. Omitting `application_url` keeps the
         current origin (unlike enable, which requires it).
+
+
+        A change to `www_redirect` or `redirect_to` is recorded in the audit log
+        as `connection.updated`, with the before and after of what changed, by
+        the key that made it (`widget:<application id>` for an `app`-scoped
+        token), as `PATCH /connections/{id}` records its own. A call that changes
+        neither writes no entry.
       security:
         - widgetJWT: []
         - apiKey: []
@@ -8339,6 +8389,13 @@ paths:
         connected none writes no such row. A domain already serving that was
         linked to this account before the call is left as it is (`already`), is
         not named in the row, and does not make one.
+
+
+        `www_redirect` is held to the checks of `POST /connections`, for each
+        domain on its own: a subdomain, or a root domain whose `www` name would
+        send visitors round in a circle (`www.acme.com` forwarding back to
+        `acme.com`, say), is `failed` with the reason in `message` and nothing
+        is stored for it, and the other domains of the call connect.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -8373,7 +8430,13 @@ paths:
                           application_id:
                             type: string
                             description: The application this domain goes into, one the key serves.
-                www_redirect: { type: boolean }
+                www_redirect:
+                  type: boolean
+                  description: >-
+                    Send visitors of each root domain of the call to its `www`
+                    name. Root domains only, and not where it would make a
+                    circle: a domain that fails either check is `failed` alone,
+                    with the reason in its `message`.
                 client_label:
                   type: string
                   maxLength: 200
