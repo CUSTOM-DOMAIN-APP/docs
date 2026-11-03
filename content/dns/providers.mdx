@@ -64,6 +64,7 @@ records only you know (SES DKIM, a verification `TXT`), see
 | Cloudflare | **Sign in with Cloudflare** | A root CNAME is fine: Cloudflare flattens it. |
 | DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Sign in with the provider** | Netlify writes need the domain on Netlify DNS. |
 | Azure DNS | **Sign in with Azure DNS** | Use a Microsoft account that can edit the domain's public zone; we find the subscription and resource group that hold it. Users in other organizations see an unverified publisher warning, and an organization that limits user consent needs an admin to approve the app. A subscription ID, a resource group and an access token work too. |
+| Google Cloud DNS | **Sign in with Google Cloud** | Use the Google account that can edit the domain's public Cloud DNS zone; we find the Google Cloud project that holds it. Until Google finishes reviewing the app, Google may show a notice that it has not verified the app yet. A project ID and an access token work too. |
 | Vercel | **Install CustomDomain™ on Vercel** | The sign-in is our Vercel integration: install it on the Vercel team that owns the domain. |
 | Porkbun | **Approve access at Porkbun** | Porkbun adds an API key named for CustomDomain™ to the account. Porkbun only lets the API change domains that have API Access turned on. |
 | Dynadot, Unstoppable Domains | **Sign in with the provider**, through the provider's own MCP server | Dynadot lets you sign in only once MCP is on: in Dynadot, open **Tools**, **API**, click **Unlock your account** and switch **MCP Enabled** on. Dynadot also connects with an API key. |
@@ -96,10 +97,6 @@ today, so none of them appears in the console or the widget:
   passes. Until then Hostinger, Namecheap and Spaceship connect with an API key
   (Namecheap only for accounts that qualify), and XServer Domain and Muumuu
   Domain take the records by hand.
-- **Sign in with Google Cloud**: held on the hosted service until Google
-  verifies the app, so it is not offered to anyone there. Google Cloud DNS
-  connects with a project ID and an access token (see
-  [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns)).
 
 ### Speaks one-click setup, but has not onboarded our templates
 
@@ -165,7 +162,7 @@ the credential is created, and lists the steps; see
 | Gandi | Personal access token with "Manage domain name technical configurations" | |
 | Gcore | Permanent API token | The token can change every zone in your account. The domain must use Gcore's nameservers. |
 | GleSYS | API key with Domain access, and the project ID | |
-| Google Cloud DNS | Project ID and an access token | Tokens expire within an hour, so they are used once. The Google Cloud sign-in is not offered on the hosted service until Google verifies the app. |
+| Google Cloud DNS | **Sign in with Google Cloud**, or a project ID and an access token | The sign-in finds the project that holds the zone. Tokens expire within an hour, so they are used once. |
 | Hetzner | Hetzner Console project API token (Read & Write) | Tokens from the old DNS Console no longer work. |
 | hosting.de | API key with Display and Edit under DNS Service, Zones | The domain's DNS zone must be at hosting.de. |
 | Hostinger | hPanel API token | |
