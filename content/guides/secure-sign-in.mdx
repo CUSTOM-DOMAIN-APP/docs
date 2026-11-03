@@ -16,12 +16,14 @@ at the end. Your customer never sees that browser: every screen they use is one
 of ours, and the [few pages that stay the provider's](#no-live-page) are listed
 below.
 
-<Callout title="Offered to selected workspaces for now">
-  Secure sign-in runs only where it is switched on for your workspace and the
-  domain's provider. The hosted service has it on at eight providers: Namecheap,
-  GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship and Hostinger. Network
-  Solutions and Wix are not offered yet: the address of their DNS page has not been
-  confirmed. `POST /v1/domains:check` says so per domain in
+<Callout title="Where it is on">
+  Secure sign-in runs only where it is switched on for the domain's provider. The
+  hosted service has it on for every workspace at sixteen providers: Namecheap,
+  GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship, Hostinger, Network
+  Solutions, Dynadot, NameSilo, Gname, OVHcloud, OpenSRS, ResellerClub and Porkbun.
+  Wix is not offered yet (the address of its DNS page has not been confirmed), nor
+  are Onamae.com, Registro.br, REG.RU and Alibaba Cloud (their dashboards are not in
+  English and have not been checked signed in yet). `POST /v1/domains:check` says so per domain in
   `rails.cloud_browser` (present only where the deployment has it on). When
   `available` is `false`, `reason` says why, for example
   `not_enabled_for_workspace`, `provider_not_listed`, `oauth_available` (the

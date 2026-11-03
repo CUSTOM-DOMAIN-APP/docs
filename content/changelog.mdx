@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026: Sign in with your provider to add an account, and secure sign-in for more registrars.**
+  - **Sign in with &lt;provider&gt;.** On **Connected accounts**, Cloudflare, DigitalOcean, DNSimple, Linode, Netlify,
+    Vercel and WordPress.com accounts can be added by approving access in the provider's own window, with no API key
+    to make or paste. The account stays signed in on its own, and removing it revokes its access. See
+    [Add an account by signing in with the provider](/docs/connect-flow/provider-accounts#add-an-account-by-signing-in-with-the-provider).
+    The API adds [`POST /v1/provider-accounts:oauth-start`](/docs/api-reference/provider-accounts/startProviderAccountOAuth)
+    and the `oauth` value of `account_ways`.
+  - **Secure sign-in** is on for every workspace, at sixteen providers: Network Solutions, Dynadot, NameSilo, Gname,
+    OVHcloud, OpenSRS, ResellerClub and Porkbun join the first eight. See
+    [Secure sign-in](/docs/guides/secure-sign-in).
+
 - **November 3, 2026: secure sign-in that is faster, calmer to wait through, and measured.**
   - **Faster.** The lasting API key is now made after the records. The records are written and checked, your customer
     sees **Done.**, and the same browser then makes the key without asking them anything (a prompt ends the attempt).

@@ -8137,6 +8137,81 @@ paths:
         '422': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /provider-accounts:oauth-start:
+    post:
+      operationId: startProviderAccountOAuth
+      summary: Add a provider account by signing in with the company (the console only)
+      tags: [Provider accounts]
+      description: >-
+        **The console only.** Starts "Sign in with <company>", the way to add a
+        provider account with no domain by the company's own OAuth consent
+        screen. It answers the address to open in a popup. When the person
+        approves access there, the shared sign-in callback
+        (`GET /connect/oauth/callback`) makes the account: every domain the
+        sign-in reaches, continuous access, with the access token and the
+        refresh token kept encrypted (a token near its end is refreshed before
+        it is used). The popup posts `{ok, purpose: "account", provider,
+        account_id}` to `return_origin`, or `{ok: false, code, message}` when
+        the person declined or it failed (`access_denied`, `oauth_failed`,
+        `oauth_scope_not_granted`, `oauth_no_refresh`,
+        `ProviderAuthenticationError`, `account_check_failed`); a token the
+        account did not keep is revoked at the company. Signing in again to the
+        same account (DNSimple's account, a Vercel team) renews the account it
+        made before instead of adding a second one.
+
+
+        The state binds the workspace, the member who started it and the
+        application, is single use and lives ten minutes. Nothing is written
+        before the callback.
+
+
+        Offered only where `account_ways` of `GET /providers` names `oauth` for
+        the company: the deployment runs the company's OAuth app, keeps what it
+        hands back (`OAUTH_MANAGED_PROVIDERS` and a grant encryption key),
+        does not hold the sign-in back, and the company's sign-in needs no
+        domain. Any other is `403` `oauth_account_unavailable`. The caller is
+        the console's own call, as for `POST /provider-accounts:sign-in`: an
+        API key that carries the console's signed visitor forward, held by a
+        member who operates applications (`403` `browser_account_unavailable`
+        otherwise; a viewer is `403` `forbidden`). A workspace an operator
+        suspended starts none (`403` `workspace_suspended`).
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, return_origin]
+              properties:
+                provider: { type: string, description: "The provider id. An account has no domain to detect it from." }
+                application_id:
+                  type: string
+                  description: >-
+                    The application the account is for, one of the workspace's
+                    own live applications (a test mode application is refused,
+                    and another workspace's is `404`). Left out, the account
+                    serves the whole workspace.
+                return_origin: { type: string, description: Web origin the popup posts its result to; must be on the server's allowlist. }
+      responses:
+        '200':
+          description: The sign-in started; open `authorize_url` in a popup.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorize_url, provider, flow, callback_origin]
+                properties:
+                  authorize_url: { type: string, format: uri, description: "The company's consent page (or Vercel's install page)." }
+                  provider: { type: string }
+                  flow: { type: string, enum: [oauth2, vercel_integration], description: The sign-in the company runs. }
+                  callback_origin: { type: string, description: "The origin the result is posted from; accept a message from no other." }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:
     get:
       operationId: getProviderAccount
@@ -10848,12 +10923,14 @@ components:
           properties:
             how:
               type: string
-              enum: [pasted, console_sign_in, widget_sign_in]
+              enum: [pasted, console_sign_in, widget_sign_in, oauth]
               description: >-
                 `pasted`: a person pasted the key. `console_sign_in`: made at
                 a secure sign-in a member started in the console.
                 `widget_sign_in`: made at your customer's own sign-in, in the
                 widget or one your backend started for them through the API.
+                `oauth`: a member signed in with the company
+                (`POST /provider-accounts:oauth-start`).
             by:
               type: string
               description: >-
@@ -12677,15 +12754,21 @@ components:
           type: array
           description: >-
             The ways to add this company's account in Connected accounts, easiest
-            first: `secure_sign_in` (the person signs in at the company and
+            first: `oauth` (the person signs in with the company and the
+            account is made from the OAuth grant, kept with its refresh token;
+            `POST /provider-accounts:oauth-start`, the console only), then
+            `secure_sign_in` (the person signs in at the company and
             CustomDomain™ makes the key; `POST /provider-accounts:sign-in`, the
             console only), then `api_key` (the person pastes a key;
             `POST /provider-accounts`). Always present; `[]` for a company that
             only signs in and takes no key. `secure_sign_in` is listed only while
             the deployment runs it for the company (the feature on, its key page
             and its domain list in place); the workspace's own gates are the
-            sign in's to apply.
-          items: { type: string, enum: [secure_sign_in, api_key] }
+            sign in's to apply. `oauth` is listed only while the deployment runs
+            the company's OAuth app, keeps what it hands back and the company's
+            sign-in needs no domain; a company that lists it lists no
+            `secure_sign_in`.
+          items: { type: string, enum: [oauth, secure_sign_in, api_key] }
     LeftKey:
       type: object
       required: [name]
