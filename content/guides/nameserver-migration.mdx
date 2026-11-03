@@ -748,9 +748,11 @@ the application's setting decides where the nameservers go, and the control plan
 refuses the same (`403 target_not_allowed`). A move that another application of
 the workspace has open is never resumed with an agent token (`409`).
 While the application's DNS hosting is off, `migrate-nameservers` is refused with
-the error `ns_not_offered` and changes nothing: the agent does not retry, and tells
-the person they can turn DNS hosting on in the application's settings, or that the
-platform can start the move with its API key. `rollback-nameservers` is not refused.
+the error `ns_not_offered` and changes nothing: the agent does not retry, and sends
+the person to the domain's page in the console (**Change** under "How CustomDomain™
+reaches this domain", then **Host its DNS instead**, which starts that one domain's move
+whatever the setting says) or has them turn DNS hosting on in the application's settings.
+The agent follows the move with `check-nameserver-status`. `rollback-nameservers` is not refused.
 `migrate-nameservers` takes `copyReviewed` once the agent showed the person the
 copy's warnings and they agreed, and `rollback-nameservers` takes `target`
 (`previous` or `registrar_default`). Results carry `registrar`, `oldDnsHost`, `copySource`,
