@@ -98,7 +98,7 @@ provider's real page appears only where a security rule keeps it there:
 | An identity provider's own sign-in (Google, Apple, Microsoft, Facebook, GitHub), with its account chooser and consent | It is your customer's own step. Our software never touches an identity provider's page. |
 | The provider's terms or an order, such as an API agreement or IONOS's free order | Only your customer accepts a provider's terms or places an order. |
 | Account details the provider needs before it makes a key, such as the postal address Gandi asks for on an organization | Only your customer gives their own details. Our software never types an address, a phone number or any other personal detail. |
-| A password the provider asks for again after the sign-in | Until our own password screen relays it. |
+| A password the provider asks for again after the sign-in, at a provider whose prompt we have not reviewed | Where we have reviewed the prompt, our own password screen asks for it and relays it from your customer's browser. |
 
 **Pressed for your customer.** Some provider pages ask nothing and only want a
 press. Our software presses them while your customer signs in, and the popup keeps
@@ -521,7 +521,7 @@ says nothing about an API.
 A key can be made and then not kept: the provider refuses it when we check it,
 or the first change made with it fails. The key is then still in your customer's
 account, and most providers have no API to delete one, so the window's last
-screen names it ("An API key named “CustomDomain App 2026-10-22 1528” was made at
+screen names it ("An API key named “CustomDomain App 2026-10-22 1528 3f9a” was made at
 GoDaddy and is not in use.") with a link to the provider's page to delete it.
 Your console's **Activity** page records it too, as "An API key we made is still
 in your GoDaddy account", with the same name and link. The key itself is never
@@ -534,8 +534,9 @@ get, such as "CustomDomain Acme 2026-10-30 1204": your application's name, then
 the day and minute), `delete_url` (the provider's own page that lists and
 deletes API keys), `rights` and `ends_in_days`. A sign-in makes a key, or may
 reuse one of ours the account already has, and each session names its key from
-the minute it starts, so look for a key that begins with that name, not for that
-exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
+the minute it starts and adds a four character code of its own at the end
+("CustomDomain Acme 2026-10-30 1206 3f9a"), so look for a key that begins with
+that name, not for that exact minute. Namecheap's sign-in makes no key (it turns on the account's own),
 so its `key` has no `name`. After the sign-in, the session's view
 ([read a session](/docs/api-reference/cloud-browser/getBrowserSession)) carries
 `kept_key` once the key is kept: its `name`, the provider's `page` to delete it,
@@ -632,9 +633,10 @@ not accept them, the session goes on to the DNS page.
 ### Checked, then kept for one application
 
 - **What is typed.** Our software types only the key's name (`CustomDomain`,
-  your application's name and the day and minute it was made in UTC, "CustomDomain
-  Acme 2026-10-21 1528", so your customer can find it at the provider, tell a new
-  key from an old one, and never meet two keys of one name) and, at
+  your application's name, the day and minute it was made in UTC and a four
+  character code of the session's own, "CustomDomain Acme 2026-10-21 1528 3f9a",
+  so your customer can find it at the provider, tell a new key from an old one,
+  and never meet two keys of one name, even from two sign-ins in one minute) and, at
   Namecheap, CustomDomain™'s address. It ticks only the scopes above, picks the
   longest expiry the page offers, and presses only buttons we have reviewed.
 - **Read once, never shown.** The key is read once from the page. The software

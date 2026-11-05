@@ -15,6 +15,19 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026 (secure sign-in): a password asked again is answered on our screen.** When a provider asks for
+  the account password again after the sign-in (Infomaniak does before every new key), the popup asks your customer for
+  it on its own password screen and types it into the provider's page from your customer's browser. The session view
+  carries `password_again` while it waits; no keystroke goes through CustomDomain™. See
+  [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (secure sign-in): every key's name ends in a code of its own.** A key the secure sign-in
+  makes is named "CustomDomain", your application's name, the day and minute in UTC and now a four character code
+  of the session's own ("CustomDomain Acme 2026-11-03 1528 3f9a"), so two sign-ins that start in the same minute
+  never make two keys of one name at the provider. The session view's `kept_key.name` carries the full name; the
+  domain check's `rails.cloud_browser.key.name` names a key without the code, so look for a key that begins with
+  it. See [Secure sign-in](/docs/guides/secure-sign-in).
+
 - **November 3, 2026 (evening): secure sign-in at OpenSRS for every workspace.**
   - Your customer signs in to OpenSRS' Manage Web Interface, the panel for the domain's owner. Its sign-in is for one
     domain, so CustomDomain™ fills in the domain and your customer types only the user name and password. A sign-in
