@@ -31,7 +31,7 @@ this page is about it.
 
 Some providers only answer API calls from addresses on a list. On the hosted
 service, DNS writes come from **`34.192.32.132`**. It must be allowed at
-Namecheap, Dynadot, Epik, NameBright, Internet.bs, Combell, Vultr and WEDOS, at Subreg if it
+Namecheap, Dynadot, Epik, NameBright, Internet.bs, Combell, Vultr, WEDOS and REG.RU, at Subreg if it
 refuses the address, and on any IP restriction you set at ClouDNS, NameSilo, TransIP,
 GleSYS, Openprovider, NS1, Scaleway or Exoscale (an IAM policy with an IP condition at the
 last two). A Plesk or DirectAdmin server must accept calls from it too, since a host can
@@ -62,12 +62,12 @@ list.
 | DNSimple | `dnsimple` | Account page, **API & Access** tab, **Add**, **Generate token**. | Or sign in with DNSimple. |
 | DNS Made Easy | `dnsmadeeasy` | **Config**, **Account Information**: tick the box to generate API keys, then copy the API Key and Secret Key. | Business (DNS-25) plan and above; only the account's primary user sees the keys. |
 | Domeneshop | `domeneshop` | [API page](https://www.domeneshop.no/admin?view=api) (sign in first): make an API token and copy the token and its secret. | The domain must use Domeneshop's DNS service (ns1 to ns3.hyp.net). Domeneshop documents no way to limit a token, so make one for this. |
-| DreamHost | `dreamhost` | [API page](https://panel.dreamhost.com/?tree=home.api): tick `dns-list_records`, `dns-add_record` and `dns-remove_record`, generate the key. | |
+| DreamHost | `dreamhost` | [API page](https://panel.dreamhost.com/?tree=billing.api): type a name over the comment (the list keeps 32 characters), tick **All dns functions** only (never **All functions!**), **Generate a new API Key now!**, and copy the key shown under "We created you a new API Key". | The domain's DNS must be hosted at DreamHost: a domain DreamHost only registers has no records the key can change. A sub-account needs Billing Account privileges to make a key. DreamHost's API cannot add MX, ALIAS or CAA records, so add those in the panel's DNS settings. Make the key on this page, not on DreamHost's newer API keys page, whose API we do not use yet. |
 | Dynadot | `dynadot` | [API settings](https://www.dynadot.com/account/domain/setting/api.html) (**Tools**, **API**): click **Unlock your account**, turn **API Enabled** on, copy the Production API key and secret, add `34.192.32.132` and click **Set IP Address**. | Allow about 15 minutes for the whitelist. To sign in with Dynadot instead, switch **MCP Enabled** on the same page; it cannot be switched on for you, because the page asks for your password. |
 | easyDNS | `easydns` | **User**, **Security**, REST API section: copy the API token, then **Regenerate** the API key and copy it (shown briefly). | You may be asked to fill in a short registration form first. |
 | Epik | `epik` | [API Settings](https://registrar.epik.com/account/api-settings/): **Add IP Address** `34.192.32.132`, **Save Changes**, copy the signature under User API Settings. | |
 | Exoscale | `exoscale` | [Exoscale Portal](https://portal.exoscale.com): **IAM**, **Keys**, create an API key with a role that allows only the DNS service, and copy the key and its secret (shown once). | The domain must already be added under **DNS** in the Portal. A zone on Exoscale DNS uses DNSimple's nameservers, so it is detected as DNSimple: nothing detects Exoscale, and you choose it yourself. |
-| Gandi | `gandi` | **Organizations**, the organization, **Sharing**, **Create a token** with "Manage domain name technical configurations". | |
+| Gandi | `gandi` | [Personal Access Tokens](https://admin.gandi.net/organizations/account/pat): **Create a token**, choose the organization that owns the domain, pick **1 year**, keep **The whole organization**, turn on only "Manage domain name technical configurations" (Gandi turns on "See and renew domain names" with it), then **Create** and copy the token (shown once). | Gandi makes a token only for an organization with a full address: if it asks, fill the address in first. A token ends after 1 year at most, so make a new one before then. |
 | Gcore | `gcore` | [Gcore portal](https://portal.gcore.com): **Profile**, **API tokens**, **Create token**; copy the token (shown once). | The token can change every DNS zone in your account, so make one for this. The domain must use Gcore's nameservers (ns1.gcorelabs.net and ns2.gcdn.services). |
 | GleSYS | `glesys` | Profile, **Control API access**, **Create** for the project; allow **Domain** under Permissions. The username is the project ID (`CL12345`). | |
 | Hetzner | `hetzner` | [Hetzner Console](https://console.hetzner.com/projects): the project, **Security**, **API tokens**, **Generate API token** with **Read & Write**. | Tokens from the old DNS Console (dns.hetzner.com) no longer work. |
@@ -95,7 +95,8 @@ list.
 | Openprovider | `openprovider` | Enable **API access** for your user (**Account**, **Account Overview**, username, **Edit**), then POST your control panel username and password to `https://api.openprovider.eu/v1beta/auth/login` and copy `data.token`. | Tokens last 48 hours, so they are used once. |
 | OVHcloud | `ovh` | Token page for your region ([Europe](https://eu.api.ovh.com/createToken/), [Canada](https://ca.api.ovh.com/createToken/), [United States](https://api.us.ovhcloud.com/createToken/)): rights `GET`, `POST`, `PUT` and `DELETE` on `/domain/zone/*`, then copy the application key, application secret and consumer key. | Grant access at OVHcloud works only where a deployment has registered OVHcloud applications; the hosted service has not. |
 | Plesk hosts | `plesk` | Your Plesk login and password, and the address you open Plesk at, without https://. | Used once and never stored. You choose Plesk yourself: nothing detects it from nameservers. The server must be reachable from `34.192.32.132` and serve a trusted certificate; we connect on port 8443 (or 443 when you add `:443` after the name), and your plan has to allow DNS zone management. |
-| Porkbun | `porkbun` | [API Access](https://porkbun.com/account/api): create a key and copy the API Key and Secret Key. | Turn on **API Access** for the domain (**Domain Management**, **Details**). If the key has an IP allowlist, include `34.192.32.132`; if it has a domain allowlist, include this domain. The domain must use Porkbun's nameservers. Or approve access at Porkbun. |
+| Porkbun | `porkbun` | [API Access](https://porkbun.com/account/api): create a key and copy the API Key and Secret Key. | Turn on **API Access** for the domain: in **Domain Management**, click **Details** next to the domain, then **API Access** (or use **Opt In All Domains** on the API Access page). Porkbun refuses every change to a domain with it off, and we say so (`porkbun_api_access_disabled`). If the key has an IP allowlist, include `34.192.32.132`; if it has a domain allowlist, include this domain. The domain must use Porkbun's nameservers. Or approve access at Porkbun. |
+| REG.RU | `regru` | [Settings, API](https://www.reg.ru/user/account/#/settings/api/) (Настройки API): set an **alternative API password** (not your account password). Under **IP address ranges** (Диапазоны IP-адресов) click **Add IP** (Добавить IP), enter `34.192.32.132` and **Save** (Сохранить). Enter your REG.RU login and the API password. | The domain must use `ns1.reg.ru` and `ns2.reg.ru`; a domain on REG.RU hosting nameservers is edited in the hosting panel instead. A, AAAA, CNAME, MX and TXT only: no CAA or SRV, no CNAME at the domain itself, no TTL per record. REG.RU allows 1200 API calls an hour per account and per IP address, and the address limit is shared by everyone connecting through ours, so a rate-limit message means try again within the hour. To revoke access, change the API password or remove our address. |
 | Scaleway | `scaleway` | [IAM API keys](https://console.scaleway.com/iam/api-keys): generate an API key for an IAM application and copy its secret key (shown once). | The application needs the permission set `DomainsDNSFullAccess` on the Project that holds the domain, and the domain must use ns0 and ns1.dom.scw.cloud. A key made a moment ago can be refused for a few minutes. BookMyName and Online.net zones are added by hand. |
 | Simply.com | `simply` | **Account**, **API keys**: create a key; use it with your account number (`S123456`). | |
 | Spaceship | `spaceship` | [API Manager](https://www.spaceship.com/application/api-manager/): **New API key** with `dnsrecords:read` and `dnsrecords:write`. | |
@@ -136,8 +137,13 @@ project that holds the zone, signed in with the DNS Administrator role, run
 `gcloud auth print-access-token`, and paste the token with the project ID. The
 token expires within an hour, so it is used once and never kept.
 
-Use the project ID and access token above. The Google Cloud DNS sign-in is not
-offered until Google verifies the app.
+On the hosted service you can also use **Sign in with Google Cloud**: sign in with
+the Google account that can edit the domain's public Cloud DNS zone. CustomDomain™
+finds the Google Cloud project that holds the zone and writes the records. It asks
+for these scopes: `openid`, `email`, `ndev.clouddns.readwrite` and
+`cloudplatformprojects.readonly`. Until Google finishes reviewing the app, Google
+may show a notice that it has not verified the app yet. The project ID and access
+token above stay available as the other option.
 
 ### Azure DNS (`azuredns`)
 
@@ -324,7 +330,9 @@ under your company's identity**, which is a business step, not code. The hosted
 service has one for Cloudflare, DigitalOcean, DNSimple, Azure DNS
 (**Sign in with Azure DNS**; users in other organizations see an unverified
 publisher warning until the app has a verified publisher), Linode, Netlify,
-Vercel (the CustomDomain™ integration) and WordPress.com. It offers Porkbun's **Approve access at Porkbun**, which needs no
+Vercel (the CustomDomain™ integration) and WordPress.com, and one for Google Cloud DNS
+(**Sign in with Google Cloud**; until Google finishes reviewing the app, Google may show a
+notice that it has not verified the app yet). It offers Porkbun's **Approve access at Porkbun**, which needs no
 registration, and the sign-in through Dynadot's and Unstoppable Domains' own
 MCP servers.
 
@@ -339,8 +347,6 @@ apply.
 
 Built, but not yet switched on for the hosted service:
 
-- **Sign in with Google Cloud**, held until Google verifies the app. Connect
-  Google Cloud DNS with a project ID and an access token meanwhile.
 - **Grant access at OVHcloud**, which needs an OVHcloud application for each
   region served.
 - **Sign in through the provider's MCP server** for Hostinger, Namecheap,

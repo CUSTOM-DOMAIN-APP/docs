@@ -3350,6 +3350,7 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
         '404': { $ref: '#/components/responses/Error' }
+        '422': { description: "The provider refused the credential (`ProviderAuthenticationError`) or the write (`dns_write_failed`), or, at Porkbun, the domain is not opted in to API access (`porkbun_api_access_disabled`: the account holder switches on API Access for the domain in Porkbun's Domain Management, then tries again)" }
         '503': { $ref: '#/components/responses/Error' }
   /connections/{id}:reapply:
     post:
@@ -3722,7 +3723,14 @@ paths:
         CustomDomain™ integration's install page; the user picks the Vercel team
         that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
         handoff: the user approves a key named after the domain; no client
-        registration is needed), `ovh_consent` (an OVHcloud consumer key
+        registration is needed), `porkbun_dnsconnect` (Porkbun's DNS Connect,
+        run in place of the handoff for a connect when the deployment holds an
+        application Porkbun approved, `OAUTH_PORKBUN_CLIENT_ID` and
+        `OAUTH_PORKBUN_CLIENT_SECRET`: the domain's records are signed into the
+        request, the user approves them at Porkbun, and Porkbun adds them
+        itself, with no API access switch needed; nothing comes back, so
+        `managed` is always false, and signing in to remove the domain still
+        runs the handoff), `ovh_consent` (an OVHcloud consumer key
         limited to the domain's DNS zone, validated on OVHcloud's page for the
         chosen `region`) or `mcp_oauth` (OAuth through the provider's hosted
         MCP server, for Hostinger, Unstoppable Domains, XServer, Namecheap,
@@ -3825,7 +3833,7 @@ paths:
                   provider: { type: string }
                   flow:
                     type: string
-                    enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent, mcp_oauth]
+                    enum: [oauth2, vercel_integration, porkbun_handoff, porkbun_dnsconnect, ovh_consent, mcp_oauth]
                   managed:
                     type: boolean
                     description: The connect will keep its credential (managed mode).
@@ -4856,6 +4864,58 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /browser-sessions/{sid}:code:
+    post:
+      operationId: codeBrowserSession
+      summary: Send the code a provider's frame asked for
+      tags: [Cloud browser]
+      description: >-
+        While the view says `handback: {reason: code, relay: true}`, the agent
+        waits for a one time code the provider asks for in a frame of its own
+        after the sign in (Squarespace's "Verify to continue"). The popup's own
+        code screen sends it here; the agent types it into the provider's frame
+        and presses its verify button. The code is kept nowhere: it goes to the
+        waiting run and is forgotten, and it is in no log, trace or model prompt.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/BrowserSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              additionalProperties: false
+              properties:
+                code:
+                  type: string
+                  description: The code, 4 to 12 letters and digits (spaces and dashes are dropped).
+      responses:
+        '204':
+          description: The agent has the code and types it now.
+        '400':
+          description: The body is not a small JSON object with a code of that shape. The code is never echoed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: '`browser_expired`: the token is wrong, expired, or for another session.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: '`browser_wrong_state`: no code is asked for now, or one is already on its way.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: '`browser_expired`: the session ran out of time.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /connect/oauth/callback:
     get:
       operationId: oauthCallback
@@ -4870,12 +4930,19 @@ paths:
         validated consumer key), writes the connection's records with it
         (dropped after, unless kept for managed mode), and returns an HTML page
         that postMessages `{ type: "customdomain:oauth", payload }` to the
-        vetted return origin. `payload` carries `ok`, `managed`, and on failure
+        vetted return origin. After `porkbun_dnsconnect` there is no credential:
+        Porkbun added the records itself and says so in `status` (`applied`,
+        `partial`, `denied` or `error` with its `error`), which is not signed,
+        so the connection only moves to `propagating` and public DNS decides;
+        `payload.partial` is true when Porkbun added only some of them.
+        `payload` carries `ok`, `managed`, and on failure
         a `code` and `message`: besides the provider's own `error` (for example
         `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
         `apex_not_supported`, `forwarding_not_supported`, the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
-        domain at Porkbun), `vercel_team_scope` (install on the team that owns
+        domain at Porkbun), `porkbun_domain_not_in_account` and
+        `porkbun_domain_not_active` (after `porkbun_dnsconnect`: the domain is
+        not in the Porkbun account that signed in, or not active there), `vercel_team_scope` (install on the team that owns
         the domain), `ovh_zone_not_found` (pick the OVHcloud region the
         account lives in), `oauth_scope_not_granted` (a permission was left
         unticked on the provider's consent screen; sign in again and allow
@@ -5810,7 +5877,9 @@ paths:
         outcomes (live rate, time to live, per provider and method, why the rest
         are stuck), plus a daily series. `audience` counts the widget sessions
         by device type, country, browser, operating system and embed (no
-        address, no city, no session listed), and `secure_sign_in` the cloud
+        address, no city, no session listed), `install` whether the widget was seen in the
+        builder's own product or only in the console's tests (per application),
+        and `secure_sign_in` the cloud
         browser sessions started in the window: the funnel per provider, the
         failures by reason, and the same with and without a vendor proxy. Both
         are scoped like the rest, to the key's workspace and `app_id` when
@@ -5827,6 +5896,104 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectAnalytics' }
         '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /analytics/secure-sign-in:
+    get:
+      operationId: getSecureSignInFlow
+      summary: Secure sign-in funnel, time per stage and where sessions stop
+      tags: [Analytics]
+      description: >-
+        How secure sign-in sessions (the cloud browser) went in the window,
+        overall and per DNS provider. `funnel` counts the sessions that reached
+        each stage (started, sign-in shown, signed in, plan ready, making
+        changes, done) with the drop from the stage before. `times` is the
+        median and 90th percentile of the seconds from the stage before it that
+        has a time, over the sessions that reached it; `total` is start to done
+        for the sessions that finished. `stops` files every session that ended
+        without finishing under one plain reason (`browser_not_started`,
+        `left_at_sign_in`, `code_never_entered`, `provider_page_not_understood`,
+        `provider_refused`, `timed_out`, `cancelled`, `changes_failed`,
+        `error`). A session finished by hand counts in `done_by_hand`, a running
+        one in `in_progress`; neither is in the funnel's done or the stops.
+        Counts and times only: no domain, person or anything typed. Scoped to
+        the key's workspace and `app_id` when given. At most 20000 sessions are
+        read, newest first (`truncated`). API key; any member role.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: days, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 180, default: 30 } }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: The flow
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecureSignInFlow' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /analytics/secure-sign-in/sessions:
+    get:
+      operationId: listSecureSignInSessions
+      summary: The newest secure sign-in sessions
+      tags: [Analytics]
+      description: >-
+        The newest sessions in the window, one row each: provider, when it
+        started, how it ended (`done`, `done_by_hand`, `running`, `stopped`),
+        the furthest stage it reached, the plain reason it stopped, the last
+        step logged before the end and the seconds from start to end. `connection_id`
+        narrows to one domain's sessions, `provider` to one DNS provider. Pick
+        a row's `id` for its timeline. API key; any member role.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: days, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 180, default: 30 } }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - { name: connection_id, in: query, required: false, schema: { type: string } }
+        - { name: provider, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: The sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/SecureSignInSession' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /analytics/secure-sign-in/sessions/{sid}:
+    get:
+      operationId: getSecureSignInTimeline
+      summary: One secure sign-in session's steps
+      tags: [Analytics]
+      description: >-
+        The session's row plus its steps in order, each with the seconds since
+        the session started, so one slow or failed run can be read. A step is a
+        word from a fixed list (a state the session moved to, or a step the
+        sign-in window reported), with the failure it ended in, if any, and one
+        short detail word. It never holds a code, a password, a domain or
+        anything typed. 404 for a session of another workspace. API key; any
+        member role.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: sid, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The timeline
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecureSignInTimeline' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 
@@ -7745,7 +7912,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`), or a chosen Porkbun domain is not opted in to API access (`porkbun_api_access_disabled`, where `400` would otherwise say the key does not reach it)" }
         '503': { $ref: '#/components/responses/Error' }
     get:
       operationId: listProviderAccounts
@@ -7984,6 +8151,81 @@ paths:
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /provider-accounts:oauth-start:
+    post:
+      operationId: startProviderAccountOAuth
+      summary: Add a provider account by signing in with the company (the console only)
+      tags: [Provider accounts]
+      description: >-
+        **The console only.** Starts "Sign in with <company>", the way to add a
+        provider account with no domain by the company's own OAuth consent
+        screen. It answers the address to open in a popup. When the person
+        approves access there, the shared sign-in callback
+        (`GET /connect/oauth/callback`) makes the account: every domain the
+        sign-in reaches, continuous access, with the access token and the
+        refresh token kept encrypted (a token near its end is refreshed before
+        it is used). The popup posts `{ok, purpose: "account", provider,
+        account_id}` to `return_origin`, or `{ok: false, code, message}` when
+        the person declined or it failed (`access_denied`, `oauth_failed`,
+        `oauth_scope_not_granted`, `oauth_no_refresh`,
+        `ProviderAuthenticationError`, `account_check_failed`); a token the
+        account did not keep is revoked at the company. Signing in again to the
+        same account (DNSimple's account, a Vercel team) renews the account it
+        made before instead of adding a second one.
+
+
+        The state binds the workspace, the member who started it and the
+        application, is single use and lives ten minutes. Nothing is written
+        before the callback.
+
+
+        Offered only where `account_ways` of `GET /providers` names `oauth` for
+        the company: the deployment runs the company's OAuth app, keeps what it
+        hands back (`OAUTH_MANAGED_PROVIDERS` and a grant encryption key),
+        does not hold the sign-in back, and the company's sign-in needs no
+        domain. Any other is `403` `oauth_account_unavailable`. The caller is
+        the console's own call, as for `POST /provider-accounts:sign-in`: an
+        API key that carries the console's signed visitor forward, held by a
+        member who operates applications (`403` `browser_account_unavailable`
+        otherwise; a viewer is `403` `forbidden`). A workspace an operator
+        suspended starts none (`403` `workspace_suspended`).
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, return_origin]
+              properties:
+                provider: { type: string, description: "The provider id. An account has no domain to detect it from." }
+                application_id:
+                  type: string
+                  description: >-
+                    The application the account is for, one of the workspace's
+                    own live applications (a test mode application is refused,
+                    and another workspace's is `404`). Left out, the account
+                    serves the whole workspace.
+                return_origin: { type: string, description: Web origin the popup posts its result to; must be on the server's allowlist. }
+      responses:
+        '200':
+          description: The sign-in started; open `authorize_url` in a popup.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorize_url, provider, flow, callback_origin]
+                properties:
+                  authorize_url: { type: string, format: uri, description: "The company's consent page (or Vercel's install page)." }
+                  provider: { type: string }
+                  flow: { type: string, enum: [oauth2, vercel_integration], description: The sign-in the company runs. }
+                  callback_origin: { type: string, description: "The origin the result is posted from; accept a message from no other." }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:
     get:
@@ -8518,7 +8760,7 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
-        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`)" }
+        '422': { description: "The provider refused the key (`ProviderAuthenticationError`), or `continuous` access for a credential that is used once and never kept (`use_once_credential`), or a chosen Porkbun domain is not opted in to API access (`porkbun_api_access_disabled`, where `400` would otherwise say the key does not reach it)" }
         '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /provider-accounts/{id}:check:
@@ -9939,6 +10181,103 @@ components:
                 type: array
                 items: { type: string }
               message: { type: string }
+    SecureSignInSpan:
+      type: object
+      required: [samples, median_seconds, p90_seconds]
+      properties:
+        samples: { type: integer }
+        median_seconds: { type: number }
+        p90_seconds: { type: number }
+    SecureSignInFlowView:
+      type: object
+      required: [provider, sessions, done, done_by_hand, in_progress, stopped, completion_rate, funnel, times, total, stops]
+      properties:
+        provider: { type: string, description: 'Empty for every provider.' }
+        sessions: { type: integer }
+        done: { type: integer }
+        done_by_hand: { type: integer }
+        in_progress: { type: integer }
+        stopped: { type: integer }
+        completion_rate: { type: number, description: 'Done and done by hand over started.' }
+        funnel:
+          type: array
+          items:
+            type: object
+            required: [key, sessions, drop, drop_rate, of_started]
+            properties:
+              key: { type: string, enum: [started, sign_in_shown, signed_in, plan_ready, making_changes, done] }
+              sessions: { type: integer }
+              drop: { type: integer, description: 'Sessions the stage before had that this one did not.' }
+              drop_rate: { type: number }
+              of_started: { type: number }
+        times:
+          type: array
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/SecureSignInSpan' }
+              - type: object
+                required: [key]
+                properties:
+                  key: { type: string, enum: [sign_in_shown, signed_in, plan_ready, making_changes, done] }
+        total: { $ref: '#/components/schemas/SecureSignInSpan' }
+        stops:
+          type: array
+          items:
+            type: object
+            required: [key, sessions, share]
+            properties:
+              key:
+                type: string
+                enum: [browser_not_started, left_at_sign_in, code_never_entered, provider_page_not_understood, provider_refused, timed_out, cancelled, changes_failed, error]
+              sessions: { type: integer }
+              share: { type: number, description: 'Of the sessions that stopped.' }
+    SecureSignInFlow:
+      type: object
+      required: [window, truncated, overall, providers]
+      properties:
+        window:
+          type: object
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+            days: { type: integer }
+            application_id: { type: string }
+        truncated: { type: boolean }
+        overall: { $ref: '#/components/schemas/SecureSignInFlowView' }
+        providers:
+          type: array
+          items: { $ref: '#/components/schemas/SecureSignInFlowView' }
+    SecureSignInSession:
+      type: object
+      required: [id, provider, connection_id, started_at, outcome, reached, total_seconds]
+      properties:
+        id: { type: string }
+        provider: { type: string }
+        connection_id: { type: string }
+        started_at: { type: string, format: date-time }
+        outcome: { type: string, enum: [done, done_by_hand, running, stopped] }
+        reached: { type: string, enum: [started, sign_in_shown, signed_in, plan_ready, making_changes, done] }
+        stop: { type: string, description: 'The plain reason, for a stopped session.' }
+        last_step: { type: string }
+        total_seconds: { type: [number, 'null'] }
+        ended_at: { type: string, format: date-time }
+    SecureSignInTimeline:
+      allOf:
+        - { $ref: '#/components/schemas/SecureSignInSession' }
+        - type: object
+          required: [events]
+          properties:
+            failure: { type: string, description: 'The failure the session ended in, a word from a fixed list.' }
+            events:
+              type: array
+              items:
+                type: object
+                required: [step, seconds_since_start]
+                properties:
+                  step: { type: string }
+                  seconds_since_start: { type: number }
+                  failure: { type: string }
+                  detail: { type: string }
     ConnectAnalytics:
       type: object
       required: [window, widget, connections, daily, truncated]
@@ -10036,6 +10375,29 @@ components:
             browsers: { type: array, items: { $ref: '#/components/schemas/AudienceRow' } }
             systems: { type: array, items: { $ref: '#/components/schemas/AudienceRow' } }
             embeds: { type: array, items: { $ref: '#/components/schemas/AudienceRow' }, description: 'embedded, modal or unknown.' }
+        install:
+          type: object
+          description: >-
+            Whether the widget has been seen in the builder's own product, per application, from the session each
+            widget open records. A session is a console test when its token's end user is `console:<member>` (the
+            console's Try it live and welcome domain step); every other session is the product's. The console's
+            design preview opens no session. Counts are sessions. `application_id` narrows it like the rest; an
+            application with no session is not listed.
+          required: [applications]
+          properties:
+            applications:
+              type: array
+              items:
+                type: object
+                properties:
+                  application_id: { type: string }
+                  product_sessions: { type: integer, description: 'Every session of the product ever recorded.' }
+                  test_sessions: { type: integer, description: 'Every console test session ever recorded.' }
+                  window_product_sessions: { type: integer, description: 'The product sessions that started inside the window.' }
+                  window_test_sessions: { type: integer, description: 'The console test sessions that started inside the window.' }
+                  last_product_at: { type: [string, 'null'], format: date-time, description: 'When a product session last had an event; null when none ever did.' }
+                  last_product_host: { type: string, description: 'The page origin (scheme, host, port, never a path) the newest product session reported; empty when it reported none.' }
+                  last_test_at: { type: [string, 'null'], format: date-time }
         secure_sign_in:
           type: object
           description: >-
@@ -10585,12 +10947,14 @@ components:
           properties:
             how:
               type: string
-              enum: [pasted, console_sign_in, widget_sign_in]
+              enum: [pasted, console_sign_in, widget_sign_in, oauth]
               description: >-
                 `pasted`: a person pasted the key. `console_sign_in`: made at
                 a secure sign-in a member started in the console.
                 `widget_sign_in`: made at your customer's own sign-in, in the
                 widget or one your backend started for them through the API.
+                `oauth`: a member signed in with the company
+                (`POST /provider-accounts:oauth-start`).
             by:
               type: string
               description: >-
@@ -11026,7 +11390,8 @@ components:
             `domain_already_connected`);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
             `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
-            `apex_not_supported`, `forwarding_not_supported`); the OAuth callback
+            `apex_not_supported`, `forwarding_not_supported`,
+            `porkbun_api_access_disabled`); the OAuth callback
             (which also records `forwarding_not_supported`); and the Domain Connect
             async callback (both e.g. `provider_unavailable`,
             `ProviderAuthenticationError`, `apply_failed`, `internal_error`, or
@@ -11680,11 +12045,20 @@ components:
         no_live_page:
           type: boolean
           description: >-
-            The session's vendor never shows its page in the popup (Kernel): a
-            human check, a social sign in and the backup page are the popup's
-            own screens, and only the identity provider's own confirmation,
-            during the `idp` step, is framed. The relay still types for our
-            form. Absent (false) on Browserbase.
+            The popup never shows the provider's page (every session since
+            2026-11-02, Kernel's since 2026-10-30): the sign in, a code, a push,
+            a link wait and the backup are the popup's own screens. The only real
+            pages are a human check (`live_check`), a social provider's own sign
+            in and the provider's terms, order or account details handed back
+            (`handback` `agreement`, `order` or `account`). The relay still types for our form. Absent
+            (false) from an older control plane, which keeps the old behaviour.
+        live_check:
+          type: boolean
+          description: >-
+            With `no_live_page`: a human check (a CAPTCHA, a bot wall) is shown on
+            the provider's real page, zoomed to it, because the person answers it
+            there. Absent on Kernel, where the popup's own check screen comes
+            first.
         idp:
           type: object
           required: [provider, domain, state]
@@ -11879,14 +12253,30 @@ components:
         asks the account holder to accept before a key is made, or (`order`)
         is at the customer's part of the free order that turns the provider's
         API on (IONOS's checkout: its terms box and Buy now, which can place a
-        temporary hold on their card). The agent never accepts terms or places
-        an order for them. `interactive` is true and `live_view_url`
+        temporary hold on their card), or (`account`) the provider's account
+        lacks details only the customer may give before its API page makes a
+        key (Gandi: the organization's postal address and phone), which they
+        fill in on the provider's page and save. The agent never accepts terms,
+        places an order or types account details for them. `interactive` is true and `live_view_url`
         is the page's own view: the customer answers in the live view, and the
         keys go from their browser to the vendor, never through the control
         plane. Once the prompt is gone from the page the agent goes on. A
         password the provider asks for again keeps `hand_back`.
       properties:
-        reason: { type: string, enum: [code, check, agreement, order] }
+        reason: { type: string, enum: [code, check, agreement, order, account] }
+        relay:
+          type: boolean
+          description: >-
+            With `reason: code` only: the provider asks for the code in a frame of
+            its own (Squarespace's "Verify to continue") and the code is asked on
+            the popup's own screen, with no live view taking input. The customer
+            types it there and `POST :code` sends it; the agent types it into the
+            provider's frame and presses its verify button. Absent (false) for a
+            code the customer types in the live view.
+        rejected:
+          type: boolean
+          description: >-
+            With `relay`: the provider refused the last code sent, so the screen says so and asks again.
     BrowserViewport:
       type: object
       required: [width, height]
@@ -12020,7 +12410,7 @@ components:
             treat it as unavailability.
         flow:
           type: string
-          enum: [oauth2, vercel_integration, porkbun_handoff, ovh_consent, mcp_oauth]
+          enum: [oauth2, vercel_integration, porkbun_handoff, porkbun_dnsconnect, ovh_consent, mcp_oauth]
           description: >-
             Available `oauth` rail only: the sign-in it runs, so a client can
             label its button (see `POST /connections/{id}/oauth:start`).
@@ -12392,15 +12782,21 @@ components:
           type: array
           description: >-
             The ways to add this company's account in Connected accounts, easiest
-            first: `secure_sign_in` (the person signs in at the company and
+            first: `oauth` (the person signs in with the company and the
+            account is made from the OAuth grant, kept with its refresh token;
+            `POST /provider-accounts:oauth-start`, the console only), then
+            `secure_sign_in` (the person signs in at the company and
             CustomDomain™ makes the key; `POST /provider-accounts:sign-in`, the
             console only), then `api_key` (the person pastes a key;
             `POST /provider-accounts`). Always present; `[]` for a company that
             only signs in and takes no key. `secure_sign_in` is listed only while
             the deployment runs it for the company (the feature on, its key page
             and its domain list in place); the workspace's own gates are the
-            sign in's to apply.
-          items: { type: string, enum: [secure_sign_in, api_key] }
+            sign in's to apply. `oauth` is listed only while the deployment runs
+            the company's OAuth app, keeps what it hands back and the company's
+            sign-in needs no domain; a company that lists it lists no
+            `secure_sign_in`.
+          items: { type: string, enum: [oauth, secure_sign_in, api_key] }
     LeftKey:
       type: object
       required: [name]

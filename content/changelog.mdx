@@ -15,12 +15,103 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 3, 2026 (evening): secure sign-in at OpenSRS for every workspace.**
+  - Your customer signs in to OpenSRS' Manage Web Interface, the panel for the domain's owner. Its sign-in is for one
+    domain, so CustomDomain™ fills in the domain and your customer types only the user name and password. A sign-in
+    that shows another domain ends with nothing changed. Resellers' branded copies of that panel are not covered.
+    See [Secure sign-in](/docs/guides/secure-sign-in#opensrs).
+
+- **November 3, 2026 (WordPress.com): long TXT and SRV records.** A WordPress.com connect now writes TXT
+  values up to 2048 characters (it was 255), so a long DKIM key goes in with the rest, and writes SRV records the
+  way WordPress.com stores them. See [WordPress.com](/docs/providers/wordpresscom).
+
+- **November 3, 2026 (Google Cloud DNS): Sign in with Google Cloud is on.** On the hosted service, a customer on
+  Google Cloud DNS can sign in with the Google account that can edit the domain's public Cloud DNS zone.
+  CustomDomain™ finds the Google Cloud project that holds the zone and writes the records. It asks for the scopes
+  `openid`, `email`, `ndev.clouddns.readwrite` and `cloudplatformprojects.readonly`. Until Google finishes reviewing
+  the app, Google may show a notice that it has not verified the app yet. The project ID and access token way still
+  works as the other option. See [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns).
+- **November 3, 2026 (secure sign-in): account details stay your customer's.** Some providers make no API key
+  until the account holds a detail, such as the postal address Gandi needs on an organization. When the provider's
+  page says one is missing, the popup shows that page with one line asking your customer to fill it in and save,
+  and the setup goes on after. Our software never types an address, a phone number or any other personal detail.
+  The session view says `handback.reason` `account` while it waits. See
+  [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (Porkbun): a plain answer when a domain's API access is off.** Porkbun lets an API key
+  change only domains with **API Access** switched on. Connecting such a domain with a Porkbun key, or adding it
+  to a connected Porkbun account, now says so and shows where to switch it on, instead of a generic failure.
+  The API answers `422` `porkbun_api_access_disabled` on
+  [`POST /v1/connections/{id}/apply`](/docs/api-reference/connections/applyConnection) and when adding or
+  reconnecting a provider account. See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts).
+
+- **November 3, 2026 (later): REG.RU by API key, and secure sign-in for Wix and Alibaba Cloud.**
+  - **REG.RU** connects with your REG.RU login and an API password, after you allow our address in its API settings.
+    See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts). REG.RU has no sign-in other apps can use.
+  - **Wix** and **Alibaba Cloud's international site** have secure sign-in, in supervised test sessions until each
+    one's DNS page address is confirmed. Both also connect with an API key, as before. Onamae.com and Registro.br have
+    no API or sign-in other apps can use, and their dashboards are not in English, so neither is offered yet.
+
+- **November 3, 2026: Sign in with your provider to add an account, and secure sign-in for more registrars.**
+  - **Sign in with &lt;provider&gt;.** On **Connected accounts**, Cloudflare, DigitalOcean, DNSimple, Linode, Netlify,
+    Vercel and WordPress.com accounts can be added by approving access in the provider's own window, with no API key
+    to make or paste. The account stays signed in on its own, and removing it revokes its access. See
+    [Add an account by signing in with the provider](/docs/connect-flow/provider-accounts#add-an-account-by-signing-in-with-the-provider).
+    The API adds [`POST /v1/provider-accounts:oauth-start`](/docs/api-reference/provider-accounts/startProviderAccountOAuth)
+    and the `oauth` value of `account_ways`.
+  - **Secure sign-in** is on for every workspace at Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship
+    and Hostinger. Network Solutions, Dynadot, NameSilo, Gname, OVHcloud, OpenSRS, ResellerClub and Porkbun run in
+    supervised test sessions until their DNS page's address is confirmed. (This entry first said sixteen providers for
+    every workspace; that was wrong.) See [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026: secure sign-in that is faster, calmer to wait through, and measured.**
+  - **Faster.** The lasting API key is now made after the records. The records are written and checked, your customer
+    sees **Done.**, and the same browser then makes the key without asking them anything (a prompt ends the attempt).
+    Making the key first failed 17 of 21 times in production and added 25 to 60 seconds before any record was touched.
+    An account that answered "not eligible" is not asked again for 14 days, and two other failures in a row pause the key
+    for a day. GoDaddy's key is paused for now: its sessions start on the DNS page. A provider whose key flow needs your
+    customer (a code, terms or an order) keeps the key first. Learned paths are replayed after 2 successes instead of 3, and
+    the software reads the DNS page fewer times while it writes. These are expected savings from production data; they have
+    not yet been measured on live sessions. See [After the sign-in](/docs/guides/secure-sign-in#after-the-sign-in).
+  - **Waiting screens.** Every waiting screen shows the same four steps (Sign in, Read records, Make changes, Check), one
+    line, and an estimate such as "Usually under half a minute." Past the usual time it says "Taking longer than usual. It is
+    still working, so keep this window open." Nothing that is still working is red, and an ended session shows a neutral mark
+    with one line that says what to do. The strings are in all 13 languages.
+  - **Where people stop.** Analytics has a **Secure sign-in** tab: started and finished, typical and slow time to **Done**,
+    the funnel with what was lost at each stage, the median and slowest tenth of each step, why sessions stopped in plain
+    words, and recent runs that open as a timeline. A domain's **History** tab lists its own runs. See
+    [Analytics](/docs/getting-started/console#secure-sign-in-tab). The API adds
+    [`GET /v1/analytics/secure-sign-in`](/docs/api-reference/analytics/getSecureSignInFlow),
+    [`GET /v1/analytics/secure-sign-in/sessions`](/docs/api-reference/analytics/listSecureSignInSessions) and
+    [`GET /v1/analytics/secure-sign-in/sessions/{sid}`](/docs/api-reference/analytics/getSecureSignInTimeline).
+- **November 2, 2026 (evening): secure sign-in with no live page, and the console's keys, install status and sign-up.**
+  - **Secure sign-in.** Your customer no longer sees the provider's browser session, for any provider. Codes, emailed
+    links, approvals on a phone and device checks are screens of ours. Name.com's "Unrecognized device" and "Remember
+    this device?" pages are pressed for them. A code Squarespace asks for in its "Verify to continue" box is typed on our
+    **Enter your code** screen and entered for them. The provider's page still shows for a human check, an identity
+    provider's own sign-in, the provider's terms or order, and a password asked again after the sign-in. See
+    [No live page](/docs/guides/secure-sign-in#no-live-page). The API adds
+    [`POST /v1/browser-sessions/{sid}:code`](/docs/api-reference/cloud-browser/codeBrowserSession), `handback.relay` and
+    `handback.rejected` on the session view, and `live_check` beside `no_live_page`.
+  - **Keys.** The key bar shows `CUSTOMDOMAIN_API_KEY` as a label above the masked key, and **Copy** gives the key
+    alone. **Install** explains the API key and the client secret side by side. See
+    [API key or client secret](/docs/authentication/overview#api-key-or-client-secret).
+  - **Is the widget installed?** Analytics, the **Overview** widget card and **Install** say "Installed on
+    yourapp.com", "Only seen on localhost" or "Not seen in your product yet", and keep your own console tests apart.
+    `GET /v1/analytics/connect` adds
+    [`install`](/docs/api-reference/analytics/getConnectAnalytics) per application. See
+    [Analytics](/docs/getting-started/console#analytics).
+  - **Sign up and design.** Signing up with GitHub or Google Workspace fills in the welcome's company and website. The
+    Design preview adds **Provider not supported**, **Reconnected**, **Remove: sign in**, **Remove: done** and **Paused
+    session**. See [Design the widget](/docs/getting-started/console#design-the-widget).
+
 - **November 2, 2026: Starter allows 10 new domains in any 12 months.** Starter (and the retired Free plan) was held
   to 1 new domain a calendar month; it now counts over a rolling 12 months, so a workspace can connect several domains
   in one month as long as it stays within 10 in any 12. Other plans are unchanged. `GET /v1/plans` adds `quota` and
   `quota_window_months`, `GET /v1/billing/usage` adds `quota_used` and `quota_window_months`, and the usage on
   `GET /v1/billing/status` and `GET /v1/billing/standing` now covers the window and says so in `window_months`. See
   [Plans and quotas](/docs/billing/plans-and-quotas).
+
 - **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
   - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
     workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**

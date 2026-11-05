@@ -53,6 +53,12 @@ before the box existed, or you came in through an invite or a Google or GitHub
 sign in from the sign in page, the console asks once, on a page of its own, and
 then takes you where you were going.
 
+**Signing up with Google or GitHub fills in the welcome.** When GitHub gives a
+company and a website on the profile, or the Google account is a Google Workspace
+account (a company's own domain, not Gmail), the welcome starts with that company
+name and website. Anything you typed yourself is never overwritten, and an
+address at a free mail service gets no company guess.
+
 The signup form also carries bot protection: a bot-check widget, signup rate
 limits, and disposable-email-address blocking. If the bot check fails, wait a
 moment and try again.
@@ -205,7 +211,7 @@ checklist until they answer the welcome too. Your customers' domains are on
 | --- | --- |
 | **Overview** | The setup checklist and how your customers' domains are doing: four counts, each with a line saying what it counts, one bar for who added the domains, and, if you use the widget, a world map of widget sessions by country over 30 days (the top 8 countries; no visitor address is read or kept). |
 | **Domains** | Every connected domain with its live status, who runs its DNS, who added it and exactly what is left to fix. Filter it by where it came from, by the domains whose DNS we host (**DNS hosted by us**) and by the domains we keep no access to (**No saved access**). Open one for its DNS, Certificate, Serving, Traffic, History and Settings tabs. |
-| **Analytics** | Three tabs: the widget funnel, with **Devices and places** under it and the step people most often stop at; **Traffic**, for what your domains receive at the edge; and **Providers**, for how many domains each DNS provider started and connected, how long it took and why the rest are stuck, with **Secure sign-in** under it. See [Analytics](#analytics). |
+| **Analytics** | Four tabs: the widget funnel, with **Devices and places** under it and the step people most often stop at; **Traffic**, for what your domains receive at the edge; **Providers**, for how many domains each DNS provider started and connected, how long it took and why the rest are stuck; and **Secure sign-in**, for how long a secure sign-in takes and where people stop. See [Analytics](#analytics). |
 | **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, a **Get your API key** button, and **Hand it to your coding agent**; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
@@ -258,7 +264,11 @@ only" the one you picked. The setup list is the workspace's too, so it does not 
 
 Open **API & SDK**. Every workspace has a **default key** at the top of the page,
 made with the workspace and needing no card: owners can view and rotate it at any
-time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)). For another key, press
+time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)).
+The key bar names the variable first: `CUSTOMDOMAIN_API_KEY` is a label above the
+masked key, and **Copy** copies the key alone, not the label, and says so. The
+same bar is on the welcome step that shows your key and on the **Install** tab, and
+the application ID there reads the same way. For another key, press
 **Create key**, give it a name and pick an **Environment**: Production
 (`cd_live_…`), Development or Staging (both `cd_test_…`). The full key is shown
 once ("Copy your new key now"); only a hash is kept. Admins and owners can create
@@ -268,6 +278,20 @@ says why. Creating one needs a card on file, which starts the 14 day free trial
 card, but another key is not, so a workspace without a card that presses **Create
 key** sees "Start your free trial to create API keys" with an **Add a card**
 link, and the key is created once the card is in.
+
+#### API key or client secret [#key-or-secret]
+
+Two credentials look alike and do different jobs. The **Install** tab's first step
+shows them as two cards.
+
+| | API key | Client secret |
+| --- | --- | --- |
+| **What it is** | The workspace's key, `cd_live_…` or `cd_test_…`. It proves a call comes from your server. | One application's secret, `sk_…`. |
+| **Where to find it** | **API & SDK**: the default key at the top, or **Create key** for more. The key bar on **Install** has **Get your API key**. | Shown once, in the response that creates an application over the API. An application made in the console never shows it. |
+| **What it can do** | Full access to the workspace: domains, connections, keys, webhooks. Keep it on your server. | Mint widget tokens for that application and nothing else. It is not an API key, and an API key in its place is refused with `401`. |
+
+Put the API key in your server's environment as `CUSTOMDOMAIN_API_KEY`. You do
+not need the client secret for an application made in the console: see below.
 
 The application the console made for you has a client secret, but the console
 keeps it sealed and never shows it. To mint widget tokens from your server, send
@@ -648,7 +672,7 @@ daily totals 400 days. The API has the same figures:
 
 ## Analytics [#analytics]
 
-**Analytics** has three tabs. All follow the date range and the application picker.
+**Analytics** has four tabs. All follow the date range and the application picker.
 
 ### Widget
 
@@ -660,6 +684,25 @@ there. The step is the last one a person saw before closing the widget. Until
 overwrote the step; the control plane now keeps the step before the close, and
 sessions recorded earlier read correctly once it is updated. Steps with the same
 label add up.
+
+**Is the widget installed?** Analytics, the widget card on **Overview** and the
+check on the **Install** tab all answer it the same way, from the sessions the
+widget records when it opens. A session is a **console test** when it came from
+your own console (**Try it live** and the welcome's domain step); every other
+session came from your product. You see one of:
+
+- "Installed on yourapp.com, last seen 2 hours ago": the widget opened in your
+  product. The site is the page's address without a path.
+- "Only seen on localhost": it opened only on your own machine so far.
+- "Not seen in your product yet": no session from your product has been recorded.
+
+Sessions are split into **in your product** and **console tests**, so your own
+clicks in **Try it live** never make the widget look installed. The **Design**
+preview opens no session. The API has it as `install` on
+[`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics),
+one entry per application with `product_sessions`, `test_sessions`, the same two
+counts inside the date range, `last_product_at`, `last_product_host` and
+`last_test_at`; an application with no session is not listed.
 
 ### Traffic
 
@@ -714,6 +757,39 @@ beside `stuck`, all under `connections`.
 | `median_seconds_to_live` | the same, and each entry of `by_method` and `by_kind` | Median seconds from adding a domain to it going live, over that group's live domains. `0` when none are live. |
 | `time_to_live` | `connections` | Live domains by how long they took: `under_5m`, `5m_to_1h`, `1h_to_1d`, `over_1d`. Always all four, in that order. |
 
+### Secure sign-in [#secure-sign-in-tab]
+
+The fourth tab answers "how long does a [secure sign-in](/docs/guides/secure-sign-in)
+take, and where do people give up?" without a query. It follows the date range and
+the application picker, and has a provider filter. It shows nothing until your
+customers have used secure sign-in.
+
+- **Started and finished**, with the typical and the slow time to **Done**. The
+  time is measured to the **Done** your customer saw, so a lasting API key made
+  after it is not in the number.
+- **The funnel.** Started, sign-in shown, signed in, changes ready, making
+  changes, done. Each stage shows how many sessions reached it and the share lost
+  since the stage before. A session you finished by hand and one still running are
+  counted apart and are not a loss.
+- **Time per step.** For each step, the median and the slowest tenth, as a bar:
+  opening the browser, your customer signing in, reading the DNS page and
+  planning, review and start, and writing the records.
+- **Why sessions stopped,** in plain words: the browser did not start, left at
+  sign in, code never entered, provider page not understood, provider refused,
+  timed out, cancelled, changes failed, or something else. Each session is filed
+  under one reason.
+- **Recent runs.** The newest sessions with their provider, outcome and total time.
+  Open one to see its steps as a timeline, with the seconds since the run began.
+  Steps are fixed words: a timeline never holds a code, a password, a domain or
+  anything typed.
+
+A domain's **History** tab lists that domain's own secure sign-in runs the same
+way, and shows nothing for a domain that never used it.
+
+The API has the same: [`GET /v1/analytics/secure-sign-in`](/docs/api-reference/analytics/getSecureSignInFlow),
+[`GET /v1/analytics/secure-sign-in/sessions`](/docs/api-reference/analytics/listSecureSignInSessions)
+and [`GET /v1/analytics/secure-sign-in/sessions/{sid}`](/docs/api-reference/analytics/getSecureSignInTimeline).
+
 ## Who opens the widget, and secure sign-in
 
 Two more panels on **Analytics** appear once there is something to count. Both
@@ -724,7 +800,8 @@ follow the date range and the application picker, like the rest of the page.
   how often a session on each kind of device connected its domain. Counts only:
   no IP address, city or single session is ever shown. See
   [what a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
-- **Secure sign-in**, on the **Providers** tab, when your customers used
+- **Secure sign-in**, on the **Providers** tab (a summary, with a link to the
+  [Secure sign-in tab](#secure-sign-in-tab)), when your customers used
   [secure sign-in](/docs/guides/secure-sign-in): sessions started, signed in and
   done, the average time to sign in and to done, a table per DNS provider
   (started, signed in, changes shown, applied, done), and why the rest stopped
@@ -960,7 +1037,11 @@ the person emails the records to someone with access, which reports
 `FINISHED_SUCCESSFULLY_LINK_SHARED`), **Email setup** (only when you open the
 widget with `enableEmail`: the mail records to add first) and **Remove a
 domain** (only when you open it with `mode: "remove"`: what happens to the
-records). Each screen says which status it
+records). Five more are the screens the widget draws in cases your code does not
+control: **Provider not supported**, **Reconnected**, **Remove: sign in**,
+**Remove: done** and **Paused session**. The preview has no "choose how to
+reconnect" screen, because the widget has none, and it does not draw a
+saved-access card yet. Each screen says which status it
 reports to your code. Look at the widget in light or dark, on a computer or a
 phone, and in any language it speaks.
 
@@ -1148,6 +1229,10 @@ it, or in its place once the old nameservers no longer answer
   language and page framework you picked below, and the steps in order. It never
   holds a secret: the key stays in your server's environment, you set it yourself,
   and the prompt tells the agent never to ask you to paste it.
+- **Is it installed?** A line above the steps says whether the widget has opened in
+  your product ("Installed on yourapp.com, last seen 2 hours ago", "Only seen on
+  localhost" or "Not seen in your product yet"). Console tests do not count: see
+  [Analytics](#analytics).
 - **Four steps by hand**, with code for your language on tabs (each tab has its
   language's mark). The first step, minting a token on your server, has **Get your
   API key**: it opens the form that makes a key on **API keys & webhooks**. You see
