@@ -12034,6 +12034,7 @@ components:
         signals: { $ref: '#/components/schemas/BrowserSignals' }
         handback: { $ref: '#/components/schemas/BrowserHandback' }
         form: { $ref: '#/components/schemas/BrowserSignInForm' }
+        password_again: { $ref: '#/components/schemas/BrowserPasswordAgain' }
         no_live_page:
           type: boolean
           description: >-
@@ -12235,6 +12236,21 @@ components:
             press from the customer's browser before a social button the banner
             can cover (the `idp` step's `finishing`); the agent presses the same
             one later. Absent for a provider with no banner on record.
+    BrowserPasswordAgain:
+      type: object
+      required: [field]
+      description: >-
+        Present after the sign in while the agent waits on the account password
+        the provider asks for again (Infomaniak, before it shows a new API key),
+        for a provider whose prompt was reviewed. The popup asks for the password
+        on its own screen and types it into `field` from the customer's browser
+        over `relay_socket`, as it does for the sign in form, then presses
+        `submit` (Enter when it is absent). No keystroke goes through
+        CustomDomain™ and the agent never sees the password. Absent otherwise:
+        the customer answers on the provider's page.
+      properties:
+        field: { type: string, description: "A CSS selector of the prompt's password field." }
+        submit: { type: string, description: "A CSS selector of the control that sends it; absent when Enter sends it." }
     BrowserHandback:
       type: object
       required: [reason]
