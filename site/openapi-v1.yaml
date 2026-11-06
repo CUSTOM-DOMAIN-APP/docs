@@ -5793,79 +5793,6 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
-  /telemetry:connect:
-    post:
-      operationId: recordConnectTelemetry
-      summary: Widget funnel beacon (fire-and-forget)
-      tags: [Connect]
-      description: >-
-        A PII-free beacon recording which step of the in-modal connect flow a
-        user reached. It exists because server-side counters only observe
-        connections that actually get created, and so are blind to
-        pre-connection drop-off.
-
-        `step` and `outcome` are allow-listed server-side and anything
-        unrecognised is folded into a fixed label. A beacon that carries a
-        `session_id` is also stored against the calling application, which is
-        what `GET /analytics/connect` reads; one without it is only counted.
-        No domain is stored, and nothing the end user typed. With each stored
-        beacon the control plane keeps the end user's IP address and country
-        (from the request, believed only through Cloudflare), and the session
-        it belongs to: at its first beacon the address, the region and city
-        Cloudflare derived, and the device type, operating system and browser
-        parsed from the User-Agent (the string itself is not stored); at every
-        beacon the step, rail, provider and outcome. Addresses are kept for as
-        long as the account exists, unless the deployment's
-        `IP_RETENTION_DAYS` sets a window. It **always** answers `204`, including
-        for an invalid token or a malformed body, so telemetry can never block
-        or error the widget; do not branch on its response.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                step: { type: string, description: 'Funnel step label (server-side allow-list).' }
-                outcome: { type: string, description: 'Outcome label (server-side allow-list).' }
-                session_id: { type: string, description: 'Random id per widget open, 8 to 64 of [A-Za-z0-9_-].' }
-                provider: { type: string, description: Detected DNS provider id. }
-                rail: { type: string, enum: [oauth, domain_connect, manual, api_key, managed_dns, cloud_browser] }
-                domain_kind: { type: string, enum: [apex, subdomain] }
-                error_code: { type: string, description: 'Widget error code, [A-Za-z0-9_] up to 48.' }
-                connection_id: { type: string }
-                elapsed_ms: { type: integer, description: Milliseconds since the widget opened (capped at a day). }
-                client:
-                  type: object
-                  description: >-
-                    Optional. What the widget reports about its surroundings, recorded on the session while the
-                    session has no value for it yet. Every field is optional, and a value outside its range or
-                    alphabet is dropped; unlike the beacon's own fields an unknown field here is ignored, and an
-                    object larger than 2 KiB is ignored whole.
-                  additionalProperties: true
-                  properties:
-                    screen_width: { type: integer, minimum: 1, maximum: 20000 }
-                    screen_height: { type: integer, minimum: 1, maximum: 20000 }
-                    viewport_width: { type: integer, minimum: 1, maximum: 20000 }
-                    viewport_height: { type: integer, minimum: 1, maximum: 20000 }
-                    pixel_ratio: { type: number, minimum: 0.25, maximum: 10 }
-                    touch: { type: boolean, description: The device has a touch screen. }
-                    language: { type: string, description: "The browser's language (navigator.language), a BCP 47 tag." }
-                    locale: { type: string, description: "The language the widget shows, a BCP 47 tag." }
-                    time_zone: { type: string, description: 'An IANA time zone, such as Europe/Berlin.' }
-                    color_scheme: { type: string, enum: [light, dark] }
-                    reduced_motion: { type: boolean }
-                    connection: { type: string, enum: [slow-2g, 2g, 3g, 4g], description: "The Network Information API's effective type, where the browser has it." }
-                    widget_version: { type: string }
-                    sdk: { type: string, enum: [script, npm, react] }
-                    sdk_version: { type: string }
-                    embed: { type: string, enum: [embedded, modal] }
-                    host_origin: { type: string, description: 'The page the widget is on. Only the scheme, host and port are kept.' }
-                    referrer_origin: { type: string, description: "The referrer of the widget's frame. Only the scheme, host and port are kept." }
-      responses:
-        '204':
-          description: Always. Carries no body and reports no error by design.
-
   /analytics/connect:
     get:
       operationId: getConnectAnalytics
@@ -11994,6 +11921,13 @@ components:
           properties:
             kind: { type: string, enum: [order, access] }
             terms: { type: string, format: uri, description: "The provider's terms for its API product, when known." }
+        key_replaces:
+          type: boolean
+          description: >-
+            `true` when the key this session makes is a password that replaces
+            the provider's old one (REG.RU's alternative API password), so
+            anything still using the old password stops working. The popup says
+            so while the key is made, before the password is set.
         error:
           type: object
           description: Present in `manual_assist` and `failed`, and in `checking` after the records changed under a plan. `browser_wrong_account` ends a session whose accounts did not hold the domain.
@@ -12086,13 +12020,10 @@ components:
       required: [host, hostVerified]
       description: >-
         Present only while the customer is in control (in `awaiting_sign_in`,
-        or while the agent has handed the page back), and only while fresh:
-        what the page the customer sees asks of them, so the popup can say it
-        in its own words. The control plane reads
-        it about every 700 ms from the page's DOM with a fixed, read only probe
-        in an isolated world of the page, never by the agent or a model, and it
-        never holds a field's value. A page can show anything, so it is a hint
-        for the popup's words and nothing else.
+        or while the page is handed back), and only while fresh: what the
+        provider's page asks of the customer, so the popup can say it in its
+        own words. It never holds a field's value. A hint for the popup's
+        words and nothing else.
       properties:
         host: { type: string, description: "The live page's host name; empty when its address is not https (a blank window)." }
         hostVerified: { type: boolean, description: "The host is one of the provider's hosts or one of its social sign in hosts, on an https address." }
@@ -12384,7 +12315,7 @@ components:
             `template_not_onboarded`: the provider speaks Domain Connect but
             has not onboarded our template. `redirect_unavailable`: the
             provider requires our return link on a one-click apply and the
-            template cannot carry it yet. `rail_disabled`: the sync rail is
+            template cannot carry it yet. `rail_disabled`: this way is switched
             off in this deployment. `custom_routing`: the application routes
             domains to its own infrastructure (a connect target) and the
             one-click templates point domains at the CustomDomain™ edge.
