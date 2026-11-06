@@ -1163,8 +1163,9 @@ paths:
 
         Where the secure sign-in also makes a lasting API key,
         `rails.cloud_browser.key` names it before the person signs in: `name` is
-        the name a key made now would get (a sign-in makes or reuses a key, so
-        look for a key named like it), `delete_url` is the provider's own page
+        the name a key made now would get, before the four character code the
+        sign-in adds at its end (a sign-in makes or reuses a key, so look for a
+        key named like it), `delete_url` is the provider's own page
         that deletes keys, and `rights` and `ends_in_days` say what it can do and
         when it ends.
 
@@ -11965,7 +11966,7 @@ components:
             provider's key page and where to delete it later. Never the key
             itself. A key that was made and not kept is `left_key`, never this.
           properties:
-            name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21 1528\". Absent for a provider whose key is the account's own and has no name of its own (Namecheap)." }
+            name: { type: string, maxLength: 80, description: "The name the key was made with, \"CustomDomain Acme 2026-10-21 1528 3f9a\". Absent for a provider whose key is the account's own and has no name of its own (Namecheap)." }
             page: { type: string, format: uri, description: "The provider's page that lists and deletes its keys, when known." }
             rights:
               type: array
@@ -12042,6 +12043,7 @@ components:
         signals: { $ref: '#/components/schemas/BrowserSignals' }
         handback: { $ref: '#/components/schemas/BrowserHandback' }
         form: { $ref: '#/components/schemas/BrowserSignInForm' }
+        password_again: { $ref: '#/components/schemas/BrowserPasswordAgain' }
         no_live_page:
           type: boolean
           description: >-
@@ -12243,6 +12245,21 @@ components:
             press from the customer's browser before a social button the banner
             can cover (the `idp` step's `finishing`); the agent presses the same
             one later. Absent for a provider with no banner on record.
+    BrowserPasswordAgain:
+      type: object
+      required: [field]
+      description: >-
+        Present after the sign in while the agent waits on the account password
+        the provider asks for again (Infomaniak, before it shows a new API key),
+        for a provider whose prompt was reviewed. The popup asks for the password
+        on its own screen and types it into `field` from the customer's browser
+        over `relay_socket`, as it does for the sign in form, then presses
+        `submit` (Enter when it is absent). No keystroke goes through
+        CustomDomain™ and the agent never sees the password. Absent otherwise:
+        the customer answers on the provider's page.
+      properties:
+        field: { type: string, description: "A CSS selector of the prompt's password field." }
+        submit: { type: string, description: "A CSS selector of the control that sends it; absent when Enter sends it." }
     BrowserHandback:
       type: object
       required: [reason]
@@ -12443,8 +12460,11 @@ components:
                 The name a key made now would get at the provider ("CustomDomain
                 Weldon 2026-10-21 1528"): the application's name, cut to the
                 provider's key page's length and punctuation, then the day and
-                minute (UTC) of this check. It is the name the agent types, so a
-                person can find the key on the provider's page afterwards. A
+                minute (UTC) of this check. The sign-in types it from its own
+                start and adds a four character code of its own at the end
+                ("CustomDomain Weldon 2026-10-21 1528 3f9a"), so two sign-ins never
+                make keys of one name; a person finds the key on the provider's
+                page by the name it starts with. A
                 sign in **makes or reuses** a key (it may find one of its own in
                 the account and use that instead of making another), and the
                 session names a new key from its own start, so this is the name
@@ -12859,7 +12879,7 @@ components:
         (nothing is revoked automatically). Present only when the swap replaced a different key that has a
         name; absent for a new account and when the new key is the same key.
       properties:
-        name: { type: string, description: "The name the replaced key was made with, to find it at the provider. An account sign in names its key to the second, so it differs from the new key's name unless both were made in the same second." }
+        name: { type: string, description: "The name the replaced key was made with, to find it at the provider. Every sign in ends its key's name in a code of its own (and an account sign in names it to the second), so it differs from the new key's name." }
         page: { type: string, description: The provider's page that lists and deletes keys; absent when none is known. }
     Usage:
       type: object

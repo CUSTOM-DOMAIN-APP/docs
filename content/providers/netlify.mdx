@@ -16,7 +16,7 @@ Netlify supports native OAuth: sign in to Netlify, approve, and the records appl
 
 ## The records
 
-CustomDomain™ gives you the authoritative records for **your** account in the dashboard, typically a `CNAME` (or apex `A`/`ALIAS`) pointing your domain at the edge. Use the values shown there; the shape is always the same, the target is per-account. There is no separate ownership TXT to add on this path: control is proven by the rail itself, or by the records appearing in your own authoritative DNS. See [Setup types](/docs/concepts/ownership-and-setup-types#control-is-proven-by-the-rail).
+CustomDomain™ gives you the authoritative records for **your** account in the dashboard: a `CNAME` for a subdomain such as `www`, and `A` records for a root domain (Netlify DNS has no `ALIAS` or flattened `CNAME` at the root). Use the values shown there; the shape is always the same, the target is per-account. There is no separate ownership TXT to add on this path: control is proven by the rail itself, or by the records appearing in your own authoritative DNS. See [Setup types](/docs/concepts/ownership-and-setup-types#control-is-proven-by-the-rail).
 
 ## Setting it up on Netlify
 
@@ -27,7 +27,10 @@ CustomDomain™ gives you the authoritative records for **your** account in the 
 ## Netlify specifics
 
 - The Netlify token is a full-account token (no granular scopes), like DNSimple.
-- This works only when the domain's nameservers are delegated to Netlify DNS. If the domain still uses your registrar's nameservers, the write has to happen where the domain actually resolves: connect it at that provider, or use the guided-manual path.
+- This works only when the domain has a DNS zone in your Netlify account and its nameservers are delegated to Netlify DNS. If it does not, CustomDomain™ says "is not on Netlify DNS" and what to do. The write has to happen where the domain actually resolves: connect it at that provider, or use the guided-manual path.
+- Every team you belong to is searched for the zone, so you do not pick a team.
+- Records Netlify manages for a site (the `NETLIFY` records it adds when you assign a domain to a site) are never changed. If the name you are connecting is still assigned to a Netlify site, remove it from that site first or use a different name.
+- If the sign-in stops working, for example after a Netlify password reset (which ends every Netlify sign-in), connect Netlify again.
 
 ## How you know it worked
 

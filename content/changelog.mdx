@@ -15,6 +15,35 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 6, 2026: Sign in with Netlify matches Netlify's current DNS.** A root domain on Netlify DNS now
+  gets `A` records (Netlify DNS has no `ALIAS`), SRV and CAA records are written in Netlify's own fields, and
+  records Netlify manages for a site are left alone. A domain that is not on Netlify DNS gets a plain message
+  saying so. See [Connect a Netlify domain](/docs/providers/netlify).
+- **November 6, 2026: Sign in with Azure DNS names the account.** When a check fails, the message now names
+  the Microsoft account you used even if it has no mailbox, by its sign-in name. Microsoft's consent screen also
+  lists your basic profile. See [Provider setup](/docs/dns/provider-setup).
+- **November 6, 2026: a new address to allow.** CustomDomain™ now reaches provider APIs from **`100.48.24.176`**.
+  Providers that only answer listed addresses (Namecheap, Dynadot, Epik, Internet.bs, REG.RU, Vultr and others) need
+  `100.48.24.176` in their API settings in place of `34.192.32.132`. See
+  [Provider setup](/docs/dns/provider-setup).
+- **November 3, 2026 (evening): secure sign-in for OVHcloud serves every workspace.**
+  - **OVHcloud** secure sign-in is offered to every workspace, for accounts on OVHcloud's European manager. The
+    session opens the domain's DNS zone page and can only add, edit and delete that one domain's records: other
+    domains, the zone's reset, text mode, history and default TTL, and the domain's other tabs are off limits.
+    OVHcloud US accounts are not served. See [Secure sign-in](/docs/guides/secure-sign-in).
+- **November 3, 2026 (secure sign-in): a password asked again is answered on our screen.** When a provider asks for
+  the account password again after the sign-in (Infomaniak does before every new key), the popup asks your customer for
+  it on its own password screen and types it into the provider's page from your customer's browser. The session view
+  carries `password_again` while it waits; no keystroke goes through CustomDomain™. See
+  [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (secure sign-in): every key's name ends in a code of its own.** A key the secure sign-in
+  makes is named "CustomDomain", your application's name, the day and minute in UTC and now a four character code
+  of the session's own ("CustomDomain Acme 2026-11-03 1528 3f9a"), so two sign-ins that start in the same minute
+  never make two keys of one name at the provider. The session view's `kept_key.name` carries the full name; the
+  domain check's `rails.cloud_browser.key.name` names a key without the code, so look for a key that begins with
+  it. See [Secure sign-in](/docs/guides/secure-sign-in).
+
 - **November 3, 2026 (evening): secure sign-in at OpenSRS for every workspace.**
   - Your customer signs in to OpenSRS' Manage Web Interface, the panel for the domain's owner. Its sign-in is for one
     domain, so CustomDomain™ fills in the domain and your customer types only the user name and password. A sign-in
@@ -37,6 +66,11 @@ never change meaning or disappear without a new major version. See the
   and the setup goes on after. Our software never types an address, a phone number or any other personal detail.
   The session view says `handback.reason` `account` while it waits. See
   [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 5, 2026: Realtime Register by API key.** If you have a Realtime Register portal login, you can connect a domain on its
+  nameservers (`yoursrs.com` or `premiumdns.zone`) with an API key from your profile page. We read the zone, merge our records into it
+  and send it back, and we stop with a plain message if the zone is linked to a DNS template. Customers of a reseller have no portal
+  login, so for them nothing changes. See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts).
 
 - **November 3, 2026 (Porkbun): a plain answer when a domain's API access is off.** Porkbun lets an API key
   change only domains with **API Access** switched on. Connecting such a domain with a Porkbun key, or adding it
