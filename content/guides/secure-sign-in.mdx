@@ -853,10 +853,12 @@ At most 6 a minute per session.
   provider's page in their own browser, and each key goes from that browser
   straight to the remote browser. Keystrokes, passwords and codes never pass
   through CustomDomain™'s servers.
-- **Nothing of the sign-in is stored.** No password, cookie, recording or
-  browser profile is kept, and the browser is thrown away when the session ends.
-  The one thing kept is a [lasting API key](#lasting-api-keys) made on the
-  provider's own API page, encrypted, for one application.
+- **Nothing of the sign-in itself is stored.** No password, one-time code,
+  cookie, session token or browser profile is kept, nothing is recorded while
+  your customer signs in, types a password again or enters a code, and the
+  browser is thrown away when the session ends. A [lasting API
+  key](#lasting-api-keys) made on the provider's own API page is kept,
+  encrypted, for one application.
 - **No run without a person.** A session never starts or goes on without your
   customer there, and it ends when the popup stops checking in.
 - **Only the pages it needs.** Our software works only on the provider's DNS page
@@ -884,8 +886,31 @@ it.
 Each session records how far it got and, when it stopped short, why, from a
 fixed list (a human check left on screen, a code that never came, the customer
 cancelled, the provider's page changed, and so on), together with the popup's
-screens as steps. No domain, typed text, page text or address is recorded. Those
-counts are the **Secure sign-in** panel on the console's **Analytics** page.
+screens as steps. No domain, typed text, page text or address is in those
+counts, which are the **Secure sign-in** panel on the console's **Analytics**
+page.
+
+### What we keep after the sign-in [#what-we-keep]
+
+Since November 6, 2026, once your customer is signed in, CustomDomain™ keeps a
+record of what our software did on the provider's pages, to fix and improve
+sign-in with that provider:
+
+- the requests the provider's pages made (addresses, headers and contents), with
+  passwords, one-time codes, cookies, tokens, keys, signatures and similar
+  values removed before anything is saved, and no contents at all for the
+  provider's own sign-in requests or for the page that shows a new API key;
+- the text outline of each page our AI model worked from, with field values
+  hidden and email addresses, keys and long tokens masked;
+- each step it meant to take and each step it took, and how long they took.
+
+Nothing is recorded before the sign-in or while your customer types. The record
+is encrypted at rest, read only by CustomDomain™'s own staff, and deleted after
+30 days. A summary of each provider's request formats (addresses with the
+domain and ids replaced by placeholders, and field names, never values) is kept
+to maintain the integration. The browser hosting company does not record or log
+the session. See the [Privacy Policy](https://app.customdomain.ai/privacy),
+section 3.2.
 
 ## Limits
 
