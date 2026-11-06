@@ -162,8 +162,13 @@ used), there must be only one such zone for the domain, and the account needs
 the Reader role on its subscription and a role that can edit the zone (DNS Zone
 Contributor); only the directory the account signs in to is searched. Azure
 also requires multifactor authentication for the change, and an organization
-that limits user consent needs an admin to approve CustomDomain™ once. When a
-check fails, the sign-in says which account you used and what to change.
+that limits user consent needs an admin to approve CustomDomain™ once.
+Microsoft's consent screen asks to sign you in and view your basic profile and
+email address, plus Azure Service Management access as you; we use that access
+only to list subscriptions and DNS zones and to write the records into the one
+zone we found. When a check fails, the sign-in says which account you used (its
+email address, or its sign-in name when the account has no mailbox) and what to
+change.
 
 ## GoDaddy
 
