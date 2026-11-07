@@ -13,9 +13,8 @@ _openapi:
       - content: >-
           What an invite link is for: the invited email, the workspace, the
           role, who sent it, and whether it still works. Nothing is accepted or
-          spent. Public: the token is the capability, exactly as for
-          `members:accept`, and it travels in the body so it never lands in an
-          access log. A link that stopped working says why (`accepted`,
+          spent. Public: the token is the capability, and it travels in the
+          body so it never lands in an access log. A link that stopped working says why (`accepted`,
           `expired`, `revoked`, or `replaced` by a newer invite to the same
           address); a token that was never issued is a 404. Rate-limited per
           client address.

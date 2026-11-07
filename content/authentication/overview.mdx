@@ -171,7 +171,8 @@ answers a refused call with HTTP `401`. See
 
 Human access is governed by tenant **membership**, not per-key scopes. A member
 has a role (`owner`, `admin`, `member`, or `viewer`), invited and managed via
-`POST /v1/members`, `PATCH /v1/members/{id}`, and `POST /v1/members:accept`. The
+`POST /v1/members` and `PATCH /v1/members/{id}`. An invitee accepts in the console,
+signed in with the invited email; the invite link alone does not accept. The
 role/permission matrix is served as static reference at `GET /v1/rbac`.
 
 Roles are **enforced at the control-plane**, not just the console: each sensitive

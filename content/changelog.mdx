@@ -15,6 +15,10 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
+  over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
+  `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
+  and sign in with the invited email, as before. See [Accept an invite](/docs/api-reference/members/acceptMember).
 - **November 6, 2026: Sign in with Netlify matches Netlify's current DNS.** A root domain on Netlify DNS now
   gets `A` records (Netlify DNS has no `ALIAS`), SRV and CAA records are written in Netlify's own fields, and
   records Netlify manages for a site are left alone. A domain that is not on Netlify DNS gets a plain message
