@@ -15,6 +15,10 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
+  over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
+  `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
+  and sign in with the invited email, as before. See [Accept an invite](/docs/api-reference/members/acceptMember).
 - **November 7, 2026: only an owner revokes an owner's key.** Revoking an API key that acts with more authority
   than the key making the call, such as an owner's key revoked with an admin's, is refused with
   `403 credential_outranks_caller`. See [Revoke an API key](/docs/api-reference/applications/revokeApiKey).
