@@ -7049,13 +7049,13 @@ paths:
 
 
         The console's server also records here what an operator did through its
-        owner routes (disabling an account, signing it out, a verification
-        resend, a password reset link, the workspace's optional pages). It
-        presents the provisioning secret in `X-Provision-Secret`, names the
-        workspace in `tenant_id`, and may use only the `user.*` and
-        `workspace.features_set` verbs, which a tenant key may not. The actor is
-        recorded as `operator`, the reason in `after.reason` is required for all
-        of them but `user.verification_resent`, and the answer is a `500` when the
+        owner routes. It presents the provisioning secret in
+        `X-Provision-Secret`, names the workspace in `tenant_id`, and may use
+        only the `user.*` and `workspace.*` verbs listed, which a tenant key may
+        not. The actor is recorded as `operator`, the reason in `after.reason` is
+        required for `user.disabled`, `user.enabled`, `user.sessions_revoked`,
+        `user.password_reset_link_issued` and `workspace.features_set` and
+        recorded when given for the others, and the answer is a `500` when the
         log did not take the event.
       security:
         - apiKey: []
@@ -7079,6 +7079,10 @@ paths:
                     - user.verification_resent
                     - user.password_reset_link_issued
                     - workspace.features_set
+                    - workspace.mode_set
+                    - user.onboarding_reset
+                    - user.nudged
+                    - user.push_tested
                   description: >-
                     The console-recordable verb. With an API key only
                     `whitelabel.configured` and `api_key.default_revealed`; with
