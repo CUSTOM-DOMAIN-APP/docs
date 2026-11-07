@@ -22,7 +22,10 @@ _openapi:
           the vetted return origin. `payload` carries `ok`, `managed`, and on
           failure a `code` and `message`: besides the provider's own `error`
           (for example `access_denied`) and `ProviderAuthenticationError`,
-          `apply_failed`, `apex_not_supported`, `forwarding_not_supported`, the
+          `apply_failed`, `apex_not_supported`, `forwarding_not_supported`,
+          `sign_in_other_browser` (the sign-in finished in a different browser
+          from the one that opened it; nothing was used up, so finish it in the
+          window the start opened), the
           rail specific codes are `porkbun_api_access_disabled` (turn on API
           access for the domain at Porkbun), `vercel_team_scope` (install on the
           team that owns the domain), `ovh_zone_not_found` (pick the OVHcloud

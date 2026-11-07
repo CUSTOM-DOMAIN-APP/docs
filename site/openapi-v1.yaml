@@ -3864,7 +3864,7 @@ paths:
                 type: object
                 required: [authorize_url, provider, flow]
                 properties:
-                  authorize_url: { type: string, format: uri }
+                  authorize_url: { type: string, format: uri, description: "Open this URL in the sign-in popup. It may be on this API's origin and redirect to the provider." }
                   provider: { type: string }
                   flow:
                     type: string
@@ -4973,7 +4973,10 @@ paths:
         `payload` carries `ok`, `managed`, and on failure
         a `code` and `message`: besides the provider's own `error` (for example
         `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
-        `apex_not_supported`, `forwarding_not_supported`, the rail specific
+        `apex_not_supported`, `forwarding_not_supported`,
+        `sign_in_other_browser` (the sign-in finished in a different browser
+        from the one that opened it; nothing was used up, so finish it in the
+        window the start opened), the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
         domain at Porkbun), `porkbun_domain_not_in_account` and
         `porkbun_domain_not_active` (after `porkbun_dnsconnect`: the domain is
@@ -5017,6 +5020,25 @@ paths:
           description: HTML finish page (postMessages the outcome to the vetted return origin)
         '400':
           description: Invalid, expired, or replayed state
+  /connect/oauth/launch:
+    get:
+      operationId: oauthLaunch
+      summary: Sign-in popup launch (public; authenticated by the signed state)
+      tags: [Connections]
+      description: >-
+        The first page a sign-in popup opens when `authorize_url` points here.
+        It ties the sign-in to this browser and redirects to the provider. Not
+        a bearer-authenticated endpoint; open it only through `authorize_url`.
+      security: []
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '302':
+          description: Redirect to the provider's sign-in page
+        '400':
+          description: HTML error page; the link is invalid, expired or too old
+        '403':
+          description: HTML error page; the sign-in was opened in another browser
   /connect/dc/callback:
     get:
       operationId: dcCallback
@@ -8201,7 +8223,7 @@ paths:
                 type: object
                 required: [authorize_url, provider, flow, callback_origin]
                 properties:
-                  authorize_url: { type: string, format: uri, description: "The company's consent page (or Vercel's install page)." }
+                  authorize_url: { type: string, format: uri, description: "Open this URL in the sign-in popup: the company's consent page (or Vercel's install page), possibly through this API's origin first." }
                   provider: { type: string }
                   flow: { type: string, enum: [oauth2, vercel_integration], description: The sign-in the company runs. }
                   callback_origin: { type: string, description: "The origin the result is posted from; accept a message from no other." }
@@ -13854,7 +13876,7 @@ components:
         redirect_uri: { type: string, description: "Where to send the person: the agent's redirect URI with `code` and `state` added." }
         code: { type: string, description: The single use authorization code. It lives 5 minutes. }
         state: { type: string }
-        grant_id: { type: string }
+        grant_id: { type: string, description: The id the grant has once the agent exchanges the code. Until then the grant is not listed. }
     AgentGrant:
       type: object
       required: [id, tenant_id, agent_client_id, agent_name, scopes, can_purchase, spend_cap_cents, created_at, spend_this_period_cents, period]
@@ -13871,6 +13893,19 @@ components:
         expires_at: { type: string, format: date-time, description: Absent for persistent access. }
         created_at: { type: string, format: date-time }
         revoked_at: { type: string, format: date-time, description: Present once the access was ended. }
+        revoked_reason:
+          type: string
+          description: >-
+            Why the access ended, when it is known: `owner` (ended in the console), `agent` (the agent
+            revoked it), `credential_reused`, `approver_removed`, `approver_demoted`, `approver_gone`,
+            `application_removed` or `idle`. New values may be added.
+        last_used_at: { type: string, format: date-time, description: When the agent last used this access. }
+        idle_expires_at:
+          type: string
+          format: date-time
+          description: >-
+            When the access ends if the agent does not use it again. Each use moves it later. Absent when
+            access does not end for lack of use.
         spend_this_period_cents: { type: integer, description: Spent against the cap this month. }
         period: { type: string, description: 'The month `spend_this_period_cents` counts, `YYYY-MM` (UTC).' }
     AgentGrantList:
