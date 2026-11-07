@@ -9179,7 +9179,9 @@ paths:
         RFC 7009. Revokes the grant behind a refresh token, so the agent's access
         ends within one access token lifetime (15 minutes at most). It answers
         `200` for a token it does not know, so it cannot be used to find out which
-        tokens exist. The workspace's owners and admins are told once.
+        tokens exist, and for a refresh token that was already replaced or
+        revoked, which revokes nothing. Send the client's `client_id` with the
+        token. The workspace's owners and admins are told once.
       security: []
       requestBody:
         required: true
@@ -9190,12 +9192,14 @@ paths:
               required: [token]
               properties:
                 token: { type: string, description: The refresh token. }
+                client_id: { type: string, description: The client the token was issued to. }
           application/json:
             schema:
               type: object
               required: [token]
               properties:
                 token: { type: string, description: The refresh token. }
+                client_id: { type: string, description: The client the token was issued to. }
       responses:
         '200': { description: "Revoked, or the token was not known" }
         '400':
@@ -9254,7 +9258,8 @@ paths:
         Called by the console's server after a person signs in and approves, with
         that member's tenant API key (a widget token is refused, because it lives
         in browsers). The key's member needs `agent:manage` (owners and admins),
-        and `member_id` must belong to the workspace. The approved scopes are a
+        and `member_id` must belong to the workspace. The workspace default key
+        cannot approve (`403`). The approved scopes are a
         subset of what was requested. The grant is bound to one `application_id`
         of the workspace. An agent whose code goes to an unverified host needs
         `acknowledged_unverified: true`, and one whose name imitates a brand is
@@ -13749,7 +13754,9 @@ components:
             The member who approves, recorded as the grant's approver, the
             email recipient and the audit actor. It must belong to the
             workspace. With a member's own key it must be that member (`403`
-            otherwise) and may be left out; with any other key it is required.
+            otherwise) and may be left out. With any other key it is required
+            (`400`) and must name an owner or admin (`403`) who has joined the
+            workspace (`400`).
         application_id: { type: string, description: The one application of the workspace the agent will act within. }
         scopes:
           type: array
