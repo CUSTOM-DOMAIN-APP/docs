@@ -13839,6 +13839,19 @@ components:
         expires_at: { type: string, format: date-time, description: Absent for persistent access. }
         created_at: { type: string, format: date-time }
         revoked_at: { type: string, format: date-time, description: Present once the access was ended. }
+        revoked_reason:
+          type: string
+          description: >-
+            Why the access ended, when it is known: `owner` (ended in the console), `agent` (the agent
+            revoked it), `credential_reused`, `approver_removed`, `approver_demoted`, `approver_gone`,
+            `application_removed` or `idle`. New values may be added.
+        last_used_at: { type: string, format: date-time, description: When the agent last used this access. }
+        idle_expires_at:
+          type: string
+          format: date-time
+          description: >-
+            When the access ends if the agent does not use it again. Each use moves it later. Absent when
+            access does not end for lack of use.
         spend_this_period_cents: { type: integer, description: Spent against the cap this month. }
         period: { type: string, description: 'The month `spend_this_period_cents` counts, `YYYY-MM` (UTC).' }
     AgentGrantList:
