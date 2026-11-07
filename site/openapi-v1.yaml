@@ -7036,6 +7036,42 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
 
   # ---------------------------------------------------------------- Enterprise
+  /me:
+    get:
+      operationId: getMe
+      summary: Who the API key acts as in its workspace
+      tags: [Members]
+      description: >-
+        The workspace the key belongs to, the role it acts with, and the kind
+        of key: a member's key (with that member), the workspace default key,
+        or another workspace key. Any role may call it.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: The key's identity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tenant_id, role, credential, member]
+                properties:
+                  tenant_id: { type: string }
+                  role: { $ref: '#/components/schemas/Role' }
+                  credential:
+                    type: string
+                    enum: [member, default, workspace]
+                    description: The kind of key.
+                  member:
+                    description: The member a member's key acts as; null for any other key.
+                    type: [object, 'null']
+                    required: [id, email, role]
+                    properties:
+                      id: { type: string }
+                      email: { type: string }
+                      role: { $ref: '#/components/schemas/Role' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /rbac:
     get:
       operationId: getRbac
