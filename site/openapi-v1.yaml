@@ -559,7 +559,7 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
+                name: { type: string, description: 'Names starting with `member:` are reserved.' }
                 environment: { $ref: '#/components/schemas/Environment' }
       responses:
         '201':
@@ -572,6 +572,7 @@ paths:
                   - type: object
                     properties:
                       key: { type: string, description: 'cd_live_… or cd_test_…; shown once, stored hashed' }
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
