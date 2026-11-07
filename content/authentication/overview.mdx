@@ -53,7 +53,8 @@ types share the surface, each with a different blast radius.
     member, key and billing mutations. Demote or remove the member and the next
     request already reflects it; a key whose member no longer exists is denied
     everything.
-- Revocable; a revoked key stops authenticating on its next request. Removing a
+- Revocable; a revoked key stops authenticating on its next request. Only an owner
+  can revoke a key that acts as an owner (`403 credential_outranks_caller`). Removing a
   member revokes their member-scoped key.
 - **Every application in the tenant.** A key belongs to one application, but it
   reads and acts on a connection of any application in its tenant: detail,

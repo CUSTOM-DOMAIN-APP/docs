@@ -603,6 +603,10 @@ paths:
       operationId: revokeApiKey
       summary: Revoke an API key
       tags: [Applications]
+      description: >-
+        Requires an admin's or an owner's key. A key that acts with more
+        authority than the calling key, such as an owner's, can be revoked only
+        by an owner: anyone else gets 403 `credential_outranks_caller`.
       security:
         - apiKey: []
         - managementKey: []
@@ -615,6 +619,7 @@ paths:
       responses:
         '204': { description: Revoked }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Members
@@ -768,6 +773,8 @@ paths:
         Demoting the tenant's last owner is refused with 400, also when two
         demotions or removals of owners race each other. A 409 means the
         member's role changed after this request read it; reload and retry.
+        Changing an owner or admin to member or viewer ends the agent access
+        they approved.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -797,7 +804,8 @@ paths:
       tags: [Members]
       description: >-
         Removing a member revokes their member-scoped API keys at once, on every
-        application of the workspace (the console key and any key they minted). Revoking
+        application of the workspace (the console key and any key they minted), and
+        ends the agent access they approved. Revoking
         a pending invite stops its link working; a preview of that link then
         reports `revoked`. The last owner cannot be removed (400), and a 409
         means the member's role changed after this request read it.
@@ -956,20 +964,29 @@ paths:
       summary: Exchange application credentials for a short-lived widget JWT
       tags: [Tokens]
       description: >-
-        Server-side only. Trade an application's `client_secret` for a
-        short-lived widget JWT the browser can use on the Connect endpoints.
+        Server-side only. Trade an application's `client_secret`, or send one
+        of your API keys as the bearer instead, for a short-lived widget JWT
+        the browser can use on the Connect endpoints. With an API key, leave
+        `client_secret` out: the key needs the `tokens:mint` permission
+        (member and above), and below admin it mints `scope` `connect` only.
         Never ship the `client_secret` or an API key to the browser.
-      security: []
+      security:
+        - {}
+        - apiKey: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [application_id, client_secret]
+              required: [application_id]
               properties:
                 application_id: { type: string }
-                client_secret: { type: string }
+                client_secret:
+                  type: string
+                  description: >-
+                    The application's client secret. Required unless an API key
+                    is sent as the bearer.
                 domain:
                   type: string
                   description: Optional. Binds the token to a single hostname.
@@ -1032,6 +1049,18 @@ paths:
                   scope: { type: string, enum: [connect, app], description: the scope the token was minted with }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            The API key may not mint this token: it lacks `tokens:mint`, or it
+            is below admin and asked for `scope` `app`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: With an API key, the application is not one of the key's workspace.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '429':
           description: >-
             `rate_limited`: too many token requests from this address, or too
@@ -7021,6 +7050,12 @@ paths:
       operationId: getAudit
       summary: Audit log (tenant-scoped for tenant credentials; full log for the management key)
       tags: [Enterprise]
+      description: >-
+        The most recent events of the caller's workspace. With a key held by an
+        owner or admin, events are returned as recorded. With a member's or a
+        viewer's key, and with a widget token, addresses, email addresses and
+        free-text reasons are removed. A widget token sees only events about its
+        own application.
       security:
         - managementKey: []
         - apiKey: []
@@ -7028,6 +7063,17 @@ paths:
       responses:
         '200':
           description: Events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, events]
+                properties:
+                  count: { type: integer, description: Number of events returned. }
+                  total: { type: integer, description: 'Number of events the caller may see, when known.' }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuditEvent' }
         '401': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     post:
@@ -7046,13 +7092,13 @@ paths:
 
 
         The console's server also records here what an operator did through its
-        owner routes (disabling an account, signing it out, a verification
-        resend, a password reset link, the workspace's optional pages). It
-        presents the provisioning secret in `X-Provision-Secret`, names the
-        workspace in `tenant_id`, and may use only the `user.*` and
-        `workspace.features_set` verbs, which a tenant key may not. The actor is
-        recorded as `operator`, the reason in `after.reason` is required for all
-        of them but `user.verification_resent`, and the answer is a `500` when the
+        owner routes. It presents the provisioning secret in
+        `X-Provision-Secret`, names the workspace in `tenant_id`, and may use
+        only the `user.*` and `workspace.*` verbs listed, which a tenant key may
+        not. The actor is recorded as `operator`, the reason in `after.reason` is
+        required for `user.disabled`, `user.enabled`, `user.sessions_revoked`,
+        `user.password_reset_link_issued` and `workspace.features_set` and
+        recorded when given for the others, and the answer is a `500` when the
         log did not take the event.
       security:
         - apiKey: []
@@ -7076,6 +7122,10 @@ paths:
                     - user.verification_resent
                     - user.password_reset_link_issued
                     - workspace.features_set
+                    - workspace.mode_set
+                    - user.onboarding_reset
+                    - user.nudged
+                    - user.push_tested
                   description: >-
                     The console-recordable verb. With an API key only
                     `whitelabel.configured` and `api_key.default_revealed`; with
@@ -9151,13 +9201,16 @@ paths:
           description: >-
             `invalid_request`, `invalid_grant` (a code or refresh token that is
             invalid, expired, spent or revoked, a failed PKCE check, a grant that
-            is no longer active), `invalid_target` (a resource that is not the
+            is no longer active or whose approver no longer manages agents in the
+            workspace), `invalid_target` (a resource that is not the
             one approved) or `unsupported_grant_type`.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
         '503':
-          description: Agent access is not enabled on this deployment (`temporarily_unavailable`).
+          description: >-
+            `temporarily_unavailable`: agent access is not enabled on this
+            deployment, or the grant could not be checked; retry later.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
@@ -9173,7 +9226,9 @@ paths:
         RFC 7009. Revokes the grant behind a refresh token, so the agent's access
         ends within one access token lifetime (15 minutes at most). It answers
         `200` for a token it does not know, so it cannot be used to find out which
-        tokens exist. The workspace's owners and admins are told once.
+        tokens exist, and for a refresh token that was already replaced or
+        revoked, which revokes nothing. Send the client's `client_id` with the
+        token. The workspace's owners and admins are told once.
       security: []
       requestBody:
         required: true
@@ -9184,12 +9239,14 @@ paths:
               required: [token]
               properties:
                 token: { type: string, description: The refresh token. }
+                client_id: { type: string, description: The client the token was issued to. }
           application/json:
             schema:
               type: object
               required: [token]
               properties:
                 token: { type: string, description: The refresh token. }
+                client_id: { type: string, description: The client the token was issued to. }
       responses:
         '200': { description: "Revoked, or the token was not known" }
         '400':
@@ -9248,7 +9305,8 @@ paths:
         Called by the console's server after a person signs in and approves, with
         that member's tenant API key (a widget token is refused, because it lives
         in browsers). The key's member needs `agent:manage` (owners and admins),
-        and `member_id` must belong to the workspace. The approved scopes are a
+        and `member_id` must belong to the workspace. The workspace default key
+        cannot approve (`403`). The approved scopes are a
         subset of what was requested. The grant is bound to one `application_id`
         of the workspace. An agent whose code goes to an unverified host needs
         `acknowledged_unverified: true`, and one whose name imitates a brand is
@@ -9535,6 +9593,18 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/AdminBillingTenantDetail' }
   schemas:
+    AuditEvent:
+      type: object
+      required: [orgId, actorId, action, at]
+      properties:
+        orgId: { type: string, description: The workspace the event belongs to. }
+        actorId: { type: string, description: Who acted. }
+        action: { type: string, description: 'The audited verb, such as `member.invited`. New verbs may be added; treat unknown values as valid.' }
+        target: { type: string, description: What the event is about. }
+        ip: { type: string, description: 'The source address, when known and the caller may see it.' }
+        at: { type: string, format: date-time }
+        before: { type: object, additionalProperties: true, description: A small summary of what changed. }
+        after: { type: object, additionalProperties: true, description: A small summary of what changed. }
     EmailSender:
       type: object
       required: [application_id, mode, smtp_host, smtp_port, smtp_username, password_set, tls, from_address, from_name, reply_to, verified_at, last_error, last_error_at]
@@ -9987,6 +10057,12 @@ components:
             simulated and keep nothing.
         secure_sign_in:
           $ref: '#/components/schemas/SecureSignInStatus'
+        first_key_mint_at:
+          type: string
+          format: date-time
+          description: >-
+            When one of your API keys first minted a widget token for this
+            application. Absent until then, and for a test mode application.
         created_at: { type: string, format: date-time }
     SecureSignInStatus:
       type: object
@@ -13743,7 +13819,9 @@ components:
             The member who approves, recorded as the grant's approver, the
             email recipient and the audit actor. It must belong to the
             workspace. With a member's own key it must be that member (`403`
-            otherwise) and may be left out; with any other key it is required.
+            otherwise) and may be left out. With any other key it is required
+            (`400`) and must name an owner or admin (`403`) who has joined the
+            workspace (`400`).
         application_id: { type: string, description: The one application of the workspace the agent will act within. }
         scopes:
           type: array
