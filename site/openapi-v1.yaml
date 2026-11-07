@@ -768,6 +768,8 @@ paths:
         Demoting the tenant's last owner is refused with 400, also when two
         demotions or removals of owners race each other. A 409 means the
         member's role changed after this request read it; reload and retry.
+        Changing an owner or admin to member or viewer ends the agent access
+        they approved.
       security:
         - apiKey: []
       parameters: [ { $ref: '#/components/parameters/Id' } ]
@@ -797,7 +799,8 @@ paths:
       tags: [Members]
       description: >-
         Removing a member revokes their member-scoped API keys at once, on every
-        application of the workspace (the console key and any key they minted). Revoking
+        application of the workspace (the console key and any key they minted), and
+        ends the agent access they approved. Revoking
         a pending invite stops its link working; a preview of that link then
         reports `revoked`. The last owner cannot be removed (400), and a 409
         means the member's role changed after this request read it.
@@ -9151,13 +9154,16 @@ paths:
           description: >-
             `invalid_request`, `invalid_grant` (a code or refresh token that is
             invalid, expired, spent or revoked, a failed PKCE check, a grant that
-            is no longer active), `invalid_target` (a resource that is not the
+            is no longer active or whose approver no longer manages agents in the
+            workspace), `invalid_target` (a resource that is not the
             one approved) or `unsupported_grant_type`.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
         '503':
-          description: Agent access is not enabled on this deployment (`temporarily_unavailable`).
+          description: >-
+            `temporarily_unavailable`: agent access is not enabled on this
+            deployment, or the grant could not be checked; retry later.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
