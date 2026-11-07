@@ -63,6 +63,8 @@ string:
 | `service_unavailable` | 503 | An optional engine (Sell, templates, billing, webhooks) isn't configured. |
 | `internal_error` | 500 | Server error (generic `title` + a logged request id). |
 
+The full list of codes is the `ErrorCode` schema in the [OpenAPI document](/docs/api-reference). New codes may be added, so treat a code you do not know as a generic error of its HTTP status.
+
 ## Environment variables
 
 Control-plane variables read `CUSTOMDOMAIN_*` first and fall back to the legacy

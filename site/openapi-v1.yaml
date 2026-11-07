@@ -9641,9 +9641,114 @@ components:
       type: object
       required: [code, title]
       properties:
-        code: { type: string, description: 'stable machine code, e.g. invalid_request, unauthorized, not_found, service_unavailable, internal_error' }
+        code: { $ref: '#/components/schemas/ErrorCode' }
         title: { type: string, description: human-readable summary }
         details: { type: string, description: optional extra context }
+    ErrorCode:
+      type: string
+      description: >-
+        A stable machine code. New codes may be added; treat a code not listed
+        here as an unknown error.
+      enum:
+        - account_not_verifiable
+        - apex_not_supported
+        - apex_template_required
+        - application_has_domains
+        - application_key_in_use
+        - apply_failed
+        - billing_required
+        - changed_elsewhere
+        - check_domain_required
+        - confirmation_mismatch
+        - confirmation_required
+        - conflict
+        - connections_unavailable
+        - consent_unknown
+        - credential_outranks_caller
+        - custom_routing
+        - default_application
+        - different_account
+        - dns_host_not_configured
+        - dns_write_failed
+        - domain_already_connected
+        - domain_not_listed
+        - email_sender_failed
+        - forbidden
+        - forwarding_not_supported
+        - fulfillment_in_progress
+        - internal_error
+        - invalid_request
+        - invalid_zone_file
+        - InvalidNameservers
+        - invite_accept_requires_console
+        - invite_expired
+        - managed_dns_backend_error
+        - managed_dns_limit
+        - managed_dns_unavailable
+        - nameserver_agent_unavailable
+        - nameserver_api_unsupported
+        - nameserver_migration_unavailable
+        - not_domain_purchase
+        - not_found
+        - not_reconnectable
+        - nothing_to_check
+        - ns_not_offered
+        - oauth_account_unavailable
+        - old_dns_gone
+        - payload_too_large
+        - plan_upgrade_required
+        - platform_subdomain
+        - porkbun_api_access_disabled
+        - power_configured
+        - provider_rate_limited
+        - provider_unavailable
+        - ProviderAuthenticationError
+        - quota_exceeded
+        - rate_limited
+        - reach_quota
+        - reauthorization_required
+        - redirect_loop
+        - redirect_target_not_allowed
+        - redirects_busy
+        - registrar_locks_nameservers
+        - registrar_mismatch
+        - registrar_refused
+        - registrar_unconfirmed
+        - registration_failed
+        - removal_in_progress
+        - route53_access_denied
+        - route53_external_id_mismatch
+        - route53_external_id_not_required
+        - route53_record_conflict
+        - route53_role_arn_invalid
+        - route53_role_not_found
+        - route53_role_not_started
+        - route53_unavailable
+        - route53_zone_ambiguous
+        - route53_zone_not_found
+        - sandbox_domain_required
+        - sandbox_domain_reserved
+        - sandbox_limit
+        - sandbox_not_allowed
+        - saved_access_available
+        - saved_access_link_failed
+        - saved_access_not_usable
+        - saved_access_write_failed
+        - scope_all_needs_list
+        - serves_every_application
+        - service_unavailable
+        - stripe_error
+        - target_not_allowed
+        - token_not_bound
+        - token_wrong_end_user
+        - too_many_domains_to_check
+        - too_many_records
+        - unauthorized
+        - use_once_credential
+        - workspace_suspended
+        - www_redirect_apex_only
+        - zone_host_unsupported
+        - zone_not_reached
     FulfillmentInProgressError:
       description: >-
         The error envelope of `POST /v1/registrar/fulfill`'s `409`, plus the
@@ -13854,7 +13959,7 @@ components:
         redirect_uri: { type: string, description: "Where to send the person: the agent's redirect URI with `code` and `state` added." }
         code: { type: string, description: The single use authorization code. It lives 5 minutes. }
         state: { type: string }
-        grant_id: { type: string }
+        grant_id: { type: string, description: The id the grant has once the agent exchanges the code. Until then the grant is not listed. }
     AgentGrant:
       type: object
       required: [id, tenant_id, agent_client_id, agent_name, scopes, can_purchase, spend_cap_cents, created_at, spend_this_period_cents, period]
@@ -13871,6 +13976,19 @@ components:
         expires_at: { type: string, format: date-time, description: Absent for persistent access. }
         created_at: { type: string, format: date-time }
         revoked_at: { type: string, format: date-time, description: Present once the access was ended. }
+        revoked_reason:
+          type: string
+          description: >-
+            Why the access ended, when it is known: `owner` (ended in the console), `agent` (the agent
+            revoked it), `credential_reused`, `approver_removed`, `approver_demoted`, `approver_gone`,
+            `application_removed` or `idle`. New values may be added.
+        last_used_at: { type: string, format: date-time, description: When the agent last used this access. }
+        idle_expires_at:
+          type: string
+          format: date-time
+          description: >-
+            When the access ends if the agent does not use it again. Each use moves it later. Absent when
+            access does not end for lack of use.
         spend_this_period_cents: { type: integer, description: Spent against the cap this month. }
         period: { type: string, description: 'The month `spend_this_period_cents` counts, `YYYY-MM` (UTC).' }
     AgentGrantList:
