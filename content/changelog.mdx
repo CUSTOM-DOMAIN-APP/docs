@@ -15,6 +15,9 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 7, 2026: only an owner revokes an owner's key.** Revoking an API key that acts with more authority
+  than the key making the call, such as an owner's key revoked with an admin's, is refused with
+  `403 credential_outranks_caller`. See [Revoke an API key](/docs/api-reference/applications/revokeApiKey).
 - **November 6, 2026: Sign in with Netlify matches Netlify's current DNS.** A root domain on Netlify DNS now
   gets `A` records (Netlify DNS has no `ALIAS`), SRV and CAA records are written in Netlify's own fields, and
   records Netlify manages for a site are left alone. A domain that is not on Netlify DNS gets a plain message
