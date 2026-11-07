@@ -29,7 +29,7 @@ four token types (see [Authentication](/docs/authentication/overview)):
 | --- | --- | --- |
 | **Management key** | opaque | operator provisioning and cross-tenant reads |
 | **API key** | `cd_live_…` / `cd_test_…` (keys created earlier start `sk_live_…` / `sk_test_…` and are still accepted) | long-lived server-to-server calls, tenant-scoped |
-| **Widget JWT** | JWT | the browser widget; minted server-side via `POST /v1/tokens`, or for an account made in the console via its `POST /api/widget-token` (see [Widget tokens](/docs/authentication/widget-tokens)); scoped to one application (and optionally one domain) |
+| **Widget JWT** | JWT | the browser widget; minted server-side via `POST /v1/tokens`, with an API key as the bearer or an application's client secret (see [Widget tokens](/docs/authentication/widget-tokens)); scoped to one application (and optionally one domain) |
 | **Agent token** | ES256 JWT | a delegated AI agent's scoped, revocable access (`domains:read`, `domains:connect`, `domains:disconnect`, `domains:purchase`); issued by the [agent OAuth flow](/docs/agents/oauth-flow) and accepted only on the routes whose spec entry lists `agentToken` |
 
 The one-call signup endpoint `POST /v1/tenants:provision` uses a dedicated

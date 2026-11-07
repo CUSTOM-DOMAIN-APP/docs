@@ -692,8 +692,7 @@ paths:
       description: >-
         What an invite link is for: the invited email, the workspace, the role,
         who sent it, and whether it still works. Nothing is accepted or spent.
-        Public: the token is the capability, exactly as for `members:accept`,
-        and it travels in the body so it never lands in an access log. A link
+        Public: the token is the capability, and it travels in the body so it never lands in an access log. A link
         that stopped working says why (`accepted`, `expired`, `revoked`, or
         `replaced` by a newer invite to the same address); a token that was
         never issued is a 404. Rate-limited per client address.
@@ -719,28 +718,32 @@ paths:
   /members:accept:
     post:
       operationId: acceptMember
-      summary: Accept an invite (single-use token)
+      summary: Accept an invite (console only)
       tags: [Members]
       description: >-
-        Accepts the invite and returns the member with a member-scoped API key
-        for the inviter's tenant. The token is the capability, so no API key is
-        needed; when `email` is supplied it must match the invited email. The
-        token is spent on success, once. A second accept that races the first,
-        or one racing a resend that replaced the link, is refused with 409. A
-        repeat after the accept has finished finds no invite and answers 404,
-        as does a link for an invite that was removed. A pending invite whose
-        link has lapsed is refused with 410 `invite_expired`.
-      security: []
+        Server to server: the console accepts an invite for a signed-in person
+        whose email matches the invited one. An invite link alone accepts
+        nothing: a call without the console's credential is refused with 403
+        `invite_accept_requires_console`, and the invite stays usable. To join a
+        workspace, open the invite link and sign in to the console with the
+        invited email. The token is spent on success, once. A second accept
+        that races the first, or one racing a resend that replaced the link, is
+        refused with 409. A repeat after the accept has finished finds no
+        invite and answers 404, as does a link for an invite that was removed.
+        A pending invite whose link has lapsed is refused with 410
+        `invite_expired`.
+      security:
+        - provisionSecret: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [token]
+              required: [token, email]
               properties:
                 token: { type: string }
-                email: { type: string, description: "When supplied, must match the invited email." }
+                email: { type: string, description: "Must match the invited email." }
                 user_id: { type: string, description: 'The accepting user''s id in the calling application, recorded as `invited_by`.' }
       responses:
         '200':
@@ -756,6 +759,8 @@ paths:
                       application_id: { type: string, description: The inviter tenant's default application. }
                       api_key: { type: string, description: 'Member-scoped API key for the inviter''s tenant; shown once.' }
         '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
@@ -959,20 +964,29 @@ paths:
       summary: Exchange application credentials for a short-lived widget JWT
       tags: [Tokens]
       description: >-
-        Server-side only. Trade an application's `client_secret` for a
-        short-lived widget JWT the browser can use on the Connect endpoints.
+        Server-side only. Trade an application's `client_secret`, or send one
+        of your API keys as the bearer instead, for a short-lived widget JWT
+        the browser can use on the Connect endpoints. With an API key, leave
+        `client_secret` out: the key needs the `tokens:mint` permission
+        (member and above), and below admin it mints `scope` `connect` only.
         Never ship the `client_secret` or an API key to the browser.
-      security: []
+      security:
+        - {}
+        - apiKey: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [application_id, client_secret]
+              required: [application_id]
               properties:
                 application_id: { type: string }
-                client_secret: { type: string }
+                client_secret:
+                  type: string
+                  description: >-
+                    The application's client secret. Required unless an API key
+                    is sent as the bearer.
                 domain:
                   type: string
                   description: Optional. Binds the token to a single hostname.
@@ -1035,6 +1049,18 @@ paths:
                   scope: { type: string, enum: [connect, app], description: the scope the token was minted with }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403':
+          description: >-
+            The API key may not mint this token: it lacks `tokens:mint`, or it
+            is below admin and asked for `scope` `app`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: With an API key, the application is not one of the key's workspace.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '429':
           description: >-
             `rate_limited`: too many token requests from this address, or too
@@ -10031,6 +10057,12 @@ components:
             simulated and keep nothing.
         secure_sign_in:
           $ref: '#/components/schemas/SecureSignInStatus'
+        first_key_mint_at:
+          type: string
+          format: date-time
+          description: >-
+            When one of your API keys first minted a widget token for this
+            application. Absent until then, and for a test mode application.
         created_at: { type: string, format: date-time }
     SecureSignInStatus:
       type: object

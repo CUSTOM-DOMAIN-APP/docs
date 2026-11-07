@@ -10,7 +10,7 @@ created:
 
 | How the application was created | You have | Mint with |
 | --- | --- | --- |
-| **You signed up in the console** (most customers; every console signup gets an application) | An API key from **API & SDK**. The console never shows you the application's client secret. | [`POST https://app.customdomain.ai/api/widget-token`](#with-an-api-key-console-accounts) with `Authorization: Bearer <API key>` |
+| **You signed up in the console** (most customers; every console signup gets an application) | An API key from **API & SDK**. The console never shows you the application's client secret. | [`POST /v1/tokens`](#with-an-api-key-console-accounts) with `Authorization: Bearer <API key>` |
 | **The application was created over the API** (`POST /v1/applications`, or `tenants:provision`) | The `client_secret` in that creation response | [`POST /v1/tokens`](#with-the-client-secret-v1tokens) with the secret in the body |
 
 The **Install** tab on the console's **Widget** page generates code for both. Its
@@ -22,37 +22,51 @@ An API key and a client secret are different credentials. Do not swap them:
 | --- | --- | --- |
 | Looks like | `cd_live_` or `cd_test_` plus 32 hex characters (older keys: `sk_live_` / `sk_test_`) | `sk_` plus 32 hex characters |
 | Where you get it | **API & SDK**: the workspace's default key at the top (owners can view it any time), or **Create key** (admins and owners; shown once). | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
-| Sent as | `Authorization: Bearer …` | `client_secret` in the body of `POST /v1/tokens` |
+| Sent as | `Authorization: Bearer …` (also to `POST /v1/tokens`) | `client_secret` in the body of `POST /v1/tokens` |
 | What it does | Calls the API for your whole workspace | Mints widget tokens for one application, nothing else |
 
-Never put an API key in the `client_secret` field: `POST /v1/tokens` always
-answers `401` with `unknown application or secret`. See
+Never put an API key in the `client_secret` field: send it as the bearer
+instead. In `client_secret`, `POST /v1/tokens` answers `401` with
+`unknown application or secret`. See
 [Troubleshooting](/docs/troubleshooting#401-unknown-application-or-secret-when-minting-a-widget-token).
 
 ## With an API key (console accounts)
 
 Create a key on the console's **API & SDK** page with **Create key**, keep it in
-an environment variable on your server, and call the console's token endpoint:
+an environment variable on your server, and send it as the bearer to
+`POST /v1/tokens`, with no `client_secret`:
 
 ```bash
-curl -X POST https://app.customdomain.ai/api/widget-token \
+curl -X POST https://api.customdomain.ai/v1/tokens \
   -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "application_id": "app_...", "domain": "app.customer.com" }'
-# → 200 { "application_id": "app_...", "token": "eyJ…", "expires_in": 900, "token_type": "Bearer" }
+# → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
-- `application_id` is optional and defaults to your account's first application.
-  `domain` is optional; pass it to bind the token to one hostname.
+- `application_id` is required (the console shows it on **Widget**). `domain` is
+  optional; pass it to bind the token to one hostname. The other fields are the
+  same as with a client secret (below).
 - The API key stays on your server. Only the 15 minute token reaches the browser.
-- This endpoint mints the default `connect` scope only. It takes no `scope` or
-  `end_user_ref`. For an `app` scope token, use `POST /v1/tokens` with a client
-  secret.
+- The key needs the `tokens:mint` permission (members, admins and owners). Below
+  admin it mints the `connect` scope only; an `app` scope token needs an admin's
+  or owner's key.
+
+| Status | Meaning |
+| --- | --- |
+| `401` | The bearer key is missing, revoked or not accepted. |
+| `403` | The key's role may not mint this token (`tokens:mint`, or `scope` `app` below admin). |
+| `404` | `application_id` is not an application of the key's workspace. |
+
+Keys used with the console's older endpoint,
+`POST https://app.customdomain.ai/api/widget-token`, keep working there.
 - Creating a key needs a card on file (the workspace's 14 day free trial; nothing
   is charged until it ends). Without one, **Create key** and
   `POST /v1/applications/{id}/keys` answer `402 billing_required`: an owner or
   admin starts the trial under **Billing**. The workspace's default key needs no
   card, and neither do your first ten domains.
+
+That older endpoint answers with these errors:
 
 | Status | `error` | Meaning |
 | --- | --- | --- |
@@ -64,7 +78,7 @@ curl -X POST https://app.customdomain.ai/api/widget-token \
 | `502` | `mint_failed` | The token service did not return a token. Try again shortly. |
 
 The console keeps each console-created application's client secret sealed and
-uses it for this endpoint, the widget preview and **Try it live**. **Do not
+uses it for the older endpoint, the widget preview and **Try it live**. **Do not
 rotate that secret** (`POST /v1/applications/{id}/client-secret:rotate`): the
 console's copy is not updated, so all three stop working for that application.
 

@@ -36,21 +36,20 @@ only identifier in it, and that one is public.
 Your server trades a credential for a short-lived widget token, and only that
 token reaches the browser. If you signed up in the console (most customers),
 create an API key on **API & SDK** with **Create key** (the **Install** tab's
-**Get your API key** button opens the same form) and call the console's
-token endpoint. You see the key once: store it as `CUSTOMDOMAIN_API_KEY`. This is what the **Install** tab on the **Widget** page generates
+**Get your API key** button opens the same form) and send it as the bearer to
+`POST /v1/tokens`. You see the key once: store it as `CUSTOMDOMAIN_API_KEY`. This is what the **Install** tab on the **Widget** page generates
 by default:
 
 ```bash
-curl -X POST https://app.customdomain.ai/api/widget-token \
+curl -X POST https://api.customdomain.ai/v1/tokens \
   -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"application_id":"app_...","domain":"shop.acme.com"}'
-# → 200 { "application_id": "app_...", "token": "eyJ…", "expires_in": 900, "token_type": "Bearer" }
+# → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
 If you created the application over the API, you have its `client_secret`
-instead; mint with `POST /v1/tokens`. The console never shows a client secret, so
-an API key is not a substitute for it. Both calls, the errors and the difference
+instead; send it in the body of the same `POST /v1/tokens`, with no bearer key. Both calls, the errors and the difference
 between the two credentials are on [Widget tokens](/docs/authentication/widget-tokens).
 
 `domain` binds the token to one hostname (recommended). Tokens last 15

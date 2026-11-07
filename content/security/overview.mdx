@@ -53,6 +53,7 @@ as static reference) at `GET /v1/rbac`:
 | `app:read` | ✅ | ✅ | ✅ | ✅ | View app config |
 | `member:read` | ✅ | ✅ | ✅ | ✅ | List members |
 | `app:write` | | ✅ | ✅ | ✅ | Mutate app settings, rotate secrets, **and every mutating connection route** (see below) |
+| `tokens:mint` | | ✅ | ✅ | ✅ | Mint widget tokens with an API key (`POST /v1/tokens`); below admin, end user (`connect`) tokens only |
 | `member:manage` | | | ✅ | ✅ | Invite / remove members, change roles |
 | `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
 | `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built**; see [Plans & quotas](/docs/billing/plans-and-quotas).) |

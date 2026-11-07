@@ -177,12 +177,12 @@ connection is `propagating` or `live`. If the edge can't reach the gate, check
 usual cause is an **API key** in the `client_secret` field. An API key
 (`cd_live_…`, `cd_test_…`, or an older `sk_live_…`) and an application client
 secret (`sk_` plus 32 hex characters) are different credentials, and the key
-never works there.
+never works in that field.
 
 - **You signed up in the console** (most customers): you have no client secret,
-  because the console never shows it. Call
-  `POST https://app.customdomain.ai/api/widget-token` with
-  `Authorization: Bearer <API key>` instead. Create the key on **API & SDK**; the
+  because the console never shows it. Send the API key as
+  `Authorization: Bearer <API key>` to `POST /v1/tokens`, with no
+  `client_secret`, instead. Create the key on **API & SDK**; the
   **Install** tab on **Widget** generates the code. See
   [Widget tokens](/docs/authentication/widget-tokens).
 - **You created the application over the API**: use the `client_secret` from
@@ -191,9 +191,9 @@ never works there.
   `POST /v1/applications/{id}/client-secret:rotate`.
 - **Do not rotate a console-created application's secret.** The console keeps its
   own copy, which would no longer match: its widget preview, **Try it live** and
-  `/api/widget-token` then fail for that application.
+  its older `/api/widget-token` endpoint then fail for that application.
 
-The console endpoint has its own errors: `503 no_widget_credentials` means the
+The console's older endpoint has its own errors: `503 no_widget_credentials` means the
 application was not created in the console (mint with `/v1/tokens` and its
 secret), and `403 forbidden` means the `application_id` is not in the key's
 workspace.

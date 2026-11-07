@@ -33,9 +33,9 @@ domains get connected and there is no customer in the loop, the
 
 Your backend holds the credential and trades it for a short-lived widget token
 (15 minutes, one application, optionally one domain and one end user). For an
-application made in the console that is an API key sent to
-`POST https://app.customdomain.ai/api/widget-token`; for one made over the API it
-is the application's `client_secret` sent to `POST /v1/tokens`. Only the token
+application made in the console that is an API key sent as the bearer to
+`POST /v1/tokens`; for one made over the API it is the application's
+`client_secret` sent to `POST /v1/tokens`. Only the token
 reaches the browser. See [Widget tokens](/docs/authentication/widget-tokens).
 
 </Step>
