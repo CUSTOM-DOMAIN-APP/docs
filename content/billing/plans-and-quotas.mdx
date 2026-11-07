@@ -23,17 +23,18 @@ tenant gets `402 plan_upgrade_required`. `WhiteLabel`
 enforces it: every connection that has `monitor` on (the default) is monitored, on every plan. The deployment-level
 `MONITOR_ALERTS_ENABLED` flag governs alert delivery for everyone.
 
-| Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
+| Plan | Price | Domains / year (sold) | Enforced allowance | Refused at quota? | Entitlements | Motion |
 | --- | --- | --- | --- | --- | --- | --- |
-| `starter` | $10/mo | 10 | 1 | **yes** | Connect | self-serve, 14 day free trial |
-| `startup` | $149/mo | 600 | 50 | no | Connect | self-serve, 14 day free trial |
-| `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
-| `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (listed, not enforced) | contact sales |
-| `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
+| `starter` | $10/mo | 10 | 10 in any 12 months | **yes** | Connect | self-serve, 14 day free trial |
+| `startup` | $149/mo | 600 | 50 a month | no | Connect | self-serve, 14 day free trial |
+| `growth` | $649/mo | 600 | 50 a month | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
+| `premium` | demo-gated | 12,000 | 1,000 a month | no | + Monitor (listed, not enforced) | contact sales |
+| `enterprise` | custom | 12,000+ | 1,000 a month | no | + white-label | contact sales |
 
-Prices and both domain columns above are transcribed from `GET /v1/plans`
-(`price_cents`, `domains_per_year`, `domains_per_month`). If this table and that
-endpoint ever disagree, the endpoint is right and this page is stale.
+Prices and the domain columns above are transcribed from `GET /v1/plans`
+(`price_cents`, `domains_per_year`, and `quota` over `quota_window_months`). If
+this table and that endpoint ever disagree, the endpoint is right and this page
+is stale.
 
 **Starter replaced the Free plan on 2026-09-29.** `free` is retired: no new
 workspace is put on it, `GET /v1/plans` no longer lists it and Checkout refuses
@@ -42,12 +43,18 @@ see [The Free plan's retirement](#the-free-plans-retirement).
 
 ### Two numbers, and which one gates you
 
-A tier is **sold** annually but **metered** monthly: the meter counts domain
-connections per UTC calendar month, and the quota gate compares against
-`domains_per_month`, which is `ceil(domains_per_year / 12)`. Startup's 600/year
-is therefore **50 in any one month**, and Starter's 10/year is **1/month**.
-Ceiling division means the annualized entitlement never shrinks below what was
-sold (Starter's 1/month is 12/year effective).
+A tier is **sold** annually. The meter counts domain connections per UTC
+calendar month, and the quota gate compares a count against the plan's
+**`quota`** over its **`quota_window_months`**:
+
+- **Starter (and the retired Free): 10 over a rolling 12 months.** The gate adds
+  this month's count to the 11 months before it, so a Starter workspace can
+  connect several domains in one month as long as it stays within 10 in any 12
+  months. (Before November 2, 2026 Starter was held to 1 a month.)
+- **Every other tier: its monthly slice, `domains_per_month`**, which is
+  `ceil(domains_per_year / 12)`, over 1 month. Startup's 600/year is therefore
+  **50 in any one month**. Ceiling division means the annualized entitlement
+  never shrinks below what was sold.
 
 > **Whether that monthly number *blocks* takes both a plan property and a
 > deployment switch.** The plan property is `hard_cap`, and it is `true` only on
@@ -61,9 +68,10 @@ sold (Starter's 1/month is 12/year effective).
 > `services/control-plane/internal/api/billing.go`; the billing service applies
 > the same `hard_cap` rule in `ConnectDomain`, so the two cannot disagree.
 
-Both numbers are published on `GET /v1/plans` (`domains_per_year` and
-`domains_per_month`); `GET /v1/billing/usage`'s `quota` is the monthly one,
-because `used` is a monthly count.
+All of these are published on `GET /v1/plans` (`domains_per_year`,
+`domains_per_month`, `quota` and `quota_window_months`). `GET /v1/billing/usage`
+compares its `quota_used` (the count over the window) with `quota`; its `used`
+stays this month's count.
 
 Self-serve plans (`starter`, `startup`, `growth`) are bought through Stripe
 Checkout. `premium` and `enterprise` route to a "book a demo" CTA and have no
@@ -318,6 +326,8 @@ derived from the authenticated credential, never a query parameter, and
   "plan_name": "Growth",
   "quota": 50,
   "limit": 50,
+  "quota_used": 412,
+  "quota_window_months": 1,
   "metered": true,
   "hard_cap": false,
   "status": "active",
@@ -329,8 +339,11 @@ derived from the authenticated credential, never a query parameter, and
 }
 ```
 
-Compare `used` against **`quota`**: the plan's included connections for one
-calendar month, i.e. `domains_per_month` from the catalog (`0` means unlimited).
+`used` is this month's count. Compare **`quota_used`** against **`quota`**:
+`quota_used` is the count over the last `quota_window_months` months (12 on
+Starter, so this month plus the 11 before it; 1 on every other tier, where it
+equals `used`), and `quota` is the plan's allowance over that window (`0` means
+unlimited).
 `limit` is an alias carrying the identical value: the published schema had
 always declared `limit` while the handler only ever emitted `quota`, so both are
 sent now and either may be read. `status`, `has_billing_account` and
@@ -338,8 +351,8 @@ sent now and either may be read. `status`, `has_billing_account` and
 `billing:manage`.
 
 `quota_state` is the server's own verdict: `ok`, `approaching` (at or past 80%
-of quota) or `at_limit`. `remaining` is `quota - used` floored at zero, omitted
-entirely on an unlimited plan.
+of quota) or `at_limit`. `remaining` is `quota - quota_used` floored at zero,
+omitted entirely on an unlimited plan.
 
 `hard_cap` is the plan's refusal policy (`true` only on `starter`), and
 `quota_enforced` reports whether a `402` is actually possible **right now**: it

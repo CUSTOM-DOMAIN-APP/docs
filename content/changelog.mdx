@@ -138,6 +138,14 @@ never change meaning or disappear without a new major version. See the
   - **Sign up and design.** Signing up with GitHub or Google Workspace fills in the welcome's company and website. The
     Design preview adds **Provider not supported**, **Reconnected**, **Remove: sign in**, **Remove: done** and **Paused
     session**. See [Design the widget](/docs/getting-started/console#design-the-widget).
+
+- **November 2, 2026: Starter allows 10 new domains in any 12 months.** Starter (and the retired Free plan) was held
+  to 1 new domain a calendar month; it now counts over a rolling 12 months, so a workspace can connect several domains
+  in one month as long as it stays within 10 in any 12. Other plans are unchanged. `GET /v1/plans` adds `quota` and
+  `quota_window_months`, `GET /v1/billing/usage` adds `quota_used` and `quota_window_months`, and the usage on
+  `GET /v1/billing/status` and `GET /v1/billing/standing` now covers the window and says so in `window_months`. See
+  [Plans and quotas](/docs/billing/plans-and-quotas).
+
 - **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
   - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
     workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**

@@ -6587,12 +6587,12 @@ paths:
       summary: Public plan catalog (plus billing {configured, mode})
       tags: [Billing]
       description: >-
-        The public plan catalog: `starter` ($10 a month, the default for a new
-        workspace, 14 day trial), `startup`, `growth`, and the contact-sales
+        The public plan catalog: `starter` ($10 a month, 10 new domains in any
+        12 months, the default for a new workspace, 14 day trial), `startup`, `growth`, and the contact-sales
         `premium` and `enterprise`. The retired `free` plan is not listed; a
         workspace created before it was retired keeps it until it subscribes.
         The figures above are the defaults: an operator can change a plan's
-        `price_cents`, `domains_per_year` (and so `domains_per_month`),
+        `price_cents`, `domains_per_year` (and so `domains_per_month` and `quota`),
         `trial_days` and `hard_cap` without a release, so read them from this
         response rather than hard coding them. `billing.trial_days` is the
         default plan's trial.
@@ -6802,7 +6802,7 @@ paths:
         The lean read the MCP server's `check-billing-status` tool uses: whether
         a new connection is refused right now, and if so the same `code`, `title`
         and `details` the refusal carries (`billing_required`), plus the plan and
-        this month's usage. It has no dates, amounts, invoices or card; owners and
+        its usage over the quota window (12 months on Starter, else this month). It has no dates, amounts, invoices or card; owners and
         admins read those from `GET /billing/status`. Any workspace credential may
         read it: a tenant API key of any role, a delegated agent token with
         `domains:read`, or a widget token minted with scope `app`. A
@@ -6827,7 +6827,7 @@ paths:
       description: >-
         The billing page: plan, state, trial or grace countdown, the next
         charge, the card on file, what a checkout started now would give, and
-        this month's usage. Requires `billing:manage` (owners and admins);
+        usage over the quota window (12 months on Starter, else this month). Requires `billing:manage` (owners and admins);
         members and viewers get `403`.
       security:
         - apiKey: []
@@ -9611,12 +9611,14 @@ components:
         price_cents: { type: integer, description: Monthly price in US cents; 0 when not public. }
         public_price: { type: boolean }
         domains_per_year: { type: integer, description: The marketed annual allowance. }
-        domains_per_month: { type: integer, description: 'The enforced monthly allowance (`domains_per_year` ceiling-divided by 12; 0 = unlimited).' }
+        domains_per_month: { type: integer, description: '`domains_per_year` ceiling-divided by 12 (0 = unlimited). It is the enforced allowance only when `quota_window_months` is 1; read `quota` for the enforced number.' }
+        quota: { type: integer, description: 'The enforced allowance: new domains counted over `quota_window_months` calendar months ending with the current one. `starter` is 10 over 12 months; the other plans are their monthly share over 1. 0 = unlimited.' }
+        quota_window_months: { type: integer, description: 'How many calendar months `quota` counts over, ending with the current one: 12 on `starter` (and the retired `free`), 1 on every other plan.' }
         metered: { type: boolean }
         overage_increment: { type: integer }
         motion: { type: string, enum: [self_serve, contact_sales] }
         entitlements: { type: object }
-        hard_cap: { type: boolean, description: 'Connections past the monthly allowance are refused (`starter`) rather than recorded as overage.' }
+        hard_cap: { type: boolean, description: 'Connections past `quota` are refused (`starter`) rather than recorded as overage.' }
         trial_days: { type: integer, description: The trial a new workspace's first subscription to this plan starts with (0 for contact sales). }
         default: { type: boolean, description: The plan preselected for a new workspace (`starter`). }
     BillingState:
@@ -9699,9 +9701,10 @@ components:
         usage:
           type: object
           properties:
-            used: { type: integer, description: Domains connected this period. }
-            quota: { type: integer, description: What the plan includes per month. }
-            period: { type: string, description: 'The calendar month, `YYYY-MM` (UTC).' }
+            used: { type: integer, description: 'Domains connected over the quota window: `window_months` calendar months ending with `period`.' }
+            quota: { type: integer, description: 'What the plan includes over that window (10 over 12 months on `starter`).' }
+            window_months: { type: integer, description: 'How many calendar months `used` and `quota` cover: 12 on `starter`, 1 elsewhere.' }
+            period: { type: string, description: 'The current calendar month, `YYYY-MM` (UTC), the last month of the window.' }
     BillingStatus:
       type: object
       properties:
@@ -9739,6 +9742,8 @@ components:
             public_price: { type: boolean }
             domains_per_year: { type: integer }
             domains_per_month: { type: integer }
+            quota: { type: integer, description: 'The enforced allowance over `quota_window_months` (see `Plan`).' }
+            quota_window_months: { type: integer, description: '12 on `starter`, 1 elsewhere.' }
             hard_cap: { type: boolean }
             retired: { type: boolean }
         next_charge:
@@ -9758,11 +9763,13 @@ components:
             default_plan: { $ref: '#/components/schemas/PlanId' }
         usage:
           type: object
+          description: 'Usage over the plan''s quota window: this calendar month, or the 12 months ending with it on `starter`.'
           properties:
-            used: { type: integer }
-            quota: { type: integer }
-            period_start: { type: string, format: date-time }
-            period_end: { type: string, format: date-time }
+            used: { type: integer, description: Domains connected over the window. }
+            quota: { type: integer, description: What the plan includes over the window. }
+            window_months: { type: integer, description: 'How many calendar months the window covers: 12 on `starter`, 1 elsewhere.' }
+            period_start: { type: string, format: date-time, description: The first day of the window. }
+            period_end: { type: string, format: date-time, description: The end of the current month. }
         payment_method:
           type: [object, 'null']
           description: 'The payment method the workspace is charged on, or null when Stripe holds none. A card has its brand, last four digits and expiry, and names the wallet when it was paid through Apple Pay or Google Pay. A Link account has the email of the account (Stripe never shows the card behind it). Cash App Pay has only its type.'
@@ -9833,9 +9840,11 @@ components:
         stripe_subscription_id: { type: [string, 'null'] }
         usage:
           type: object
+          description: 'Usage over the plan''s quota window (12 months on `starter`, the current month elsewhere).'
           properties:
             used: { type: integer }
             quota: { type: integer }
+            window_months: { type: integer }
             period_start: { type: [string, 'null'], format: date-time }
             period_end: { type: [string, 'null'], format: date-time }
         created_at: { type: [string, 'null'], format: date-time }
@@ -12819,7 +12828,7 @@ components:
       properties:
         org: { type: string, description: 'The tenant the usage belongs to, derived from the authenticated credential.' }
         period: { type: string, examples: ['2026-07'], description: 'UTC calendar month, `YYYY-MM`.' }
-        used: { type: integer, description: metered domain connections this period }
+        used: { type: integer, description: 'metered domain connections this period (one calendar month). Compare `quota_used`, not this, with `quota`.' }
         mode:
           type: string
           enum: ['test', 'live', '']
@@ -12829,9 +12838,23 @@ components:
         quota:
           type: integer
           description: >-
-            The plan's included domain connections for ONE billing MONTH
-            (`DomainsPerYear` ceiling-divided by 12; `0` = unlimited). Compare
-            `used` against this. `limit` carries the identical value.
+            The plan's included domain connections over `quota_window_months`
+            calendar months ending with `period`: 10 over 12 months on
+            `starter` (and the retired `free`), the plan's `domains_per_year`
+            divided by 12 and rounded up over one month on every other plan (`0` =
+            unlimited). Compare `quota_used` against this. `limit` carries the
+            identical value.
+        quota_used:
+          type: integer
+          description: >-
+            Metered domain connections over the quota window, the count
+            `quota` is compared with. Equal to `used` on a plan whose window
+            is one month.
+        quota_window_months:
+          type: integer
+          description: >-
+            How many calendar months `quota` and `quota_used` cover, ending
+            with `period`: 12 on `starter`, 1 on every other plan.
         limit:
           type: integer
           description: >-
@@ -12861,9 +12884,9 @@ components:
           type: string
           enum: ['ok', 'approaching', 'at_limit']
           description: >-
-            The server's classification of `used` against `quota`.
+            The server's classification of `quota_used` against `quota`.
             `approaching` means at or past 80% of quota; `at_limit` means
-            `used >= quota`. Always `ok` on an unlimited plan (`quota <= 0`).
+            `quota_used >= quota`. Always `ok` on an unlimited plan (`quota <= 0`).
         quota_enforced:
           type: boolean
           description: >-
@@ -12878,7 +12901,7 @@ components:
         remaining:
           type: integer
           description: >-
-            `quota - used`, floored at `0`. Omitted entirely on an unlimited
+            `quota - quota_used`, floored at `0`. Omitted entirely on an unlimited
             plan, where no remainder is meaningful.
         status: { type: string, description: 'Subscription status mirrored from Stripe, e.g. `active`, `past_due` (empty for a workspace that has not subscribed). Owners and admins only.' }
         has_billing_account: { type: boolean, description: '`true` when a Stripe customer exists for the org, i.e. the billing portal is available. Owners and admins only.' }
