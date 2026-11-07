@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 // whose entire injectable surface is `ui.custom-css` (config/ui/ui.go: title,
 // description, dashboard-heading, dashboard-subheading, header, logo, link,
 // favicon, buttons, custom-css, dark-mode, default-sort-by, default-filter-by,
-// login-subtitle — and nothing else). There is no custom-js, no HTML slot and
+// login-subtitle, and nothing else). There is no custom-js, no HTML slot and
 // no announcement banner, and the edge runs stock caddy:2-alpine, which has no
 // response-rewriting module. So CSS is not a stylistic choice here; it is the
 // only channel into that page that does not involve freezing Gatus's
@@ -23,7 +23,7 @@ export const revalidate = 300;
 const PKG = "customdomain-js";
 
 /** Downloads of the core package only. @customdomain/react depends on it, so
- *  summing the two double counts every React install — see the note in
+ *  summing the two double counts every React install, see the note in
  *  /api/stats. This page gets one number and it has to be the honest one. */
 async function coreDownloads(): Promise<number | null> {
   try {
@@ -55,7 +55,7 @@ export async function GET() {
   // No number, no rule. Returning an empty sheet leaves Gatus's own
   // "System Monitoring Dashboard" in place, which is a fine thing to fall back
   // to; rendering "0" or "NaN" on a status page would not be.
-  if (n === null) return css("/* npm unavailable — no rule emitted */\n");
+  if (n === null) return css("/* npm unavailable, no rule emitted */\n");
 
   // The value is re-derived from an integer we validated above and then
   // formatted, so the only characters that can reach the content string are
@@ -63,7 +63,7 @@ export async function GET() {
   // the upstream response and into the stylesheet.
   const shown = n.toLocaleString("en-US");
 
-  return css(`/* generated — customdomain-js downloads, last 30 days */
+  return css(`/* generated, customdomain-js downloads, last 30 days */
 
 /* Gatus hardcodes <p>System Monitoring Dashboard</p> directly under the header
    <h1> whenever any ui.buttons are configured (App.vue). It is filler that

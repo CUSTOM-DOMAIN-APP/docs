@@ -20,12 +20,12 @@ import type { StatsPayload } from "@/app/api/stats/route";
 // HONESTY. npm publishes DAILY buckets on a 24-48h lag; there is no live feed.
 // So this refreshes continuously and says so, but labels the window ("last 30
 // days") and the freshness ("npm data through <date>") instead of implying a
-// ticker. The dot pulses because the page is polling — not because a download
+// ticker. The dot pulses because the page is polling, not because a download
 // just happened.
 //
 // NEVER SUM THE PACKAGES. @customdomain/react depends on customdomain-js, so a
 // React install downloads both; adding them double counts. This card headlines
-// customdomain-js alone — the superset every install passes through. An earlier
+// customdomain-js alone, the superset every install passes through. An earlier
 // revision summed them and showed 1,053 where the truth was 586. The per-package
 // row below is a breakdown, and says in words that it is not additive.
 //
@@ -44,7 +44,7 @@ function useCountUp(target: number, ms = 700) {
     let raf = 0;
     const tick = (t: number) => {
       const p = Math.min(1, (t - start) / ms);
-      // ease-out-cubic: fast to settle, no bounce — this is a data readout.
+      // ease-out-cubic: fast to settle, no bounce, this is a data readout.
       setN(Math.round(a + (b - a) * (1 - Math.pow(1 - p, 3))));
       if (p < 1) raf = requestAnimationFrame(tick);
       else from.current = b;

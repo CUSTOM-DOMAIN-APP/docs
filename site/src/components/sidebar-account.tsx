@@ -1,7 +1,7 @@
 /**
  * The account and site links at the foot of the docs sidebar and the phone drawer, moved there from the top of the
  * page list so the sidebar opens on the lockup, search and the section switch. Signed out: "Sign in" (secondary) and
- * "Get an API key" (primary, the console's sign-up page, which creates a workspace and its default key). Signed in
+ * "Start free trial" (primary, the console's sign-up page, which creates a workspace and its default key). Signed in
  * (the console's cd_signed_in hint, src/lib/auth-hint.ts): "API keys" (secondary, the console's keys page) and
  * "Console" (primary). Both pairs are prerendered; the cd-auth-in and cd-auth-out rules in globals.css show one
  * before first paint. Then text links to customdomain.ai and the status page. Styles: src/app/brand.css (.cd-account).
@@ -20,7 +20,7 @@ export function SidebarAccount() {
           Sign in
         </a>
         <a href={SIGN_UP_URL} className="cd-btn cd-btn--primary" data-cd-auth-label="sign_up">
-          Get an API key
+          Start free trial
         </a>
       </div>
       <div className="cd-account__buttons cd-auth-in">

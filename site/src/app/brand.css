@@ -516,3 +516,87 @@ div[style*="--callout-color"] {
     min-height: 44px;
   }
 }
+
+/* Mobile and spacing polish. Tables and code blocks scroll inside their own box instead of widening the page, tap
+   targets reach 44 px where the pointer is coarse, the footer stacks on a phone, and cards, badges, tabs and callouts
+   use a hairline border with no resting shadow. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+.prose :where(table):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose :where(pre):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose :where(img, video, iframe):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose :where(h2, h3, h4) {
+  scroll-margin-top: 96px;
+}
+
+.prose :where(p, li) {
+  overflow-wrap: anywhere;
+}
+
+/* Cards, badges, tabs and callouts: a crisp hairline and no muddy resting shadow. */
+.prose [role="tablist"] > [role="tab"] {
+  box-shadow: none;
+}
+
+.cd-pill {
+  box-shadow: none;
+}
+
+@media (max-width: 767px) {
+  .cd-footer__inner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px 16px 28px;
+  }
+
+  .cd-footer__links {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .cd-footer__links a {
+    min-height: 44px;
+  }
+
+  .cd-sections__link {
+    min-height: 44px;
+  }
+
+  .cd-wordmark {
+    min-height: 44px;
+  }
+
+  .cd-docs-title {
+    font-size: clamp(1.75rem, 6.5vw, 2.5rem);
+    line-height: 1.12;
+  }
+}
+
+@media (pointer: coarse) {
+  .prose [role="tablist"] > [role="tab"] {
+    min-height: 44px;
+  }
+
+  #nd-sidebar button,
+  #nd-sidebar a {
+    min-height: 44px;
+  }
+}
