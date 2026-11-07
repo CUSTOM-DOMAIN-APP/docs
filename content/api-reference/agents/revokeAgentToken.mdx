@@ -14,7 +14,9 @@ _openapi:
           RFC 7009. Revokes the grant behind a refresh token, so the agent's
           access ends within one access token lifetime (15 minutes at most). It
           answers `200` for a token it does not know, so it cannot be used to
-          find out which tokens exist. The workspace's owners and admins are
+          find out which tokens exist, and for a refresh token that was already
+          replaced or revoked, which revokes nothing. Send the client's
+          `client_id` with the token. The workspace's owners and admins are
           told once.
 ---
 

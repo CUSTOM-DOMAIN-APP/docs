@@ -15,6 +15,9 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 7, 2026: only an owner revokes an owner's key.** Revoking an API key that acts with more authority
+  than the key making the call, such as an owner's key revoked with an admin's, is refused with
+  `403 credential_outranks_caller`. See [Revoke an API key](/docs/api-reference/applications/revokeApiKey).
 - **November 7, 2026: the audit log shows each credential only what it may see.** `GET /v1/audit` returns
   events as recorded to keys held by owners and admins. For keys held by members and viewers, and for widget
   tokens, addresses, email addresses and free-text reasons are removed, and a widget token sees only events about
