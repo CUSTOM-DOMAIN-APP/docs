@@ -295,10 +295,10 @@ not need the client secret for an application made in the console: see below.
 
 The application the console made for you has a client secret, but the console
 keeps it sealed and never shows it. To mint widget tokens from your server, send
-one of these keys to the console's `POST https://app.customdomain.ai/api/widget-token`;
+one of these keys as the bearer to `POST /v1/tokens`;
 the **Install** tab on **Widget** writes the code for you. Do not rotate that
-application's secret: the console's copy would go stale and the preview, **Try it
-live** and that endpoint would stop working. See
+application's secret: the console's copy would go stale and the preview and **Try
+it live** would stop working. See
 [Widget tokens](/docs/authentication/widget-tokens).
 
 Optional surfaces (the activity log, DNS monitoring, buying domains, the MCP

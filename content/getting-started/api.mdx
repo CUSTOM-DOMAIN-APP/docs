@@ -159,8 +159,8 @@ revives a failed connection.
   `registered === false` when the field is *present*; a transient failure
   omits it and sets `detection_error: resolver`.
 - **Sending your API key from a browser.** Mint a widget JWT server-side and
-  use that in the page. With an API key that is
-  `POST https://app.customdomain.ai/api/widget-token`; see
+  use that in the page. With an API key that is `POST /v1/tokens` with the key
+  as the bearer; see
   [Widget tokens](/docs/authentication/widget-tokens).
 - **Putting an API key in `client_secret`.** `POST /v1/tokens` takes the
   application's client secret, a different credential, and answers `401` to

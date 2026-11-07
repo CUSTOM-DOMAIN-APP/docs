@@ -100,7 +100,7 @@ allow another connection; the end user only sees a neutral message) and
 | Field | Type | Notes |
 | --- | --- | --- |
 | `applicationId` *(required)* | `string` | Public application id. |
-| `token` *(required)* | `string` | Widget JWT (scope `connect`), minted on your server: `POST /api/widget-token` with an API key for applications created in the console, or `POST /v1/tokens` with the client secret for applications created over the API. See [Installation & embed](/docs/widget-sdk/installation-and-embed#1-mint-a-token-on-your-server). |
+| `token` *(required)* | `string` | Widget JWT (scope `connect`), minted on your server with `POST /v1/tokens`: with an API key as the bearer for applications created in the console, or with the client secret for applications created over the API. See [Installation & embed](/docs/widget-sdk/installation-and-embed#1-mint-a-token-on-your-server). |
 | `getToken` | `() => string \| Promise<string>` | Returns a fresh widget token; have it call your own server route, never the mint endpoint directly. Called when the current one expires mid-setup, so long manual setups never stop. See [Keeping a session alive](/docs/authentication/widget-tokens#keeping-a-session-alive). |
 | `domain` | `string` | Pre-filled domain. |
 | `prefilledDomain` | `string \| string[]` | Alias accepted for the pre-fill. |

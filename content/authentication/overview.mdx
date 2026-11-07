@@ -109,17 +109,15 @@ Two credentials look alike and do different jobs:
 
 The `client_secret` is **not** an API key: its only job is to mint
 [widget JWTs](/docs/authentication/widget-tokens), and an API key placed in the
-`client_secret` field is refused with `401`. An application created in the
-console never shows its client secret; the console keeps it sealed and mints
-tokens for you when you call `POST https://app.customdomain.ai/api/widget-token`
-with an API key. See
+`client_secret` field is refused with `401`: send an API key as the bearer of
+`POST /v1/tokens` instead. An application created in the console never shows its
+client secret, so you mint its tokens that way. See
 [Widget tokens](/docs/authentication/widget-tokens) for which path applies.
 
 ## Widget JWTs (browser)
 
-Short-lived JWTs minted server-side, with an API key through the console's
-`/api/widget-token` or with the application's client secret through
-`POST /v1/tokens`. Scoped to one application and, optionally, one domain. They authorize only the browser-facing
+Short-lived JWTs minted server-side with `POST /v1/tokens`, with an API key as
+the bearer or with the application's client secret. Scoped to one application and, optionally, one domain. They authorize only the browser-facing
 Connect endpoints. This is the only credential that ever reaches the browser;
 see [Widget tokens](/docs/authentication/widget-tokens).
 
