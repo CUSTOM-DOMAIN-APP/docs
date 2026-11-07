@@ -7016,6 +7016,12 @@ paths:
       operationId: getAudit
       summary: Audit log (tenant-scoped for tenant credentials; full log for the management key)
       tags: [Enterprise]
+      description: >-
+        The most recent events of the caller's workspace. With a key held by an
+        owner or admin, events are returned as recorded. With a member's or a
+        viewer's key, and with a widget token, addresses, email addresses and
+        free-text reasons are removed. A widget token sees only events about its
+        own application.
       security:
         - managementKey: []
         - apiKey: []
@@ -7023,6 +7029,17 @@ paths:
       responses:
         '200':
           description: Events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, events]
+                properties:
+                  count: { type: integer, description: Number of events returned. }
+                  total: { type: integer, description: 'Number of events the caller may see, when known.' }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuditEvent' }
         '401': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     post:
@@ -9530,6 +9547,18 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/AdminBillingTenantDetail' }
   schemas:
+    AuditEvent:
+      type: object
+      required: [orgId, actorId, action, at]
+      properties:
+        orgId: { type: string, description: The workspace the event belongs to. }
+        actorId: { type: string, description: Who acted. }
+        action: { type: string, description: 'The audited verb, such as `member.invited`. New verbs may be added; treat unknown values as valid.' }
+        target: { type: string, description: What the event is about. }
+        ip: { type: string, description: 'The source address, when known and the caller may see it.' }
+        at: { type: string, format: date-time }
+        before: { type: object, additionalProperties: true, description: A small summary of what changed. }
+        after: { type: object, additionalProperties: true, description: A small summary of what changed. }
     EmailSender:
       type: object
       required: [application_id, mode, smtp_host, smtp_port, smtp_username, password_set, tls, from_address, from_name, reply_to, verified_at, last_error, last_error_at]

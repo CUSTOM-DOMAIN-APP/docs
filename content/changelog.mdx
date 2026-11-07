@@ -15,6 +15,10 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 7, 2026: the audit log shows each credential only what it may see.** `GET /v1/audit` returns
+  events as recorded to keys held by owners and admins. For keys held by members and viewers, and for widget
+  tokens, addresses, email addresses and free-text reasons are removed, and a widget token sees only events about
+  its own application. See [Audit log](/docs/api-reference/enterprise/getAudit).
 - **November 6, 2026: Sign in with Netlify matches Netlify's current DNS.** A root domain on Netlify DNS now
   gets `A` records (Netlify DNS has no `ALIAS`), SRV and CAA records are written in Netlify's own fields, and
   records Netlify manages for a site are left alone. A domain that is not on Netlify DNS gets a plain message
