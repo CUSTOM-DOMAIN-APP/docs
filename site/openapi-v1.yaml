@@ -603,6 +603,10 @@ paths:
       operationId: revokeApiKey
       summary: Revoke an API key
       tags: [Applications]
+      description: >-
+        Requires an admin's or an owner's key. A key that acts with more
+        authority than the calling key, such as an owner's, can be revoked only
+        by an owner: anyone else gets 403 `credential_outranks_caller`.
       security:
         - apiKey: []
         - managementKey: []
@@ -615,6 +619,7 @@ paths:
       responses:
         '204': { description: Revoked }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Members
