@@ -5583,13 +5583,28 @@ paths:
         Mints a fresh client_secret, stores only its hash, and returns the
         plaintext exactly once; it is never retrievable again. The old secret
         stops minting widget tokens (POST /tokens) immediately; already-issued
-        widget JWTs run out their own short TTL. Admin-or-above (keys:manage):
-        a member/viewer API key is rejected with 403.
+        widget JWTs run out their own short TTL, unless the request sends
+        `revoke_tokens: true`, which also revokes every widget token of the
+        application issued until now (as `tokens:revoke` does). Update the
+        secret your server mints with before you revoke, or widgets that ask
+        for a new token in between fail. Admin-or-above (keys:manage): a
+        member/viewer API key is rejected with 403.
       security:
         - apiKey: []
         - managementKey: []
       parameters:
         - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revoke_tokens:
+                  type: boolean
+                  default: false
+                  description: Also revoke every widget token of the application issued until now.
       responses:
         '200':
           description: Rotated; the new client_secret is present only in this response
@@ -5603,8 +5618,46 @@ paths:
                   client_secret:
                     type: string
                     description: sk_… (mints widget JWTs; shown once, stored hashed)
+                  tokens_revoked_before:
+                    type: string
+                    format: date-time
+                    description: With `revoke_tokens`, widget tokens issued before this time are refused.
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /applications/{id}/tokens:revoke:
+    post:
+      operationId: revokeWidgetTokens
+      summary: Revoke an application's widget tokens issued until now
+      tags: [Applications]
+      description: >-
+        Every widget token of the application issued before the returned time
+        is refused from now on (`401`); tokens minted afterwards work. Use it
+        when a token or the client secret may have leaked. Widgets that hold a
+        revoked token ask your server for a new one. Admin-or-above
+        (keys:manage): a member/viewer API key is rejected with 403.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [application_id, revoked_before]
+                properties:
+                  application_id: { type: string }
+                  revoked_before:
+                    type: string
+                    format: date-time
+                    description: Widget tokens issued before this time are refused.
+        '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 

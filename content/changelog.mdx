@@ -15,6 +15,9 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 7, 2026: revoke an application's widget tokens.** `POST /v1/applications/{id}/tokens:revoke`
+  ends every widget token the application has issued; rotating the client secret does the same when the request
+  sends `{"revoke_tokens": true}`. See [Revoke widget tokens](/docs/api-reference/applications/revokeWidgetTokens).
 - **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
   over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
   `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
