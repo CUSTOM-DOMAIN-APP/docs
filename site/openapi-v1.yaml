@@ -929,11 +929,10 @@ paths:
       description: >-
         The console's server calls this once a person's email change is
         confirmed, guarded by the provision secret like `POST /tenants:provision`.
-        By then the console has already corrected the member row it shares with
-        the control plane, so `email` is the member's new, saved address. The
-        control plane's one job here is to mirror the change to the CRM contact
-        for that member (owner or teammate), best effort and never blocking the
-        console: it answers `ok: true` as soon as the mirror is queued.
+        `email` is the member's new address. With `old_email`, the control plane
+        moves the person's member row in that workspace to it and says how many
+        rows it moved in `updated`; without it, the row is taken as already
+        moved. It may also update related records, best effort.
       security:
         - provisionSecret: []
       requestBody:
@@ -946,9 +945,11 @@ paths:
               properties:
                 tenant_id: { type: string }
                 email: { type: string, description: The member's new address. Lower cased by the control plane. }
+                old_email: { type: string, description: The member's previous address. }
+                user_id: { type: string, description: The person's id in the calling application. }
       responses:
         '200':
-          description: Mirror queued
+          description: Accepted
           content:
             application/json:
               schema:
@@ -956,6 +957,7 @@ paths:
                 required: [ok]
                 properties:
                   ok: { type: boolean }
+                  updated: { type: integer, description: 'Member rows moved to `email`, 0 or 1. Present when `old_email` was sent.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
   /tokens:
