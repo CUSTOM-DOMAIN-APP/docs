@@ -154,6 +154,11 @@ confirmation, or the approval is refused with `400`; a name that imitates a
 brand is refused with `403`; and a member's own key records only that member as
 the approver. See [Managing access](/docs/agents/managing-access).)
 
+An agent the same person already approved in the same workspace, asking for
+nothing beyond that approval, may be signed in again without the screen. If it
+asks for more, the screen marks what is new. Send `prompt=consent` to always
+show the screen.
+
 ## 4. Token
 
 Exchange the code and the PKCE **verifier** for tokens. `client_id` and

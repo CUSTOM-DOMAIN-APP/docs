@@ -559,7 +559,7 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
+                name: { type: string, description: 'Names starting with `member:` are reserved.' }
                 environment: { $ref: '#/components/schemas/Environment' }
       responses:
         '201':
@@ -572,6 +572,7 @@ paths:
                   - type: object
                     properties:
                       key: { type: string, description: 'cd_live_… or cd_test_…; shown once, stored hashed' }
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
@@ -3812,6 +3813,7 @@ paths:
                 return_origin:
                   type: string
                   description: Web origin the callback page may postMessage the outcome to; must be on the server's allowlist.
+                client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
                 region:
                   type: string
                   enum: [eu, ca, us]
@@ -3864,7 +3866,7 @@ paths:
                 type: object
                 required: [authorize_url, provider, flow]
                 properties:
-                  authorize_url: { type: string, format: uri }
+                  authorize_url: { type: string, format: uri, description: "Open this URL in the sign-in popup. It may be on this API's origin and redirect to the provider." }
                   provider: { type: string }
                   flow:
                     type: string
@@ -4965,7 +4967,8 @@ paths:
         validated consumer key), writes the connection's records with it
         (dropped after, unless kept for managed mode), and returns an HTML page
         that postMessages `{ type: "customdomain:oauth", payload }` to the
-        vetted return origin. After `porkbun_dnsconnect` there is no credential:
+        vetted return origin; `payload.nonce` repeats the start's
+        `client_nonce` when it sent one. After `porkbun_dnsconnect` there is no credential:
         Porkbun added the records itself and says so in `status` (`applied`,
         `partial`, `denied` or `error` with its `error`), which is not signed,
         so the connection only moves to `propagating` and public DNS decides;
@@ -4973,7 +4976,10 @@ paths:
         `payload` carries `ok`, `managed`, and on failure
         a `code` and `message`: besides the provider's own `error` (for example
         `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
-        `apex_not_supported`, `forwarding_not_supported`, the rail specific
+        `apex_not_supported`, `forwarding_not_supported`,
+        `sign_in_other_browser` (the sign-in finished in a different browser
+        from the one that opened it; nothing was used up, so finish it in the
+        window the start opened), the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
         domain at Porkbun), `porkbun_domain_not_in_account` and
         `porkbun_domain_not_active` (after `porkbun_dnsconnect`: the domain is
@@ -5017,6 +5023,25 @@ paths:
           description: HTML finish page (postMessages the outcome to the vetted return origin)
         '400':
           description: Invalid, expired, or replayed state
+  /connect/oauth/launch:
+    get:
+      operationId: oauthLaunch
+      summary: Sign-in popup launch (public; authenticated by the signed state)
+      tags: [Connections]
+      description: >-
+        The first page a sign-in popup opens when `authorize_url` points here.
+        It ties the sign-in to this browser and redirects to the provider. Not
+        a bearer-authenticated endpoint; open it only through `authorize_url`.
+      security: []
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '302':
+          description: Redirect to the provider's sign-in page
+        '400':
+          description: HTML error page; the link is invalid, expired or too old
+        '403':
+          description: HTML error page; the sign-in was opened in another browser
   /connect/dc/callback:
     get:
       operationId: dcCallback
@@ -5037,7 +5062,7 @@ paths:
         - { name: state, in: query, required: true, schema: { type: string } }
       responses:
         '200':
-          description: HTML finish page (postMessages the outcome to the vetted return origin)
+          description: HTML finish page (postMessages the outcome to the vetted return origin; `payload.nonce` repeats the start's `client_nonce` when it sent one)
         '400':
           description: Invalid, expired, replayed, or wrong-rail state
   /connect/dc/return/{state}:
@@ -5054,7 +5079,8 @@ paths:
         `error` on the connection, runs the propagation check at once, and
         returns the same HTML finish page as the OAuth callback, which
         postMessages `{ type: "customdomain:oauth", payload }` to the origin
-        vetted at start. A clean return never marks the connection live by
+        vetted at start (`payload.nonce` repeats the start's `client_nonce`
+        when it sent one). A clean return never marks the connection live by
         itself: only the records appearing in public DNS do.
       security: []
       parameters:
@@ -5191,6 +5217,7 @@ paths:
                     outcome to; must be on the server allowlist. Used by the
                     async callback, and by the sync return page on a plain sync
                     start.
+                client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
       responses:
         '200':
           description: >-
@@ -8192,6 +8219,7 @@ paths:
                     and another workspace's is `404`). Left out, the account
                     serves the whole workspace.
                 return_origin: { type: string, description: Web origin the popup posts its result to; must be on the server's allowlist. }
+                client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
       responses:
         '200':
           description: The sign-in started; open `authorize_url` in a popup.
@@ -8201,7 +8229,7 @@ paths:
                 type: object
                 required: [authorize_url, provider, flow, callback_origin]
                 properties:
-                  authorize_url: { type: string, format: uri, description: "The company's consent page (or Vercel's install page)." }
+                  authorize_url: { type: string, format: uri, description: "Open this URL in the sign-in popup: the company's consent page (or Vercel's install page), possibly through this API's origin first." }
                   provider: { type: string }
                   flow: { type: string, enum: [oauth2, vercel_integration], description: The sign-in the company runs. }
                   callback_origin: { type: string, description: "The origin the result is posted from; accept a message from no other." }
@@ -9327,6 +9355,37 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AgentConsentResult' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /agent/consent:reconnect:
+    post:
+      operationId: reconnectAgent
+      summary: Sign an approved agent in again without the consent screen
+      tags: [Agents]
+      description: >-
+        Called by the console's server before it shows the consent screen, with
+        the same credential rules as `POST /agent/consent`. When the agent already
+        holds access from this member in this workspace that covers every scope it
+        asks for, the response has `granted: true` and a code for that access;
+        nothing new is granted. Otherwise `granted` is false, `reason` says why the
+        consent screen is needed, and `prior_scopes` lists the scopes this member
+        gave the agent before.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentReconnectRequest' }
+      responses:
+        '200':
+          description: A code for the existing access, or why consent is needed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentReconnectResult' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
@@ -13854,7 +13913,30 @@ components:
         redirect_uri: { type: string, description: "Where to send the person: the agent's redirect URI with `code` and `state` added." }
         code: { type: string, description: The single use authorization code. It lives 5 minutes. }
         state: { type: string }
-        grant_id: { type: string }
+        grant_id: { type: string, description: The id the grant has once the agent exchanges the code. Until then the grant is not listed. }
+    AgentReconnectRequest:
+      type: object
+      required: [request]
+      properties:
+        request: { type: string, description: The consent request id from the authorize redirect. }
+        member_id: { type: string, description: The member signed in to the console. Required with an unbound key. }
+    AgentReconnectResult:
+      type: object
+      required: [granted]
+      properties:
+        granted: { type: boolean, description: True when the agent's existing access covers the request and a code was issued. }
+        redirect_uri: { type: string, description: "With `granted`: where to send the person, the agent's redirect URI with `code` and `state` added." }
+        code: { type: string, description: With `granted`, the single use authorization code. }
+        state: { type: string }
+        grant_id: { type: string, description: With `granted`, the existing grant the code is for. }
+        reason:
+          type: string
+          enum: [prompt_consent, unverified, no_grant, new_scopes]
+          description: Without `granted`, why the consent screen is needed.
+        prior_scopes:
+          type: array
+          items: { $ref: '#/components/schemas/AgentScope' }
+          description: Without `granted`, the scopes this member already gave this agent here.
     AgentGrant:
       type: object
       required: [id, tenant_id, agent_client_id, agent_name, scopes, can_purchase, spend_cap_cents, created_at, spend_this_period_cents, period]
@@ -13871,6 +13953,19 @@ components:
         expires_at: { type: string, format: date-time, description: Absent for persistent access. }
         created_at: { type: string, format: date-time }
         revoked_at: { type: string, format: date-time, description: Present once the access was ended. }
+        revoked_reason:
+          type: string
+          description: >-
+            Why the access ended, when it is known: `owner` (ended in the console), `agent` (the agent
+            revoked it), `credential_reused`, `approver_removed`, `approver_demoted`, `approver_gone`,
+            `application_removed` or `idle`. New values may be added.
+        last_used_at: { type: string, format: date-time, description: When the agent last used this access. }
+        idle_expires_at:
+          type: string
+          format: date-time
+          description: >-
+            When the access ends if the agent does not use it again. Each use moves it later. Absent when
+            access does not end for lack of use.
         spend_this_period_cents: { type: integer, description: Spent against the cap this month. }
         period: { type: string, description: 'The month `spend_this_period_cents` counts, `YYYY-MM` (UTC).' }
     AgentGrantList:

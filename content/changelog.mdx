@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 9, 2026: an approved agent signs in again without the consent screen.** When an agent asks
+  for no more than the same person already approved in the same workspace, the console signs it in again
+  without asking. A request for more shows the screen with the new access marked; `prompt=consent` always
+  shows it. See [OAuth flow](/docs/agents/oauth-flow) and
+  [Sign an approved agent in again](/docs/api-reference/agents/reconnectAgent).
 - **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
   over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
   `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
