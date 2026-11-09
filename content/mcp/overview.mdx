@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: "The CustomDomain™ Model Context Protocol server: twenty-four tools an AI agent can call to search, connect and manage domains, plus scopes, transports and auth."
+description: "The CustomDomain™ Model Context Protocol server: forty-six tools an AI agent can call to search, connect and manage domains and run its workspace, plus scopes, transports and auth."
 ---
 
 CustomDomain™ ships a **Model Context Protocol (MCP) server** so an AI agent
@@ -23,7 +23,7 @@ revision `2025-06-18`), and advertises only the `tools` capability.
 
 ## Tools
 
-The server registers **twenty-four tools**, in a fixed order. None of them takes DNS
+The server registers **forty-six tools**, in a fixed order. None of them takes DNS
 records as input. Records always come from the control plane, so an agent can
 never inject them. Each tool needs one scope (see below).
 
@@ -53,6 +53,28 @@ never inject them. Each tool needs one scope (see below).
 | `find-saved-access` | `{ connectionId, provider? }` | `domains:read` | Find the saved keys that may write a connected domain's records, best first: each entry has an `accountId`, `provider`, `label`, `zone` and `ready` (`true`: the key already covers the domain; `false`: a read showed it reaches the zone, and using it adds the zone to what the key covers). An empty list means none may act for this domain. Never returns a key, and never one a customer made at their own sign in. An agent token reads no `keyName`, and a key made for another application and shared with its own reads as `<Provider> key`, with no `applicationId`. Read only. |
 | `use-saved-access` | `{ connectionId, accountId, confirm }` | `domains:connect` | Write a connected domain's records with a saved key and link the key to the domain, so later repairs and the removal use it. It changes the domain's live DNS through the person's own account at their provider: ask the person first and send `confirm: true` (without it nothing is sent), with an `accountId` that `find-saved-access` listed for the same connection. You supply no records. Answers `status` `connected` (written, so poll `check-connection-status`) or `already` (the domain was already serving and is linked with no write). Failures: `saved_access_not_usable` (that key cannot act for this domain: call `find-saved-access` again) and `saved_access_write_failed` (the provider refused the write: nothing was linked and the key's access is as it was, but a provider that writes one record set at a time may have changed some of the domain's records before it failed; `details` has the provider's words). The use is in the audit log as `agent.acted` ("used a saved key") under the agent's grant once whenever the records were written, the key linked or the write failed at the provider; a use refused before anything was sent leaves no row. |
 | `get-widget-setup` | `{ applicationId? }` | `domains:read` | Show a developer how to embed the CustomDomain™ widget in their own product: the `customdomain-js` install command, the server step that mints a short-lived widget token, and the browser snippet. Pass `applicationId` to write it into the snippets; without it the docs' placeholder is used. Read only. |
+| `list-applications` | `{}` | `app:read` | List the workspace's applications: id, name, environment, sandbox, connect target, DNS hosting setting and creation time. Read only. |
+| `get-application` | `{ applicationId }` | `app:read` | Get one application and its settings. Read only. |
+| `create-application` | `{ name, environment?, sandbox? }` | `app:write` | Create an application. The result carries its client secret, shown this once; store it in your server's environment right away. |
+| `update-application` | `{ applicationId, name?, dnsHostingMode?, dnsHostingTarget?, endUserSavedAccess? }` | `app:write` | Change an application's name, its DNS hosting offer (`off`, `offer` or `prefer`) and whether end users may save a provider key. Fields left out keep their value. |
+| `get-connect-target` | `{ applicationId }` | `app:read` | Read where an application's domains point: the CustomDomain™ edge, or your own servers with a CNAME target and IPv4 addresses for root domains. Read only. |
+| `set-connect-target` | `{ applicationId, cnameTarget, apexIpv4?, confirm }` | `app:write` | Point an application's domains at your own servers, or back at the CustomDomain™ edge with an empty `cnameTarget`. It moves traffic for every connected domain of the application. `confirm` repeats the application id. |
+| `mint-widget-token` | `{ applicationId, domain?, endUserRef?, endUserEmail? }` | `tokens:mint` | Mint a widget token (15 minutes) that opens the connect flow for one application, optionally bound to a hostname and an end user. Hand it only to the end user it is for. |
+| `list-api-keys` | `{ applicationId }` | `keys:manage` | List an application's API keys: id, name, prefix, environment, scopes, last use and whether it was revoked. A secret is never listed. Read only. |
+| `create-api-key` | `{ applicationId, environment? }` | `keys:manage` | Create an API key. The secret is shown this once. A key an agent creates acts as a member: it embeds and connects domains, and cannot manage billing, members or keys. |
+| `revoke-api-key` | `{ applicationId, keyId, confirm }` | `keys:manage` | Revoke an API key; every request that uses it fails from then on. `confirm` repeats the key's id. |
+| `list-webhooks` | `{ applicationId? }` | `app:read` | List the webhook endpoints: id, application, URL, events and creation time. A signing secret is never listed. Read only. |
+| `create-webhook` | `{ url, events? }` | `app:write` | Register an https endpoint for domain events. The signing secret is shown this once. With no events the endpoint gets every event. |
+| `test-webhook` | `{ webhookId }` | `app:write` | Send a signed test event to an endpoint now and report how it answered. |
+| `delete-webhook` | `{ webhookId, confirm }` | `app:write` | Delete a webhook endpoint; it receives no more events. `confirm` repeats the endpoint's id. |
+| `list-webhook-deliveries` | `{ applicationId?, eventType? }` | `app:read` | List recent delivery attempts, newest first, with the status the endpoint answered and any error. Read only. |
+| `list-members` | `{}` | `member:read` | List the workspace's members and open invitations: email, role, status and when an invitation expires. Read only. |
+| `invite-member` | `{ email, role }` | `member:manage` | Invite a person by email as an `admin`, `member` or `viewer`. Only a person makes an owner, in the console. |
+| `change-member-role` | `{ memberId, role }` | `member:manage` | Change a member's role to `admin`, `member` or `viewer`. An owner's role stays with a person in the console. |
+| `remove-member` | `{ memberId, confirm }` | `member:manage` | Remove a member, or withdraw an open invitation. The person loses access at once. `confirm` repeats the member's id. |
+| `read-audit-log` | `{ action?, limit? }` | `audit:read` | Read the audit log, newest first: who did what to which target and when. An agent's actions show as `agent:<grant id>`. Read only. |
+| `get-usage` | `{ period? }` | `stats:read` | Read plan usage for a billing period (`YYYY-MM`): the plan, domains used against the quota and what remains. Read only. |
+| `get-billing-notice` | `{}` | `stats:read` | Read the billing standing the console shows, with the link to the console's billing page. Plan and payment changes are made there by a person. Read only. |
 {/* NEW TOOLS GO HERE: add one row per new tool directly above this line, then change the count word ("twenty") in this page's description and in the sentence under Tools, and in user-journeys.mdx and index.mdx. This marker stays; the docs sync test reads it. */}
 
 The scope is checked twice. A delegated agent token must carry the tool's scope,
@@ -163,8 +185,18 @@ An approval's body looks like this:
 | `domains:connect` | Set a domain up: connect, re-apply, recheck, forward and email setup, move its nameservers or move them back, and write a domain's records with a saved key. A recheck can move a failed connection back into verification, so it is here and not in read. |
 | `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. A grant approved before this scope existed does not carry it: the person approves the agent again to add it. |
 | `domains:purchase` | Register a domain. Spends money, and the grant needs a saved card and a monthly spend cap. |
+| `stats:read` | Read plan usage and the billing notice. Plan and payment changes stay with a person in the console. |
+| `audit:read` | Read the workspace audit log. |
+| `app:read` | Read applications, their connect target, webhooks and webhook deliveries. |
+| `app:write` | Create and change applications, set the connect target, and manage webhooks. |
+| `tokens:mint` | Mint a short lived widget token for an application. |
+| `member:read` | List members and open invitations. |
+| `member:manage` | Invite members, change their role and remove them. Never makes an owner. |
+| `keys:manage` | List, create and revoke API keys. A key an agent creates acts as a member. |
 
-The discovery documents list them in that order: look, change, remove, spend.
+The discovery documents list them in that order: the domain scopes as look, change, remove, spend, then the
+workspace scopes, reads before writes. A workspace scope works only while the person who approved the agent
+still holds that permission in the workspace, and an agent never acts as an owner.
 See [Agent access](/docs/agents/overview) for how a person approves them.
 
 ## What a call answers
@@ -259,7 +291,7 @@ The server binary (`cmd/mcp`) speaks two transports, selected with `-transport`:
   | `POST /mcp` | The MCP JSON-RPC endpoint. **Requires `Authorization: Bearer`** (unless started with `-insecure` for local development). |
   | `POST /token` | OAuth 2.0 **client credentials** grant: exchange `client_id` and `client_secret` for a short lived Bearer. Limited per caller IP address (see [Authentication](#authentication)). |
   | `GET /healthz` | Liveness. Answers `200` with `ok`. |
-  | `GET /.well-known/oauth-protected-resource` | RFC 9728 protected resource metadata, also served at `/.well-known/oauth-protected-resource/mcp`. The `401` from `/mcp` points here. It names the control plane (`https://api.customdomain.ai`) first as the authorization server, then this server, and lists the four scopes. |
+  | `GET /.well-known/oauth-protected-resource` | RFC 9728 protected resource metadata, also served at `/.well-known/oauth-protected-resource/mcp`. The `401` from `/mcp` points here. It names the control plane (`https://api.customdomain.ai`) first as the authorization server, then this server, and lists the twelve scopes. |
   | `GET /.well-known/oauth-authorization-server` | RFC 8414 authorization server metadata for `/token` (the `client_credentials` grant). The authorization code flow for delegated agents belongs to the control plane, not to this server: see [Agent access](/docs/agents/overview). |
   | `GET /.well-known/agent/mcp.json` | The agent capability manifest: protocol, transport, endpoint, auth and the live tool list. |
 
