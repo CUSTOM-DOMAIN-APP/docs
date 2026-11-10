@@ -96,6 +96,11 @@ instead:
 - **`registration_hold`**: `hold`, `redemption` or `pending_delete`, present with
   `blocked_reason: registration_hold`. The domain is registered but does not work
   until its registrar resolves the hold, and no rail is offered meanwhile.
+- **`connection_plan`**: where to make the change and by which way, when the domain
+  can be reached from more than one place. `place` is `dns_host`, `registrar` or
+  `none`; `change` is `records`, `nameservers` or `none`; `rail` is one of the ways in
+  `rails`, or `manual`; `reason` is a short code. `provider` names the place when
+  there is one.
 - **`dashboard_url`**: a best-effort deep link into the provider's DNS panel,
   for the "add these records" step.
 

@@ -22,6 +22,8 @@ never change meaning or disappear without a new major version. See the
   `removed_here` and `revoke_at_provider`: the key must still be deleted at the provider, and `revoked` is
   deprecated. When a nameserver move does not know the registrar, it names no company and says "where the domain
   is registered". A session's timeline reports `verified`, and `POST /v1/webhooks/{id}:test` sends a test event.
+  The domain check also answers `connection_plan`, where to make the change and by which way when a domain's DNS
+  provider and registrar differ, and `POST /v1/domains:check` accepts `prewarm` while a name is being typed.
   See [Domain check](/docs/api-reference/domains/checkDomain) and
   [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
 - **November 9, 2026: the MCP server runs the workspace too.** Twenty-two new tools cover applications, the

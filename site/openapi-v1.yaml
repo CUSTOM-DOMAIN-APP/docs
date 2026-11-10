@@ -12878,6 +12878,20 @@ components:
             redemption period or pending deletion. The domain is registered
             but does not work until its registrar resolves this, so
             `blocked_reason` is `registration_hold` and no rail is offered.
+        connection_plan:
+          type: object
+          description: >-
+            Where to make the change and by which way, when the domain can be
+            reached from more than one place. `place` is `dns_host`,
+            `registrar` or `none`; `change` is `records`, `nameservers` or
+            `none`; `rail` is a way listed in `rails`, or `manual`; `reason` is
+            a short code.
+          properties:
+            place: { type: string, enum: [dns_host, registrar, none] }
+            provider: { type: string }
+            change: { type: string, enum: [records, nameservers, none] }
+            rail: { type: string }
+            reason: { type: string }
         integration_warnings:
           type: array
           description: >-
