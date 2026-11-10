@@ -35,8 +35,9 @@ _openapi:
           **Where they change**: at the domain's registrar, looked up over RDAP
           for every move (`registrar`), never at the DNS host because it hosts
           the DNS. A key, an account, a cloud browser sign in and the
-          instructions all go to that registrar; when RDAP names none, the
-          detected DNS host is used as a guess and `next_step` names no company.
+          instructions all go to that registrar; when RDAP names none, no
+          company is named and `next_step` says "where the domain is
+          registered".
           **How they change** (`path`): `api`, the registrar's own API with a
           key the customer created (`credential` with `provider`, used once and
           never stored, or `provider_account_id`, a connected account; the
@@ -143,8 +144,9 @@ _openapi:
           **Where they change**: at the domain's registrar, looked up over RDAP
           for every move (`registrar`), never at the DNS host because it hosts
           the DNS. A key, an account, a cloud browser sign in and the
-          instructions all go to that registrar; when RDAP names none, the
-          detected DNS host is used as a guess and `next_step` names no company.
+          instructions all go to that registrar; when RDAP names none, no
+          company is named and `next_step` says "where the domain is
+          registered".
 
           **How they change** (`path`): `api`, the registrar's own API with a
           key the customer created (`credential` with `provider`, used once and

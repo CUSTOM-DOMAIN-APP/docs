@@ -79,6 +79,7 @@ leaves out a [test mode](/docs/guides/test-mode) application's endpoints unless
 | `nameservers.failed` | The move stopped. `failure_code` says why. |
 | `nameservers.rolled_back` | The domain was moved back, to its previous nameservers or to its registrar's own DNS (`rollback_target`). |
 | `nameservers.drifted` | An active move's nameservers were changed away. `observed_nameservers` says to what. |
+| `webhook.test` | You sent a test with [`POST /v1/webhooks/{id}:test`](/docs/api-reference/webhooks/testWebhook). It is delivered once, to that endpoint only, whatever events the endpoint subscribes to. |
 | `domain.record_missing` | [Monitoring](/docs/connect-flow/monitoring) confirmed a record disappeared or was repointed. `drift` carries `record_type`, `verdict` (`record_missing` or `record_changed`), `expected`, `observed` and `action` (`auto_fixed`, `fix_failed` or `action_required`). |
 | `domain.record_restored` | A previously missing record is observed again. |
 | `domain.purchased` | A [domain purchase](/docs/sell/buying-a-domain) completed: the domain is registered (and only then is the card captured). |

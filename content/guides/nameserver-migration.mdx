@@ -88,11 +88,11 @@ CustomDomain™ looks the registrar up:
    read the domain's registration is used (for a move your server or the console
    starts).
 
-When the registry answers nothing, the move goes on with the detected DNS host
-as a guess and names no company: the next step says to make the change "where
-acme.com is registered (the company it was bought from; lookup.icann.org names
-it)". A connected account at that DNS host is used then only when it can read the
-domain's registration, which shows it is the registrar's. The move carries the registrar as `registrar` (`name`, `provider`,
+When the registrar is not known, the move names no company: the next step says to
+make the change "where acme.com is registered (the company it was bought from;
+lookup.icann.org names it)". A connected account at the DNS host is used then only
+when it can read the domain's registration, which shows it is the registrar's.
+The move carries the registrar as `registrar` (`name`, `provider`,
 `iana_id`, `url` and `source`), `null` when it is not known, and the DNS host the
 domain left as `old_dns_host`.
 
