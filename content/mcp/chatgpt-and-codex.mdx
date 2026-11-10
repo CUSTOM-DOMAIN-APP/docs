@@ -1,0 +1,62 @@
+---
+title: ChatGPT, Codex and the OpenAI API
+description: "Connect the CustomDomain™ MCP server to ChatGPT, Codex and the OpenAI Responses API."
+---
+
+The [MCP server](/docs/mcp/overview) works with OpenAI's products. Each one signs in with
+OAuth except the API, which takes a key from your server.
+
+## ChatGPT
+
+Add it as a custom MCP server in your workspace:
+
+1. Open **chatgpt.com/plugins** and choose the plus button, then **Add custom MCP server**.
+2. Enter a name and the server URL `https://mcp.customdomain.ai/mcp`.
+3. Choose **OAuth**, accept the notice, and choose **Create as a plugin**.
+4. Sign in to CustomDomain™ and approve the scopes you want ChatGPT to have. You can revoke them at any
+   time (see [agent access](/docs/agents/overview)).
+5. In a chat, type `@` and pick the plugin.
+
+Changes that matter ask for your confirmation first. Workspace admins can turn custom servers off, and
+ChatGPT's own workspace settings apply.
+
+## Codex
+
+Add the marketplace, then install the plugin and sign in when asked:
+
+```bash
+codex plugin marketplace add CUSTOM-DOMAIN-APP/customdomain-mcp
+```
+
+To add only the server, point Codex's MCP settings at `https://mcp.customdomain.ai/mcp` and sign in with
+OAuth.
+
+## The OpenAI API
+
+The Responses API can call the server as a remote MCP tool. Pass an API key from your console
+(**API & SDK**) as the `authorization` value, and keep it on a server, never in browser code.
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI()
+response = client.responses.create(
+    model=os.environ["OPENAI_MODEL"],
+    tools=[
+        {
+            "type": "mcp",
+            "server_label": "customdomain",
+            "server_url": "https://mcp.customdomain.ai/mcp",
+            "authorization": os.environ["CUSTOMDOMAIN_API_KEY"],
+            "allowed_tools": ["connect-domain", "check-connection-status", "diagnose-connection"],
+            "require_approval": "always",
+        }
+    ],
+    input="Connect app.example.com and tell me when it is live.",
+)
+print(response.output_text)
+```
+
+`allowed_tools` limits what the model can call, and `require_approval` makes your code approve each call. A
+key carries the scopes it was created with, so give it only what the job needs.
