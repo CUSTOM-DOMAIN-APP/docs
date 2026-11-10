@@ -67,18 +67,15 @@ What the user gets:
 A domain's nameservers are changed at its **registrar**, which is often not the
 company that runs its DNS. Registered at GoDaddy with its DNS at Cloudflare is
 the most common split, and then the change is made at GoDaddy. So for every move,
-CustomDomain™ looks the registrar up:
+We may look up the registrar:
 
-1. **In public registration data.** A domain's registry publishes who the
-   domain is registered with, over RDAP (the protocol behind the public WHOIS
-   lookup at lookup.icann.org). The answer names the registrar, its website, its
-   IANA Registrar ID and, when the registry shows one, the reseller it was bought
-   through.
-2. **Matched to a provider we connect to**, by that IANA ID: all of GoDaddy's
-   registrar accreditations are GoDaddy, Namecheap's is Namecheap, and so on. A
-   registrar we do not connect to, such as a wholesale registrar that sells
-   through resellers, is named (by the reseller when the registry shows one), and
-   the person makes the change there.
+1. **In public registration data.** We may look up where a domain is
+   managed. The answer names the registrar, its website and, when one is shown,
+   the reseller it was bought through.
+2. **Matched to a provider we connect to.** GoDaddy's registrar is GoDaddy,
+   Namecheap's is Namecheap, and so on. A registrar we do not connect to, such as
+   a wholesale registrar that sells through resellers, is named (by the reseller
+   when one is shown), and the person makes the change there.
 3. **Used for every way of making the change.** A registrar key, a connected
    account, a [secure sign-in](/docs/guides/secure-sign-in) and the manual
    instructions all go to that registrar. An account at the DNS host is never
@@ -89,8 +86,7 @@ CustomDomain™ looks the registrar up:
    starts).
 
 When the registrar is not known, the move names no company: the next step says to
-make the change "where acme.com is registered (the company it was bought from;
-lookup.icann.org names it)". A connected account at the DNS host is used then only
+make the change "where acme.com is registered (the company it was bought from)". A connected account at the DNS host is used then only
 when it can read the domain's registration, which shows it is the registrar's.
 The move carries the registrar as `registrar` (`name`, `provider`,
 `iana_id`, `url` and `source`), `null` when it is not known, and the DNS host the
@@ -616,8 +612,8 @@ and starts it with its consent. The answer is read-only and changes nothing.
 `target` is where the move hosts the zone: the application's setting, else CustomDomain™
 (`managed`). The three `paths` are the ways the nameservers change: `api` with one of the
 `accounts` as `provider_account_id`, `agent` through the secure sign-in, and `manual` by
-the person at the registrar. The accounts are the connected accounts at the registrar RDAP
-names that the caller may use: kept keys of the workspace that serve the application and
+the person at the registrar. The accounts are the connected accounts at the domain's registrar
+that the caller may use: kept keys of the workspace that serve the application and
 already hold the zone (a key given for one subdomain, such as `shop.acme.com`, does not
 hold `acme.com`, so it is not listed for the move of the registrable domain), at a
 registrar whose API changes nameservers, never an end user's own key and never the key

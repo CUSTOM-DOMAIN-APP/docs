@@ -1152,7 +1152,7 @@ paths:
                     description: >-
                       The second way, as `domains:check` names it: for a former
                       Google Domains name `provider_id` is `squarespace` (the
-                      registrar, found over RDAP) and this is `gcpdns`, whose
+                      registrar) and this is `gcpdns`, whose
                       nameservers it keeps. Absent otherwise.
                     required: [provider, provider_name, reason]
                     properties:
@@ -1257,16 +1257,32 @@ paths:
                     With an API key, the application to check for (defaults to
                     the key's own). A widget JWT may only omit it or send its own
                     application id (403 otherwise).
+                prewarm:
+                  type: boolean
+                  description: >-
+                    Set while the name is still being typed to get the check
+                    started early. The answer is `202` with no detection in
+                    it; send the check without it to get the result.
       responses:
         '200':
           description: Detection result
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DomainCheck' }
+        '202':
+          description: A `prewarm` request was accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain: { type: string }
+                  prewarm: { type: boolean }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------- Connections
   /connections:
@@ -2960,8 +2976,8 @@ paths:
         the move would refuse. It reads and changes nothing.
 
 
-        The accounts are the ones this caller may use, at the registrar RDAP
-        names, whose scope already holds the zone (a key given for one
+        The accounts are the ones this caller may use, at the domain's
+        registrar, whose scope already holds the zone (a key given for one
         subdomain, `shop.acme.com`, does not hold `acme.com`, so it is not
         listed for the move of the registrable domain), whose API changes
         nameservers, that are kept (a one time key is not listed), and never
@@ -3052,10 +3068,9 @@ paths:
         agent chose would hand it the whole domain in one call.
 
 
-        **Where they change**: at the domain's registrar, looked up over
-        RDAP for every move (`registrar`), never at the DNS host because it
-        hosts the DNS. A key, an account, a cloud browser sign in and the
-        instructions all go to that registrar; when RDAP names none, no
+        **Where they change**: at the domain's registrar (`registrar`), never at
+        the DNS host because it hosts the DNS. A key, an account, a cloud browser sign in and the
+        instructions all go to that registrar; when no registrar is known, no
         company is named and `next_step` says "where the domain is
         registered".
 
@@ -3217,7 +3232,7 @@ paths:
             `registrar_locks_nameservers` (the domain is registered at a
             registrar that requires its own nameservers, Cloudflare
             Registrar), `registrar_mismatch` (the key or account is at
-            another company than the registrar RDAP names),
+            another company than the domain's registrar),
             `zone_host_unsupported` or `dns_host_not_configured`.
           content:
             application/json:
@@ -12798,7 +12813,7 @@ components:
             providers: a former Google Domains name (now Squarespace's) keeps
             Google's `ns-cloud-*.googledomains.com` nameservers, which Google
             Cloud DNS zones use too. `provider` is then the registrar's
-            (`squarespace`, found over RDAP, so its secure sign-in is offered)
+            (`squarespace`, so its secure sign-in is offered)
             and this is the nameservers' (`gcpdns`). Absent otherwise, and when
             the registrar lookup answers nothing.
           required: [provider, provider_name, reason]
@@ -13326,7 +13341,7 @@ components:
             is the DNS host only if that host is also a registrar serving the
             domain from its own nameservers, and absent otherwise.
         registrar:
-          description: Who the domain is registered with, from RDAP; null when unknown.
+          description: Who the domain is registered with; null when unknown.
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         nameservers:
           type: array
@@ -13372,7 +13387,7 @@ components:
           items: { type: string }
           description: The platform's own nameservers, for target `custom`.
         registrar:
-          description: Who the domain is registered with, from RDAP; null when unknown or not looked up (an earlier `reason` held).
+          description: Who the domain is registered with; null when unknown or not looked up (an earlier `reason` held).
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         paths:
           type: object
@@ -13408,13 +13423,11 @@ components:
       type: object
       description: >-
         The company a domain is registered with, where its nameservers are
-        changed. Looked up over RDAP at the TLD's registry (found through the
-        IANA bootstrap file) and matched to a provider by its IANA Registrar
-        ID, so a domain registered at GoDaddy with its DNS at Cloudflare is
+        changed. We may look up where a domain is managed, so a domain registered at GoDaddy with its DNS at Cloudflare is
         changed at GoDaddy.
       required: [name, source]
       properties:
-        name: { type: string, description: 'The brand ("GoDaddy"), the reseller the registry names, or RDAP''s own name.' }
+        name: { type: string, description: 'The brand ("GoDaddy"), or the reseller it is sold through.' }
         provider: { type: string, description: 'Our provider id for it, when we route to it (`godaddy`).' }
         iana_id: { type: integer, description: "The IANA Registrar ID, when the registry gives one." }
         url: { type: string, description: "The registrar's website." }
@@ -13423,9 +13436,8 @@ components:
           enum: [rdap, request, account, '']
           description: >-
             `rdap`: looked up. `request`: the caller named it with a key or an
-            account. `account`: RDAP said nothing, and a connected account read
-            the domain's registration. Empty: RDAP named a registrar we do not
-            route to (`name` only).
+            account. `account`: a connected account read the domain's
+            registration. Empty: a registrar we do not route to (`name` only).
     NameserverMigrateRequest:
       type: object
       additionalProperties: false
@@ -13436,8 +13448,8 @@ components:
           type: string
           enum: [api, agent, manual]
           description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
-        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
-        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
+        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When the domain''s registrar is known, a key at another company is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the domain''s registrar is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -13535,7 +13547,7 @@ components:
             own nameservers, and empty otherwise; `next_step` then says "where
             the domain is registered" and names no company.
         registrar:
-          description: Who the domain is registered with (RDAP, or the account or key the caller brought); null when unknown.
+          description: Who the domain is registered with (or the account or key the caller brought); null when unknown.
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         old_dns_host: { type: string, description: 'The DNS host the domain used when the move started (a provider id such as `cloudflare`).' }
         old_nameservers: { type: array, items: { type: string }, description: What the registry listed when the move started; a rollback sets these. }
@@ -13682,7 +13694,7 @@ components:
         by_state: { type: object, additionalProperties: { type: integer } }
         by_path: { type: object, additionalProperties: { type: integer } }
         by_target: { type: object, additionalProperties: { type: integer } }
-        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when RDAP named none we route to.' }
+        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when none we route to was found.' }
         by_old_dns_host: { type: object, additionalProperties: { type: integer }, description: 'Moves by the DNS host the domain left; `unknown` when none was detected.' }
         total: { type: integer }
         started: { type: integer }
@@ -13797,7 +13809,7 @@ components:
           items: { type: string }
           description: The nameservers the registry listed at the last check.
         registrar:
-          description: The domain's registrar from RDAP, or null when unknown.
+          description: The domain's registrar, or null when unknown.
           oneOf:
             - type: object
               required: [name, url]
