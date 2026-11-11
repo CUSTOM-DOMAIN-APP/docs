@@ -1,0 +1,38 @@
+---
+title: Connect your code and hosting
+description: "Connect a GitHub account and a hosting platform to a CustomDomain™ application, so it knows which repository and project serve it. Owners and admins only; not yet available to every workspace."
+---
+
+> This feature is not yet available to every workspace. [`GET /v1/builds/status`](/docs/api-reference/builds/getBuildsStatus) says what is on for yours.
+
+You can connect the GitHub account that holds your app's code and the hosting platform that runs it, then link
+each to a CustomDomain™ application. Only workspace owners and admins can do this, with their own API key or in the
+console on the **Integrate** page. Widget tokens, agent tokens and test mode keys are refused.
+
+## Connect GitHub
+
+1. Start with [`POST /v1/builds/github/connect`](/docs/api-reference/builds/connectBuildsGitHub) and open the
+   `install_url` it returns. It works once, for 15 minutes.
+2. Install the CustomDomain™ GitHub App on your account or organization and choose the repositories it may see. In
+   an organization where you are not an owner, the install waits for an owner to approve it.
+3. [List the connections](/docs/api-reference/builds/listBuildsGitHubInstallations) and
+   [their repositories](/docs/api-reference/builds/listBuildsGitHubRepositories). To add or remove repositories,
+   open the connection's `html_url` on GitHub.
+4. [Link an application to a repository](/docs/api-reference/builds/putBuildsApplicationRepository).
+
+## Connect a hosting platform
+
+1. [List the platforms](/docs/api-reference/builds/listBuildsDeployPlatforms) and pick one that is `available`.
+2. [Start the connection](/docs/api-reference/builds/startBuildsDeployConnect), open the `url`, and allow access
+   at the platform.
+3. [List the connected accounts](/docs/api-reference/builds/listBuildsDeployAccounts) and
+   [their projects](/docs/api-reference/builds/listBuildsDeployProjects). Variable values are never returned, only
+   their names.
+4. [Link an application to a project](/docs/api-reference/builds/linkBuildsDeployProject).
+
+## Disconnect
+
+[Disconnect a GitHub account](/docs/api-reference/builds/deleteBuildsGitHubInstallation) or
+[a hosting account](/docs/api-reference/builds/deleteBuildsDeployAccount) at any time. Its links go with it. Some
+platforms do not let us withdraw access from our side: remove the CustomDomain™ app in that platform's account
+settings too.

@@ -88,6 +88,8 @@ tags:
     description: Registering receivers and inspecting delivery attempts.
   - name: Billing
     description: Plans, metered usage, the subscription (trial, grace, invoices), checkout, and the billing portal.
+  - name: Builds
+    description: Builds availability and connected hosting accounts for the workspace (owners and admins).
   - name: Enterprise
     description: RBAC reference matrix and the audit log.
   - name: Meta
@@ -6988,6 +6990,566 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /builds/status:
+    get:
+      operationId: getBuildsStatus
+      summary: Which builds features are available
+      tags: [Builds]
+      description: >-
+        Which parts of builds are available to the workspace, and whether the
+        caller may manage them (`can_manage`, true for owners and admins). It
+        needs a tenant API key; a widget token, a delegated agent token and a
+        test mode key are refused with `403`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Builds status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled, can_manage]
+                properties:
+                  enabled:
+                    type: object
+                    required: [github, deploy]
+                    properties:
+                      github: { type: boolean }
+                      deploy:
+                        type: object
+                        description: One entry per deploy platform, keyed by platform id.
+                        additionalProperties: { type: boolean }
+                  can_manage: { type: boolean }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /builds/github/connect:
+    post:
+      operationId: connectBuildsGitHub
+      summary: Start connecting a GitHub account (owners and admins)
+      tags: [Builds]
+      description: >-
+        Returns the GitHub address where the person installs the CustomDomain™
+        GitHub App. The address works once and for 15 minutes. Needs an owner or
+        admin key; `404 builds_disabled` while the feature is off.
+      security:
+        - apiKey: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                application_id: { type: string }
+      responses:
+        '200':
+          description: Install address
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [install_url, expires_at]
+                properties:
+                  install_url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/callback:
+    get:
+      operationId: buildsGitHubCallback
+      summary: Where GitHub sends the person back
+      tags: [Builds]
+      description: >-
+        Only GitHub calls this, after the install. It answers a redirect to the
+        console's Integrate page with `github=connected`, `pending` (an
+        organization owner must approve) or `error` and a `reason`.
+      security: []
+      parameters:
+        - { name: state, in: query, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: installation_id, in: query, schema: { type: string } }
+        - { name: setup_action, in: query, schema: { type: string } }
+      responses:
+        '302':
+          description: Redirect to the console
+        '503':
+          description: The console address is not configured
+  /builds/github/installations:
+    get:
+      operationId: listBuildsGitHubInstallations
+      summary: The workspace's GitHub connections (owners and admins)
+      tags: [Builds]
+      description: >-
+        One entry per connected GitHub account. A request waiting for an
+        organization owner has `id` 0 and status `pending_approval`. `html_url`
+        is the GitHub page where the person adds or removes repositories.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Installations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BuildsGitHubInstallation' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}:
+    delete:
+      operationId: deleteBuildsGitHubInstallation
+      summary: Disconnect a GitHub account (owners and admins)
+      tags: [Builds]
+      description: Removes the connection and the repository links that use it.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204': { description: Disconnected }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}/sync:
+    post:
+      operationId: syncBuildsGitHubInstallation
+      summary: Refresh a GitHub connection's repositories (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [job_id]
+                properties:
+                  job_id: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}/repositories:
+    get:
+      operationId: listBuildsGitHubRepositories
+      summary: The repositories a GitHub connection can see (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200':
+          description: Repositories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [repositories, synced_at]
+                properties:
+                  repositories:
+                    type: array
+                    items:
+                      type: object
+                      required: [repo_id, full_name, private, default_branch, status, linked_application_id]
+                      properties:
+                        repo_id: { type: integer, format: int64 }
+                        full_name: { type: string }
+                        private: { type: boolean }
+                        default_branch: { type: string }
+                        status: { type: string }
+                        linked_application_id: { type: string, nullable: true }
+                  synced_at: { type: string, format: date-time, nullable: true }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}/repositories:change:
+    post:
+      operationId: changeBuildsGitHubRepositories
+      summary: Add or remove repositories (not available yet)
+      tags: [Builds]
+      description: >-
+        Answers `501 not_enabled` for now. Change repositories on the GitHub page
+        named by the installation's `html_url`.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                add: { type: array, items: { type: integer, format: int64 } }
+                remove: { type: array, items: { type: integer, format: int64 } }
+      responses:
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}:
+    get:
+      operationId: getBuildsApplication
+      summary: An application's builds overview (owners and admins)
+      tags: [Builds]
+      description: >-
+        The application's origin, its GitHub repository and deploy project when
+        linked, and `dns_platforms`, the deploy platforms where the workspace
+        itself already has a DNS connection.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Overview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [origin, github, deploy, dns_platforms, phase]
+                properties:
+                  origin: { type: string, nullable: true }
+                  github:
+                    type: object
+                    nullable: true
+                    required: [installation_id, repository]
+                    properties:
+                      installation_id: { type: integer, format: int64 }
+                      repository:
+                        type: object
+                        nullable: true
+                        required: [repo_id, full_name]
+                        properties:
+                          repo_id: { type: integer, format: int64 }
+                          full_name: { type: string }
+                  deploy:
+                    type: object
+                    nullable: true
+                    properties:
+                      account_id: { type: string }
+                      project:
+                        type: object
+                        nullable: true
+                        properties:
+                          external_project_id: { type: string }
+                          name: { type: string }
+                  dns_platforms: { type: array, items: { type: string } }
+                  phase: { type: string, enum: [connect] }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/repository:
+    put:
+      operationId: putBuildsApplicationRepository
+      summary: Link an application to a repository (owners and admins)
+      tags: [Builds]
+      description: >-
+        The repository must be one the GitHub connection already sees.
+        `409 installation_pending` while an organization owner has not approved
+        the connection; `422 invalid` for a repository it does not hold.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [installation_id, repo_id]
+              properties:
+                installation_id: { type: integer, format: int64 }
+                repo_id: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [repo_id, full_name, confidence, evidence, confirmed_at]
+                properties:
+                  repo_id: { type: integer, format: int64 }
+                  full_name: { type: string }
+                  confidence: { type: number }
+                  evidence: { type: array, items: { type: string } }
+                  confirmed_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteBuildsApplicationRepository
+      summary: Remove an application's repository link (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/platforms:
+    get:
+      operationId: listBuildsDeployPlatforms
+      summary: The hosting platforms that can be connected
+      tags: [Builds]
+      description: >-
+        The platforms in display order, whether each is on for the workspace
+        (`enabled`) and whether it can be connected now (`available`). `method`
+        is how the platform connects: `oauth`, `role`, `guided` or `key`. Owners
+        and admins only; every deploy platform off answers `404 builds_disabled`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Platforms
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BuildsDeployPlatform' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /builds/deploy/{platform}/connect:
+    post:
+      operationId: startBuildsDeployConnect
+      summary: Start connecting a hosting platform
+      tags: [Builds]
+      description: >-
+        Returns the address to open so the person can sign in at the platform
+        and allow access. Nothing is saved until the platform returns to the
+        callback. `501 not_enabled` while the platform cannot be connected this
+        way yet. Owners and admins only.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: platform, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                application_id: { type: string }
+                return_origin:
+                  type: string
+                  description: The console origin to return to; it must be an allowed return origin.
+      responses:
+        '200':
+          description: Where to send the person
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kind, url, expires_at]
+                properties:
+                  kind: { type: string, enum: [redirect] }
+                  url: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/{platform}/callback:
+    get:
+      operationId: buildsDeployCallback
+      summary: Platform sign-in return address (public; authenticated by the signed state)
+      tags: [Builds]
+      description: >-
+        Where the platform sends the person back. It is not a bearer
+        authenticated endpoint: the signed, single use `state` is the
+        credential. It always answers a `302` to the console, with
+        `result=connected`, or `result=error` and a `reason`.
+      security: []
+      parameters:
+        - { name: platform, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        '302': { description: Redirect to the console }
+        '400': { description: The link is invalid, expired or already used }
+        '503': { description: Sign-in is not set up }
+  /builds/deploy/accounts:
+    get:
+      operationId: listBuildsDeployAccounts
+      summary: Connected hosting accounts
+      tags: [Builds]
+      description: >-
+        The workspace's connected hosting accounts. No credential is ever
+        returned. Owners and admins only.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BuildsDeployAccount' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/accounts/{id}/sync:
+    post:
+      operationId: syncBuildsDeployAccount
+      summary: Refresh what is known about a hosting account
+      tags: [Builds]
+      description: >-
+        Starts a refresh and answers at once with a job id. `409
+        reconnect_needed` when the account has to be connected again.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '202':
+          description: Started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [job_id]
+                properties:
+                  job_id: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/accounts/{id}:
+    delete:
+      operationId: deleteBuildsDeployAccount
+      summary: Disconnect a hosting account
+      tags: [Builds]
+      description: >-
+        Removes the account and its saved access, and withdraws the access at
+        the platform where the platform allows it.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Disconnected }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/accounts/{id}/projects:
+    get:
+      operationId: listBuildsDeployProjects
+      summary: Projects of a hosting account
+      tags: [Builds]
+      description: >-
+        The projects found at the last refresh: names, the repository, domains
+        and the names of the variables. A variable's value is never returned.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projects, synced_at]
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: '#/components/schemas/BuildsDeployProject' }
+                  synced_at: { type: [string, 'null'], format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/project:
+    put:
+      operationId: linkBuildsDeployProject
+      summary: Link an application to a hosting project
+      tags: [Builds]
+      description: >-
+        Links the application to one project of a connected account. The
+        project must be one found at the last refresh. A second call replaces
+        the first.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [account_id, external_project_id]
+              properties:
+                account_id: { type: string }
+                external_project_id: { type: string }
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account_id, external_project_id, name]
+                properties:
+                  account_id: { type: string }
+                  external_project_id: { type: string }
+                  name: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: unlinkBuildsDeployProject
+      summary: Remove an application's hosting project link
+      tags: [Builds]
+      description: Removes the link. No link is not an error.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /billing/invoices:
     get:
       operationId: listBillingInvoices
@@ -9727,6 +10289,56 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/AdminBillingTenantDetail' }
   schemas:
+    BuildsDeployPlatform:
+      type: object
+      required: [id, name, method, enabled, available, order]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        method: { type: string, enum: [oauth, role, guided, key] }
+        enabled: { type: boolean }
+        available: { type: boolean }
+        order: { type: integer }
+    BuildsDeployAccount:
+      type: object
+      required: [id, platform, external_account_name, access_level, status, scopes, connected_at, last_synced_at, dns_linked]
+      properties:
+        id: { type: string }
+        platform: { type: string }
+        external_account_name: { type: string }
+        access_level: { type: string, enum: [read, write] }
+        status: { type: string, enum: [active, reconnect_needed, revoked] }
+        scopes: { type: array, items: { type: string } }
+        connected_at: { type: string, format: date-time }
+        last_synced_at: { type: [string, 'null'], format: date-time }
+        dns_linked: { type: boolean }
+    BuildsDeployProject:
+      type: object
+      required: [external_project_id, name, repo_full_name, domains, env_names, production_url]
+      properties:
+        external_project_id: { type: string }
+        name: { type: string }
+        repo_full_name: { type: [string, 'null'] }
+        domains: { type: array, items: { type: string } }
+        env_names:
+          type: array
+          description: Names only; a value is never returned.
+          items: { type: string }
+        production_url: { type: [string, 'null'] }
+    BuildsGitHubInstallation:
+      type: object
+      required: [id, account_login, account_type, repository_selection, status, html_url, permissions, installed_at]
+      properties:
+        id: { type: integer, format: int64 }
+        account_login: { type: string }
+        account_type: { type: string, enum: [user, organization] }
+        repository_selection: { type: string, enum: [all, selected] }
+        status: { type: string, enum: [active, pending_approval, suspended, deleted] }
+        html_url: { type: string }
+        permissions:
+          type: object
+          additionalProperties: { type: string }
+        installed_at: { type: string, format: date-time }
     AuditEvent:
       type: object
       required: [orgId, actorId, action, at]
