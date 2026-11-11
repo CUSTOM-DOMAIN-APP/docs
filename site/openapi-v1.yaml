@@ -351,10 +351,11 @@ paths:
         A test mode application is always a development application, so leave
         `environment` out. A live application never connects a `.test` name
         (`sandbox_domain_reserved`), and a test mode one never connects a real
-        name (`sandbox_domain_required`).
+        name (`sandbox_domain_required`). A delegated agent token needs `app:write`. An agent sees `client_secret` only when its grant also holds `tokens:mint`.
       security:
         - managementKey: []
         - apiKey: []
+        - agentToken: ['app:write']
       requestBody:
         required: true
         content:
@@ -389,6 +390,7 @@ paths:
                       client_secret: { type: string, description: mints widget JWTs; shown once }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
     get:
       operationId: listApplications
@@ -398,10 +400,11 @@ paths:
         With an API key: the caller's own tenant's apps. A **test mode** key
         lists only its own application, which is how a server learns which
         application a key belongs to. With the management key: `?tenant_id=`
-        selects the tenant.
+        selects the tenant. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['app:read']
       parameters:
         - name: tenant_id
           in: query
@@ -423,6 +426,7 @@ paths:
                   count: { type: integer }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /applications/{id}:
     get:
       operationId: getApplication
@@ -434,10 +438,11 @@ paths:
         sign-in kept (change it with `PATCH /applications/{id}`), and
         `secure_sign_in` says whether the secure sign-in can run for the
         workspace at all (read only). Every answer that carries an application
-        has both: the list, the create and the update too.
+        has both: the list, the create and the update too. A delegated agent token needs `app:read`.
       security:
         - managementKey: []
         - apiKey: []
+        - agentToken: ['app:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -446,6 +451,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Application' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     patch:
       operationId: updateApplication
@@ -473,9 +479,10 @@ paths:
         `Application` schema). It takes `true` or `false`, never `null`. A test
         mode application keeps no saved access, so `true` is refused for it with
         `400`. Needs a key that may write the application (a viewer's key is a
-        `403`).
+        `403`). A delegated agent token needs `app:write`.
       security:
         - apiKey: []
+        - agentToken: ['app:write']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -551,6 +558,7 @@ paths:
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['keys:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: false
@@ -580,10 +588,13 @@ paths:
     get:
       operationId: listApiKeys
       summary: List an application's API keys (secrets omitted)
+      description: >-
+        A delegated agent token needs `keys:manage`.
       tags: [Applications]
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['keys:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -598,6 +609,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/ApiKey' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /applications/{id}/keys/{keyId}:
     delete:
@@ -607,10 +619,11 @@ paths:
       description: >-
         Requires an admin's or an owner's key. A key that acts with more
         authority than the calling key, such as an owner's, can be revoked only
-        by an owner: anyone else gets 403 `credential_outranks_caller`.
+        by an owner: anyone else gets 403 `credential_outranks_caller`. A delegated agent token needs `keys:manage`.
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['keys:manage']
       parameters:
         - { $ref: '#/components/parameters/Id' }
         - name: keyId
@@ -636,9 +649,13 @@ paths:
         an admin resends or revokes it. The inviter's email is taken from the
         credential that sends the invite, never from the body. Requires admin
         or owner (`member:manage`); a caller cannot invite a role above their
-        own, and `owner` is reached only by promoting an existing member.
+        own, and `owner` is reached only by promoting an existing member. A
+        delegated agent token needs `member:manage`; its invite is created
+        pending with no `invite_token`, and a person sends the invitation from
+        the console, so an agent never holds a link it could accept itself.
       security:
         - apiKey: []
+        - agentToken: ['member:manage']
       requestBody:
         required: true
         content:
@@ -669,9 +686,10 @@ paths:
         Every member and pending invite of the caller's tenant, each with its
         `status`: `active` once accepted, `pending` while its invite link
         works, `expired` once the link has lapsed. Invite tokens never appear
-        here.
+        here. A delegated agent token needs `member:read`.
       security:
         - apiKey: []
+        - agentToken: ['member:read']
       responses:
         '200':
           description: Members
@@ -685,6 +703,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Member' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /members:preview:
     post:
       operationId: previewInvite
@@ -775,9 +794,10 @@ paths:
         demotions or removals of owners race each other. A 409 means the
         member's role changed after this request read it; reload and retry.
         Changing an owner or admin to member or viewer ends the agent access
-        they approved.
+        they approved. A delegated agent token needs `member:manage`.
       security:
         - apiKey: []
+        - agentToken: ['member:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -809,9 +829,10 @@ paths:
         ends the agent access they approved. Revoking
         a pending invite stops its link working; a preview of that link then
         reports `revoked`. The last owner cannot be removed (400), and a 409
-        means the member's role changed after this request read it.
+        means the member's role changed after this request read it. A delegated agent token needs `member:manage`.
       security:
         - apiKey: []
+        - agentToken: ['member:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '204': { description: Removed }
@@ -974,6 +995,7 @@ paths:
       security:
         - {}
         - apiKey: []
+        - agentToken: ['tokens:mint']
       requestBody:
         required: true
         content:
@@ -1130,7 +1152,7 @@ paths:
                     description: >-
                       The second way, as `domains:check` names it: for a former
                       Google Domains name `provider_id` is `squarespace` (the
-                      registrar, found over RDAP) and this is `gcpdns`, whose
+                      registrar) and this is `gcpdns`, whose
                       nameservers it keeps. Absent otherwise.
                     required: [provider, provider_name, reason]
                     properties:
@@ -1235,16 +1257,32 @@ paths:
                     With an API key, the application to check for (defaults to
                     the key's own). A widget JWT may only omit it or send its own
                     application id (403 otherwise).
+                prewarm:
+                  type: boolean
+                  description: >-
+                    Set while the name is still being typed to get the check
+                    started early. The answer is `202` with no detection in
+                    it; send the check without it to get the result.
       responses:
         '200':
           description: Detection result
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DomainCheck' }
+        '202':
+          description: A `prewarm` request was accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain: { type: string }
+                  prewarm: { type: boolean }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------- Connections
   /connections:
@@ -2938,8 +2976,8 @@ paths:
         the move would refuse. It reads and changes nothing.
 
 
-        The accounts are the ones this caller may use, at the registrar RDAP
-        names, whose scope already holds the zone (a key given for one
+        The accounts are the ones this caller may use, at the domain's
+        registrar, whose scope already holds the zone (a key given for one
         subdomain, `shop.acme.com`, does not hold `acme.com`, so it is not
         listed for the move of the registrable domain), whose API changes
         nameservers, that are kept (a one time key is not listed), and never
@@ -3030,11 +3068,11 @@ paths:
         agent chose would hand it the whole domain in one call.
 
 
-        **Where they change**: at the domain's registrar, looked up over
-        RDAP for every move (`registrar`), never at the DNS host because it
-        hosts the DNS. A key, an account, a cloud browser sign in and the
-        instructions all go to that registrar; when RDAP names none, the
-        detected DNS host is used as a guess and `next_step` names no company.
+        **Where they change**: at the domain's registrar (`registrar`), never at
+        the DNS host because it hosts the DNS. A key, an account, a cloud browser sign in and the
+        instructions all go to that registrar; when no registrar is known, no
+        company is named and `next_step` says "where the domain is
+        registered".
 
 
         **How they change** (`path`): `api`, the registrar's own API with a
@@ -3194,7 +3232,7 @@ paths:
             `registrar_locks_nameservers` (the domain is registered at a
             registrar that requires its own nameservers, Cloudflare
             Registrar), `registrar_mismatch` (the key or account is at
-            another company than the registrar RDAP names),
+            another company than the domain's registrar),
             `zone_host_unsupported` or `dns_host_not_configured`.
           content:
             application/json:
@@ -6462,9 +6500,10 @@ paths:
       description: >-
         Registers an HTTPS receiver under the calling application. The `secret`
         (`whsec_…`) is returned ONCE. Store it to verify signatures. An empty
-        `events` array subscribes to all events; `"*"` also matches all.
+        `events` array subscribes to all events; `"*"` also matches all. A delegated agent token needs `app:write`.
       security:
         - widgetJWT: []
+        - agentToken: ['app:write']
       requestBody:
         required: true
         content:
@@ -6564,6 +6603,7 @@ paths:
                       - nameservers.failed
                       - nameservers.rolled_back
                       - nameservers.drifted
+                      - webhook.test
       responses:
         '201':
           description: Created (secret returned once)
@@ -6572,6 +6612,7 @@ paths:
               schema: { $ref: '#/components/schemas/WebhookEndpoint' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     get:
       operationId: listWebhooks
@@ -6581,10 +6622,11 @@ paths:
         With an API key: endpoints across all the tenant's live apps (a test
         mode application's endpoints are left out unless `?app_id=` names it).
         With a test mode API key: that application's endpoints. With a widget
-        JWT: the calling app's endpoints. Secrets are omitted.
+        JWT: the calling app's endpoints. Secrets are omitted. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['app:read']
       parameters:
         - name: app_id
           in: query
@@ -6604,18 +6646,48 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/WebhookEndpoint' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /webhooks/{id}:
     delete:
       operationId: deleteWebhook
       summary: Delete a webhook endpoint
+      description: >-
+        A delegated agent token needs `app:write`.
       tags: [Webhooks]
       security:
         - widgetJWT: []
+        - agentToken: ['app:write']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /webhooks/{id}:test:
+    post:
+      operationId: testWebhook
+      summary: Send a test event to a webhook endpoint
+      tags: [Webhooks]
+      description: >-
+        Signs and sends one `webhook.test` event to this endpoint now, whatever
+        events it subscribes to, and answers with the delivery: whether it
+        arrived, the receiver's status code and, when it did not, the error. It
+        tries once, with no retries, and the attempt is added to
+        `GET /webhook-deliveries`. A delegated agent token needs `app:write`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['app:write']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The test delivery
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDelivery' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /webhook-deliveries:
     get:
@@ -6624,10 +6696,11 @@ paths:
       tags: [Webhooks]
       description: >-
         API key: all the tenant's apps. Widget JWT: the calling app.
-        `?app_id=` narrows to one application; `?type=` filters by event type.
+        `?app_id=` narrows to one application; `?type=` filters by event type. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['app:read']
       parameters:
         - { name: app_id, in: query, required: false, schema: { type: string } }
         - { name: type, in: query, required: false, schema: { type: string } }
@@ -6645,6 +6718,7 @@ paths:
                     items: { $ref: '#/components/schemas/WebhookDelivery' }
                   count: { type: integer }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------- Billing
@@ -6688,10 +6762,11 @@ paths:
       tags: [Billing]
       description: >-
         The tenant is derived from the authenticated credential, never a query
-        parameter. `?period=` defaults to the current UTC calendar month.
+        parameter. `?period=` defaults to the current UTC calendar month. A delegated agent token needs `stats:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['stats:read']
       parameters:
         - { name: period, in: query, required: false, schema: { type: string, examples: ['2026-07'] } }
       responses:
@@ -6701,6 +6776,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Usage' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /billing/checkout:
     post:
@@ -6849,9 +6925,10 @@ paths:
         amounts. Owners and admins also get the billing state, and
         `first_domain_free` with `free_domains` (how many domains it may
         connect before a card) while a new workspace is on the first domain
-        free rule.
+        free rule. A delegated agent token needs `stats:read`.
       security:
         - apiKey: []
+        - agentToken: ['stats:read']
       responses:
         '200':
           description: Billing notice
@@ -7088,11 +7165,12 @@ paths:
         owner or admin, events are returned as recorded. With a member's or a
         viewer's key, and with a widget token, addresses, email addresses and
         free-text reasons are removed. A widget token sees only events about its
-        own application.
+        own application. A delegated agent token needs `audit:read`.
       security:
         - managementKey: []
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['audit:read']
       responses:
         '200':
           description: Events
@@ -7108,6 +7186,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/AuditEvent' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     post:
       operationId: recordAuditEvent
@@ -7596,9 +7675,10 @@ paths:
         own infrastructure: subdomains get a CNAME to `cname_target`; a root
         domain gets an ALIAS, ANAME or flattened CNAME to it on providers that
         have one, and A records to `apex_ipv4` elsewhere. `edge` echoes what edge
-        mode points at, so a console can show both options.
+        mode points at, so a console can show both options. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
+        - agentToken: ['app:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -7607,6 +7687,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectTargetView' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     put:
       operationId: setConnectTarget
@@ -7633,9 +7714,10 @@ paths:
         edge address: such domains would verify but never be served. A
         `cname_target` that does not resolve yet, or a target with no
         `apex_ipv4`, is accepted with a `warnings` entry. Every change is recorded in the audit log
-        (`app.routing_set`, `app.routing_cleared`).
+        (`app.routing_set`, `app.routing_cleared`). A delegated agent token needs `app:write`.
       security:
         - apiKey: []
+        - agentToken: ['app:write']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -8448,10 +8530,10 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
-      summary: Revoke an account
+      summary: Remove an account (the key must still be revoked at the provider)
       tags: [Provider accounts]
       description: >-
-        Deletes the key and the account. Its domains stay connected and
+        Deletes CustomDomain™'s copy of the key and the account. Its domains stay connected and
         served, without continuous access; each domain's timeline records it.
         The answer says what that leaves: `used_by` is how many domains used the
         account, and `revoke_url` is the provider's page where the key itself is
@@ -8469,14 +8551,20 @@ paths:
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
-          description: Revoked
+          description: Removed here
           content:
             application/json:
               schema:
                 type: object
+                required: [id, removed_here, revoke_at_provider]
                 properties:
                   id: { type: string }
-                  revoked: { type: boolean }
+                  removed_here: { type: boolean, enum: [true], description: "The account and CustomDomain™'s copy of its key were removed." }
+                  revoke_at_provider: { type: boolean, description: "True when the key still works at the provider until it is deleted there (see `revoke_url`). False for a provider sign-in, which is withdrawn at the provider." }
+                  revoked:
+                    type: boolean
+                    deprecated: true
+                    description: "Always true, kept for older integrations. It means removed here, not that the key stopped working at the provider: read `revoke_at_provider`."
                   used_by: { type: integer, description: "How many domains used the account. They stay connected, each with a timeline event, without continuous access." }
                   domains_kept_connected: { type: integer, description: "The same number as `used_by`, kept for older integrations." }
                   revoke_url:
@@ -9182,7 +9270,7 @@ paths:
         - name: scope
           in: query
           required: true
-          description: Space separated scopes from `domains:read`, `domains:connect`, `domains:disconnect` and `domains:purchase`. The person may approve fewer.
+          description: Space separated scopes from `domains:read`, `domains:connect`, `domains:disconnect` and `domains:purchase`, and the workspace scopes `stats:read`, `audit:read`, `app:read`, `app:write`, `tokens:mint`, `member:read`, `member:manage` and `keys:manage`. The person may approve fewer, and can grant a workspace scope only if their own role holds it.
           schema: { type: string, example: domains:read domains:connect }
         - { name: state, in: query, required: false, schema: { type: string } }
         - name: resource
@@ -9488,6 +9576,14 @@ components:
             'domains:connect': Connect a domain, recheck it, reapply its records and start a one click setup.
             'domains:disconnect': Remove a connected domain. The call must name the domain.
             'domains:purchase': Buy a domain, up to the grant's monthly spend cap.
+            'stats:read': Read plan usage, the billing standing and notices. Never change the plan or payment.
+            'audit:read': Read the workspace audit log.
+            'app:read': List applications, their connect target, webhooks and webhook deliveries.
+            'app:write': Create and update applications, set the connect target, add, test and delete webhooks.
+            'tokens:mint': Mint short lived widget tokens for an application.
+            'member:read': List the workspace's members and pending invites.
+            'member:manage': Invite members, change a member's role (never to or from owner) and remove members.
+            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member.
   parameters:
     Id:
       name: id
@@ -10308,9 +10404,10 @@ components:
       allOf:
         - { $ref: '#/components/schemas/SecureSignInSession' }
         - type: object
-          required: [events]
+          required: [events, verified]
           properties:
             failure: { type: string, description: 'The failure the session ended in, a word from a fixed list.' }
+            verified: { type: boolean, description: 'True when the changes were verified by reading them back from the provider after they were made.' }
             events:
               type: array
               items:
@@ -12716,7 +12813,7 @@ components:
             providers: a former Google Domains name (now Squarespace's) keeps
             Google's `ns-cloud-*.googledomains.com` nameservers, which Google
             Cloud DNS zones use too. `provider` is then the registrar's
-            (`squarespace`, found over RDAP, so its secure sign-in is offered)
+            (`squarespace`, so its secure sign-in is offered)
             and this is the nameservers' (`gcpdns`). Absent otherwise, and when
             the registrar lookup answers nothing.
           required: [provider, provider_name, reason]
@@ -12745,10 +12842,11 @@ components:
             someone holding an API key.
         blocked_reason:
           type: string
-          enum: [unregistered, platform_subdomain]
+          enum: [unregistered, platform_subdomain, registration_hold]
           description: >-
             Present when no rail can connect this domain. `unregistered`: no
             nameserver delegation at all (fix it at the registrar).
+            `registration_hold`: see `registration_hold`.
             `platform_subdomain`: a hosting platform's own subdomain
             (www.<name>.vercel.app). Its DNS is the platform's; `POST
             /v1/connections` refuses it with `platform_subdomain`.
@@ -12766,6 +12864,34 @@ components:
           $ref: '#/components/schemas/ManagedDNSAvailability'
         nameserver_migration:
           $ref: '#/components/schemas/NameserverMigrationOffer'
+        registrar:
+          description: >-
+            The company the domain is registered with, which may differ from
+            its DNS provider (`provider`). Always present; null when it is not
+            known.
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        registration_hold:
+          type: string
+          enum: [hold, redemption, pending_delete]
+          description: >-
+            Present when the domain's registration is on hold, in its
+            redemption period or pending deletion. The domain is registered
+            but does not work until its registrar resolves this, so
+            `blocked_reason` is `registration_hold` and no rail is offered.
+        connection_plan:
+          type: object
+          description: >-
+            Where to make the change and by which way, when the domain can be
+            reached from more than one place. `place` is `dns_host`,
+            `registrar` or `none`; `change` is `records`, `nameservers` or
+            `none`; `rail` is a way listed in `rails`, or `manual`; `reason` is
+            a short code.
+          properties:
+            place: { type: string, enum: [dns_host, registrar, none] }
+            provider: { type: string }
+            change: { type: string, enum: [records, nameservers, none] }
+            rail: { type: string }
+            reason: { type: string }
         integration_warnings:
           type: array
           description: >-
@@ -13225,10 +13351,11 @@ components:
           type: string
           description: >-
             Where the nameservers would be changed: the registrar's provider id
-            when `registrar` names one we route to, else the detected DNS host
-            as a guess (then `registrar` is null and nothing names it).
+            when `registrar` names one we route to. When `registrar` is null it
+            is the DNS host only if that host is also a registrar serving the
+            domain from its own nameservers, and absent otherwise.
         registrar:
-          description: Who the domain is registered with, from RDAP; null when unknown.
+          description: Who the domain is registered with; null when unknown.
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         nameservers:
           type: array
@@ -13274,7 +13401,7 @@ components:
           items: { type: string }
           description: The platform's own nameservers, for target `custom`.
         registrar:
-          description: Who the domain is registered with, from RDAP; null when unknown or not looked up (an earlier `reason` held).
+          description: Who the domain is registered with; null when unknown or not looked up (an earlier `reason` held).
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         paths:
           type: object
@@ -13310,13 +13437,11 @@ components:
       type: object
       description: >-
         The company a domain is registered with, where its nameservers are
-        changed. Looked up over RDAP at the TLD's registry (found through the
-        IANA bootstrap file) and matched to a provider by its IANA Registrar
-        ID, so a domain registered at GoDaddy with its DNS at Cloudflare is
+        changed. We may look up where a domain is managed, so a domain registered at GoDaddy with its DNS at Cloudflare is
         changed at GoDaddy.
       required: [name, source]
       properties:
-        name: { type: string, description: 'The brand ("GoDaddy"), the reseller the registry names, or RDAP''s own name.' }
+        name: { type: string, description: 'The brand ("GoDaddy"), or the reseller it is sold through.' }
         provider: { type: string, description: 'Our provider id for it, when we route to it (`godaddy`).' }
         iana_id: { type: integer, description: "The IANA Registrar ID, when the registry gives one." }
         url: { type: string, description: "The registrar's website." }
@@ -13325,9 +13450,8 @@ components:
           enum: [rdap, request, account, '']
           description: >-
             `rdap`: looked up. `request`: the caller named it with a key or an
-            account. `account`: RDAP said nothing, and a connected account read
-            the domain's registration. Empty: RDAP named a registrar we do not
-            route to (`name` only).
+            account. `account`: a connected account read the domain's
+            registration. Empty: a registrar we do not route to (`name` only).
     NameserverMigrateRequest:
       type: object
       additionalProperties: false
@@ -13338,8 +13462,8 @@ components:
           type: string
           enum: [api, agent, manual]
           description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
-        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
-        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
+        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When the domain''s registrar is known, a key at another company is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the domain''s registrar is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -13432,11 +13556,12 @@ components:
           type: string
           description: >-
             Where the nameservers are changed: the registrar's provider id
-            (`registrar.provider`), or, when `registrar` is null, the DNS host
-            the domain used, as a guess (then `next_step` says "where the
-            domain is registered" and names no company).
+            (`registrar.provider`). When `registrar` is null it is the DNS host
+            only if that host is also a registrar serving the domain from its
+            own nameservers, and empty otherwise; `next_step` then says "where
+            the domain is registered" and names no company.
         registrar:
-          description: Who the domain is registered with (RDAP, or the account or key the caller brought); null when unknown.
+          description: Who the domain is registered with (or the account or key the caller brought); null when unknown.
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         old_dns_host: { type: string, description: 'The DNS host the domain used when the move started (a provider id such as `cloudflare`).' }
         old_nameservers: { type: array, items: { type: string }, description: What the registry listed when the move started; a rollback sets these. }
@@ -13583,7 +13708,7 @@ components:
         by_state: { type: object, additionalProperties: { type: integer } }
         by_path: { type: object, additionalProperties: { type: integer } }
         by_target: { type: object, additionalProperties: { type: integer } }
-        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when RDAP named none we route to.' }
+        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when none we route to was found.' }
         by_old_dns_host: { type: object, additionalProperties: { type: integer }, description: 'Moves by the DNS host the domain left; `unknown` when none was detected.' }
         total: { type: integer }
         started: { type: integer }
@@ -13698,7 +13823,7 @@ components:
           items: { type: string }
           description: The nameservers the registry listed at the last check.
         registrar:
-          description: The domain's registrar from RDAP, or null when unknown.
+          description: The domain's registrar, or null when unknown.
           oneOf:
             - type: object
               required: [name, url]
@@ -13717,14 +13842,18 @@ components:
         activated_at: { type: [string, 'null'], format: date-time }
     AgentScope:
       type: string
-      enum: ['domains:read', 'domains:connect', 'domains:disconnect', 'domains:purchase']
+      enum: ['domains:read', 'domains:connect', 'domains:disconnect', 'domains:purchase', 'stats:read', 'audit:read', 'app:read', 'app:write', 'tokens:mint', 'member:read', 'member:manage', 'keys:manage']
       description: >-
         What an agent grant may do. `domains:read` looks: availability,
         connections, records, certificates, diagnoses, orders and the billing
         standing. `domains:connect` changes: connect a domain, recheck it,
         reapply its records, start a one click setup. `domains:disconnect`
         removes a connected domain, and the call must name the domain.
-        `domains:purchase` spends, up to the grant's monthly cap.
+        `domains:purchase` spends, up to the grant's monthly cap. The workspace
+        scopes are the workspace permissions a person may delegate: on every
+        call the agent needs the scope and its approver's live role, capped at
+        admin, must hold the permission. Billing changes, single sign-on,
+        approving agents and deleting the workspace are never delegable.
     AgentClientRegistration:
       type: object
       required: [client_name, redirect_uris]

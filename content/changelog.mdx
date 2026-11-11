@@ -15,6 +15,17 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 10, 2026: clearer answers about registrars and removed keys.** The domain check always carries
+  `registrar`, the company a domain is registered with (`null` when not known), and can answer
+  `blocked_reason: registration_hold` with `registration_hold` (`hold`, `redemption` or `pending_delete`) for a
+  domain that does not work until its registrar resolves the hold. Removing a provider account now answers
+  `removed_here` and `revoke_at_provider`: the key must still be deleted at the provider, and `revoked` is
+  deprecated. When a nameserver move does not know the registrar, it names no company and says "where the domain
+  is registered". A session's timeline reports `verified`, and `POST /v1/webhooks/{id}:test` sends a test event.
+  The domain check also answers `connection_plan`, where to make the change and by which way when a domain's DNS
+  provider and registrar differ, and `POST /v1/domains:check` accepts `prewarm` while a name is being typed.
+  See [Domain check](/docs/api-reference/domains/checkDomain) and
+  [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
 - **November 9, 2026: the MCP server runs the workspace too.** Twenty-two new tools cover applications, the
   connect target, widget tokens, API keys, webhooks, members, the audit log, usage and the billing notice, under
   eight new scopes. An agent sees only the tools its grant allows, and plan, payment, ownership and sign in
