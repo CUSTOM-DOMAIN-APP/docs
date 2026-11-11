@@ -70,7 +70,7 @@ never inject them. Each tool needs one scope (see below).
 | `list-webhook-deliveries` | `{ applicationId?, eventType? }` | `app:read` | List recent delivery attempts, newest first, with the status the endpoint answered and any error. Read only. |
 | `list-members` | `{}` | `member:read` | List the workspace's members and open invitations: email, role, status and when an invitation expires. Read only. |
 | `invite-member` | `{ email, role }` | `member:manage` | Invite a person by email as an `admin`, `member` or `viewer`. Only a person makes an owner, in the console. |
-| `change-member-role` | `{ memberId, role }` | `member:manage` | Change a member's role to `admin`, `member` or `viewer`. An owner's role stays with a person in the console. |
+| `change-member-role` | `{ memberId, role, confirm }` | `member:manage` | Change a member's role to `admin`, `member` or `viewer`. A lower role takes rights away from the person at once. An owner's role stays with a person in the console. `confirm` repeats the member's id. |
 | `remove-member` | `{ memberId, confirm }` | `member:manage` | Remove a member, or withdraw an open invitation. The person loses access at once. `confirm` repeats the member's id. |
 | `read-audit-log` | `{ action?, limit? }` | `audit:read` | Read the audit log, newest first: who did what to which target and when. An agent's actions show as `agent:<grant id>`. Read only. |
 | `get-usage` | `{ period? }` | `stats:read` | Read plan usage for a billing period (`YYYY-MM`): the plan, domains used against the quota and what remains. Read only. |
