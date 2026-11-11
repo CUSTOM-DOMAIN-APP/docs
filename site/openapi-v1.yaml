@@ -6528,7 +6528,10 @@ paths:
                     `connection.attempt.way_ended` say when a way to connect
                     starts and how it ended, in an `attempt` object (`id`, `way`,
                     `outcome`, and for one that did not finish a `cause`,
-                    `fix_by` and `retryable`). `certificate.issued` / `certificate.renewed` /
+                    `fix_by` and `retryable`).
+                    `connection.attempt.needs_attention` says a sign in is
+                    waiting for the customer (`attempt.need`: `code`,
+                    `approval`, `passkey` or `password`). `certificate.issued` / `certificate.renewed` /
                     `certificate.failed` follow the edge's certificate reports,
                     and `certificate.expiring` fires 14, 7 and 3 days before an
                     unrenewed certificate expires and when it expired; each
@@ -6588,6 +6591,7 @@ paths:
                       - connection.disconnected
                       - connection.attempt.started
                       - connection.attempt.way_ended
+                      - connection.attempt.needs_attention
                       - certificate.issued
                       - certificate.renewed
                       - certificate.failed
