@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 12, 2026: a nameserver move checks the new DNS before it switches.** The new nameservers must
+  answer like the old ones for the copied records; a difference waits for a person in `needs_review` and is
+  listed in the new `verify_diffs` (and `copy_warnings`), and `verified_at` says when the check last passed. A
+  record only the old DNS host can answer is now named instead of left out. See
+  [Nameserver migration](/docs/guides/nameserver-migration#the-copy).
 - **November 12, 2026: a quick browser check for the widget, per application.** Set `challenge_mode` with
   `PATCH /v1/applications/{id}` (`off` by default, `report` or `on`). Under `on`, the widget's calls that start or
   check a setup may answer `428 challenge_required`; the widget solves it and retries on its own. See

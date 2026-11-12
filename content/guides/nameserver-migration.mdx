@@ -318,8 +318,8 @@ column here:
 | Console says | State | What happens | Waits on |
 | --- | --- | --- | --- |
 | Setting up | `pending` | Your own nameservers only: wait for `zone_ready`, then check your nameservers answer for the zone. | you |
-| Setting up | `copying` | Create the zone (managed DNS, or your DNS host account), copy the domain's records into it with the connection's own, count the mail records ([The copy](#the-copy)). A copy whose write to the DNS servers failed is retried, never switched to. Retried every 2 minutes for 6 hours. | us |
-| Check the copy | `needs_review` | The copy is not proven complete: it was read from public DNS, or some records could not be carried over. `copy_warnings` says what to check, and the move goes on once a person confirms it (`copy_reviewed: true`; in the console, **The records look right, continue**). 14 days at most. | a person |
+| Setting up | `copying` | Create the zone (managed DNS, or your DNS host account), copy the domain's records into it with the connection's own, count the mail records, then check the new nameservers answer like the old ones ([The copy](#the-copy)). A copy whose write to the DNS servers failed is retried, never switched to. Retried every 2 minutes for 6 hours. | us |
+| Check the copy | `needs_review` | The copy is not proven complete (it was read from public DNS, or some records could not be carried over), or the new nameservers did not answer like the old ones (`verify_diffs`). `copy_warnings` says what to check, and the move goes on once a person confirms it (`copy_reviewed: true`; in the console, **The records look right, continue**). 14 days at most. | a person |
 | Waiting for the user | `needs_dnssec_off` | The registry publishes a `DS` record and we cannot remove it ourselves. | the person |
 | Waiting for the registrar | `waiting_ds` | DNSSEC is off. Wait until the registry stops publishing the `DS` record and its TTL has passed (5 minutes to 48 hours; 1 hour when unknown). | the registry |
 | Waiting for the user (paths `manual` and `agent`), or Waiting for the registrar (path `api`) | `setting` | The nameservers are being changed (`waiting_for` says by whom). With a key, the registrar is read first and its answer is read back ([below](#how-the-nameservers-change)); when its answer was lost and it cannot be read back yet, the move waits here with `waiting_for: registrar_confirm`, can still be moved back, and the next check reads back first. 14 days at most. | the registrar or the person |
@@ -359,8 +359,9 @@ two ways to know them, and the move says which in `copy_source`:
   CustomDomain™ holds a key at the DNS host the domain uses now (a sign-in kept
   for the connection, or a connected account there), every record is read
   through that host's API. Such a copy is proven complete, unless a record could
-  not be carried over (a forwarding rule, or a root `CNAME` a host flattens),
-  which `copy_warnings` names.
+  not be carried over (a forwarding rule, a root `CNAME` a host flattens, or an
+  alias or routing rule only the old host can answer), which `copy_warnings`
+  names.
 - **`discovery`: read from public DNS.** Public DNS cannot list a domain's
   records, so the names domains commonly use are asked one by one. Such a copy is
   never proven, and the move waits in `needs_review` until a person checks
@@ -377,6 +378,14 @@ two ways to know them, and the move says which in `copy_source`:
 Nothing changes at the registrar until the copy is at the new DNS servers: a
 copy whose write failed is retried, never switched to. When a person confirms a
 copy, the time is kept (`copy_reviewed_at`).
+
+Before the nameservers change, the move checks that the new nameservers answer
+like the old ones for the copied records. A difference is listed in
+`verify_diffs` (and in `copy_warnings`), and the move waits in `needs_review`
+until a person fixes the new zone or confirms the difference, even when the copy
+was accepted in advance. A difference already confirmed does not stop the move
+again. When the last check is more than a day old, it runs again before the
+nameservers change. `verified_at` is when the check last passed.
 
 ## How the nameservers change
 

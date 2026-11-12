@@ -15044,7 +15044,8 @@ components:
             whose write to the DNS servers failed is retried, never switched
             to. `needs_review`: the copy is not proven complete (it was read
             from public DNS, which can't list a zone, or some records could not
-            be carried over); a person checks `copy_warnings` and confirms
+            be carried over), or the new nameservers did not answer like the old
+            ones (`verify_diffs`); a person checks `copy_warnings` and confirms
             with `copy_reviewed`.
             `needs_dnssec_off`: DNSSEC must be turned off at the registrar
             first. `waiting_ds`: DNSSEC is off; waiting for the registry to
@@ -15123,6 +15124,15 @@ components:
           items: { type: string }
           description: 'What a person should check before the switch: records left out (a Cloudflare proxied record answers with Cloudflare''s addresses, not the origin), lookups that went unanswered, forwarding that stays at the old host.'
         copy_reviewed_at: { type: string, format: date-time, description: When a person confirmed a copy that is not proven complete. }
+        verify_diffs:
+          type: array
+          items: { type: string }
+          description: >-
+            Differences found before the switch between what the old nameservers
+            and the new ones answer (also listed in `copy_warnings`). The move
+            waits in `needs_review` until a person confirms them with
+            `copy_reviewed`; a confirmed difference does not stop it again.
+        verified_at: { type: string, format: date-time, description: When the new nameservers last answered like the old ones before the switch. }
         ds_present: { type: boolean, description: The registry published a DS record (DNSSEC was on) during the move. }
         ds_removed_at: { type: string, format: date-time }
         ds_cleared_at: { type: string, format: date-time }
