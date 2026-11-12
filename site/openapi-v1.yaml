@@ -88,6 +88,8 @@ tags:
     description: Registering receivers and inspecting delivery attempts.
   - name: Billing
     description: Plans, metered usage, the subscription (trial, grace, invoices), checkout, and the billing portal.
+  - name: Builds
+    description: Builds availability and connected hosting accounts for the workspace (owners and admins).
   - name: Enterprise
     description: RBAC reference matrix and the audit log.
   - name: Meta
@@ -351,10 +353,11 @@ paths:
         A test mode application is always a development application, so leave
         `environment` out. A live application never connects a `.test` name
         (`sandbox_domain_reserved`), and a test mode one never connects a real
-        name (`sandbox_domain_required`).
+        name (`sandbox_domain_required`). A delegated agent token needs `app:write`. An agent sees `client_secret` only when its grant also holds `tokens:mint`.
       security:
         - managementKey: []
         - apiKey: []
+        - agentToken: ['app:write']
       requestBody:
         required: true
         content:
@@ -389,6 +392,7 @@ paths:
                       client_secret: { type: string, description: mints widget JWTs; shown once }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
     get:
       operationId: listApplications
@@ -398,10 +402,11 @@ paths:
         With an API key: the caller's own tenant's apps. A **test mode** key
         lists only its own application, which is how a server learns which
         application a key belongs to. With the management key: `?tenant_id=`
-        selects the tenant.
+        selects the tenant. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['app:read']
       parameters:
         - name: tenant_id
           in: query
@@ -423,6 +428,7 @@ paths:
                   count: { type: integer }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /applications/{id}:
     get:
       operationId: getApplication
@@ -434,10 +440,11 @@ paths:
         sign-in kept (change it with `PATCH /applications/{id}`), and
         `secure_sign_in` says whether the secure sign-in can run for the
         workspace at all (read only). Every answer that carries an application
-        has both: the list, the create and the update too.
+        has both: the list, the create and the update too. A delegated agent token needs `app:read`.
       security:
         - managementKey: []
         - apiKey: []
+        - agentToken: ['app:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -446,6 +453,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Application' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     patch:
       operationId: updateApplication
@@ -473,9 +481,10 @@ paths:
         `Application` schema). It takes `true` or `false`, never `null`. A test
         mode application keeps no saved access, so `true` is refused for it with
         `400`. Needs a key that may write the application (a viewer's key is a
-        `403`).
+        `403`). A delegated agent token needs `app:write`.
       security:
         - apiKey: []
+        - agentToken: ['app:write']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -551,6 +560,7 @@ paths:
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['keys:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: false
@@ -559,7 +569,7 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
+                name: { type: string, description: 'Names starting with `member:` are reserved.' }
                 environment: { $ref: '#/components/schemas/Environment' }
       responses:
         '201':
@@ -572,6 +582,7 @@ paths:
                   - type: object
                     properties:
                       key: { type: string, description: 'cd_live_… or cd_test_…; shown once, stored hashed' }
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/Error' }
@@ -579,10 +590,13 @@ paths:
     get:
       operationId: listApiKeys
       summary: List an application's API keys (secrets omitted)
+      description: >-
+        A delegated agent token needs `keys:manage`.
       tags: [Applications]
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['keys:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -597,6 +611,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/ApiKey' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /applications/{id}/keys/{keyId}:
     delete:
@@ -606,10 +621,11 @@ paths:
       description: >-
         Requires an admin's or an owner's key. A key that acts with more
         authority than the calling key, such as an owner's, can be revoked only
-        by an owner: anyone else gets 403 `credential_outranks_caller`.
+        by an owner: anyone else gets 403 `credential_outranks_caller`. A delegated agent token needs `keys:manage`.
       security:
         - apiKey: []
         - managementKey: []
+        - agentToken: ['keys:manage']
       parameters:
         - { $ref: '#/components/parameters/Id' }
         - name: keyId
@@ -635,9 +651,13 @@ paths:
         an admin resends or revokes it. The inviter's email is taken from the
         credential that sends the invite, never from the body. Requires admin
         or owner (`member:manage`); a caller cannot invite a role above their
-        own, and `owner` is reached only by promoting an existing member.
+        own, and `owner` is reached only by promoting an existing member. A
+        delegated agent token needs `member:manage`; its invite is created
+        pending with no `invite_token`, and a person sends the invitation from
+        the console, so an agent never holds a link it could accept itself.
       security:
         - apiKey: []
+        - agentToken: ['member:manage']
       requestBody:
         required: true
         content:
@@ -668,9 +688,10 @@ paths:
         Every member and pending invite of the caller's tenant, each with its
         `status`: `active` once accepted, `pending` while its invite link
         works, `expired` once the link has lapsed. Invite tokens never appear
-        here.
+        here. A delegated agent token needs `member:read`.
       security:
         - apiKey: []
+        - agentToken: ['member:read']
       responses:
         '200':
           description: Members
@@ -684,6 +705,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Member' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /members:preview:
     post:
       operationId: previewInvite
@@ -764,6 +786,40 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
+  /members:transfer-ownership:
+    post:
+      operationId: transferOwnership
+      summary: Transfer the workspace to another member
+      tags: [Members]
+      description: >-
+        The workspace's creator makes another member who has accepted their
+        invite the owner of the workspace; the creator becomes an admin. Only
+        the creator may do this, and not with an agent's token or the
+        workspace default key. Answers 404 where the feature is not enabled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_id]
+              properties:
+                member_id: { type: string, description: The member who becomes the owner. }
+      responses:
+        '200':
+          description: Transferred
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owner: { $ref: '#/components/schemas/Member' }
+                  previous_owner: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /members/{id}:
     patch:
       operationId: updateMemberRole
@@ -774,9 +830,10 @@ paths:
         demotions or removals of owners race each other. A 409 means the
         member's role changed after this request read it; reload and retry.
         Changing an owner or admin to member or viewer ends the agent access
-        they approved.
+        they approved. A delegated agent token needs `member:manage`.
       security:
         - apiKey: []
+        - agentToken: ['member:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -808,9 +865,10 @@ paths:
         ends the agent access they approved. Revoking
         a pending invite stops its link working; a preview of that link then
         reports `revoked`. The last owner cannot be removed (400), and a 409
-        means the member's role changed after this request read it.
+        means the member's role changed after this request read it. A delegated agent token needs `member:manage`.
       security:
         - apiKey: []
+        - agentToken: ['member:manage']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '204': { description: Removed }
@@ -929,11 +987,10 @@ paths:
       description: >-
         The console's server calls this once a person's email change is
         confirmed, guarded by the provision secret like `POST /tenants:provision`.
-        By then the console has already corrected the member row it shares with
-        the control plane, so `email` is the member's new, saved address. The
-        control plane's one job here is to mirror the change to the CRM contact
-        for that member (owner or teammate), best effort and never blocking the
-        console: it answers `ok: true` as soon as the mirror is queued.
+        `email` is the member's new address. With `old_email`, the control plane
+        moves the person's member row in that workspace to it and says how many
+        rows it moved in `updated`; without it, the row is taken as already
+        moved. It may also update related records, best effort.
       security:
         - provisionSecret: []
       requestBody:
@@ -946,9 +1003,11 @@ paths:
               properties:
                 tenant_id: { type: string }
                 email: { type: string, description: The member's new address. Lower cased by the control plane. }
+                old_email: { type: string, description: The member's previous address. }
+                user_id: { type: string, description: The person's id in the calling application. }
       responses:
         '200':
-          description: Mirror queued
+          description: Accepted
           content:
             application/json:
               schema:
@@ -956,6 +1015,7 @@ paths:
                 required: [ok]
                 properties:
                   ok: { type: boolean }
+                  updated: { type: integer, description: 'Member rows moved to `email`, 0 or 1. Present when `old_email` was sent.' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
   /tokens:
@@ -973,6 +1033,7 @@ paths:
       security:
         - {}
         - apiKey: []
+        - agentToken: ['tokens:mint']
       requestBody:
         required: true
         content:
@@ -1129,7 +1190,7 @@ paths:
                     description: >-
                       The second way, as `domains:check` names it: for a former
                       Google Domains name `provider_id` is `squarespace` (the
-                      registrar, found over RDAP) and this is `gcpdns`, whose
+                      registrar) and this is `gcpdns`, whose
                       nameservers it keeps. Absent otherwise.
                     required: [provider, provider_name, reason]
                     properties:
@@ -1234,16 +1295,32 @@ paths:
                     With an API key, the application to check for (defaults to
                     the key's own). A widget JWT may only omit it or send its own
                     application id (403 otherwise).
+                prewarm:
+                  type: boolean
+                  description: >-
+                    Set while the name is still being typed to get the check
+                    started early. The answer is `202` with no detection in
+                    it; send the check without it to get the result.
       responses:
         '200':
           description: Detection result
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DomainCheck' }
+        '202':
+          description: A `prewarm` request was accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain: { type: string }
+                  prewarm: { type: boolean }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------- Connections
   /connections:
@@ -2937,8 +3014,8 @@ paths:
         the move would refuse. It reads and changes nothing.
 
 
-        The accounts are the ones this caller may use, at the registrar RDAP
-        names, whose scope already holds the zone (a key given for one
+        The accounts are the ones this caller may use, at the domain's
+        registrar, whose scope already holds the zone (a key given for one
         subdomain, `shop.acme.com`, does not hold `acme.com`, so it is not
         listed for the move of the registrable domain), whose API changes
         nameservers, that are kept (a one time key is not listed), and never
@@ -3029,11 +3106,11 @@ paths:
         agent chose would hand it the whole domain in one call.
 
 
-        **Where they change**: at the domain's registrar, looked up over
-        RDAP for every move (`registrar`), never at the DNS host because it
-        hosts the DNS. A key, an account, a cloud browser sign in and the
-        instructions all go to that registrar; when RDAP names none, the
-        detected DNS host is used as a guess and `next_step` names no company.
+        **Where they change**: at the domain's registrar (`registrar`), never at
+        the DNS host because it hosts the DNS. A key, an account, a cloud browser sign in and the
+        instructions all go to that registrar; when no registrar is known, no
+        company is named and `next_step` says "where the domain is
+        registered".
 
 
         **How they change** (`path`): `api`, the registrar's own API with a
@@ -3193,7 +3270,7 @@ paths:
             `registrar_locks_nameservers` (the domain is registered at a
             registrar that requires its own nameservers, Cloudflare
             Registrar), `registrar_mismatch` (the key or account is at
-            another company than the registrar RDAP names),
+            another company than the domain's registrar),
             `zone_host_unsupported` or `dns_host_not_configured`.
           content:
             application/json:
@@ -3812,6 +3889,7 @@ paths:
                 return_origin:
                   type: string
                   description: Web origin the callback page may postMessage the outcome to; must be on the server's allowlist.
+                client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
                 region:
                   type: string
                   enum: [eu, ca, us]
@@ -4965,7 +5043,8 @@ paths:
         validated consumer key), writes the connection's records with it
         (dropped after, unless kept for managed mode), and returns an HTML page
         that postMessages `{ type: "customdomain:oauth", payload }` to the
-        vetted return origin. After `porkbun_dnsconnect` there is no credential:
+        vetted return origin; `payload.nonce` repeats the start's
+        `client_nonce` when it sent one. After `porkbun_dnsconnect` there is no credential:
         Porkbun added the records itself and says so in `status` (`applied`,
         `partial`, `denied` or `error` with its `error`), which is not signed,
         so the connection only moves to `propagating` and public DNS decides;
@@ -5059,7 +5138,7 @@ paths:
         - { name: state, in: query, required: true, schema: { type: string } }
       responses:
         '200':
-          description: HTML finish page (postMessages the outcome to the vetted return origin)
+          description: HTML finish page (postMessages the outcome to the vetted return origin; `payload.nonce` repeats the start's `client_nonce` when it sent one)
         '400':
           description: Invalid, expired, replayed, or wrong-rail state
   /connect/dc/return/{state}:
@@ -5076,7 +5155,8 @@ paths:
         `error` on the connection, runs the propagation check at once, and
         returns the same HTML finish page as the OAuth callback, which
         postMessages `{ type: "customdomain:oauth", payload }` to the origin
-        vetted at start. A clean return never marks the connection live by
+        vetted at start (`payload.nonce` repeats the start's `client_nonce`
+        when it sent one). A clean return never marks the connection live by
         itself: only the records appearing in public DNS do.
       security: []
       parameters:
@@ -5213,6 +5293,7 @@ paths:
                     outcome to; must be on the server allowlist. Used by the
                     async callback, and by the sync return page on a plain sync
                     start.
+                client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
       responses:
         '200':
           description: >-
@@ -5224,7 +5305,7 @@ paths:
                 type: object
                 properties:
                   apply_url: { type: string, format: uri, description: "Sync rail: provider-hosted apply URL." }
-                  consent_url: { type: string, format: uri, description: "Async rail: provider consent URL." }
+                  consent_url: { type: string, format: uri, description: "Async rail: open it in the popup. The provider consent URL, possibly through this API's origin first." }
                   service_id: { type: string }
                   service_ids:
                     type: array
@@ -5372,6 +5453,87 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/keyless:start:
+    post:
+      operationId: startKeyless
+      summary: Start connecting a domain's DNS without sending an access key
+      tags: [Connections]
+      description: >-
+        **Keyless access.** Returns the steps the customer follows in their own
+        cloud account, so no key of theirs is sent to CustomDomain™. Idempotent.
+        Answers `503` `keyless_unavailable` when this deployment has not set the
+        rail up and `400` `keyless_invalid` for a value that is not accepted.
+        Takes a widget JWT for the connection's own application or an API key,
+        like `keyless:complete`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string, description: 'The DNS provider, `azuredns` or `gcpdns`.' }
+                tenant_id: { type: string, description: The customer's directory id. }
+                subscription_id: { type: string, description: The customer's subscription id. }
+                resource_group: { type: string, description: The resource group that holds the zone. }
+                project_id: { type: string, description: 'The customer''s project id (`gcpdns`).' }
+                project_number: { type: string, description: 'The customer''s project number (`gcpdns`).' }
+                pool_id: { type: string, description: 'The identity pool id (`gcpdns`).' }
+                provider_id: { type: string, description: 'The identity provider id in that pool (`gcpdns`).' }
+                service_account: { type: string, description: 'The service account email (`gcpdns`).' }
+                zone: { type: string, description: The zone, the connection's domain or a parent of it. }
+      responses:
+        '200':
+          description: The steps to show the customer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KeylessStart' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenSuspendedOrWrongEndUser' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/keyless:complete:
+    post:
+      operationId: completeKeyless
+      summary: Check the customer's keyless access and write the connection's records
+      tags: [Connections]
+      description: >-
+        **Keyless access, second step.** Checks the access the customer set up
+        and writes the connection's records, which then propagate as after an API
+        key apply. Calling it again re-applies the records. Branch on `code`:
+        `keyless_not_granted`, `keyless_proof_missing` and `keyless_revoked`
+        (409), `keyless_zone_not_found` (404), `keyless_invalid` (400) and
+        `keyless_unavailable` (503, nothing was changed, try again).
+      security:
+        - widgetJWT: []
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: { type: string, description: 'The DNS provider, `azuredns` or `gcpdns`.' }
+      responses:
+        '200':
+          description: The records were written and the connection is propagating.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KeylessComplete' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrWrongEndUser' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # -------------------------------------------------------------------- Sharing
@@ -5605,13 +5767,28 @@ paths:
         Mints a fresh client_secret, stores only its hash, and returns the
         plaintext exactly once; it is never retrievable again. The old secret
         stops minting widget tokens (POST /tokens) immediately; already-issued
-        widget JWTs run out their own short TTL. Admin-or-above (keys:manage):
-        a member/viewer API key is rejected with 403.
+        widget JWTs run out their own short TTL, unless the request sends
+        `revoke_tokens: true`, which also revokes every widget token of the
+        application issued until now (as `tokens:revoke` does). Update the
+        secret your server mints with before you revoke, or widgets that ask
+        for a new token in between fail. Admin-or-above (keys:manage): a
+        member/viewer API key is rejected with 403.
       security:
         - apiKey: []
         - managementKey: []
       parameters:
         - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revoke_tokens:
+                  type: boolean
+                  default: false
+                  description: Also revoke every widget token of the application issued until now.
       responses:
         '200':
           description: Rotated; the new client_secret is present only in this response
@@ -5625,8 +5802,46 @@ paths:
                   client_secret:
                     type: string
                     description: sk_… (mints widget JWTs; shown once, stored hashed)
+                  tokens_revoked_before:
+                    type: string
+                    format: date-time
+                    description: With `revoke_tokens`, widget tokens issued before this time are refused.
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /applications/{id}/tokens:revoke:
+    post:
+      operationId: revokeWidgetTokens
+      summary: Revoke an application's widget tokens issued until now
+      tags: [Applications]
+      description: >-
+        Every widget token of the application issued before the returned time
+        is refused from now on (`401`); tokens minted afterwards work. Use it
+        when a token or the client secret may have leaked. Widgets that hold a
+        revoked token ask your server for a new one. Admin-or-above
+        (keys:manage): a member/viewer API key is rejected with 403.
+      security:
+        - apiKey: []
+        - managementKey: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [application_id, revoked_before]
+                properties:
+                  application_id: { type: string }
+                  revoked_before:
+                    type: string
+                    format: date-time
+                    description: Widget tokens issued before this time are refused.
+        '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
 
@@ -6457,9 +6672,10 @@ paths:
       description: >-
         Registers an HTTPS receiver under the calling application. The `secret`
         (`whsec_…`) is returned ONCE. Store it to verify signatures. An empty
-        `events` array subscribes to all events; `"*"` also matches all.
+        `events` array subscribes to all events; `"*"` also matches all. A delegated agent token needs `app:write`.
       security:
         - widgetJWT: []
+        - agentToken: ['app:write']
       requestBody:
         required: true
         content:
@@ -6480,7 +6696,14 @@ paths:
                     `connection.disconnected` cover the managed (async one-click)
                     re-apply and disconnect lifecycle; `connection.disconnected`
                     carries a `removal` object saying what happened to the DNS
-                    records. `certificate.issued` / `certificate.renewed` /
+                    records. `connection.attempt.started` /
+                    `connection.attempt.way_ended` say when a way to connect
+                    starts and how it ended, in an `attempt` object (`id`, `way`,
+                    `outcome`, and for one that did not finish a `cause`,
+                    `fix_by` and `retryable`).
+                    `connection.attempt.needs_attention` says a sign in is
+                    waiting for the customer (`attempt.need`: `code`,
+                    `approval`, `passkey` or `password`). `certificate.issued` / `certificate.renewed` /
                     `certificate.failed` follow the edge's certificate reports,
                     and `certificate.expiring` fires 14, 7 and 3 days before an
                     unrenewed certificate expires and when it expired; each
@@ -6538,6 +6761,9 @@ paths:
                       - connection.reapply.failed
                       - connection.records_outdated
                       - connection.disconnected
+                      - connection.attempt.started
+                      - connection.attempt.way_ended
+                      - connection.attempt.needs_attention
                       - certificate.issued
                       - certificate.renewed
                       - certificate.failed
@@ -6553,6 +6779,7 @@ paths:
                       - nameservers.failed
                       - nameservers.rolled_back
                       - nameservers.drifted
+                      - webhook.test
       responses:
         '201':
           description: Created (secret returned once)
@@ -6561,6 +6788,7 @@ paths:
               schema: { $ref: '#/components/schemas/WebhookEndpoint' }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     get:
       operationId: listWebhooks
@@ -6570,10 +6798,11 @@ paths:
         With an API key: endpoints across all the tenant's live apps (a test
         mode application's endpoints are left out unless `?app_id=` names it).
         With a test mode API key: that application's endpoints. With a widget
-        JWT: the calling app's endpoints. Secrets are omitted.
+        JWT: the calling app's endpoints. Secrets are omitted. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['app:read']
       parameters:
         - name: app_id
           in: query
@@ -6593,18 +6822,48 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/WebhookEndpoint' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /webhooks/{id}:
     delete:
       operationId: deleteWebhook
       summary: Delete a webhook endpoint
+      description: >-
+        A delegated agent token needs `app:write`.
       tags: [Webhooks]
       security:
         - widgetJWT: []
+        - agentToken: ['app:write']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /webhooks/{id}:test:
+    post:
+      operationId: testWebhook
+      summary: Send a test event to a webhook endpoint
+      tags: [Webhooks]
+      description: >-
+        Signs and sends one `webhook.test` event to this endpoint now, whatever
+        events it subscribes to, and answers with the delivery: whether it
+        arrived, the receiver's status code and, when it did not, the error. It
+        tries once, with no retries, and the attempt is added to
+        `GET /webhook-deliveries`. A delegated agent token needs `app:write`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['app:write']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The test delivery
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDelivery' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
   /webhook-deliveries:
     get:
@@ -6613,10 +6872,11 @@ paths:
       tags: [Webhooks]
       description: >-
         API key: all the tenant's apps. Widget JWT: the calling app.
-        `?app_id=` narrows to one application; `?type=` filters by event type.
+        `?app_id=` narrows to one application; `?type=` filters by event type. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['app:read']
       parameters:
         - { name: app_id, in: query, required: false, schema: { type: string } }
         - { name: type, in: query, required: false, schema: { type: string } }
@@ -6634,6 +6894,7 @@ paths:
                     items: { $ref: '#/components/schemas/WebhookDelivery' }
                   count: { type: integer }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------- Billing
@@ -6677,10 +6938,11 @@ paths:
       tags: [Billing]
       description: >-
         The tenant is derived from the authenticated credential, never a query
-        parameter. `?period=` defaults to the current UTC calendar month.
+        parameter. `?period=` defaults to the current UTC calendar month. A delegated agent token needs `stats:read`.
       security:
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['stats:read']
       parameters:
         - { name: period, in: query, required: false, schema: { type: string, examples: ['2026-07'] } }
       responses:
@@ -6690,6 +6952,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Usage' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /billing/checkout:
     post:
@@ -6838,9 +7101,10 @@ paths:
         amounts. Owners and admins also get the billing state, and
         `first_domain_free` with `free_domains` (how many domains it may
         connect before a card) while a new workspace is on the first domain
-        free rule.
+        free rule. A delegated agent token needs `stats:read`.
       security:
         - apiKey: []
+        - agentToken: ['stats:read']
       responses:
         '200':
           description: Billing notice
@@ -6895,6 +7159,879 @@ paths:
               schema: { $ref: '#/components/schemas/BillingStatus' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/status:
+    get:
+      operationId: getBuildsStatus
+      summary: Which builds features are available
+      tags: [Builds]
+      description: >-
+        Which parts of builds are available to the workspace, and whether the
+        caller may manage them (`can_manage`, true for owners and admins). It
+        needs a tenant API key; a widget token, a delegated agent token and a
+        test mode key are refused with `403`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Builds status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled, can_manage]
+                properties:
+                  enabled:
+                    type: object
+                    required: [github, deploy]
+                    properties:
+                      github: { type: boolean }
+                      deploy:
+                        type: object
+                        description: One entry per deploy platform, keyed by platform id.
+                        additionalProperties: { type: boolean }
+                  can_manage: { type: boolean }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /builds/github/connect:
+    post:
+      operationId: connectBuildsGitHub
+      summary: Start connecting a GitHub account (owners and admins)
+      tags: [Builds]
+      description: >-
+        Returns the address where the person installs the CustomDomain™
+        GitHub App. The address works once and for 15 minutes; open it in the
+        browser that will finish the install, since it may be tied to that
+        browser. Needs an owner or admin key; `404 builds_disabled` while the
+        feature is off.
+      security:
+        - apiKey: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                application_id: { type: string }
+      responses:
+        '200':
+          description: Install address
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [install_url, expires_at]
+                properties:
+                  install_url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/callback:
+    get:
+      operationId: buildsGitHubCallback
+      summary: Where GitHub sends the person back
+      tags: [Builds]
+      description: >-
+        Only GitHub calls this, after the install. It answers a redirect to the
+        console's Integrate page with `github=connected`, `pending` (an
+        organization owner must approve) or `error` and a `reason`. Reasons
+        include `sign_in_other_browser` (finish in the browser that started;
+        nothing was used up) and `github_user_mismatch` (another GitHub user
+        finished the install than the one who started it).
+      security: []
+      parameters:
+        - { name: state, in: query, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: installation_id, in: query, schema: { type: string } }
+        - { name: setup_action, in: query, schema: { type: string } }
+        - { name: target_id, in: query, schema: { type: string } }
+      responses:
+        '302':
+          description: Redirect to the console
+        '503':
+          description: The console address is not configured
+  /builds/github/launch:
+    get:
+      operationId: buildsGitHubLaunch
+      summary: Install launch (public; authenticated by the state)
+      tags: [Builds]
+      description: >-
+        The first page the install address opens when `install_url` points
+        here. It ties the install to this browser and redirects to GitHub. Not a
+        bearer-authenticated endpoint; open it only through `install_url`.
+      security: []
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '302':
+          description: Redirect to GitHub
+        '400':
+          description: HTML error page; the link is invalid, expired or too old
+        '403':
+          description: HTML error page; the install was opened in another browser
+        '503':
+          description: HTML error page; sign-in is not set up
+  /builds/github/installations:
+    get:
+      operationId: listBuildsGitHubInstallations
+      summary: The workspace's GitHub connections (owners and admins)
+      tags: [Builds]
+      description: >-
+        One entry per connected GitHub account. A request waiting for an
+        organization owner has `id` 0 and status `pending_approval`. A request
+        an owner approved that more than one workspace may have made has `id` 0,
+        status `needs_choice` and the approved `account_login`: connect again
+        from the workspace that should hold it. `html_url` is the GitHub page
+        where the person adds or removes repositories.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Installations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BuildsGitHubInstallation' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}:
+    delete:
+      operationId: deleteBuildsGitHubInstallation
+      summary: Disconnect a GitHub account (owners and admins)
+      tags: [Builds]
+      description: Removes the connection and the repository links that use it.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204': { description: Disconnected }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}/sync:
+    post:
+      operationId: syncBuildsGitHubInstallation
+      summary: Refresh a GitHub connection's repositories (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [job_id]
+                properties:
+                  job_id: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}/repositories:
+    get:
+      operationId: listBuildsGitHubRepositories
+      summary: The repositories a GitHub connection can see (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200':
+          description: Repositories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [repositories, synced_at]
+                properties:
+                  repositories:
+                    type: array
+                    items:
+                      type: object
+                      required: [repo_id, full_name, private, default_branch, status, linked_application_id]
+                      properties:
+                        repo_id: { type: integer, format: int64 }
+                        full_name: { type: string }
+                        private: { type: boolean }
+                        default_branch: { type: string }
+                        status: { type: string }
+                        linked_application_id: { type: string, nullable: true }
+                  synced_at: { type: string, format: date-time, nullable: true }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/github/installations/{id}/repositories:change:
+    post:
+      operationId: changeBuildsGitHubRepositories
+      summary: Add or remove repositories (not available yet)
+      tags: [Builds]
+      description: >-
+        Answers `501 not_enabled` for now. Change repositories on the GitHub page
+        named by the installation's `html_url`.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                add: { type: array, items: { type: integer, format: int64 } }
+                remove: { type: array, items: { type: integer, format: int64 } }
+      responses:
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}:
+    get:
+      operationId: getBuildsApplication
+      summary: An application's builds overview (owners and admins)
+      tags: [Builds]
+      description: >-
+        The application's origin, its GitHub repository and deploy project when
+        linked, and `dns_platforms`, the deploy platforms where the workspace
+        itself already has a DNS connection.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Overview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [origin, github, deploy, dns_platforms, phase]
+                properties:
+                  origin: { type: string, nullable: true }
+                  github:
+                    type: object
+                    nullable: true
+                    required: [installation_id, repository]
+                    properties:
+                      installation_id: { type: integer, format: int64 }
+                      repository:
+                        type: object
+                        nullable: true
+                        required: [repo_id, full_name]
+                        properties:
+                          repo_id: { type: integer, format: int64 }
+                          full_name: { type: string }
+                  deploy:
+                    type: object
+                    nullable: true
+                    properties:
+                      account_id: { type: string }
+                      project:
+                        type: object
+                        nullable: true
+                        properties:
+                          external_project_id: { type: string }
+                          name: { type: string }
+                  dns_platforms: { type: array, items: { type: string } }
+                  phase: { type: string, enum: [connect] }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/repository:
+    put:
+      operationId: putBuildsApplicationRepository
+      summary: Link an application to a repository (owners and admins)
+      tags: [Builds]
+      description: >-
+        The repository must be one the GitHub connection already sees.
+        `409 installation_pending` while an organization owner has not approved
+        the connection; `422 invalid` for a repository it does not hold.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [installation_id, repo_id]
+              properties:
+                installation_id: { type: integer, format: int64 }
+                repo_id: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [repo_id, full_name, confidence, evidence, confirmed_at]
+                properties:
+                  repo_id: { type: integer, format: int64 }
+                  full_name: { type: string }
+                  confidence: { type: number }
+                  evidence: { type: array, items: { type: string } }
+                  confirmed_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteBuildsApplicationRepository
+      summary: Remove an application's repository link (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/platforms:
+    get:
+      operationId: listBuildsDeployPlatforms
+      summary: The hosting platforms that can be connected
+      tags: [Builds]
+      description: >-
+        The platforms in display order, whether each is on for the workspace
+        (`enabled`) and whether it can be connected now (`available`). `method`
+        is how the platform connects: `oauth`, `role`, `guided` or `key`. Owners
+        and admins only; every deploy platform off answers `404 builds_disabled`.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Platforms
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BuildsDeployPlatform' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /builds/deploy/{platform}/connect:
+    post:
+      operationId: startBuildsDeployConnect
+      summary: Start connecting a hosting platform
+      tags: [Builds]
+      description: >-
+        For a platform with sign-in (`kind: redirect`), returns the address to
+        open so the person can sign in at the platform and allow access; open it
+        in the browser that will finish, since it may be tied to that browser.
+        Nothing is saved until the platform returns to the callback. For AWS
+        Amplify (`kind: role`), returns the link that creates an access role in
+        the person's AWS account and the workspace's external ID. For Render and
+        Fly.io (`kind: guide`), returns steps and a link into the platform. The
+        role and guide answers carry a single use `state` for
+        `connect:complete`. `501 not_enabled` while the platform cannot be
+        connected this way yet. Owners and admins only.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: platform, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                application_id: { type: string }
+                return_origin:
+                  type: string
+                  description: The console origin to return to; it must be an allowed return origin.
+      responses:
+        '200':
+          description: Where to send the person
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [kind, url, expires_at]
+                    properties:
+                      kind: { type: string, enum: [redirect] }
+                      url: { type: string }
+                      expires_at: { type: string, format: date-time }
+                  - type: object
+                    required: [kind, template_url, external_id, state, expires_at]
+                    properties:
+                      kind: { type: string, enum: [role] }
+                      template_url: { type: string }
+                      external_id: { type: string }
+                      state: { type: string }
+                      expires_at: { type: string, format: date-time }
+                  - type: object
+                    required: [kind, steps, deep_link, accepts_key, state, expires_at]
+                    properties:
+                      kind: { type: string, enum: [guide] }
+                      steps: { type: array, items: { type: string } }
+                      deep_link: { type: string }
+                      accepts_key:
+                        type: boolean
+                        description: Whether `connect:complete` takes a key for this platform here.
+                      state: { type: string }
+                      expires_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/{platform}/connect:complete:
+    post:
+      operationId: completeBuildsDeployConnect
+      summary: Finish connecting a role or guided hosting platform
+      tags: [Builds]
+      description: >-
+        Finishes a connect started with `kind: role` or `kind: guide`, with the
+        `state` that start returned (single use, for the same workspace and
+        key). AWS Amplify takes `role_arn` and an optional `region`; Render and
+        Fly.io take a `key` the person created at the platform (Fly.io also
+        `org`). The key is write only: it is never returned. Owners and admins
+        only.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: platform, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [state]
+              properties:
+                state: { type: string }
+                role_arn: { type: string }
+                region: { type: string }
+                key: { type: string, writeOnly: true }
+                org: { type: string }
+      responses:
+        '201':
+          description: The connected account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsDeployAccount' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/{platform}/callback:
+    get:
+      operationId: buildsDeployCallback
+      summary: Platform sign-in return address (public; authenticated by the signed state)
+      tags: [Builds]
+      description: >-
+        Where the platform sends the person back. It is not a bearer
+        authenticated endpoint: the signed, single use `state` is the
+        credential. It always answers a `302` to the console, with
+        `result=connected`, or `result=error` and a `reason`
+        (`sign_in_other_browser` when it came back to another browser than the
+        one that started; nothing was used up).
+      security: []
+      parameters:
+        - { name: platform, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        '302': { description: Redirect to the console }
+        '400': { description: The link is invalid, expired or already used }
+        '503': { description: Sign-in is not set up }
+  /builds/deploy/accounts:
+    get:
+      operationId: listBuildsDeployAccounts
+      summary: Connected hosting accounts
+      tags: [Builds]
+      description: >-
+        The workspace's connected hosting accounts. No credential is ever
+        returned. Owners and admins only.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BuildsDeployAccount' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/accounts/{id}/sync:
+    post:
+      operationId: syncBuildsDeployAccount
+      summary: Refresh what is known about a hosting account
+      tags: [Builds]
+      description: >-
+        Starts a refresh and answers at once with a job id. `409
+        reconnect_needed` when the account has to be connected again.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '202':
+          description: Started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [job_id]
+                properties:
+                  job_id: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/accounts/{id}:
+    delete:
+      operationId: deleteBuildsDeployAccount
+      summary: Disconnect a hosting account
+      tags: [Builds]
+      description: >-
+        Removes the account and its saved access, and withdraws the access at
+        the platform where the platform allows it.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Disconnected }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/deploy/accounts/{id}/projects:
+    get:
+      operationId: listBuildsDeployProjects
+      summary: Projects of a hosting account
+      tags: [Builds]
+      description: >-
+        The projects found at the last refresh: names, the repository, domains
+        and the names of the variables. A variable's value is never returned.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projects, synced_at]
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: '#/components/schemas/BuildsDeployProject' }
+                  synced_at: { type: [string, 'null'], format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/project:
+    put:
+      operationId: linkBuildsDeployProject
+      summary: Link an application to a hosting project
+      tags: [Builds]
+      description: >-
+        Links the application to one project of a connected account. The
+        project must be one found at the last refresh. A second call replaces
+        the first.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [account_id, external_project_id]
+              properties:
+                account_id: { type: string }
+                external_project_id: { type: string }
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account_id, external_project_id, name]
+                properties:
+                  account_id: { type: string }
+                  external_project_id: { type: string }
+                  name: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: unlinkBuildsDeployProject
+      summary: Remove an application's hosting project link
+      tags: [Builds]
+      description: Removes the link. No link is not an error.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/profile:
+    post:
+      operationId: startBuildsProfile
+      summary: Read the linked repository (owners and admins)
+      tags: [Builds]
+      description: >-
+        Reads the application's linked repository at the head of its default
+        branch and describes its stack, in the background. `202` with a new
+        profile, or `200` with the one already in progress. `409 conflict`
+        when the application has no linked repository. `404 builds_disabled`
+        unless installs and GitHub are both on for the workspace.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The profile already in progress
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsProfile' }
+        '202':
+          description: The new profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsProfile' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: getBuildsProfile
+      summary: The application's newest repository profile (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsProfile' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/plan:
+    post:
+      operationId: proposeBuildsPlan
+      summary: Plan the install (owners and admins)
+      tags: [Builds]
+      description: >-
+        Plans the change that adds CustomDomain™ to the repository, for the
+        newest ready profile, in the background. `202` with a new plan, or
+        `200` with the one already in progress. `409 conflict` when there is
+        no ready profile.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The plan already in progress
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsPlan' }
+        '202':
+          description: The new plan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsPlan' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: getBuildsPlan
+      summary: The application's newest install plan (owners and admins)
+      tags: [Builds]
+      description: >-
+        The planned change as a diff, the checks it passed, or the manual
+        steps when it cannot be made for you.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The plan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsPlan' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/runs:
+    post:
+      operationId: startBuildsRun
+      summary: Install a plan (owners and admins)
+      tags: [Builds]
+      description: >-
+        Installs the plan named by `plan_id`, which must be the newest and
+        ready: checks it, opens a draft pull request, and sets the
+        application's credentials where the app runs. After the pull request
+        merges, a linked hosting project is deployed once. `202` with a new
+        run, or `200` with the run already in progress for the same plan.
+        `409 conflict` when the plan changed, cannot be installed, or another
+        run is in progress.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan_id]
+              properties:
+                plan_id: { type: string }
+      responses:
+        '200':
+          description: The run already in progress
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsRun' }
+        '202':
+          description: The new run
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsRun' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: listBuildsRuns
+      summary: The application's recent install runs (owners and admins)
+      tags: [Builds]
+      description: Newest first, at most 20.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runs]
+                properties:
+                  runs: { type: array, items: { $ref: '#/components/schemas/BuildsRun' } }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/runs/{run_id}:
+    get:
+      operationId: getBuildsRun
+      summary: An install run and its steps (owners and admins)
+      tags: [Builds]
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsRun' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /builds/applications/{app_id}/runs/{run_id}/cancel:
+    post:
+      operationId: cancelBuildsRun
+      summary: Stop an install run (owners and admins)
+      tags: [Builds]
+      description: >-
+        Stops a run before it opens the pull request. Once the pull request is
+        open it is `409 conflict`: close the pull request on GitHub instead,
+        and the run cleans up when it closes.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: string } }
+        - { name: run_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildsRun' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /billing/invoices:
     get:
@@ -7058,6 +8195,42 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
 
   # ---------------------------------------------------------------- Enterprise
+  /me:
+    get:
+      operationId: getMe
+      summary: Who the API key acts as in its workspace
+      tags: [Members]
+      description: >-
+        The workspace the key belongs to, the role it acts with, and the kind
+        of key: a member's key (with that member), the workspace default key,
+        or another workspace key. Any role may call it.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: The key's identity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tenant_id, role, credential, member]
+                properties:
+                  tenant_id: { type: string }
+                  role: { $ref: '#/components/schemas/Role' }
+                  credential:
+                    type: string
+                    enum: [member, default, workspace]
+                    description: The kind of key.
+                  member:
+                    description: The member a member's key acts as; null for any other key.
+                    type: [object, 'null']
+                    required: [id, email, role]
+                    properties:
+                      id: { type: string }
+                      email: { type: string }
+                      role: { $ref: '#/components/schemas/Role' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /rbac:
     get:
       operationId: getRbac
@@ -7077,11 +8250,12 @@ paths:
         owner or admin, events are returned as recorded. With a member's or a
         viewer's key, and with a widget token, addresses, email addresses and
         free-text reasons are removed. A widget token sees only events about its
-        own application.
+        own application. A delegated agent token needs `audit:read`.
       security:
         - managementKey: []
         - apiKey: []
         - widgetJWT: []
+        - agentToken: ['audit:read']
       responses:
         '200':
           description: Events
@@ -7097,6 +8271,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/AuditEvent' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
     post:
       operationId: recordAuditEvent
@@ -7585,9 +8760,10 @@ paths:
         own infrastructure: subdomains get a CNAME to `cname_target`; a root
         domain gets an ALIAS, ANAME or flattened CNAME to it on providers that
         have one, and A records to `apex_ipv4` elsewhere. `edge` echoes what edge
-        mode points at, so a console can show both options.
+        mode points at, so a console can show both options. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
+        - agentToken: ['app:read']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
@@ -7596,6 +8772,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConnectTargetView' }
         '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     put:
       operationId: setConnectTarget
@@ -7622,9 +8799,10 @@ paths:
         edge address: such domains would verify but never be served. A
         `cname_target` that does not resolve yet, or a target with no
         `apex_ipv4`, is accepted with a `warnings` entry. Every change is recorded in the audit log
-        (`app.routing_set`, `app.routing_cleared`).
+        (`app.routing_set`, `app.routing_cleared`). A delegated agent token needs `app:write`.
       security:
         - apiKey: []
+        - agentToken: ['app:write']
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       requestBody:
         required: true
@@ -8214,6 +9392,7 @@ paths:
                     and another workspace's is `404`). Left out, the account
                     serves the whole workspace.
                 return_origin: { type: string, description: Web origin the popup posts its result to; must be on the server's allowlist. }
+                client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
       responses:
         '200':
           description: The sign-in started; open `authorize_url` in a popup.
@@ -8436,10 +9615,10 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
     delete:
       operationId: revokeProviderAccount
-      summary: Revoke an account
+      summary: Remove an account (the key must still be revoked at the provider)
       tags: [Provider accounts]
       description: >-
-        Deletes the key and the account. Its domains stay connected and
+        Deletes CustomDomain™'s copy of the key and the account. Its domains stay connected and
         served, without continuous access; each domain's timeline records it.
         The answer says what that leaves: `used_by` is how many domains used the
         account, and `revoke_url` is the provider's page where the key itself is
@@ -8457,14 +9636,20 @@ paths:
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
         '200':
-          description: Revoked
+          description: Removed here
           content:
             application/json:
               schema:
                 type: object
+                required: [id, removed_here, revoke_at_provider]
                 properties:
                   id: { type: string }
-                  revoked: { type: boolean }
+                  removed_here: { type: boolean, enum: [true], description: "The account and CustomDomain™'s copy of its key were removed." }
+                  revoke_at_provider: { type: boolean, description: "True when the key still works at the provider until it is deleted there (see `revoke_url`). False for a provider sign-in, which is withdrawn at the provider." }
+                  revoked:
+                    type: boolean
+                    deprecated: true
+                    description: "Always true, kept for older integrations. It means removed here, not that the key stopped working at the provider: read `revoke_at_provider`."
                   used_by: { type: integer, description: "How many domains used the account. They stay connected, each with a timeline event, without continuous access." }
                   domains_kept_connected: { type: integer, description: "The same number as `used_by`, kept for older integrations." }
                   revoke_url:
@@ -9170,7 +10355,7 @@ paths:
         - name: scope
           in: query
           required: true
-          description: Space separated scopes from `domains:read`, `domains:connect`, `domains:disconnect` and `domains:purchase`. The person may approve fewer.
+          description: Space separated scopes from `domains:read`, `domains:connect`, `domains:disconnect` and `domains:purchase`, and the workspace scopes `stats:read`, `audit:read`, `app:read`, `app:write`, `tokens:mint`, `member:read`, `member:manage` and `keys:manage`. The person may approve fewer, and can grant a workspace scope only if their own role holds it.
           schema: { type: string, example: domains:read domains:connect }
         - { name: state, in: query, required: false, schema: { type: string } }
         - name: resource
@@ -9476,6 +10661,14 @@ components:
             'domains:connect': Connect a domain, recheck it, reapply its records and start a one click setup.
             'domains:disconnect': Remove a connected domain. The call must name the domain.
             'domains:purchase': Buy a domain, up to the grant's monthly spend cap.
+            'stats:read': Read plan usage, the billing standing and notices. Never change the plan or payment.
+            'audit:read': Read the workspace audit log.
+            'app:read': List applications, their connect target, webhooks and webhook deliveries.
+            'app:write': Create and update applications, set the connect target, add, test and delete webhooks.
+            'tokens:mint': Mint short lived widget tokens for an application.
+            'member:read': List the workspace's members and pending invites.
+            'member:manage': Invite members, change a member's role (never to or from owner) and remove members.
+            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member.
   parameters:
     Id:
       name: id
@@ -9615,6 +10808,201 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/AdminBillingTenantDetail' }
   schemas:
+    BuildsDeployPlatform:
+      type: object
+      required: [id, name, method, enabled, available, order]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        method: { type: string, enum: [oauth, role, guided, key] }
+        enabled: { type: boolean }
+        available: { type: boolean }
+        order: { type: integer }
+    BuildsDeployAccount:
+      type: object
+      required: [id, platform, external_account_name, access_level, status, scopes, connected_at, last_synced_at, dns_linked]
+      properties:
+        id: { type: string }
+        platform: { type: string }
+        external_account_name: { type: string }
+        access_level: { type: string, enum: [read, write] }
+        status: { type: string, enum: [active, reconnect_needed, revoked] }
+        scopes: { type: array, items: { type: string } }
+        connected_at: { type: string, format: date-time }
+        last_synced_at: { type: [string, 'null'], format: date-time }
+        dns_linked: { type: boolean }
+    BuildsDeployProject:
+      type: object
+      required: [external_project_id, name, repo_full_name, domains, env_names, production_url]
+      properties:
+        external_project_id: { type: string }
+        name: { type: string }
+        repo_full_name: { type: [string, 'null'] }
+        domains: { type: array, items: { type: string } }
+        env_names:
+          type: array
+          description: Names only; a value is never returned.
+          items: { type: string }
+        production_url: { type: [string, 'null'] }
+    BuildsGitHubInstallation:
+      type: object
+      required: [id, account_login, account_type, repository_selection, status, html_url, permissions, installed_at]
+      properties:
+        id: { type: integer, format: int64 }
+        account_login: { type: string }
+        account_type: { type: string, enum: [user, organization] }
+        repository_selection: { type: string, enum: [all, selected] }
+        status: { type: string, enum: [active, pending_approval, needs_choice, suspended, deleted] }
+        html_url: { type: string }
+        permissions:
+          type: object
+          additionalProperties: { type: string }
+        installed_at: { type: string, format: date-time }
+    BuildsProfile:
+      type: object
+      required: [id, status, repository, commit_sha, detected, analysis, skipped_files, error, created_at, updated_at]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, ready, failed] }
+        repository:
+          type: object
+          required: [repo_id, full_name, branch]
+          properties:
+            repo_id: { type: integer, format: int64 }
+            full_name: { type: string }
+            branch: { type: string }
+        commit_sha: { type: [string, 'null'] }
+        detected:
+          type: object
+          required: [framework, framework_version, router, package_dir, app_dir, typescript, package_manager, language, auth_library, deploys]
+          properties:
+            framework: { type: string }
+            framework_version: { type: string }
+            router: { type: string }
+            package_dir: { type: string }
+            app_dir: { type: string }
+            typescript: { type: boolean }
+            package_manager: { type: string }
+            language: { type: string }
+            auth_library: { type: string }
+            deploys: { type: array, items: { type: string } }
+        analysis:
+          type: object
+          required: [available, product_summary, settings, user_id, route_file, widget_file]
+          properties:
+            available: { type: boolean }
+            product_summary: { type: string }
+            settings: { $ref: '#/components/schemas/BuildsFileNote' }
+            user_id: { $ref: '#/components/schemas/BuildsFileNote' }
+            route_file: { type: string }
+            widget_file: { type: string }
+        skipped_files: { type: integer }
+        error: { type: [string, 'null'], description: 'A reason code such as `access_lost` or `empty_repository`.' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    BuildsFileNote:
+      type: object
+      required: [file, note]
+      properties:
+        file: { type: string }
+        note: { type: string }
+    BuildsPlan:
+      type: object
+      required: [id, profile_id, status, commit_sha, recipe, files, diff, checks, problems, notes, guide, error, created_at, updated_at]
+      properties:
+        id: { type: string }
+        profile_id: { type: string }
+        status: { type: string, enum: [queued, running, ready, manual, blocked, failed] }
+        commit_sha: { type: [string, 'null'] }
+        recipe: { type: [string, 'null'] }
+        files: { type: array, items: { type: string } }
+        diff: { type: string, description: The planned change as a unified diff; empty when there is none. }
+        checks:
+          type: array
+          items:
+            type: object
+            required: [name, passed]
+            properties:
+              name: { type: string }
+              passed: { type: boolean }
+        problems:
+          type: array
+          items:
+            type: object
+            required: [code, path, line, detail]
+            properties:
+              code: { type: string }
+              path: { type: string }
+              line: { type: integer }
+              detail: { type: string }
+        notes: { type: array, items: { type: string } }
+        guide:
+          type: object
+          nullable: true
+          required: [reason, app_id, token_route, env_var, docs_url, steps]
+          properties:
+            reason: { type: string }
+            app_id: { type: string }
+            token_route: { type: string }
+            env_var: { type: string }
+            docs_url: { type: string }
+            steps: { type: array, items: { type: string } }
+        error: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    BuildsRun:
+      type: object
+      required: [id, plan_id, status, steps, credentials, platform, validation, pull_request, deployment_id, cancel_requested, error, created_at, updated_at]
+      properties:
+        id: { type: string }
+        plan_id: { type: string }
+        status: { type: string, enum: [queued, running, waiting_merge, done, closed, failed, cancelled] }
+        steps:
+          type: array
+          items:
+            type: object
+            required: [name, status, reason, started_at, finished_at]
+            properties:
+              name: { type: string, enum: [validate, pull_request, credentials, merge, redeploy] }
+              status: { type: string, enum: [pending, running, done, skipped, failed] }
+              reason: { type: [string, 'null'] }
+              started_at: { type: [string, 'null'], format: date-time }
+              finished_at: { type: [string, 'null'], format: date-time }
+        credentials:
+          type: [string, 'null']
+          enum: [actions, deploy, null]
+          description: Where the credentials went; their values are never returned.
+        platform: { type: [string, 'null'] }
+        validation:
+          type: object
+          nullable: true
+          required: [status, reason, attempts, steps]
+          properties:
+            status: { type: string, enum: [passed, failed, not_available] }
+            reason: { type: [string, 'null'] }
+            attempts: { type: integer }
+            steps:
+              type: array
+              items:
+                type: object
+                required: [name, exit_code, timed_out]
+                properties:
+                  name: { type: string }
+                  exit_code: { type: integer }
+                  timed_out: { type: boolean }
+        pull_request:
+          type: object
+          nullable: true
+          required: [number, url, branch]
+          properties:
+            number: { type: integer }
+            url: { type: string }
+            branch: { type: string }
+        deployment_id: { type: [string, 'null'] }
+        cancel_requested: { type: boolean }
+        error: { type: [string, 'null'], description: 'A reason code such as `validation_failed` or `head_moved`.' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     AuditEvent:
       type: object
       required: [orgId, actorId, action, at]
@@ -10296,9 +11684,10 @@ components:
       allOf:
         - { $ref: '#/components/schemas/SecureSignInSession' }
         - type: object
-          required: [events]
+          required: [events, verified]
           properties:
             failure: { type: string, description: 'The failure the session ended in, a word from a fixed list.' }
+            verified: { type: boolean, description: 'True when the changes were verified by reading them back from the provider after they were made.' }
             events:
               type: array
               items:
@@ -11848,6 +13237,41 @@ components:
           items: { $ref: '#/components/schemas/DnsRecord' }
         role_arn: { type: string, description: 'The verified role, now stored so an empty call re-applies with it.' }
         zone: { type: string, description: The Route 53 hosted zone the records were written into. }
+    KeylessStart:
+      type: object
+      description: The answer of `POST /connections/{id}/keyless:start`.
+      required: [connection_id, provider, zone, verified, instructions]
+      properties:
+        connection_id: { type: string }
+        provider: { type: string }
+        zone: { type: string }
+        admin_consent_url: { type: string, format: uri, description: Where the customer's administrator allows the access (`azuredns`). }
+        role_assignment_command: { type: string, description: The command that gives the access on the one zone (`azuredns`). }
+        tag_name: { type: string, description: '`azuredns`.' }
+        tag_value: { type: string, description: A value generated for this connection. It is not a secret (`azuredns`). }
+        tag_command: { type: string, description: The command that sets the tag on the zone (`azuredns`). }
+        script: { type: string, description: The commands the customer runs in their own project (`gcpdns`). }
+        label_name: { type: string, description: '`gcpdns`.' }
+        label_value: { type: string, description: A value generated for this connection. It is not a secret (`gcpdns`). }
+        label_command: { type: string, description: The command that sets the label on the zone (`gcpdns`). }
+        aws_account_id: { type: string, description: The account the customer's identity provider trusts (`gcpdns`). }
+        aws_role_arn: { type: string, description: The role the customer's identity provider trusts (`gcpdns`). }
+        verified: { type: boolean }
+        instructions:
+          type: array
+          items: { type: string }
+          description: Plain steps to show the customer.
+    KeylessComplete:
+      type: object
+      description: The answer of `POST /connections/{id}/keyless:complete`.
+      required: [connection, records, provider, zone]
+      properties:
+        connection: { $ref: '#/components/schemas/Connection' }
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/DnsRecord' }
+        provider: { type: string }
+        zone: { type: string }
     BrowserSessionEvent:
       type: object
       description: One step of the cloud browser sign in window, reported by the popup.
@@ -12704,7 +14128,7 @@ components:
             providers: a former Google Domains name (now Squarespace's) keeps
             Google's `ns-cloud-*.googledomains.com` nameservers, which Google
             Cloud DNS zones use too. `provider` is then the registrar's
-            (`squarespace`, found over RDAP, so its secure sign-in is offered)
+            (`squarespace`, so its secure sign-in is offered)
             and this is the nameservers' (`gcpdns`). Absent otherwise, and when
             the registrar lookup answers nothing.
           required: [provider, provider_name, reason]
@@ -12733,10 +14157,11 @@ components:
             someone holding an API key.
         blocked_reason:
           type: string
-          enum: [unregistered, platform_subdomain]
+          enum: [unregistered, platform_subdomain, registration_hold]
           description: >-
             Present when no rail can connect this domain. `unregistered`: no
             nameserver delegation at all (fix it at the registrar).
+            `registration_hold`: see `registration_hold`.
             `platform_subdomain`: a hosting platform's own subdomain
             (www.<name>.vercel.app). Its DNS is the platform's; `POST
             /v1/connections` refuses it with `platform_subdomain`.
@@ -12754,6 +14179,34 @@ components:
           $ref: '#/components/schemas/ManagedDNSAvailability'
         nameserver_migration:
           $ref: '#/components/schemas/NameserverMigrationOffer'
+        registrar:
+          description: >-
+            The company the domain is registered with, which may differ from
+            its DNS provider (`provider`). Always present; null when it is not
+            known.
+          oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        registration_hold:
+          type: string
+          enum: [hold, redemption, pending_delete]
+          description: >-
+            Present when the domain's registration is on hold, in its
+            redemption period or pending deletion. The domain is registered
+            but does not work until its registrar resolves this, so
+            `blocked_reason` is `registration_hold` and no rail is offered.
+        connection_plan:
+          type: object
+          description: >-
+            Where to make the change and by which way, when the domain can be
+            reached from more than one place. `place` is `dns_host`,
+            `registrar` or `none`; `change` is `records`, `nameservers` or
+            `none`; `rail` is a way listed in `rails`, or `manual`; `reason` is
+            a short code.
+          properties:
+            place: { type: string, enum: [dns_host, registrar, none] }
+            provider: { type: string }
+            change: { type: string, enum: [records, nameservers, none] }
+            rail: { type: string }
+            reason: { type: string }
         integration_warnings:
           type: array
           description: >-
@@ -13213,10 +14666,11 @@ components:
           type: string
           description: >-
             Where the nameservers would be changed: the registrar's provider id
-            when `registrar` names one we route to, else the detected DNS host
-            as a guess (then `registrar` is null and nothing names it).
+            when `registrar` names one we route to. When `registrar` is null it
+            is the DNS host only if that host is also a registrar serving the
+            domain from its own nameservers, and absent otherwise.
         registrar:
-          description: Who the domain is registered with, from RDAP; null when unknown.
+          description: Who the domain is registered with; null when unknown.
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         nameservers:
           type: array
@@ -13262,7 +14716,7 @@ components:
           items: { type: string }
           description: The platform's own nameservers, for target `custom`.
         registrar:
-          description: Who the domain is registered with, from RDAP; null when unknown or not looked up (an earlier `reason` held).
+          description: Who the domain is registered with; null when unknown or not looked up (an earlier `reason` held).
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         paths:
           type: object
@@ -13298,13 +14752,11 @@ components:
       type: object
       description: >-
         The company a domain is registered with, where its nameservers are
-        changed. Looked up over RDAP at the TLD's registry (found through the
-        IANA bootstrap file) and matched to a provider by its IANA Registrar
-        ID, so a domain registered at GoDaddy with its DNS at Cloudflare is
+        changed. We may look up where a domain is managed, so a domain registered at GoDaddy with its DNS at Cloudflare is
         changed at GoDaddy.
       required: [name, source]
       properties:
-        name: { type: string, description: 'The brand ("GoDaddy"), the reseller the registry names, or RDAP''s own name.' }
+        name: { type: string, description: 'The brand ("GoDaddy"), or the reseller it is sold through.' }
         provider: { type: string, description: 'Our provider id for it, when we route to it (`godaddy`).' }
         iana_id: { type: integer, description: "The IANA Registrar ID, when the registry gives one." }
         url: { type: string, description: "The registrar's website." }
@@ -13313,9 +14765,8 @@ components:
           enum: [rdap, request, account, '']
           description: >-
             `rdap`: looked up. `request`: the caller named it with a key or an
-            account. `account`: RDAP said nothing, and a connected account read
-            the domain's registration. Empty: RDAP named a registrar we do not
-            route to (`name` only).
+            account. `account`: a connected account read the domain's
+            registration. Empty: a registrar we do not route to (`name` only).
     NameserverMigrateRequest:
       type: object
       additionalProperties: false
@@ -13326,8 +14777,8 @@ components:
           type: string
           enum: [api, agent, manual]
           description: 'How to change the nameservers. Omitted: `api` with a key, else `agent` where the cloud browser can, else `manual`.'
-        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When RDAP names the domain''s registrar, a key at another company is refused (`registrar_mismatch`).' }
-        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the registrar RDAP names is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
+        provider: { type: string, description: 'The registrar a `credential` belongs to (an adapter id such as `godaddy`). When the domain''s registrar is known, a key at another company is refused (`registrar_mismatch`).' }
+        provider_account_id: { type: string, description: 'A connected provider account at the domain''s registrar. One at another company than the domain''s registrar is refused (`registrar_mismatch`), and so is one the caller may not use (`403 forbidden`: an API key of a member may use the accounts an admin or an owner connected and its own member''s, not another member''s).' }
         credential:
           type: object
           additionalProperties: false
@@ -13420,11 +14871,12 @@ components:
           type: string
           description: >-
             Where the nameservers are changed: the registrar's provider id
-            (`registrar.provider`), or, when `registrar` is null, the DNS host
-            the domain used, as a guess (then `next_step` says "where the
-            domain is registered" and names no company).
+            (`registrar.provider`). When `registrar` is null it is the DNS host
+            only if that host is also a registrar serving the domain from its
+            own nameservers, and empty otherwise; `next_step` then says "where
+            the domain is registered" and names no company.
         registrar:
-          description: Who the domain is registered with (RDAP, or the account or key the caller brought); null when unknown.
+          description: Who the domain is registered with (or the account or key the caller brought); null when unknown.
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
         old_dns_host: { type: string, description: 'The DNS host the domain used when the move started (a provider id such as `cloudflare`).' }
         old_nameservers: { type: array, items: { type: string }, description: What the registry listed when the move started; a rollback sets these. }
@@ -13571,7 +15023,7 @@ components:
         by_state: { type: object, additionalProperties: { type: integer } }
         by_path: { type: object, additionalProperties: { type: integer } }
         by_target: { type: object, additionalProperties: { type: integer } }
-        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when RDAP named none we route to.' }
+        by_registrar: { type: object, additionalProperties: { type: integer }, description: 'Moves by the registrar''s provider id; `unknown` when none we route to was found.' }
         by_old_dns_host: { type: object, additionalProperties: { type: integer }, description: 'Moves by the DNS host the domain left; `unknown` when none was detected.' }
         total: { type: integer }
         started: { type: integer }
@@ -13686,7 +15138,7 @@ components:
           items: { type: string }
           description: The nameservers the registry listed at the last check.
         registrar:
-          description: The domain's registrar from RDAP, or null when unknown.
+          description: The domain's registrar, or null when unknown.
           oneOf:
             - type: object
               required: [name, url]
@@ -13705,14 +15157,18 @@ components:
         activated_at: { type: [string, 'null'], format: date-time }
     AgentScope:
       type: string
-      enum: ['domains:read', 'domains:connect', 'domains:disconnect', 'domains:purchase']
+      enum: ['domains:read', 'domains:connect', 'domains:disconnect', 'domains:purchase', 'stats:read', 'audit:read', 'app:read', 'app:write', 'tokens:mint', 'member:read', 'member:manage', 'keys:manage']
       description: >-
         What an agent grant may do. `domains:read` looks: availability,
         connections, records, certificates, diagnoses, orders and the billing
         standing. `domains:connect` changes: connect a domain, recheck it,
         reapply its records, start a one click setup. `domains:disconnect`
         removes a connected domain, and the call must name the domain.
-        `domains:purchase` spends, up to the grant's monthly cap.
+        `domains:purchase` spends, up to the grant's monthly cap. The workspace
+        scopes are the workspace permissions a person may delegate: on every
+        call the agent needs the scope and its approver's live role, capped at
+        admin, must hold the permission. Billing changes, single sign-on,
+        approving agents and deleting the workspace are never delegable.
     AgentClientRegistration:
       type: object
       required: [client_name, redirect_uris]

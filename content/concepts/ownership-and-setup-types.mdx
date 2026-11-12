@@ -86,10 +86,21 @@ instead:
   Google Cloud DNS.
 - **`end_user_automatic`**: true only when the recommended rail is OAuth or
   one-click. This is the fact `supports_automatic` was always misread as.
+- **`registrar`**: the company the domain is registered with, which may differ
+  from its DNS provider. Always present; `null` when it is not known.
 - **`blocked_reason`**: present when *no* rail can connect the domain:
-  `unregistered` (no nameservers: fix at the registrar) or
+  `unregistered` (no nameservers: fix at the registrar),
+  `registration_hold` (see below) or
   `platform_subdomain` (`www.<name>.vercel.app`, which is the platform's DNS, not the
   user's; `POST /v1/connections` refuses it with the same code).
+- **`registration_hold`**: `hold`, `redemption` or `pending_delete`, present with
+  `blocked_reason: registration_hold`. The domain is registered but does not work
+  until its registrar resolves the hold, and no rail is offered meanwhile.
+- **`connection_plan`**: where to make the change and by which way, when the domain
+  can be reached from more than one place. `place` is `dns_host`, `registrar` or
+  `none`; `change` is `records`, `nameservers` or `none`; `rail` is one of the ways in
+  `rails`, or `manual`; `reason` is a short code. `provider` names the place when
+  there is one.
 - **`dashboard_url`**: a best-effort deep link into the provider's DNS panel,
   for the "add these records" step.
 

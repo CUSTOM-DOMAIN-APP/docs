@@ -19,7 +19,8 @@ _openapi:
           provider-reported `error` on the connection, runs the propagation
           check at once, and returns the same HTML finish page as the OAuth
           callback, which postMessages `{ type: "customdomain:oauth", payload }`
-          to the origin vetted at start. A clean return never marks the
+          to the origin vetted at start (`payload.nonce` repeats the start's
+          `client_nonce` when it sent one). A clean return never marks the
           connection live by itself: only the records appearing in public DNS
           do.
 ---

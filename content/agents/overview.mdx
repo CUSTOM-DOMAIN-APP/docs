@@ -70,6 +70,14 @@ A grant carries one or more scopes; each MCP tool requires exactly one:
 | `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, email setup, move its nameservers or move them back, and write a domain's records with a saved key. It does not remove a domain. |
 | `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. |
 | `domains:purchase` | **Spends money**: registers a domain. Isolated on its own scope, and requires a saved card and a monthly spend cap. Purchases through MCP are off on the hosted service. |
+| `stats:read` | Read plan usage and the billing notice. Plan and payment changes stay with a person in the console. |
+| `audit:read` | Read the workspace audit log. |
+| `app:read` | Read applications, their connect target, webhooks and webhook deliveries. |
+| `app:write` | Create and change applications, set the connect target, and manage webhooks. |
+| `tokens:mint` | Mint a short lived widget token for an application. |
+| `member:read` | List members and open invitations. |
+| `member:manage` | Invite members, change their role and remove them. Never makes an owner. |
+| `keys:manage` | List, create and revoke API keys. A key an agent creates acts as a member. |
 {/* NEW SCOPES GO HERE: add one row per new scope directly above this line, and trim the matching words from the domains:connect row. This marker stays; the docs sync test reads it. */}
 
 A read only token can never connect, disconnect or buy; a connect token can never

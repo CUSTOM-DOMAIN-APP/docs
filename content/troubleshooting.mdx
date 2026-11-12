@@ -57,6 +57,11 @@ Common reasons the records never show up:
 - **The domain doesn't resolve at all**: unregistered, or registered but never
   delegated to a DNS provider. The connect flow now refuses these up front with
   an explanation; fix the delegation at your registrar first.
+- **The domain's registration is on hold.** The domain check answers
+  `blocked_reason: registration_hold` with `registration_hold` set to `hold`,
+  `redemption` or `pending_delete`. The domain is registered but does not work
+  until its registrar resolves the hold, so nothing is offered meanwhile. Resolve
+  it with the registrar, then check the domain again.
 - **A hosting platform's subdomain** (`something.vercel.app`, `*.netlify.app`,
   `*.github.io`, …) can't be connected: the platform owns its DNS. Use a domain
   you control.

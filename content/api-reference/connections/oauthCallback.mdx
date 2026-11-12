@@ -19,7 +19,8 @@ _openapi:
           uses the validated consumer key), writes the connection's records with
           it (dropped after, unless kept for managed mode), and returns an HTML
           page that postMessages `{ type: "customdomain:oauth", payload }` to
-          the vetted return origin. `payload` carries `ok`, `managed`, and on
+          the vetted return origin; `payload.nonce` repeats the start's
+          `client_nonce` when it sent one. `payload` carries `ok`, `managed`, and on
           failure a `code` and `message`: besides the provider's own `error`
           (for example `access_denied`) and `ProviderAuthenticationError`,
           `apply_failed`, `apex_not_supported`, `forwarding_not_supported`,
