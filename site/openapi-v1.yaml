@@ -11261,6 +11261,17 @@ components:
       type: string
       description: '`free` is retired: legacy workspaces still carry it until they subscribe, and it cannot be bought or assigned.'
       enum: [starter, startup, growth, premium, enterprise, free]
+    Entitlements:
+      type: object
+      description: The features the plan includes.
+      properties:
+        Connect: { type: boolean }
+        Power: { type: boolean }
+        Secure: { type: boolean }
+        Monitor: { type: boolean }
+        SCIM: { type: boolean }
+        SSO: { type: boolean }
+        WhiteLabel: { type: boolean }
     Plan:
       type: object
       properties:
@@ -11275,7 +11286,7 @@ components:
         metered: { type: boolean }
         overage_increment: { type: integer }
         motion: { type: string, enum: [self_serve, contact_sales] }
-        entitlements: { type: object }
+        entitlements: { $ref: '#/components/schemas/Entitlements' }
         hard_cap: { type: boolean, description: 'Connections past `quota` are refused (`starter`) rather than recorded as overage.' }
         trial_days: { type: integer, description: The trial a new workspace's first subscription to this plan starts with (0 for contact sales). }
         default: { type: boolean, description: The plan preselected for a new workspace (`starter`). }
