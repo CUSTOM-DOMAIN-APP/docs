@@ -587,6 +587,11 @@ paths:
               properties:
                 name: { type: string, description: 'Names starting with `member:` are reserved.' }
                 environment: { $ref: '#/components/schemas/Environment' }
+                scopes:
+                  type: array
+                  items: { type: string }
+                  description: 'Optional permissions to limit the key to (for example `member:read`), each one your own role holds. Omitted, the key acts with your whole role.'
+                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working.' }
       responses:
         '201':
           description: Created; the full secret is present only in this response
@@ -8316,8 +8321,8 @@ paths:
         only the `user.*` and `workspace.*` verbs listed, which a tenant key may
         not. The actor is recorded as `operator`, the reason in `after.reason` is
         required for `user.disabled`, `user.enabled`, `user.sessions_revoked`,
-        `user.password_reset_link_issued` and `workspace.features_set` and
-        recorded when given for the others, and the answer is a `500` when the
+        `user.password_reset_link_issued`, `workspace.features_set` and
+        `user.erased` and recorded when given for the others, and the answer is a `500` when the
         log did not take the event.
       security:
         - apiKey: []
@@ -8345,6 +8350,7 @@ paths:
                     - user.onboarding_reset
                     - user.nudged
                     - user.push_tested
+                    - user.erased
                   description: >-
                     The console-recordable verb. With an API key only
                     `whitelabel.configured` and `api_key.default_revealed`; with
@@ -11074,7 +11080,7 @@ components:
       type: object
       required: [code, title]
       properties:
-        code: { type: string, description: 'stable machine code, e.g. invalid_request, unauthorized, not_found, service_unavailable, internal_error' }
+        code: { $ref: '#/components/schemas/ErrorCode' }
         title: { type: string, description: human-readable summary }
         details: { type: string, description: optional extra context }
         challenge:
@@ -11085,6 +11091,142 @@ components:
             value: { type: string }
             bits: { type: integer, minimum: 1 }
             expires_at: { type: string, format: date-time }
+    ErrorCode:
+      type: string
+      description: >-
+        A stable machine code. New codes may be added; treat a code not listed
+        here as an unknown error.
+      enum:
+        - account_not_verifiable
+        - apex_not_supported
+        - apex_template_required
+        - application_has_domains
+        - application_key_in_use
+        - apply_failed
+        - billing_required
+        - browser_account_unavailable
+        - browser_busy
+        - browser_capacity
+        - browser_customer_present_only
+        - browser_expired
+        - browser_link_used
+        - browser_not_waiting
+        - browser_other_instance
+        - browser_plan_mismatch
+        - browser_provider_not_allowed
+        - browser_rate_limited
+        - browser_reconnect_unavailable
+        - browser_session_active
+        - browser_unavailable
+        - browser_unsupported_records
+        - browser_wrong_state
+        - builds_disabled
+        - challenge_required
+        - changed_elsewhere
+        - check_domain_required
+        - confirmation_mismatch
+        - confirmation_required
+        - conflict
+        - connection_removal_vetoed
+        - connection_vetoed
+        - connections_unavailable
+        - consent_unknown
+        - credential_outranks_caller
+        - custom_routing
+        - default_application
+        - different_account
+        - dns_host_not_configured
+        - dns_write_failed
+        - domain_already_connected
+        - domain_not_listed
+        - email_sender_failed
+        - forbidden
+        - forwarding_not_supported
+        - fulfillment_in_progress
+        - installation_pending
+        - internal_error
+        - invalid
+        - invalid_request
+        - invalid_zone_file
+        - InvalidNameservers
+        - invite_accept_requires_console
+        - invite_expired
+        - keyless_invalid
+        - keyless_not_granted
+        - keyless_proof_missing
+        - keyless_revoked
+        - keyless_unavailable
+        - keyless_zone_not_found
+        - managed_dns_backend_error
+        - managed_dns_limit
+        - managed_dns_unavailable
+        - nameserver_agent_unavailable
+        - nameserver_api_unsupported
+        - nameserver_migration_unavailable
+        - not_domain_purchase
+        - not_enabled
+        - not_found
+        - not_reconnectable
+        - nothing_to_check
+        - ns_not_offered
+        - oauth_account_unavailable
+        - old_dns_gone
+        - payload_too_large
+        - plan_upgrade_required
+        - platform_error
+        - platform_subdomain
+        - porkbun_api_access_disabled
+        - power_configured
+        - provider_rate_limited
+        - provider_unavailable
+        - ProviderAuthenticationError
+        - quota_exceeded
+        - rate_limited
+        - reach_quota
+        - reauthorization_required
+        - reconnect_needed
+        - redirect_loop
+        - redirect_target_not_allowed
+        - redirects_busy
+        - registrar_locks_nameservers
+        - registrar_mismatch
+        - registrar_refused
+        - registrar_unconfirmed
+        - registration_failed
+        - removal_in_progress
+        - route53_access_denied
+        - route53_external_id_mismatch
+        - route53_external_id_not_required
+        - route53_record_conflict
+        - route53_role_arn_invalid
+        - route53_role_not_found
+        - route53_role_not_started
+        - route53_unavailable
+        - route53_zone_ambiguous
+        - route53_zone_not_found
+        - sandbox_domain_required
+        - sandbox_domain_reserved
+        - sandbox_limit
+        - sandbox_not_allowed
+        - saved_access_available
+        - saved_access_link_failed
+        - saved_access_not_usable
+        - saved_access_write_failed
+        - scope_all_needs_list
+        - serves_every_application
+        - service_unavailable
+        - stripe_error
+        - target_not_allowed
+        - token_not_bound
+        - token_wrong_end_user
+        - too_many_domains_to_check
+        - too_many_records
+        - unauthorized
+        - use_once_credential
+        - workspace_suspended
+        - www_redirect_apex_only
+        - zone_host_unsupported
+        - zone_not_reached
     FulfillmentInProgressError:
       description: >-
         The error envelope of `POST /v1/registrar/fulfill`'s `409`, plus the
@@ -12047,11 +12189,12 @@ components:
         name: { type: string }
         prefix: { type: string, description: 'The stored, non-secret prefix that identifies the key, for example cd_live_ab12cd34.' }
         environment: { $ref: '#/components/schemas/Environment' }
-        scopes: { type: array, items: { type: string } }
+        scopes: { type: array, items: { type: string }, description: 'Permissions the key is limited to, within the role it acts with. Empty means the whole role.' }
         is_default: { type: boolean, description: 'true on the workspace default key (at most one active per workspace).' }
         last_used_at: { type: string, format: date-time, description: When the key last authenticated a request. Absent until it has been used. }
         created_at: { type: string, format: date-time }
         revoked_at: { type: string, format: date-time, description: When the key was revoked. Absent while the key is active. }
+        expires_at: { type: string, format: date-time, description: When the key stops working. Absent when it does not expire. }
     DefaultApiKey:
       type: object
       required: [key_id, prefix, created]
