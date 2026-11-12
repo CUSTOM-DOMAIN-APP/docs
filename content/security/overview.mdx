@@ -57,6 +57,8 @@ as static reference) at `GET /v1/rbac`:
 | `member:manage` | | | ✅ | ✅ | Invite / remove members, change roles |
 | `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
 | `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built**; see [Plans & quotas](/docs/billing/plans-and-quotas).) |
+| `workspace:manage` | | | ✅ | ✅ | Change workspace settings in the console |
+| `webhooks:manage` | | | ✅ | ✅ | Add, remove and rotate webhook endpoints in the console |
 | `agent:manage` | | | ✅ | ✅ | Approve, list and revoke delegated-agent grants (a grant can carry `domains:purchase` with a spend cap against the tenant's saved card, so it is gated at the same tier as billing) |
 | `billing:manage` | | | ✅ | ✅ | Billing: the subscription, plan changes, card and invoices (Stripe Billing Portal), promotion codes. Owners and admins since 2026-09-29; members and viewers get `403` on every billing route |
 | `org:delete` | | | | ✅ | Delete / transfer the org |
