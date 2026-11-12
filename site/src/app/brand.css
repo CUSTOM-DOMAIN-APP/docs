@@ -1,10 +1,11 @@
 /*
- * The docs' brand rules on top of the kit tokens (tokens-docs.css): the three self-hosted faces (src/lib/fonts.ts
- * defines --cd-face-*; the stacks keep the kit's fallbacks), the marketing site's type in the page (the title and H2
- * in Instrument Serif, H3 in Inter 600, body in ink, the 720 px article column, links and inline code as the kit
- * draws them), light code cards with a hairline and no resting shadow (BD-5), the API reference's method colors
- * brought to the kit, the lockup, the search field, the section switch and the account buttons at the sidebar's
- * foot. Rules here are unlayered, so they win over Fumadocs' utilities: keep them few and scoped.
+ * The docs' brand rules on top of the kit tokens (tokens-docs.css): Geist and Geist Mono (the geist package, wired in
+ * src/app/layout.tsx; the stacks keep the kit's fallbacks), a clean, dense, monochrome page (the title and headings in
+ * Geist 600 with tight tracking, body in ink, the 720 px article column, links and inline code as the kit draws them),
+ * light code cards with a hairline and no resting shadow (BD-5), stone pills for framework labels, the API reference's
+ * method colors brought to the kit, the lockup, the search field, the section switch, the account buttons at the
+ * sidebar's foot and the site footer. Rules here are unlayered, so they win over Fumadocs' utilities: keep them few
+ * and scoped.
  */
 
 /* --cd-size-docs-h2, --cd-size-docs-lede, --cd-text-secondary (light and dark) and --cd-article come from the kit's
@@ -15,9 +16,15 @@
 }
 
 :root {
-  --font-sans: var(--cd-face-sans, "Inter"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--cd-face-mono, "Geist Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --cd-font-serif: var(--cd-face-serif, "Instrument Serif"), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-geist-sans, "Geist"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono, "Geist Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cd-font-heading: var(--font-sans);
+}
+
+body {
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /*
@@ -59,29 +66,29 @@
   color: var(--color-red-400);
 }
 
-/* The page title: Instrument Serif 400, 32 px on a phone to 40 px on a desktop (--cd-size-docs-h1). */
+/* The page title: Geist 600 with tight tracking, 32 px on a phone to 40 px on a desktop (--cd-size-docs-h1). */
 .cd-docs-title {
-  font-family: var(--cd-font-serif);
-  font-weight: 400;
+  font-family: var(--cd-font-heading);
+  font-weight: 600;
   font-size: var(--cd-size-docs-h1);
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
-/* The page's type, matched to the marketing article (DESIGN.md 3.2): H2 in the serif at 26 to 28 px (never under 24),
-   H3 and H4 in Inter 600, body in full ink at the kit's 1.625 leading, the lede in ink soft. Headings inside a
-   not-prose block (cards, the API reference's own panels) keep Fumadocs' type. */
+/* The page's type: H2 in Geist 600 at 26 to 28 px (never under 24) with tight tracking, H3 and H4 in Geist 600, body
+   in full ink at the kit's 1.625 leading, the lede in ink soft. Headings inside a not-prose block (cards, the API
+   reference's own panels) keep Fumadocs' type. */
 .prose :where(h2, h3, h4):not(:where([class~=not-prose], [class~=not-prose] *)) {
   text-wrap: balance;
 }
 
 .prose :where(h2):not(:where([class~=not-prose], [class~=not-prose] *)) {
-  font-family: var(--cd-font-serif);
-  font-weight: 400;
+  font-family: var(--cd-font-heading);
+  font-weight: 600;
   font-size: var(--cd-size-docs-h2);
-  line-height: 1.15;
-  letter-spacing: -0.005em;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
   margin-top: 2.25em;
   margin-bottom: 0.6em;
 }
@@ -90,6 +97,7 @@
   font-size: 1.125rem;
   line-height: 1.4;
   font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .prose :where(h4):not(:where([class~=not-prose], [class~=not-prose] *)) {
@@ -163,7 +171,7 @@ div[style*="--callout-color"] {
 }
 
 /* The lockup in the sidebar and the phone header (src/components/wordmark.tsx): the marketing header's cdk-brand
-   (oak 28 px, Inter 600 16 px), a 1 px rule, then "Docs" in Inter 500 14 px ink soft. */
+   (oak 28 px, Geist 600 16 px), a 1 px rule, then "Docs" in Geist 500 14 px ink soft. */
 .cd-wordmark {
   display: inline-flex;
   align-items: center;
@@ -392,6 +400,119 @@ div[style*="--callout-color"] {
   }
 
   .cd-account__links a {
+    min-height: 44px;
+  }
+}
+
+/* Stone pills: a neutral gray badge for framework and language labels. .cd-pill is for markup; the tab triggers of a
+   code block group (cURL, Node and the like) take the same shape, and the selected one fills with ink. */
+.cd-pill,
+.prose [role="tablist"] > [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 1px solid #e7e5e4;
+  border-radius: 9999px;
+  background: #f5f5f4;
+  color: #57534e;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.dark .cd-pill,
+.dark .prose [role="tablist"] > [role="tab"] {
+  border-color: #44403c;
+  background: #292524;
+  color: #d6d3d1;
+}
+
+.prose [role="tablist"]:has(> [role="tab"]) {
+  gap: 6px;
+  padding-block: 8px;
+}
+
+.prose [role="tablist"] > [role="tab"] > div:first-child {
+  display: none;
+}
+
+.prose [role="tablist"] > [role="tab"]:hover {
+  border-color: #a8a29e;
+  color: #1c1917;
+}
+
+.dark .prose [role="tablist"] > [role="tab"]:hover {
+  border-color: #78716c;
+  color: #fafaf9;
+}
+
+.prose [role="tablist"] > [role="tab"][data-state="active"],
+.dark .prose [role="tablist"] > [role="tab"][data-state="active"] {
+  border-color: var(--color-fd-primary);
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+}
+
+/* The site footer (src/app/site-footer.tsx): one quiet row under the page, a hairline above, the copyright on the left
+   and the three links on the right, stacked on a phone. */
+.cd-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--color-fd-border);
+  background: var(--color-fd-background);
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.cd-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  max-width: 97rem;
+  margin-inline: auto;
+  padding: 20px 24px;
+}
+
+.cd-footer__copy {
+  margin: 0;
+}
+
+.cd-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cd-footer__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--color-fd-muted-foreground);
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.cd-footer__links a:hover {
+  color: var(--color-fd-foreground);
+}
+
+.cd-footer__links a:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (pointer: coarse) {
+  .cd-footer__links a {
     min-height: 44px;
   }
 }

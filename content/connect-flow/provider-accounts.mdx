@@ -399,8 +399,9 @@ ways:
   the account keeps its domains. In the console, **Connected accounts** shows it
   as **Made at sign in**.
 - **Removing it deletes only our copy.** `DELETE /v1/provider-accounts/{id}`
-  answers the provider's `revoke_url` and sends `credential.removed`: the key
-  itself lives at the provider until it is revoked there.
+  answers `removed_here` and `revoke_at_provider` and the provider's `revoke_url`,
+  and sends `credential.removed`: the key itself lives at the provider until you
+  delete it there.
 
 ## Add an account in the console
 
@@ -589,9 +590,13 @@ account gets a new hour.
 the account. It says what that leaves:
 
 ```json
-{ "id": "pacct_...", "revoked": true, "used_by": 2, "domains_kept_connected": 2, "revoke_url": "https://..." }
+{ "id": "pacct_...", "removed_here": true, "revoke_at_provider": true, "revoked": true, "used_by": 2, "domains_kept_connected": 2, "revoke_url": "https://..." }
 ```
 
+- **`removed_here`** is always `true`: CustomDomain™'s copy of the key is gone.
+  **`revoke_at_provider`** is `true` when the key still works at the provider
+  until you delete it there, so do that too. `revoked` is deprecated and only
+  ever meant removed here; it does not say the key stopped working.
 - **`used_by`** is how many domains used the account. They stay connected and
   keep serving, without continuous access; each records `access_revoked` on its
   timeline. `domains_kept_connected` is the same number.
