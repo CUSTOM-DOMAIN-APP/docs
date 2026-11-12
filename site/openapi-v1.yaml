@@ -33,6 +33,15 @@ info:
     header: the seconds to wait before the next request.
 
 
+    A `428` (`challenge_required`) can answer a widget token on the routes
+    that start or check a setup, when the application turned on
+    `challenge_mode`. It carries a `challenge` (`value`, `bits`,
+    `expires_at`): find a counter for which the SHA-256 of `<value>:<counter>`
+    starts with at least `bits` zero bits, and retry with the header
+    `X-CustomDomain-Challenge: <value>:<counter>`. Each challenge works once.
+    The widget does this for you.
+
+
     A `429` `reach_quota` is not the request limiter's: it says the workspace
     has made as many reads at DNS providers, to find out what a key reaches, as
     it may in an hour (60 by default on the hosted service). Five routes can
@@ -460,8 +469,11 @@ paths:
       summary: Rename an application or change its settings
       tags: [Applications]
       description: >-
-        Send any of `name`, `nameserver_migration` and `end_user_saved_access`
-        (at least one); everything is checked before anything is saved.
+        Send any of `name`, `nameserver_migration`, `end_user_saved_access`
+        and `challenge_mode` (at least one); everything is checked before
+        anything is saved. `challenge_mode` (`off`, `report` or `on`) sets
+        whether the widget's calls must pass a quick browser check (see the
+        `428` above).
 
 
         `nameserver_migration` sets whether the application offers to move an
@@ -508,6 +520,10 @@ paths:
                     Whether a returning end user may reuse the access their own
                     secure sign-in kept, for their next domain in this
                     application, after one tap of consent.
+                challenge_mode:
+                  type: string
+                  enum: ['off', report, 'on']
+                  description: Whether the widget's calls must pass a quick browser check.
       responses:
         '200':
           description: Application
@@ -1302,6 +1318,7 @@ paths:
                     started early. The answer is `202` with no detection in
                     it; send the check without it to get the result.
       responses:
+        '428': { $ref: '#/components/responses/Error' }
         '200':
           description: Detection result
           content:
@@ -1527,6 +1544,7 @@ paths:
                     application of the key's tenant. A widget or agent token may
                     only name its own application (anything else is a `403`).
       responses:
+        '428': { $ref: '#/components/responses/Error' }
         '201':
           description: Connection created
           content:
@@ -3934,6 +3952,7 @@ paths:
                     offered its own key by the domain check, but that is not
                     a refusal yet).
       responses:
+        '428': { $ref: '#/components/responses/Error' }
         '200':
           description: The URL to open, and what it runs
           content:
@@ -4141,6 +4160,7 @@ paths:
                     application is linked to it, so a sign in's outcome can be read against the device and place it ran
                     for. It changes nothing about the session; a value that is not a session id is ignored.
       responses:
+        '428': { $ref: '#/components/responses/Error' }
         '200':
           description: The session was created.
           content:
@@ -5295,6 +5315,7 @@ paths:
                     start.
                 client_nonce: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$", description: "Optional. A fresh random value per sign-in; the finish page repeats it as `payload.nonce`, so you can accept only the result of the sign-in you started." }
       responses:
+        '428': { $ref: '#/components/responses/Error' }
         '200':
           description: >-
             Sync rail returns `apply_url`; the managed async rail returns
@@ -5660,6 +5681,7 @@ paths:
                     characters; markup is shown as text, never interpreted). Ignored
                     without `recipient_email`.
       responses:
+        '428': { $ref: '#/components/responses/Error' }
         '201':
           description: Share link minted (and, with recipient_email, the email attempted)
           content:
@@ -10689,7 +10711,8 @@ components:
         The email of the person acting through the owner dashboard, recorded as
         the actor on the billing audit trail (the management key names no one).
         Read only on these operator routes. Absent or not an email: the actor
-        is recorded as "owner dashboard".
+        is recorded as "owner dashboard". A deployment may require a signed
+        operator identity instead, and then does not record this value.
       schema: { type: string, format: email }
   responses:
     Error:
@@ -11054,6 +11077,14 @@ components:
         code: { $ref: '#/components/schemas/ErrorCode' }
         title: { type: string, description: human-readable summary }
         details: { type: string, description: optional extra context }
+        challenge:
+          type: object
+          description: On `428 challenge_required` only. The challenge to solve; see the API description.
+          required: [value, bits, expires_at]
+          properties:
+            value: { type: string }
+            bits: { type: integer, minimum: 1 }
+            expires_at: { type: string, format: date-time }
     ErrorCode:
       type: string
       description: >-
@@ -11083,11 +11114,15 @@ components:
         - browser_unavailable
         - browser_unsupported_records
         - browser_wrong_state
+        - builds_disabled
+        - challenge_required
         - changed_elsewhere
         - check_domain_required
         - confirmation_mismatch
         - confirmation_required
         - conflict
+        - connection_removal_vetoed
+        - connection_vetoed
         - connections_unavailable
         - consent_unknown
         - credential_outranks_caller
@@ -11102,12 +11137,20 @@ components:
         - forbidden
         - forwarding_not_supported
         - fulfillment_in_progress
+        - installation_pending
         - internal_error
+        - invalid
         - invalid_request
         - invalid_zone_file
         - InvalidNameservers
         - invite_accept_requires_console
         - invite_expired
+        - keyless_invalid
+        - keyless_not_granted
+        - keyless_proof_missing
+        - keyless_revoked
+        - keyless_unavailable
+        - keyless_zone_not_found
         - managed_dns_backend_error
         - managed_dns_limit
         - managed_dns_unavailable
@@ -11115,6 +11158,7 @@ components:
         - nameserver_api_unsupported
         - nameserver_migration_unavailable
         - not_domain_purchase
+        - not_enabled
         - not_found
         - not_reconnectable
         - nothing_to_check
@@ -11123,6 +11167,7 @@ components:
         - old_dns_gone
         - payload_too_large
         - plan_upgrade_required
+        - platform_error
         - platform_subdomain
         - porkbun_api_access_disabled
         - power_configured
@@ -11133,6 +11178,7 @@ components:
         - rate_limited
         - reach_quota
         - reauthorization_required
+        - reconnect_needed
         - redirect_loop
         - redirect_target_not_allowed
         - redirects_busy
@@ -11575,6 +11621,13 @@ components:
             created. Omitted (treated as `false`) on a live application.
         nameserver_migration:
           $ref: '#/components/schemas/NameserverMigrationSetting'
+        challenge_mode:
+          type: string
+          enum: ['off', report, 'on']
+          description: >-
+            Whether the widget's calls that start or check a setup must pass a
+            quick browser check (`on`), are only logged when they would not
+            (`report`), or neither (`off`, the default).
         end_user_saved_access:
           type: boolean
           default: true
