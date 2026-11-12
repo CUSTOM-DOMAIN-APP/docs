@@ -15,6 +15,11 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 12, 2026: nameserver moves keep the old DNS safe.** A move that is done carries `overlap_until`,
+  until when the old DNS host's records must stay; a domain locked against changes says so in `update_lock`, on the
+  move and on its offer; a move back to the registrar's own DNS adds the old records there (`restore_records`,
+  `records_restored`); and `GET /v1/connections/{id}/nameservers:snapshot` returns the old records. `copy_source`
+  may be `transfer`. See [Nameserver migration](/docs/guides/nameserver-migration).
 - **November 12, 2026: a nameserver move checks the new DNS before it switches.** The new nameservers must
   answer like the old ones for the copied records; a difference waits for a person in `needs_review` and is
   listed in the new `verify_diffs` (and `copy_warnings`), and `verified_at` says when the check last passed. A

@@ -3375,6 +3375,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /connections/{id}/nameservers:snapshot:
+    get:
+      operationId: getNameserverSnapshot
+      summary: The old DNS records a nameserver move copied
+      tags: [Nameservers]
+      description: >-
+        The records the domain's old DNS held, as the connection's latest
+        nameserver move copied them, to keep or to add again by hand after a
+        move back. Kept for 90 days after the move ends; `404` when there is no
+        move or no copy. An API key, or a delegated agent token with
+        `domains:read`; a widget token may not read it (`403`).
+      security:
+        - apiKey: []
+        - agentToken: ['domains:read']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The copy of the old DNS
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NameserverSnapshot' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /connections/{id}/grant:
     delete:
       operationId: disableManagedConnection
@@ -14910,6 +14935,15 @@ components:
         registrar:
           description: Who the domain is registered with; null when unknown or not looked up (an earlier `reason` held).
           oneOf: [ { $ref: '#/components/schemas/NameserverRegistrar' }, { type: 'null' } ]
+        update_lock:
+          type: string
+          enum: [client, server]
+          description: >-
+            The domain is locked against changes at the registry, so its
+            nameservers can't change until the lock is lifted: `client` the
+            owner turns off at the registrar (often called domain protection),
+            `server` only the registrar's support can lift. Absent when not
+            locked or not known.
         paths:
           type: object
           required: [api, agent, manual]
@@ -14999,10 +15033,37 @@ components:
             token, and it must name a text the widget shows (`nsm-consent`,
             versions 1 to 3), so a stored consent always names the words that
             were on the screen.
+    NameserverSnapshot:
+      type: object
+      required: [migration_id, zone, source, old_nameservers, taken_at, records]
+      properties:
+        migration_id: { type: string }
+        zone: { type: string }
+        source: { type: string, description: How the records were copied (the migration's `copy_source`). }
+        old_nameservers: { type: array, items: { type: string } }
+        taken_at: { type: string, format: date-time }
+        records:
+          type: array
+          items:
+            type: object
+            required: [name, type]
+            properties:
+              name: { type: string }
+              type: { type: string }
+              value: { type: string }
+              ttl: { type: integer }
+              priority: { type: integer }
     NameserverRollbackRequest:
       type: object
       additionalProperties: false
       properties:
+        restore_records:
+          type: boolean
+          default: true
+          description: >-
+            On a move back to the registrar's own DNS made through its API, also
+            add the domain's old records there (`records_restored` counts them).
+            `false` skips it.
         rollback_target:
           type: string
           enum: [previous, registrar_default]
@@ -15111,11 +15172,13 @@ components:
         email_kinds: { type: array, items: { type: string, enum: [mx, spf, dkim, dmarc] } }
         copy_source:
           type: string
-          enum: [api, discovery, existing_zone]
+          enum: [api, transfer, discovery, existing_zone]
           description: >-
             How the records were copied. `api`: the whole zone, read through a
             key we hold at the DNS host the domain used (a kept sign in or a
-            connected account there); proven complete. `discovery`: read from
+            connected account there); proven complete. `transfer`: the whole
+            zone, copied from the old nameservers directly; proven complete.
+            `discovery`: read from
             public DNS at the names domains commonly use; a person confirms it.
             `existing_zone`: the platform's zone already held records, which
             were kept.
@@ -15133,6 +15196,28 @@ components:
             waits in `needs_review` until a person confirms them with
             `copy_reviewed`; a confirmed difference does not stop it again.
         verified_at: { type: string, format: date-time, description: When the new nameservers last answered like the old ones before the switch. }
+        update_lock:
+          type: string
+          enum: [client, server]
+          description: >-
+            The domain is locked against changes at the registry, so its
+            nameservers can't change until the lock is lifted: `client` the
+            owner turns off at the registrar (often called domain protection),
+            `server` only the registrar's support can lift. Absent when not
+            locked or not known.
+        overlap_until:
+          type: string
+          format: date-time
+          description: >-
+            For an active move: until when some networks may still use the old
+            nameservers. Keep the old DNS host's records until then.
+        resolvers_on_old:
+          type: array
+          items: { type: string }
+          description: Public resolvers that still used the old nameservers when last checked, during the overlap.
+        records_restored:
+          type: integer
+          description: How many of the old records a move back to the registrar's own DNS added there.
         ds_present: { type: boolean, description: The registry published a DS record (DNSSEC was on) during the move. }
         ds_removed_at: { type: string, format: date-time }
         ds_cleared_at: { type: string, format: date-time }
