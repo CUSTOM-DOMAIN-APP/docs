@@ -11,8 +11,11 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          Send any of `name`, `nameserver_migration` and `end_user_saved_access`
-          (at least one); everything is checked before anything is saved.
+          Send any of `name`, `nameserver_migration`, `end_user_saved_access`
+          and `challenge_mode` (at least one); everything is checked before
+          anything is saved. `challenge_mode` (`off`, `report` or `on`) sets
+          whether the widget's calls must pass a quick browser check (see the
+          `428` in the API overview).
 
           `nameserver_migration` sets whether the application offers to move an
           end user's nameservers and where to (`{"mode": "off"}` clears it). A
