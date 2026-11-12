@@ -587,6 +587,11 @@ paths:
               properties:
                 name: { type: string, description: 'Names starting with `member:` are reserved.' }
                 environment: { $ref: '#/components/schemas/Environment' }
+                scopes:
+                  type: array
+                  items: { type: string }
+                  description: 'Optional permissions to limit the key to (for example `member:read`), each one your own role holds. Omitted, the key acts with your whole role.'
+                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working.' }
       responses:
         '201':
           description: Created; the full secret is present only in this response
@@ -12048,11 +12053,12 @@ components:
         name: { type: string }
         prefix: { type: string, description: 'The stored, non-secret prefix that identifies the key, for example cd_live_ab12cd34.' }
         environment: { $ref: '#/components/schemas/Environment' }
-        scopes: { type: array, items: { type: string } }
+        scopes: { type: array, items: { type: string }, description: 'Permissions the key is limited to, within the role it acts with. Empty means the whole role.' }
         is_default: { type: boolean, description: 'true on the workspace default key (at most one active per workspace).' }
         last_used_at: { type: string, format: date-time, description: When the key last authenticated a request. Absent until it has been used. }
         created_at: { type: string, format: date-time }
         revoked_at: { type: string, format: date-time, description: When the key was revoked. Absent while the key is active. }
+        expires_at: { type: string, format: date-time, description: When the key stops working. Absent when it does not expire. }
     DefaultApiKey:
       type: object
       required: [key_id, prefix, created]
