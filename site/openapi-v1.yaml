@@ -784,6 +784,40 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
+  /members:transfer-ownership:
+    post:
+      operationId: transferOwnership
+      summary: Transfer the workspace to another member
+      tags: [Members]
+      description: >-
+        The workspace's creator makes another member who has accepted their
+        invite the owner of the workspace; the creator becomes an admin. Only
+        the creator may do this, and not with an agent's token or the
+        workspace default key. Answers 404 where the feature is not enabled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_id]
+              properties:
+                member_id: { type: string, description: The member who becomes the owner. }
+      responses:
+        '200':
+          description: Transferred
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owner: { $ref: '#/components/schemas/Member' }
+                  previous_owner: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /members/{id}:
     patch:
       operationId: updateMemberRole
