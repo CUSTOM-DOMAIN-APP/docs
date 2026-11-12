@@ -179,6 +179,9 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
 - The default lifetime is 15 minutes (`expires_in` is in seconds). Adding DNS records by hand
   often takes longer than that, so give the widget a way to get a fresh token.
   See [Keeping a session alive](#keeping-a-session-alive).
+- To end every token an application has issued, for example after a leak, call
+  `POST /v1/applications/{id}/tokens:revoke` (needs `keys:manage`), or rotate the
+  client secret with `{"revoke_tokens": true}`. Tokens minted afterwards work.
 
 ## Scopes
 
