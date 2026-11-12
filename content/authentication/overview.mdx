@@ -20,6 +20,9 @@ types share the surface, each with a different blast radius.
   [test mode](/docs/guides/test-mode) key only when its application was made with
   `"sandbox": true`; read that field from `GET /v1/applications`.
 - Stored only as a hash; the full key is shown **once**, at creation.
+- **A key can be limited.** When you create one, you can choose what it can do
+  and when it expires. A limited key is refused (`403`) outside what it was
+  given, and an expired key gets `401`.
 - **The default key is the exception you can view any time.** Every workspace has one, labelled
   `Default key`, made with the workspace (or the first time an owner opens the **API & SDK**
   page in a workspace that is older than it), with no card needed. It reaches the whole workspace
@@ -105,7 +108,7 @@ Two credentials look alike and do different jobs:
 | --- | --- | --- |
 | What it is | A workspace key, `cd_live_…` or `cd_test_…`. It proves a call comes from your server. | One application's secret, `sk_` plus 32 hex characters. |
 | Where to find it | **API & SDK** in the console (the default key, or **Create key**), shown once when made. | Returned once at application creation over the API, or from `tenants:provision`. An application made in the console never shows it. |
-| What it can do | Everything its role allows in the workspace (above). Keep it on your server. | Mint [widget JWTs](/docs/authentication/widget-tokens) for that application, and nothing else. |
+| What it can do | Everything its role allows in the workspace (above), or less if it was created with limits. Keep it on your server. | Mint [widget JWTs](/docs/authentication/widget-tokens) for that application, and nothing else. |
 
 The `client_secret` is **not** an API key: its only job is to mint
 [widget JWTs](/docs/authentication/widget-tokens), and an API key placed in the
