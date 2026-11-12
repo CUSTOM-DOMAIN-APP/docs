@@ -15,6 +15,10 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **A quick browser check for the widget, per application.** Set `challenge_mode` with
+  `PATCH /v1/applications/{id}` (`off` by default, `report` or `on`). Under `on`, the widget's calls that start or
+  check a setup may answer `428 challenge_required`; the widget solves it and retries on its own. See
+  [Update an application](/docs/api-reference/applications/updateApplication).
 - **November 12, 2026: match a sign-in popup to the start that opened it.** The sign-in starts accept an
   optional `client_nonce`, and the popup's result repeats it as `payload.nonce`. See
   [Begin the sign-in to the DNS provider](/docs/api-reference/connections/startConnectionOAuth).
