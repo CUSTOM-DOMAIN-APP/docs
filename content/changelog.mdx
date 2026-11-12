@@ -15,9 +15,34 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
-- **November 7, 2026: revoke an application's widget tokens.** `POST /v1/applications/{id}/tokens:revoke`
+- **November 12, 2026: revoke an application's widget tokens.** `POST /v1/applications/{id}/tokens:revoke`
   ends every widget token the application has issued; rotating the client secret does the same when the request
   sends `{"revoke_tokens": true}`. See [Revoke widget tokens](/docs/api-reference/applications/revokeWidgetTokens).
+- **November 10, 2026: `change-member-role` takes `confirm`.** The MCP tool now needs `confirm`, which repeats
+  the member's id, like `remove-member`: a lower role takes rights away at once. A call without it changes nothing.
+  See [MCP overview](/docs/mcp/overview).
+- **November 10, 2026: clearer answers about registrars and removed keys.** The domain check always carries
+  `registrar`, the company a domain is registered with (`null` when not known), and can answer
+  `blocked_reason: registration_hold` with `registration_hold` (`hold`, `redemption` or `pending_delete`) for a
+  domain that does not work until its registrar resolves the hold. Removing a provider account now answers
+  `removed_here` and `revoke_at_provider`: the key must still be deleted at the provider, and `revoked` is
+  deprecated. When a nameserver move does not know the registrar, it names no company and says "where the domain
+  is registered". A session's timeline reports `verified`, and `POST /v1/webhooks/{id}:test` sends a test event.
+  The domain check also answers `connection_plan`, where to make the change and by which way when a domain's DNS
+  provider and registrar differ, and `POST /v1/domains:check` accepts `prewarm` while a name is being typed.
+  See [Domain check](/docs/api-reference/domains/checkDomain) and
+  [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
+- **November 9, 2026: the MCP server runs the workspace too.** Twenty-two new tools cover applications, the
+  connect target, widget tokens, API keys, webhooks, members, the audit log, usage and the billing notice, under
+  eight new scopes. An agent sees only the tools its grant allows, and plan, payment, ownership and sign in
+  settings stay with a person in the console. See [MCP server](/docs/mcp/overview#tools).
+- **November 11, 2026: a webhook when a sign-in needs your customer.** `connection.attempt.needs_attention` fires when
+  a secure sign-in is waiting for a code, an approval, a passkey or a password. `attempt.need` says which.
+  See [Webhooks](/docs/webhooks/overview).
+- **November 9, 2026: webhooks for each way a connection tries.** `connection.attempt.started` and
+  `connection.attempt.way_ended` say when a way to connect starts and how it ended, with a `cause`, who can fix it
+  and whether trying again can help. A sign-in that does not finish is now visible without polling the connection.
+  See [Webhooks](/docs/webhooks/overview).
 - **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
   over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
   `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
