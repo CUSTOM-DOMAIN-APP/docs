@@ -77,7 +77,7 @@ A grant carries one or more scopes; each MCP tool requires exactly one:
 | `tokens:mint` | Mint a short lived widget token for an application. |
 | `member:read` | List members and open invitations. |
 | `member:manage` | Invite members, change their role and remove them. Never makes an owner. |
-| `keys:manage` | List, create and revoke API keys. A key an agent creates acts as a member. |
+| `keys:manage` | List, create and revoke API keys. A key an agent creates acts as a member and expires within 90 days. |
 {/* NEW SCOPES GO HERE: add one row per new scope directly above this line, and trim the matching words from the domains:connect row. This marker stays; the docs sync test reads it. */}
 
 A read only token can never connect, disconnect or buy; a connect token can never
