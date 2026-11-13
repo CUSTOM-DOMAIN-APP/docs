@@ -142,8 +142,7 @@ discard it, unless it is kept as a provider account or a managed sign-in grant
 - **OAuth (Rail C)** exchanges a code for an access token, writes the records,
   and drops the token unless the sign-in is kept. The flow uses **PKCE (S256)**
   and an **HMAC-signed, single-use `state`**; the callback only postMessages its
-  outcome to a **return origin on the server's allowlist**
-  (`OAUTH_ALLOWED_RETURN_ORIGINS`).
+  outcome to an **allowed return origin**.
 - **API token (Rail B)** uses the scoped credential you pass on a single write.
   `POST /v1/connections/{id}/apply` **discards it after that write**; the
   console's remember box, which starts ticked, keeps it as a provider account
@@ -199,7 +198,7 @@ one-click setup (which uses no server token) store nothing. See
   as SHA-256 hashes; the plaintext is shown once and never returned again. The
   workspace's default key is one exception: the console keeps a sealed copy that
   an owner can view. An application created in the console is the other: the console keeps its
-  `client_secret` sealed (AES-256-GCM) so it can mint widget tokens for you, and
+  `client_secret` encrypted so it can mint widget tokens for you, and
   never displays it. An application created over the API returns the secret once.
 - Widget JWTs are signed per application, using a dedicated server-side signing
   key (`HMAC-SHA256` over the application's id), never the application's own
