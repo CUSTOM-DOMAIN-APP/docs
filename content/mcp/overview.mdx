@@ -21,6 +21,49 @@ way to use the tools below.
 The server reports itself as `customdomain-mcp`, version `0.7.0` (protocol
 revision `2025-06-18`), and advertises only the `tools` capability.
 
+## What it does
+
+![CustomDomain™: custom domains, without the friction. A SaaS settings page with the connect widget open on app.example.com.](/mcp/hero.webp)
+
+Your customers want their own domain on your product, and most do not know which of
+the 100+ providers holds theirs. CustomDomain™ finds the provider, signs the customer
+in once, and sets up the records and keeps them in sync.
+
+![The problem: over 100 providers can hold a domain, customers do not know which one holds theirs, and the manual DNS route is a list of steps they cannot finish.](/mcp/problem.webp)
+
+![How it works: the customer enters a domain, the provider is detected, one secure sign-in is approved, and the records are set up and kept in sync.](/mcp/how.webp)
+
+You add it to your product with the widget, the SDK or the API.
+
+![API and SDK: mint a token on your server, call open() from customdomain-js, and listen for the success event.](/mcp/build.webp)
+
+## Use it from Claude
+
+Add CustomDomain™ to Claude as a connector. You need a CustomDomain™ account.
+
+![The AI assistant connector: the widget, the API and SDK, and the connector are three ways into the same engine.](/mcp/assistant.webp)
+
+1. In Claude, open **Settings**, then **Connectors**, then **Add custom connector**.
+2. Enter the connector URL: `https://mcp.customdomain.ai/mcp`
+3. Leave the OAuth client ID and secret fields empty. Claude registers itself.
+4. Claude opens a CustomDomain™ page. Sign in and approve what Claude may do. You
+   can approve less than everything, and you can remove the access later from your
+   account.
+5. Back in Claude, turn the connector on in a chat and ask for what you need.
+
+Claude can look at your domains and certificates, connect and repair domains, and
+take one offline when you confirm its name. Buying a domain is finished by you, never
+silently by Claude.
+
+Things to try:
+
+- "Is acme-widgets.com available, and suggest three alternatives under $20 a year."
+- "Connect shop.example.com to my CustomDomain™ project and tell me when HTTPS is ready."
+- "My domain stopped resolving. Diagnose the connection for docs.example.com and fix it."
+- "List my connected domains and show which certificates expire soon."
+
+The tools Claude can use are listed in the next section. Support: support@customdomain.ai.
+
 ## Tools
 
 The server registers **forty-six tools**, in a fixed order. None of them takes DNS

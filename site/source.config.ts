@@ -91,8 +91,13 @@ export default defineConfig({
   // Code blocks use the brand kit's two code themes (src/lib/code-themes.ts) in place of Fumadocs' GitHub
   // themes. Only `themes` is set: every other default (the line highlight, diff and focus notations, the
   // title and icon) stays as Fumadocs ships it.
+  //
+  // Images in a page (`![alt](/mcp/hero.webp)`) live in site/public and keep that URL: `useImport: false` stops
+  // the build from rewriting them into bundler imports, whose placeholder (`__img0`) leaked into the page's
+  // Markdown copy. The size still comes from the file, so the page does not jump while an image loads.
   mdxOptions: {
     rehypeCodeOptions: { themes: codeThemes },
+    remarkImageOptions: { useImport: false },
   },
   plugins: [
     lastModified({
