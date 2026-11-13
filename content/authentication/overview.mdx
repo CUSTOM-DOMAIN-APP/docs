@@ -195,8 +195,8 @@ matrix and the exact route list.
 
 - `GET /healthz`: liveness + database readiness. No secrets, no tenant data.
 - `POST /internal/ask`: the edge host-authorization gate. Not bearer-auth: it
-  uses a shared secret (`X-Edge-Auth` / `EDGE_ASK_SECRET`) and must be
-  network-isolated to the edge in production. It answers only `{ approved }`.
+  uses a shared secret and is reachable only from the edge. It answers only
+  `{ approved }`.
 - `GET /v1/connect/oauth/callback`: the OAuth redirect target, authenticated by
   its signed single-use `state` rather than a bearer token.
 

@@ -170,8 +170,8 @@ demand.
 
 Certificates are issued **on demand at the TLS handshake**, gated by
 `POST /internal/ask` returning `{ approved: true }`, which happens only once the
-connection is `propagating` or `live`. If the edge can't reach the gate, check
-`EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
+connection is `propagating` or `live`. If a live connection still has no
+certificate after a few minutes, contact support.
 
 ## 401 "unknown application or secret" when minting a widget token
 

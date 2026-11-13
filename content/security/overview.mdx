@@ -214,8 +214,7 @@ one-click setup (which uses no server token) store nothing. See
 
 - `GET /healthz`: liveness + DB readiness; no secrets, no tenant data.
 - `POST /internal/ask`: the edge host-authorization gate, authenticated by a
-  shared secret (`EDGE_ASK_SECRET`) and meant to be **network-isolated** to the
-  edge. It answers only `{ approved }` and never reveals the tenant.
+  shared secret and reachable only from the edge. It answers only `{ approved }` and never reveals the tenant.
 - `GET /v1/connect/oauth/callback`: authenticated by its signed single-use
   `state`, not a bearer token.
 
