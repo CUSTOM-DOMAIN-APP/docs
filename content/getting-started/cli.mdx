@@ -1,0 +1,50 @@
+---
+title: "CLI: set up from the terminal"
+description: "Install the customdomain command, give a project its API key with one command, and check a domain from your terminal."
+---
+
+The `customdomain` command signs you in from your terminal and gives a project its API key without the key being
+copied or pasted. A coding agent can run it for you; you only approve the sign-in in your browser.
+
+## Install
+
+```bash
+npm install -g @customdomain/cli
+```
+
+```bash
+brew install custom-domain-app/tap/customdomain
+```
+
+Or run it once without installing, with `npx @customdomain/cli <command>`. Binaries for macOS, Linux and Windows are on
+the [releases page](https://github.com/CUSTOM-DOMAIN-APP/customdomain-cli/releases).
+
+## Give a project its API key
+
+Run this in your project:
+
+```bash
+npx @customdomain/cli init
+```
+
+It opens a page where you approve the sign-in, then creates an API key for your application and writes
+`CUSTOMDOMAIN_API_KEY` and `CUSTOMDOMAIN_APPLICATION_ID` to `.env.local`. It prints only the key's id, never the
+secret, and adds the file to `.gitignore`. If the key is already set, it changes nothing.
+
+- `--app app_123` picks the application when your workspace has more than one. In a terminal, `init` lists them and asks you to pick one by number.
+- `--env-file .env` writes to another file.
+
+Then follow the [widget guide](/docs/getting-started/widget) to add the connect flow to your product.
+
+## Other commands
+
+| Command | What it does |
+| --- | --- |
+| `customdomain login` | Sign in from this terminal |
+| `customdomain logout` | End this terminal's access |
+| `customdomain whoami` | Show who this terminal acts as |
+| `customdomain domains` | List your connected domains |
+| `customdomain doctor <domain>` | Show where a domain's DNS is hosted and what is in the way |
+| `customdomain version` | Print the version |
+
+A terminal you sign in appears on the console's **Agents** page (under **More**), where you can revoke it at any time.

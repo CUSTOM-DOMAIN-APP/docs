@@ -61,7 +61,7 @@ never inject them. Each tool needs one scope (see below).
 | `set-connect-target` | `{ applicationId, cnameTarget, apexIpv4?, confirm }` | `app:write` | Point an application's domains at your own servers, or back at the CustomDomain™ edge with an empty `cnameTarget`. It moves traffic for every connected domain of the application. `confirm` repeats the application id. |
 | `mint-widget-token` | `{ applicationId, domain?, endUserRef?, endUserEmail? }` | `tokens:mint` | Mint a widget token (15 minutes) that opens the connect flow for one application, optionally bound to a hostname and an end user. Hand it only to the end user it is for. |
 | `list-api-keys` | `{ applicationId }` | `keys:manage` | List an application's API keys: id, name, prefix, environment, scopes, last use and whether it was revoked. A secret is never listed. Read only. |
-| `create-api-key` | `{ applicationId, environment? }` | `keys:manage` | Create an API key. The secret is shown this once. A key an agent creates acts as a member: it embeds and connects domains, and cannot manage billing, members or keys. |
+| `create-api-key` | `{ applicationId, environment?, expires_at? }` | `keys:manage` | Create an API key. The secret is shown this once. A key an agent creates acts as a member: it embeds and connects domains, and cannot manage billing, members or keys. It expires within 90 days. |
 | `revoke-api-key` | `{ applicationId, keyId, confirm }` | `keys:manage` | Revoke an API key; every request that uses it fails from then on. `confirm` repeats the key's id. |
 | `list-webhooks` | `{ applicationId? }` | `app:read` | List the webhook endpoints: id, application, URL, events and creation time. A signing secret is never listed. Read only. |
 | `create-webhook` | `{ url, events? }` | `app:write` | Register an https endpoint for domain events. The signing secret is shown this once. With no events the endpoint gets every event. |
@@ -88,18 +88,14 @@ no scopes: the control plane authorizes each call.
 > actually available. No LLM is involved: the same keywords always produce the
 > same candidates, which keeps the tool predictable and testable.
 
-> **`create-domain-order` is fail closed, and off on the hosted service.** The
-> server places a paid order only after the integrator's purchase authorization
-> callback approves it (see
-> [Purchase authorization callback](#purchase-authorization-callback)). If no
-> callback is configured, every purchase is denied, and the hosted service
-> configures none: every call there answers `success: false` with the status and
-> the `error` `rejected`, and nothing reaches the control plane. Behind the
-> callback, the order goes to the control plane's direct purchase route, which has
-> its own switch, `SELL_DIRECT_PURCHASE_ENABLED`, also off on the hosted service
-> (`service_unavailable`), and which refuses API keys. So purchases through MCP
-> are off there; buying a domain is live through the console's money safe
-> checkout. See [Buying a domain](/docs/sell/buying-a-domain).
+> **`create-domain-order` spends money, so it asks twice.** A person who signed in
+> through OAuth approves the `domains:purchase` scope with a saved card and a
+> monthly spending limit on the consent screen, and the agent names the domain
+> they confirmed in `confirm_domain`. Any other caller goes through the
+> integrator's [purchase authorization callback](#purchase-authorization-callback),
+> which fails closed: with no callback configured, every purchase is denied. API
+> keys cannot buy. You can also buy a domain in the console; see
+> [Buying a domain](/docs/sell/buying-a-domain).
 
 ## Repair
 
@@ -122,11 +118,11 @@ still means a kept grant only.
 
 ## Purchase authorization callback
 
-Before every paid order, `create-domain-order` asks an endpoint the integrator
-runs whether this purchase may go ahead. The deployment configures it with
+Before a paid order from a caller that is not a person signed in through OAuth
+with the `domains:purchase` scope, `create-domain-order` asks an endpoint the
+integrator runs whether this purchase may go ahead. The deployment configures it with
 `MCP_PURCHASE_AUTHZ_URL`, `MCP_PURCHASE_AUTHZ_USER` and
-`MCP_PURCHASE_AUTHZ_PASSWORD`. With no URL set, every purchase is denied; the
-hosted service sets none today.
+`MCP_PURCHASE_AUTHZ_PASSWORD`. With no URL set, every such purchase is denied.
 
 The server sends a `POST` with a JSON body that carries only the domain, and
 HTTP Basic auth with the configured user and password. The shapes below are

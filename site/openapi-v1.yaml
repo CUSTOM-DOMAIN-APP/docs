@@ -585,13 +585,13 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string, description: 'Names starting with `member:` are reserved.' }
+                name: { type: string, description: 'Names starting with `member:`, `agent:` or `builds:` are reserved.' }
                 environment: { $ref: '#/components/schemas/Environment' }
                 scopes:
                   type: array
                   items: { type: string }
                   description: 'Optional permissions to limit the key to (for example `member:read`), each one your own role holds. Omitted, the key acts with your whole role.'
-                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working.' }
+                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working. A key an agent creates always expires, within 90 days.' }
       responses:
         '201':
           description: Created; the full secret is present only in this response
@@ -3884,9 +3884,7 @@ paths:
         that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
         handoff: the user approves a key named after the domain; no client
         registration is needed), `porkbun_dnsconnect` (Porkbun's DNS Connect,
-        run in place of the handoff for a connect when the deployment holds an
-        application Porkbun approved, `OAUTH_PORKBUN_CLIENT_ID` and
-        `OAUTH_PORKBUN_CLIENT_SECRET`: the domain's records are signed into the
+        run in place of the handoff for a connect where it is offered: the domain's records are signed into the
         request, the user approves them at Porkbun, and Porkbun adds them
         itself, with no API access switch needed; nothing comes back, so
         `managed` is always false, and signing in to remove the domain still
@@ -3897,9 +3895,8 @@ paths:
         Spaceship and Dynadot: the endpoints are discovered from the server's metadata,
         the client is one the control plane registered for itself, and the
         records are written through the server's DNS tools; offered only for
-        the providers the deployment lists in `MCP_SIGNIN_PROVIDERS`). The credential is used for that write and dropped,
-        unless the deployment keeps grants for this provider
-        (`OAUTH_MANAGED_PROVIDERS` with `GRANT_ENCRYPTION_KEY`), in which case
+        the providers where it is offered). The credential is used for that write and dropped,
+        unless sign-ins at this provider are kept, in which case
         `managed` is true and it is stored encrypted for `:reapply`.
 
 
@@ -5103,9 +5100,8 @@ paths:
         a `code` and `message`: besides the provider's own `error` (for example
         `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
         `apex_not_supported`, `forwarding_not_supported`,
-        `sign_in_other_browser` (the sign-in finished in a different browser
-        from the one that opened it; nothing was used up, so finish it in the
-        window the start opened), the rail specific
+        `sign_in_other_browser` (finish the sign-in in the window that started
+        it; nothing was used up), the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
         domain at Porkbun), `porkbun_domain_not_in_account` and
         `porkbun_domain_not_active` (after `porkbun_dnsconnect`: the domain is
@@ -5156,8 +5152,8 @@ paths:
       tags: [Connections]
       description: >-
         The first page a sign-in popup opens when `authorize_url` points here.
-        It ties the sign-in to this browser and redirects to the provider. Not
-        a bearer-authenticated endpoint; open it only through `authorize_url`.
+        It sends the person on to the provider. Not a bearer-authenticated
+        endpoint; open it only through `authorize_url`.
       security: []
       parameters:
         - { name: state, in: query, required: true, schema: { type: string } }
@@ -7722,6 +7718,57 @@ paths:
         '302': { description: Redirect to the console }
         '400': { description: The link is invalid, expired or already used }
         '503': { description: Sign-in is not set up }
+  /builds/access:
+    get:
+      operationId: getBuildsAccess
+      summary: Access held for builds
+      tags: [Builds]
+      description: >-
+        What the workspace has given access to, for the access panel: each
+        active GitHub installation with its permission names and levels, and
+        each active hosting account with its access level and scope names. No
+        credential is ever returned. Owners and admins only; `404
+        builds_disabled` when every builds feature is off.
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Access held
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [github, deploy]
+                properties:
+                  github:
+                    type: array
+                    items:
+                      type: object
+                      required: [installation_id, account_login, permissions]
+                      properties:
+                        installation_id: { type: integer, format: int64 }
+                        account_login: { type: string }
+                        permissions:
+                          type: array
+                          items:
+                            type: object
+                            required: [name, level]
+                            properties:
+                              name: { type: string }
+                              level: { type: string }
+                  deploy:
+                    type: array
+                    items:
+                      type: object
+                      required: [account_id, platform, access_level, scopes]
+                      properties:
+                        account_id: { type: string }
+                        platform: { type: string }
+                        access_level: { type: string, enum: [read, write] }
+                        scopes: { type: array, items: { type: string } }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /builds/deploy/accounts:
     get:
       operationId: listBuildsDeployAccounts
@@ -7986,7 +8033,8 @@ paths:
         merges, a linked hosting project is deployed once. `202` with a new
         run, or `200` with the run already in progress for the same plan.
         `409 conflict` when the plan changed, cannot be installed, or another
-        run is in progress.
+        run is in progress. `409 write_access_needed` when the linked hosting
+        account does not allow changes; connect it again, then install.
       security:
         - apiKey: []
       parameters:
@@ -8376,6 +8424,7 @@ paths:
                     - user.nudged
                     - user.push_tested
                     - user.erased
+                    - user.restored
                   description: >-
                     The console-recordable verb. With an API key only
                     `whitelabel.configured` and `api_key.default_revealed`; with
@@ -9071,7 +9120,7 @@ paths:
       tags: [Provider accounts]
       description: >-
         Keeps a DNS provider or registrar key for the workspace, encrypted
-        (GRANT_ENCRYPTION_KEY; `503` without it). The key is checked first by
+        (`503` when keys cannot be kept). The key is checked first by
         listing the provider's domains, or, for a provider that cannot list
         them, by reading one of the selected domains or `check_domain`; with
         neither, `400` `check_domain_required`, and a key is never kept
@@ -9273,7 +9322,7 @@ paths:
                         uses:
                           type: array
                           items: { type: string }
-                  keeping_available: { type: boolean, description: Whether this deployment can keep keys (a grant encryption key is configured as GRANT_ENCRYPTION_KEY or GRANT_ENCRYPTION_KEYS). }
+                  keeping_available: { type: boolean, description: Whether keys can be kept. }
                   end_user_keys:
                     type: object
                     description: The keys your customers' own sign-ins made (`owner_kind` `end_user`), counted before `owner`, `q` and paging apply, so a console can show them as one row.
@@ -9417,9 +9466,8 @@ paths:
 
 
         Offered only where `account_ways` of `GET /providers` names `oauth` for
-        the company: the deployment runs the company's OAuth app, keeps what it
-        hands back (`OAUTH_MANAGED_PROVIDERS` and a grant encryption key),
-        does not hold the sign-in back, and the company's sign-in needs no
+        the company: the company's sign-in is offered and kept,
+        is not held back, and the company's sign-in needs no
         domain. Any other is `403` `oauth_account_unavailable`. The caller is
         the console's own call, as for `POST /provider-accounts:sign-in`: an
         API key that carries the console's signed visitor forward, held by a
@@ -10721,7 +10769,7 @@ components:
             'tokens:mint': Mint short lived widget tokens for an application.
             'member:read': List the workspace's members and pending invites.
             'member:manage': Invite members, change a member's role (never to or from owner) and remove members.
-            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member.
+            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member and expires within 90 days.
   parameters:
     Id:
       name: id
@@ -10914,7 +10962,7 @@ components:
         installed_at: { type: string, format: date-time }
     BuildsProfile:
       type: object
-      required: [id, status, repository, commit_sha, detected, analysis, skipped_files, error, created_at, updated_at]
+      required: [id, status, repository, commit_sha, detected, analysis, skipped_files, stale, stale_commit_sha, error, created_at, updated_at]
       properties:
         id: { type: string }
         status: { type: string, enum: [queued, running, ready, failed] }
@@ -10951,6 +10999,8 @@ components:
             route_file: { type: string }
             widget_file: { type: string }
         skipped_files: { type: integer }
+        stale: { type: boolean, description: 'True when the branch has new commits since this read. Read the repository again.' }
+        stale_commit_sha: { type: [string, 'null'], description: 'The newest commit on the branch when `stale` is true.' }
         error: { type: [string, 'null'], description: 'A reason code such as `access_lost` or `empty_repository`.' }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -11054,7 +11104,7 @@ components:
             branch: { type: string }
         deployment_id: { type: [string, 'null'] }
         cancel_requested: { type: boolean }
-        error: { type: [string, 'null'], description: 'A reason code such as `validation_failed` or `head_moved`.' }
+        error: { type: [string, 'null'], description: 'A reason code such as `validation_failed`, `head_moved` or `write_access_needed`.' }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     AuditEvent:
@@ -11163,6 +11213,7 @@ components:
         - dns_host_not_configured
         - dns_write_failed
         - domain_already_connected
+        - domain_claimed_elsewhere
         - domain_not_listed
         - email_sender_failed
         - forbidden
@@ -11249,6 +11300,7 @@ components:
         - unauthorized
         - use_once_credential
         - workspace_suspended
+        - write_access_needed
         - www_redirect_apex_only
         - zone_host_unsupported
         - zone_not_reached
@@ -13024,7 +13076,9 @@ components:
             path failed, not only the background poller. It is persisted by:
             the propagation poller / `:recheck` verification (e.g.
             `propagation_timeout`, `setup_incomplete`, `pending_expired`,
-            `domain_already_connected`);
+            `domain_already_connected`, and `domain_claimed_elsewhere` when
+            another application proved control of the domain first, so this
+            connection is not served);
             the foreground apply on `POST /connections/{id}/apply` (e.g.
             `dns_write_failed`, `ProviderAuthenticationError`, `spf_merge_failed`,
             `apex_not_supported`, `forwarding_not_supported`,
@@ -14063,8 +14117,7 @@ components:
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
             it does, but this deployment has not set it up: no client
-            registered, or an MCP server sign-in not listed in
-            `MCP_SIGNIN_PROVIDERS` (operator task). `not_discovered`: no Domain Connect discovery answer.
+            registered, or an MCP server sign-in it does not offer. `not_discovered`: no Domain Connect discovery answer.
             `template_not_onboarded`: the provider speaks Domain Connect but
             has not onboarded our template. `redirect_unavailable`: the
             provider requires our return link on a one-click apply and the

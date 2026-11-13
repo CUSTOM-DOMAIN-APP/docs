@@ -12,7 +12,7 @@ _openapi:
     contents:
       - content: >-
           Keeps a DNS provider or registrar key for the workspace, encrypted
-          (GRANT_ENCRYPTION_KEY or GRANT_ENCRYPTION_KEYS; `503` without either). The key is checked first by
+          (`503` when keys cannot be kept). The key is checked first by
           listing the provider's domains, or, for a provider that cannot list
           them, by reading one of the selected domains or `check_domain`; with
           neither, `400` `check_domain_required`, and a key is never kept
