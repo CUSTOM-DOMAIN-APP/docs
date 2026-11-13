@@ -114,6 +114,8 @@ particular:
 - A caller can never grant a role above their own, and **only an owner can
   create, promote-to, or demote an owner**. The org's **last owner** cannot be
   demoted or removed.
+- **Anyone can leave a workspace they were invited to**, from **Team** in the console,
+  whatever their role. The last owner cannot leave.
 - **The workspace's default key acts as an admin**, never as an owner: it is
   refused (`403`) when it would make, unmake or remove an owner or delete the
   workspace, and it cannot mint API keys at all. Only an owner can view or rotate
