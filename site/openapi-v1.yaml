@@ -591,7 +591,7 @@ paths:
                   type: array
                   items: { type: string }
                   description: 'Optional permissions to limit the key to (for example `member:read`), each one your own role holds. Omitted, the key acts with your whole role.'
-                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working.' }
+                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working. A key an agent creates always expires, within 90 days.' }
       responses:
         '201':
           description: Created; the full secret is present only in this response
@@ -10747,7 +10747,7 @@ components:
             'tokens:mint': Mint short lived widget tokens for an application.
             'member:read': List the workspace's members and pending invites.
             'member:manage': Invite members, change a member's role (never to or from owner) and remove members.
-            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member.
+            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member and expires within 90 days.
   parameters:
     Id:
       name: id
