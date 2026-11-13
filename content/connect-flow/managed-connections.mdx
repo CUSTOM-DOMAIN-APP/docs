@@ -5,12 +5,10 @@ description: "Opt a connection into managed mode so the control plane can re-app
 
 > **Availability:** managed mode needs a grant the control plane can keep, and
 > there are two ways to get one. An **async one-click grant** needs the DNS
-> provider to onboard us (`OAUTH_DC_<PROVIDER>_CLIENT_ID`); no provider has
-> issued one to customdomain.ai yet. A **managed sign-in grant** needs the
-> deployment to list the provider in `OAUTH_MANAGED_PROVIDERS` and to set
-> `GRANT_ENCRYPTION_KEY`; the hosted service does both for Cloudflare,
-> DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel and WordPress.com,
-> so a sign-in there is kept by default. Where neither applies, every connection is use-once,
+> provider to onboard us; no provider has issued one to customdomain.ai yet. A
+> **managed sign-in grant** is kept for Cloudflare, DigitalOcean, DNSimple,
+> Linode, Netlify, Porkbun, Vercel and WordPress.com, so a sign-in there is kept
+> by default. Where neither applies, every connection is use-once,
 > `managed` stays `false`, and `:reapply` and the MCP `reapply-connection` tool
 > return `409`: drift is reported, not healed. Removing a domain does not need a
 > grant, so `disconnect-domain` works on any connection (see
@@ -36,8 +34,8 @@ asking the customer to consent again**. The grant comes from one of two rails:
 - the **async one-click** protocol (the async variant of Domain Connect), for a
   provider that has onboarded us;
 - a **provider sign-in** whose credential is kept: the token, key pair or
-  consumer key a sign-in handed over, for a provider listed in
-  `OAUTH_MANAGED_PROVIDERS` (see [Managed sign-in grants](#managed-sign-in-grants)).
+  consumer key a sign-in handed over, for a provider whose sign-ins are kept
+  (see [Managed sign-in grants](#managed-sign-in-grants)).
 
 ## What "managed" means
 
@@ -58,10 +56,7 @@ asking the customer to consent again**. The grant comes from one of two rails:
   exchanges the code for a durable grant against the provider API base that
   was pinned into the signed `state` at start (never re-derived from fresh
   discovery). The sign-in callback (`GET /v1/connect/oauth/callback`) keeps
-  what the provider handed over. Both are stored encrypted at rest
-  (AES-256-GCM with `GRANT_ENCRYPTION_KEY`; in the v2 format each token is also
-  bound to its workspace and connection, see
-  [Encryption keys](/docs/security/overview#encryption-keys-self-hosted)), one
+  what the provider handed over. Both are stored encrypted at rest, one
   grant per connection. The
   browser token of the sync one-click rail is *not* a grant, and neither is a
   sign-in at a provider that is not listed: both are discarded right after the
@@ -92,15 +87,11 @@ connected but drop the grant with [disable managed](#disabling-managed-mode)
 
 ## Managed sign-in grants
 
-`OAUTH_MANAGED_PROVIDERS` is a comma list of provider ids (empty by default,
-which keeps every sign-in one-time). The hosted service lists Cloudflare,
-DigitalOcean, DNSimple, Linode, Netlify, OVHcloud, Porkbun, Vercel and
-WordPress.com (OVHcloud's consent is not switched on there yet). For a listed provider, the credential a
+Sign-ins are kept at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify,
+OVHcloud, Porkbun, Vercel and WordPress.com (OVHcloud's consent is not switched
+on yet). For those providers, the credential a
 [sign-in](/docs/dns/providers#one-click-nothing-to-paste) obtained is kept as
-the connection's encrypted grant, in the same grant store the async one-click
-rail uses, and the connection is marked `managed`. Without
-`GRANT_ENCRYPTION_KEY` the store refuses the grant and the connect stays
-one-time.
+the connection's encrypted grant, and the connection is marked `managed`.
 
 What each provider hands over, and how it stays usable:
 
@@ -108,18 +99,18 @@ What each provider hands over, and how it stays usable:
 | --- | --- | --- | --- |
 | Cloudflare | `oauth2` | access token, refresh token and expiry | refresh token rotation; `offline_access` is requested only for a managed connect |
 | DigitalOcean, Akamai Cloud (Linode) | `oauth2` | access token, plus the refresh token and expiry when the provider returns them | refresh token rotation |
-| Google Cloud DNS | `oauth2` | access token, the refresh token Google issues because a managed connect asks for offline access, its expiry, and the Google Cloud project that holds the zone | on the hosted service and on any deployment that registered its own Google client; until Google finishes reviewing the app, Google may show a notice that it has not verified the app yet. The access token is refreshed hourly and the refresh token stays the same; while the app is in Google's Testing status a refresh token expires after seven days, so the connection then needs a new sign-in. Revoking a Google sign-in ends the account's whole consent, so a disconnect revokes it only when no other connection keeps a sign-in of the same Google account |
+| Google Cloud DNS | `oauth2` | access token, the refresh token Google issues because a managed connect asks for offline access, its expiry, and the Google Cloud project that holds the zone | until Google finishes reviewing the app, Google may show a notice that it has not verified the app yet. The access token is refreshed hourly and the refresh token stays the same; while the app is in Google's Testing status a refresh token expires after seven days, so the connection then needs a new sign-in. Revoking a Google sign-in ends the account's whole consent, so a disconnect revokes it only when no other connection keeps a sign-in of the same Google account |
 | Azure DNS | `oauth2` | access token, the refresh token Microsoft issues because a managed connect asks for the `offline_access` scope, its expiry, and the Azure subscription and resource group that hold the zone | refresh token rotation, the new refresh token saved before use. Microsoft publishes no revocation endpoint, so a disconnect removes the records and drops the grant but cannot revoke it. A sign in without multifactor authentication cannot make changes, so such a connection needs a new sign-in |
 | DNSimple, Netlify, WordPress.com | `oauth2` | a long-lived access token | nothing to rotate |
 | Vercel | `vercel_integration` | the integration's token and its team | nothing to rotate; keep the integration installed on that team |
 | Porkbun | `porkbun_handoff` | the approved API key pair | nothing to rotate; keep the key named CustomDomain™ |
-| OVHcloud | `ovh_consent` | the consumer key and its region (the application secret stays in the deployment's environment) | the validity chosen on OVHcloud's page, so choose **Unlimited** |
-| Dynadot, Hostinger, Unstoppable Domains, XServer Domain, Namecheap, Spaceship, Muumuu Domain (only when listed in `MCP_SIGNIN_PROVIDERS`) | `mcp_oauth` | access and refresh token of the client the control plane registered with the provider, and which client that is | refresh token rotation through that client; Hostinger accepts a refresh only until about five and a half hours after the access token expires, so a kept Hostinger sign-in left idle longer needs a new sign-in. Namecheap publishes no revocation endpoint, so a disconnect removes the records but cannot revoke a kept Namecheap sign-in |
+| OVHcloud | `ovh_consent` | the consumer key and its region | the validity chosen on OVHcloud's page, so choose **Unlimited** |
+| Dynadot, Hostinger, Unstoppable Domains, XServer Domain, Namecheap, Spaceship, Muumuu Domain (where offered) | `mcp_oauth` | access and refresh token of the client the control plane registered with the provider, and which client that is | refresh token rotation through that client; Hostinger accepts a refresh only until about five and a half hours after the access token expires, so a kept Hostinger sign-in left idle longer needs a new sign-in. Namecheap publishes no revocation endpoint, so a disconnect removes the records but cannot revoke a kept Namecheap sign-in |
 
-On the hosted service, the Azure DNS, Dynadot and Unstoppable Domains
-sign-ins are on but are not in `OAUTH_MANAGED_PROVIDERS`, so they are used
-once. Sign in with Google Cloud is on as well. OVHcloud's consent and the other `mcp_oauth` sign-ins are not switched on. Their rows describe what a deployment that keeps them
-stores. Whether the DigitalOcean, Linode and Azure DNS sign-ins are on at a given
+The Azure DNS, Dynadot and Unstoppable Domains sign-ins are on but are not
+kept, so they are used once. Sign in with Google Cloud is on as well. OVHcloud's
+consent and the other `mcp_oauth` sign-ins are not switched on. Their rows
+describe what would be kept. Whether the DigitalOcean, Linode and Azure DNS sign-ins are on at a given
 moment is the per provider confirmation in the note at the top of this page.
 
 - **Re-apply.** `POST /v1/connections/{id}:reapply` (and the fleet reconciler)

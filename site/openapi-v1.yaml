@@ -591,7 +591,7 @@ paths:
                   type: array
                   items: { type: string }
                   description: 'Optional permissions to limit the key to (for example `member:read`), each one your own role holds. Omitted, the key acts with your whole role.'
-                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working.' }
+                expires_at: { type: string, format: date-time, description: 'Optional time, in the future, when the key stops working. A key an agent creates always expires, within 90 days.' }
       responses:
         '201':
           description: Created; the full secret is present only in this response
@@ -5078,9 +5078,8 @@ paths:
         a `code` and `message`: besides the provider's own `error` (for example
         `access_denied`) and `ProviderAuthenticationError`, `apply_failed`,
         `apex_not_supported`, `forwarding_not_supported`,
-        `sign_in_other_browser` (the sign-in finished in a different browser
-        from the one that opened it; nothing was used up, so finish it in the
-        window the start opened), the rail specific
+        `sign_in_other_browser` (finish the sign-in in the window that started
+        it; nothing was used up), the rail specific
         codes are `porkbun_api_access_disabled` (turn on API access for the
         domain at Porkbun), `porkbun_domain_not_in_account` and
         `porkbun_domain_not_active` (after `porkbun_dnsconnect`: the domain is
@@ -5131,8 +5130,8 @@ paths:
       tags: [Connections]
       description: >-
         The first page a sign-in popup opens when `authorize_url` points here.
-        It ties the sign-in to this browser and redirects to the provider. Not
-        a bearer-authenticated endpoint; open it only through `authorize_url`.
+        It sends the person on to the provider. Not a bearer-authenticated
+        endpoint; open it only through `authorize_url`.
       security: []
       parameters:
         - { name: state, in: query, required: true, schema: { type: string } }
@@ -10749,7 +10748,7 @@ components:
             'tokens:mint': Mint short lived widget tokens for an application.
             'member:read': List the workspace's members and pending invites.
             'member:manage': Invite members, change a member's role (never to or from owner) and remove members.
-            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member.
+            'keys:manage': List, create and revoke API keys. A key an agent creates acts as a member and expires within 90 days.
   parameters:
     Id:
       name: id

@@ -30,8 +30,7 @@ the control-plane process, not as separate services.
 
 ## The edge hot path
 
-`POST /internal/ask` (shared-secret auth via `X-Edge-Auth` / `EDGE_ASK_SECRET`)
-is the call that gates certificate issuance. It answers `{ approved }` from a
+`POST /internal/ask` (shared-secret auth, reachable only from the edge) is the call that gates certificate issuance. It answers `{ approved }` from a
 lookup of the connection for the host, with no billing logic, so the TLS
 handshake never blocks on business logic. A host is approved iff a connection for
 it exists and is `live` or `propagating`, it has not been removed, and its record

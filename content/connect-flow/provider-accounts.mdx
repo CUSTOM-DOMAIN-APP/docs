@@ -5,7 +5,7 @@ description: "Connect a DNS provider or registrar account once, for some or all 
 
 A provider account is a key for a DNS provider or registrar that the workspace
 connects once. CustomDomain™ checks the key before keeping anything, keeps it
-encrypted (`GRANT_ENCRYPTION_KEY` or `GRANT_ENCRYPTION_KEYS`), and never returns it.
+encrypted, and never returns it.
 
 ## Where an account's key comes from
 
@@ -82,8 +82,7 @@ of the domains a key reaches (`POST /v1/provider-accounts/{id}/zones`), the read
 of each new domain's zone when you widen a key made at a secure sign-in
 (`PATCH /v1/provider-accounts/{id}`, or a domain outside its scope in `connect`),
 Check now, and the reads that find which saved key can act for a domain. They
-share one budget for the workspace: **60 reads an hour** on the hosted service
-(self-hosters set `REACH_CHECKS_PER_TENANT_HOUR`; `0` turns it off). One
+share one budget for the workspace: **60 reads an hour**. One
 workspace's budget is its own, so another workspace cannot use it up.
 
 - An answer CustomDomain™ kept from a read in the last ten minutes costs
@@ -95,8 +94,6 @@ workspace's budget is its own, so another workspace cannot use it up.
   the hour. A call that needs several reads (a change naming ten new domains)
   takes them all or none: when they do not all fit it is refused whole, instead of
   checking some of them, and the reads that were left stay for a smaller call.
-  Keep a self-hosted budget at 21 or more, because one change reads up to 20
-  zones and the list of a key's domains.
 
 ```json
 { "code": "reach_quota", "title": "Too many checks at DNS providers this hour.", "details": "this workspace has made as many checks of its keys at DNS providers as it may in an hour; nothing was changed, try again in about 40 minutes" }
@@ -483,10 +480,6 @@ the account appears in Connected accounts. You don't make or paste an API key.
 
 If you decline, close the window, or the provider can't keep you signed in, no account is added and the page
 says so.
-
-Self-hosted deployments offer it for a provider only when that provider's OAuth app is configured
-(`OAUTH_<ID>_CLIENT_ID` and `OAUTH_<ID>_CLIENT_SECRET`) and its sign-in is kept (`OAUTH_MANAGED_PROVIDERS`
-and a grant encryption key).
 
 ## Add an account by secure sign-in
 

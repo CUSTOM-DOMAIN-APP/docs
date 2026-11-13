@@ -31,8 +31,7 @@ types share the surface, each with a different blast radius.
   sees it at the top of **API & SDK** in a key bar: `CUSTOMDOMAIN_API_KEY` is a label above the
   masked key (`cd_live_…`); the eye shows the key for 30 seconds and **Copy** copies the key
   alone, without the label and without showing it. Admins, members and viewers
-  see only its prefix, and only an owner can rotate it. The control plane still keeps only its hash: the console keeps a copy sealed with its own
-  secret (AES-256-GCM), and every view is recorded in the audit log, without the key; a view the
+  see only its prefix, and only an owner can rotate it. The control plane still keeps only its hash: the console keeps an encrypted copy, and every view is recorded in the audit log, without the key; a view the
   audit log cannot record is refused.
   **Rotate** makes a new default key and the old one stops working at once; your other keys are
   untouched. If someone revokes it in the list, the page says **Default key revoked** and offers
@@ -196,8 +195,8 @@ matrix and the exact route list.
 
 - `GET /healthz`: liveness + database readiness. No secrets, no tenant data.
 - `POST /internal/ask`: the edge host-authorization gate. Not bearer-auth: it
-  uses a shared secret (`X-Edge-Auth` / `EDGE_ASK_SECRET`) and must be
-  network-isolated to the edge in production. It answers only `{ approved }`.
+  uses a shared secret and is reachable only from the edge. It answers only
+  `{ approved }`.
 - `GET /v1/connect/oauth/callback`: the OAuth redirect target, authenticated by
   its signed single-use `state` rather than a bearer token.
 
