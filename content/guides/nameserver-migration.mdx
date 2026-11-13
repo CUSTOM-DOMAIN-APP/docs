@@ -421,6 +421,11 @@ What each registrar's API can do:
 | Hostinger | yes | yes | no | yes | 4 |
 | Spaceship | yes | yes | no | yes | 12 |
 | IONOS | yes | no (secure sign-in or by hand) | no | no (secure sign-in or by hand) | |
+| Dynadot | yes | yes | yes | no (secure sign-in or by hand) | 13 |
+| Gandi | yes | yes | yes | yes | 13 |
+| OVHcloud | yes | yes | no | yes | 13 |
+| INWX | yes | yes | yes | no (secure sign-in or by hand) | 13 |
+| NameSilo | yes | yes | yes | no (secure sign-in or by hand) | 13 |
 
 Secure sign-in can change the nameservers at Namecheap, GoDaddy and Name.com, where
 it is offered, and choose the registrar's own DNS at Namecheap ("Namecheap
@@ -469,8 +474,8 @@ How it is made, in `rollback_path`:
 
 - `api`: through the registrar's API, at once (`rollback_set_at`), with a key
   sent once or the move's connected account. For the registrar's own DNS, this is
-  its reset call where it has one: Namecheap, Spaceship, Name.com, Porkbun and
-  Hostinger ([table above](#how-the-nameservers-change)).
+  its reset call where it has one: Namecheap, Spaceship, Name.com, Porkbun,
+  Hostinger, Gandi and OVHcloud ([table above](#how-the-nameservers-change)).
 - `agent`: the end user signs in to the registrar with
   [secure sign-in](/docs/guides/secure-sign-in) (`purpose: nameservers`) and
   approves the move back: the old nameservers, or the registrar's own DNS. This
