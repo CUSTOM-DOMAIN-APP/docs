@@ -24,8 +24,7 @@ _openapi:
           team that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
           handoff: the user approves a key named after the domain; no client
           registration is needed), `porkbun_dnsconnect` (Porkbun's DNS Connect,
-          run in place of the handoff for a connect when the deployment holds an
-          application Porkbun approved: the user approves the domain's records at
+          run in place of the handoff for a connect where it is offered: the user approves the domain's records at
           Porkbun and Porkbun adds them, with no API access switch needed;
           nothing comes back, so `managed` is always false), `ovh_consent` (an OVHcloud consumer key
           limited to the domain's DNS zone, validated on OVHcloud's page for the
@@ -34,11 +33,9 @@ _openapi:
           Spaceship and Dynadot: the endpoints are discovered from the server's
           metadata, the client is one the control plane registered for itself,
           and the records are written through the server's DNS tools; offered
-          only for the providers the deployment lists in
-          `MCP_SIGNIN_PROVIDERS`). The credential is used for that write and
-          dropped, unless the deployment keeps grants for this provider
-          (`OAUTH_MANAGED_PROVIDERS` with `GRANT_ENCRYPTION_KEY` or `GRANT_ENCRYPTION_KEYS`), in which case
-          `managed` is true and it is stored encrypted for `:reapply`.
+          only for the providers where it is offered). The credential is used
+          for that write and dropped, unless sign-ins at this provider are kept,
+          in which case `managed` is true and it is stored encrypted for `:reapply`.
 
 
           A widget JWT starts the sign-in for its own application's connections

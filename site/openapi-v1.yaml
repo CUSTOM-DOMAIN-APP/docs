@@ -3859,9 +3859,7 @@ paths:
         that owns the domain), `porkbun_handoff` (Porkbun's PKCE API key
         handoff: the user approves a key named after the domain; no client
         registration is needed), `porkbun_dnsconnect` (Porkbun's DNS Connect,
-        run in place of the handoff for a connect when the deployment holds an
-        application Porkbun approved, `OAUTH_PORKBUN_CLIENT_ID` and
-        `OAUTH_PORKBUN_CLIENT_SECRET`: the domain's records are signed into the
+        run in place of the handoff for a connect where it is offered: the domain's records are signed into the
         request, the user approves them at Porkbun, and Porkbun adds them
         itself, with no API access switch needed; nothing comes back, so
         `managed` is always false, and signing in to remove the domain still
@@ -3872,9 +3870,8 @@ paths:
         Spaceship and Dynadot: the endpoints are discovered from the server's metadata,
         the client is one the control plane registered for itself, and the
         records are written through the server's DNS tools; offered only for
-        the providers the deployment lists in `MCP_SIGNIN_PROVIDERS`). The credential is used for that write and dropped,
-        unless the deployment keeps grants for this provider
-        (`OAUTH_MANAGED_PROVIDERS` with `GRANT_ENCRYPTION_KEY`), in which case
+        the providers where it is offered). The credential is used for that write and dropped,
+        unless sign-ins at this provider are kept, in which case
         `managed` is true and it is stored encrypted for `:reapply`.
 
 
@@ -9098,7 +9095,7 @@ paths:
       tags: [Provider accounts]
       description: >-
         Keeps a DNS provider or registrar key for the workspace, encrypted
-        (GRANT_ENCRYPTION_KEY; `503` without it). The key is checked first by
+        (`503` when keys cannot be kept). The key is checked first by
         listing the provider's domains, or, for a provider that cannot list
         them, by reading one of the selected domains or `check_domain`; with
         neither, `400` `check_domain_required`, and a key is never kept
@@ -9300,7 +9297,7 @@ paths:
                         uses:
                           type: array
                           items: { type: string }
-                  keeping_available: { type: boolean, description: Whether this deployment can keep keys (a grant encryption key is configured as GRANT_ENCRYPTION_KEY or GRANT_ENCRYPTION_KEYS). }
+                  keeping_available: { type: boolean, description: Whether keys can be kept. }
                   end_user_keys:
                     type: object
                     description: The keys your customers' own sign-ins made (`owner_kind` `end_user`), counted before `owner`, `q` and paging apply, so a console can show them as one row.
@@ -9444,9 +9441,8 @@ paths:
 
 
         Offered only where `account_ways` of `GET /providers` names `oauth` for
-        the company: the deployment runs the company's OAuth app, keeps what it
-        hands back (`OAUTH_MANAGED_PROVIDERS` and a grant encryption key),
-        does not hold the sign-in back, and the company's sign-in needs no
+        the company: the company's sign-in is offered and kept,
+        is not held back, and the company's sign-in needs no
         domain. Any other is `403` `oauth_account_unavailable`. The caller is
         the console's own call, as for `POST /provider-accounts:sign-in`: an
         API key that carries the console's signed visitor forward, held by a
@@ -14096,8 +14092,7 @@ components:
             Set exactly when `available` is false. `provider_has_no_oauth`:
             the provider publishes no OAuth rail. `oauth_client_not_registered`:
             it does, but this deployment has not set it up: no client
-            registered, or an MCP server sign-in not listed in
-            `MCP_SIGNIN_PROVIDERS` (operator task). `not_discovered`: no Domain Connect discovery answer.
+            registered, or an MCP server sign-in it does not offer. `not_discovered`: no Domain Connect discovery answer.
             `template_not_onboarded`: the provider speaks Domain Connect but
             has not onboarded our template. `redirect_unavailable`: the
             provider requires our return link on a one-click apply and the
