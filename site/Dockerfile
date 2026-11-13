@@ -32,6 +32,8 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 # inspecting .next/standalone/ during development of this scaffold.
 COPY --from=build /repo/site/.next/standalone ./
 COPY --from=build /repo/site/.next/static ./site/.next/static
+# Images used by the MDX pages (site/public, served at /). Standalone output leaves this folder out.
+COPY --from=build /repo/site/public ./site/public
 USER nextjs
 EXPOSE 3000
 CMD ["node", "site/server.js"]
