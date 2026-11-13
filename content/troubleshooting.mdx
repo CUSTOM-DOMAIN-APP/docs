@@ -132,9 +132,8 @@ Records were written but aren't all resolving to their intended values yet.
 
 `POST /v1/connections/{id}/apply` (and the OAuth / one-click setup starts)
 return `503 service_unavailable` when the corresponding engine isn't wired for
-your plan or environment: no DNS provider registry, no OAuth client for the
-provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
-(`DC_SIGNING_KEY_FILE`). Contact support if you hit this on the hosted service.
+your plan or environment: the provider's sign-in or one-click setup is not
+offered. Contact support if you hit this.
 
 ## Rail B write failed
 
@@ -151,9 +150,8 @@ password pair); see [Provider setup](/docs/dns/provider-setup).
 - **PopupBlockedError**: the browser blocked the authorize window; trigger
   `oauth:start` from a direct user gesture.
 - The OAuth callback, and the one-click return page
-  (`GET /v1/connect/dc/return/{state}`), only postMessage to a `return_origin`
-  on the server's allowlist (`OAUTH_ALLOWED_RETURN_ORIGINS`); a mismatched
-  origin silently drops the result.
+  (`GET /v1/connect/dc/return/{state}`), only postMessage to an allowed
+  `return_origin`; a mismatched origin silently drops the result.
 - An expired or replayed `state` returns `400` from the callback; re-run
   `oauth:start` to get a fresh one.
 - Either way the connection keeps being checked, and it goes live once public
@@ -172,8 +170,8 @@ demand.
 
 Certificates are issued **on demand at the TLS handshake**, gated by
 `POST /internal/ask` returning `{ approved: true }`, which happens only once the
-connection is `propagating` or `live`. If the edge can't reach the gate, check
-`EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
+connection is `propagating` or `live`. If a live connection still has no
+certificate after a few minutes, contact support.
 
 ## 401 "unknown application or secret" when minting a widget token
 
