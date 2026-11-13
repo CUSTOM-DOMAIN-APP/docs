@@ -88,18 +88,14 @@ no scopes: the control plane authorizes each call.
 > actually available. No LLM is involved: the same keywords always produce the
 > same candidates, which keeps the tool predictable and testable.
 
-> **`create-domain-order` is fail closed, and off on the hosted service.** The
-> server places a paid order only after the integrator's purchase authorization
-> callback approves it (see
-> [Purchase authorization callback](#purchase-authorization-callback)). If no
-> callback is configured, every purchase is denied, and the hosted service
-> configures none: every call there answers `success: false` with the status and
-> the `error` `rejected`, and nothing reaches the control plane. Behind the
-> callback, the order goes to the control plane's direct purchase route, which has
-> its own switch, `SELL_DIRECT_PURCHASE_ENABLED`, also off on the hosted service
-> (`service_unavailable`), and which refuses API keys. So purchases through MCP
-> are off there; buying a domain is live through the console's money safe
-> checkout. See [Buying a domain](/docs/sell/buying-a-domain).
+> **`create-domain-order` spends money, so it asks twice.** A person who signed in
+> through OAuth approves the `domains:purchase` scope with a saved card and a
+> monthly spending limit on the consent screen, and the agent names the domain
+> they confirmed in `confirm_domain`. Any other caller goes through the
+> integrator's [purchase authorization callback](#purchase-authorization-callback),
+> which fails closed: with no callback configured, every purchase is denied. API
+> keys cannot buy. You can also buy a domain in the console; see
+> [Buying a domain](/docs/sell/buying-a-domain).
 
 ## Repair
 
@@ -122,11 +118,11 @@ still means a kept grant only.
 
 ## Purchase authorization callback
 
-Before every paid order, `create-domain-order` asks an endpoint the integrator
-runs whether this purchase may go ahead. The deployment configures it with
+Before a paid order from a caller that is not a person signed in through OAuth
+with the `domains:purchase` scope, `create-domain-order` asks an endpoint the
+integrator runs whether this purchase may go ahead. The deployment configures it with
 `MCP_PURCHASE_AUTHZ_URL`, `MCP_PURCHASE_AUTHZ_USER` and
-`MCP_PURCHASE_AUTHZ_PASSWORD`. With no URL set, every purchase is denied; the
-hosted service sets none today.
+`MCP_PURCHASE_AUTHZ_PASSWORD`. With no URL set, every such purchase is denied.
 
 The server sends a `POST` with a JSON body that carries only the domain, and
 HTTP Basic auth with the configured user and password. The shapes below are
