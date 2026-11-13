@@ -160,9 +160,8 @@ with `POST /v1/provider-accounts`, or when the console's **Remember this key for
 my ... account** box stays ticked (it starts ticked and the user can untick it).
 A sign-in is kept as a
 [managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants)
-only at a provider the deployment lists in `OAUTH_MANAGED_PROVIDERS`. The hosted
-service lists Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
-Vercel and WordPress.com, and keeps a sign-in there unless the user unticks
+only at a provider whose sign-ins are kept: Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
+Vercel and WordPress.com. A sign-in there is kept unless the user unticks
 **Keep this sign-in** or the call sends `"access": "one_time"`; the widget tells
 the customer the permission is kept. A
 [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) keeps the lasting
@@ -190,10 +189,7 @@ Whatever is kept:
   key made at sign-in), which deletes it and leaves the domains connected. A key
   made at sign-in also lives at the provider until it is revoked there.
 
-A deployment without `GRANT_ENCRYPTION_KEY` keeps no provider accounts or
-sign-ins. Its console keeps a remembered key itself instead, sealed with
-AES-256-GCM under `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key) for one workspace
-and provider, and only to connect more domains. A sign-in that is not kept and
+A sign-in that is not kept and
 one-click setup (which uses no server token) store nothing. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
@@ -210,7 +206,7 @@ one-click setup (which uses no server token) store nothing. See
   secret hash, so a token is only valid for its own application and a leaked
   application record can't be used to forge one.
 - The console never exposes the tenant's control-plane API key to the browser: it
-  is sealed at rest (AES-256-GCM under `WEB_SECRET_KEY`) and opened server-side
+  is encrypted at rest and opened server-side
   per request behind a proxy; see [Architecture](/docs/concepts/architecture).
 - Internal errors return a generic `title`; the specifics (including any driver
   errors) are logged server-side under a request id, never returned.
