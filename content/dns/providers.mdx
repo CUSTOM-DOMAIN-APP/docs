@@ -1,7 +1,9 @@
 ---
 title: Connection paths by provider
+icon: Plug
 metaTitle: How CustomDomain chooses a connection path
-description: "How CustomDomain™ picks the way in for each domain: provider sign-in, one-click setup, secure sign-in, an API key, records added by hand or DNS hosting."
+description: "How we choose the way to connect each domain."
+metaDescription: "How CustomDomain™ picks the way in for each domain: provider sign-in, one-click setup, secure sign-in, an API key, records added by hand or DNS hosting."
 ---
 
 When a customer enters a domain, we look up its nameservers to see who hosts its
@@ -41,11 +43,10 @@ from the domain's nameservers. Knowing a provider is not the same as writing
 its records: most registrars give no third party a way to change DNS, so for
 them adding the records, with that provider's own steps (or a secure sign-in where
 one is offered), is the way in. The tables
-below are what the hosted service offers as of 2026-10-09. On 2026-10-31 the
-census lists 217: 73 have an automatic path (6 provider OAuth, 1 Domain
-Connect, 66 scoped API key) and the other 144 are connected by hand. The
-adapters are a separate count: `GET /v1/providers` lists 77, and every one of
-them belongs to a provider the census lists.
+below are what the hosted service offers as of 2026-10-09. The live list, with
+each provider's way in, is at `GET /v1/providers/census`. The adapters are a
+separate list at `GET /v1/providers`, and every one of them belongs to a
+provider the census lists.
 
 The console and the widget read the same verdict from
 `POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
@@ -363,7 +364,7 @@ Arsys, Binary Lane, Google Cloud DNS, Azure DNS, INWX, Loopia, Openprovider,
 Plesk, Subreg) are never kept. See
 [Remembering a key](/docs/dns/provider-setup#remembering-a-key-optional).
 
-## One-click setup (Rail A)
+## One-click setup, Rail A [#one-click-setup-rail-a]
 
 One-click setup uses the provider-hosted Domain Connect protocol and is
 redirect-based: the customer is sent to their provider, which applies a signed

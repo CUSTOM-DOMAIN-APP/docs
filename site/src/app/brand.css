@@ -480,3 +480,52 @@ button[aria-controls]:has(> svg.cd-section-icon) > svg.cd-section-icon {
 button[aria-controls]:has(> svg.cd-section-icon)[data-state="open"] > svg.cd-section-icon {
   color: var(--color-fd-foreground);
 }
+
+/* Steps, as Better Auth's install pages draw them: a hairline rail and a small square counter in Geist Mono, each
+   step's heading beside its counter and its code right under it. */
+.fd-steps {
+  border-color: var(--cd-hair-strong);
+}
+
+.fd-step::before {
+  border: 1px solid var(--cd-hair-strong);
+  border-radius: var(--cd-radius-md);
+  background: var(--cd-surface-page);
+  color: var(--cd-text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+/* Cards: a hairline frame on the page surface, the icon in a small square, the title in ink at 16 px, as the icon
+   card grid on Better Auth's introduction page. */
+.prose [data-card] {
+  border-color: var(--cd-hair-strong);
+  background: var(--cd-surface-page);
+  border-radius: var(--cd-radius-lg);
+  box-shadow: none;
+}
+
+.prose [data-card]:hover {
+  background: var(--cd-tint);
+}
+
+.prose [data-card] > div:first-child:has(> svg) {
+  border-color: var(--cd-hair-strong);
+  border-radius: var(--cd-radius-md);
+  background: var(--cd-surface-page);
+  color: var(--cd-text-primary);
+}
+
+/* A code block with a file name: the name sits in a mono header row above the code, under a hairline. */
+figure.shiki > div:first-child:has(> figcaption) {
+  border-bottom: 1px solid var(--cd-hair);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+/* The table of contents at Better Auth's 14 px, so it reads as navigation beside the 18 px body. */
+#nd-toc a,
+#nd-toc p {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}

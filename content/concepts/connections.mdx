@@ -1,12 +1,15 @@
 ---
 title: Connections
-description: "How a connection moves through pending, propagating, live and failed, the authoritative record set, how tenancy and idempotency work, and how drift is checked."
+icon: Activity
+description: "How a connection moves from pending to live."
+metaDescription: "How a connection moves through pending, propagating, live and failed, the authoritative record set, how tenancy and idempotency work, and how drift is checked."
 ---
 
-A **connection** is one customer domain being onboarded under an application. Its
+A **connection** is one customer domain being set up under an application. Its
 `id` doubles as the `jobId` the widget and webhooks report. Every connection
-carries an authoritative **desired record set** (the records that point the
-domain at the edge) and a **status**.
+carries a **desired record set** and a **status**. The desired record set is the
+list of records that point the domain at the edge, and it is the one source of
+truth for them.
 
 ## The connection lifecycle
 
@@ -57,7 +60,7 @@ applied, the control-plane synthesizes the default edge record
 (`CNAME <host> → edge.customdomain.ai`, TTL 3600, or your configured edge
 target). Once a rail writes records, the stored set is returned instead.
 
-## Propagation → live
+## Propagation to live [#propagation--live]
 
 A background poller drains `propagating` and `pending` connections, resolving
 each desired record against public DNS with **value checking** (a CNAME must
@@ -92,7 +95,7 @@ see on a connection:
 | `spf_merge_failed` | An `SPFM` merge would exceed 10 lookup mechanisms or 255 characters |
 | `domain_already_connected` | Another account already serves this domain; the connection is not promoted to `live` |
 
-## Idempotency & tenancy
+## Idempotency and tenancy [#idempotency--tenancy]
 
 `POST /v1/connections` is idempotent per application + domain: if the app already
 has a non-failed connection for the domain, that connection is replayed (`200`)

@@ -1,11 +1,13 @@
 ---
 title: Webhook events and delivery
-description: "Register HTTPS endpoints to receive signed webhook events as connections progress, with the event catalog, the payload envelope and how delivery retries work."
+icon: Webhook
+description: "Receive signed events as connections change."
+metaDescription: "Register HTTPS endpoints to receive signed webhook events as connections progress, with the event catalog, the payload envelope and how delivery retries work."
 ---
 
-Register HTTPS endpoints to receive signed events as connections progress, as
-monitored domains drift, as nameserver moves go through and as the API keys a
-secure sign-in made near their end.
+Register an HTTPS endpoint, and we send it signed events. You hear when a
+connection changes status, when a monitored domain drifts, when a nameserver move
+goes through, and when an API key that secure sign-in made nears its end.
 
 ## Register an endpoint
 
@@ -92,7 +94,7 @@ leaves out a [test mode](/docs/guides/test-mode) application's endpoints unless
 When the connection carries a recorded diagnosis at emit time, the envelope also includes `error_code` and `error_message` (for example `propagation_timeout`, `access_denied`, `ProviderAuthenticationError`, or `setup_incomplete` on a stalled pending connection), so a receiver need not fetch the connection to learn why.
 
 That table is the **complete** vocabulary: it is exactly the set the platform can
-emit, and the `events` enum in the [OpenAPI spec](/v1/openapi.json) matches it.
+emit, and the `events` enum in the [OpenAPI spec](https://api.customdomain.ai/v1/openapi.json) matches it.
 An unknown event string is still accepted at registration, but it can never be
 delivered, so subscribe only to the events above.
 
@@ -220,7 +222,7 @@ Additional conditional fields ride connection events:
   you can test your receiver end to end, and a receiver that writes to a real
   customer's account should check the field and skip them.
 
-## Delivery & retries
+## Delivery and retries [#delivery--retries]
 
 - A delivery succeeds on any `2xx`. Respond within 15 seconds.
 - Network errors, `5xx` and `429` are retried with exponential backoff

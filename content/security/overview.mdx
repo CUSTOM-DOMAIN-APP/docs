@@ -1,9 +1,11 @@
 ---
 title: Security model
-description: "CustomDomain™ security model: tenant isolation, credentials and roles, value-checked DNS verification, provider credentials and unauthenticated surfaces."
+icon: ShieldCheck
+description: "How CustomDomain™ keeps tenants, keys and domains safe."
+metaDescription: "CustomDomain™ security model: tenant isolation, credentials and roles, value-checked DNS verification, provider credentials and unauthenticated surfaces."
 ---
 
-## Tenancy & isolation
+## Tenancy and isolation [#tenancy--isolation]
 
 Every object belongs to a tenant. Tenant-scoped endpoints filter by the caller's
 credential, and all `/applications/{id}/*` mutations verify the application
@@ -39,7 +41,7 @@ not per-key scopes, and is **enforced at the control-plane**; see
 credential itself, server-side, on every request; nothing trusts a
 console-supplied role.
 
-## Roles & permissions
+## Roles and permissions [#roles--permissions]
 
 Each member holds one of four roles on a strict ladder
 (`viewer` &lt; `member` &lt; `admin` &lt; `owner`), which maps to a fixed set of

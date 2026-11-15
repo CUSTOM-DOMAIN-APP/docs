@@ -1,6 +1,8 @@
 ---
-title: Installation & embed
-description: "Install customdomain-js, mint a widget token on your server, open the connect modal in the browser, and use React, embedded mode and white-label theming."
+title: "Installation and embed"
+metaTitle: "Installation & embed | CustomDomain docs"
+description: "Install the widget and open it in your app."
+metaDescription: "Install customdomain-js, mint a widget token on your server, open the connect modal in the browser, and use React, embedded mode and white-label theming."
 ---
 
 <Steps>
@@ -21,7 +23,7 @@ never shown anywhere, so you mint with an API key instead. Create a key on the
 keep it in a server environment variable, and send it as the bearer to
 `POST /v1/tokens`:
 
-```js
+```js title="server/customdomain-token.js"
 // Your server route, for example POST /api/customdomain-token.
 // Only signed-in users should reach it: add your own auth check.
 const res = await fetch("https://api.customdomain.ai/v1/tokens", {
@@ -54,7 +56,7 @@ The errors you can get back:
 returns the `client_secret` once. Keep it on your server and exchange it with
 `POST /v1/tokens`:
 
-```js
+```js title="server/customdomain-token.js"
 const res = await fetch("https://api.customdomain.ai/v1/tokens", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -96,6 +98,18 @@ Pick one way to load the SDK.
 | npm | `npm install customdomain-js` | 0.5.5 |
 | React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.5 |
 
+Install the package with your package manager:
+
+```npm
+npm install customdomain-js
+```
+
+For React, add the hook package too:
+
+```npm
+npm install @customdomain/react customdomain-js react react-dom
+```
+
 <UsageStats />
 
 `getToken`, `wwwRedirect` and `onFallback` need `customdomain-js` 0.5.0 or
@@ -104,7 +118,7 @@ newer; `removeDomain()`, `onRemoved` and the `customdomain:removed` event need
 need 0.5.4; the `"reconnect"` mode's types, `reconnected` and `advisories` need
 0.5.5. The hosted script always has all of them.
 
-```js
+```js title="app/connect-domain.js"
 import { customdomain } from "customdomain-js";
 // (the hosted <script> build attaches window.customdomain instead)
 
@@ -179,7 +193,7 @@ Every option, event and status is in the [reference](/docs/widget-sdk/reference#
 window events into callback props, removes its listeners and closes the modal
 when the component unmounts, and is safe to render on the server.
 
-```jsx
+```jsx title="app/ConnectDomain.jsx"
 import { useCustomdomain } from "@customdomain/react";
 
 async function fetchToken() {

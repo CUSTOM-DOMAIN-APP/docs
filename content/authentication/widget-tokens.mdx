@@ -1,6 +1,7 @@
 ---
 title: Widget tokens
-description: "Mint short-lived widget JWTs with POST /v1/tokens, choose between the connect and app scopes, and keep a long browser session alive without exposing an API key."
+description: "Mint short-lived widget tokens on your server."
+metaDescription: "Mint short-lived widget JWTs with POST /v1/tokens, choose between the connect and app scopes, and keep a long browser session alive without exposing an API key."
 ---
 
 The widget must never see an API key or an application `client_secret`. Your
@@ -30,7 +31,7 @@ instead. In `client_secret`, `POST /v1/tokens` answers `401` with
 `unknown application or secret`. See
 [Troubleshooting](/docs/troubleshooting#401-unknown-application-or-secret-when-minting-a-widget-token).
 
-## With an API key (console accounts)
+## With an API key from the console [#with-an-api-key-console-accounts]
 
 Create a key on the console's **API & SDK** page with **Create key**, keep it in
 an environment variable on your server, and send it as the bearer to

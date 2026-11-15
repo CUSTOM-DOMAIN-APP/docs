@@ -1,6 +1,7 @@
 ---
 title: Reference
-description: "Reference for the eight window.customdomain methods, window events and callbacks, the open() config, widget statuses, white-label options and theming tokens."
+description: "Every widget method, event and option."
+metaDescription: "Reference for the eight window.customdomain methods, window events and callbacks, the open() config, widget statuses, white-label options and theming tokens."
 ---
 
 ## Methods
@@ -49,7 +50,7 @@ whether your users are offered it is your application's
 `{ domain, inSync, records[] }`, where each record is
 `{ host, type, ok, observed[] }`.
 
-## Events & callbacks
+## Events and callbacks [#events--callbacks]
 
 Every meaningful transition fires **both** a `window` `CustomEvent` (read
 `event.detail`) and, where you provided one, the matching `open()` callback.
@@ -95,7 +96,7 @@ allow another connection; the end user only sees a neutral message) and
 > success screen and closes itself when the user is done (or when you call
 > `close()`).
 
-## `open()` / `OpenConfig`
+## `open()` or `OpenConfig` [#open--openconfig]
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -289,7 +290,7 @@ The removal flow uses the same set: reading what removal would do is
 `DOMAIN_ANALYSIS`, the choice is `DOMAIN_SETUP`, one more sign-in is `LOGIN`,
 removing is `IN_PROGRESS`, and the summary is `FINISHED_SUCCESSFULLY`.
 
-## Token lifecycle & accessibility
+## Token lifecycle and accessibility [#token-lifecycle--accessibility]
 
 Widget tokens expire (15 minutes by default). With `getToken` the widget
 refreshes itself and carries on; without it, the user is told they can close

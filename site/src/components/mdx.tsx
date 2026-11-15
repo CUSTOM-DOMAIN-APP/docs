@@ -1,6 +1,6 @@
 /**
  * Every component an MDX page may use without importing it: Fumadocs' defaults (Cards, Callout, code block tabs)
- * plus Steps, Tabs, Accordions and TypeTable, zoomable images, the npm usage card, and the docs icon set
+ * plus Steps, Tabs, Accordions and TypeTable, keyboard-scrollable tables, zoomable images, the npm usage card, and the docs icon set
  * (src/components/section-icons.tsx) so a card can take an icon, as on Better Auth's introduction page:
  * `<Card icon={<Rocket />} title="Quickstart" href="/docs/getting-started/quickstart" />`.
  */
@@ -19,6 +19,13 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
     ...docsIcons,
+    // A wide table scrolls sideways inside its wrapper; tabIndex and a named region let a keyboard user scroll it
+    // (axe scrollable-region-focusable). Classes as Fumadocs' own wrapper.
+    table: (props) => (
+      <div className="relative overflow-auto prose-no-margin my-6" tabIndex={0} role="region" aria-label="Table">
+        <table {...(props as React.ComponentProps<"table">)} />
+      </div>
+    ),
     img: (props) => <ImageZoom {...(props as React.ComponentProps<typeof ImageZoom>)} />,
     Accordion,
     Accordions,
