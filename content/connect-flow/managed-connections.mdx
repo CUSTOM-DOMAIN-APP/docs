@@ -208,7 +208,7 @@ curl -X DELETE https://api.customdomain.ai/v1/connections/<ID>/grant \
 connection's `managed` flag. It **leaves the connection and its applied records
 in place**. A sign-in grant is also withdrawn at its provider first, the same
 way a disconnect withdraws it. The records the provider already wrote stay live.
-The platform just stops holding a credential to re-apply or revert them, so the
+The platform stops holding a credential to re-apply or revert them, so the
 connection goes back to use-once. A later consent can turn managed mode on
 again.
 
