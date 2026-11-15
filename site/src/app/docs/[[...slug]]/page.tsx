@@ -72,7 +72,7 @@ export default async function Page({
       "@context": "https://schema.org",
       "@type": "TechArticle",
       headline: machineText(page.data.title),
-      description: machineText(description) ?? undefined,
+      description: machineText(page.data.metaDescription ?? description) ?? undefined,
       url: pageUrl,
       mainEntityOfPage: pageUrl,
       author: { "@type": "Organization", name: "CustomDomain", url: "https://customdomain.ai" },
@@ -131,7 +131,8 @@ export async function generateMetadata({
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  const description = machineText(pageDescription(slug, page));
+  // Search and social tags take the longer metaDescription when a page has one; the visible line stays short.
+  const description = machineText(page.data.metaDescription ?? pageDescription(slug, page));
   const canonical = `/docs/${(slug ?? []).join("/")}`;
   // A page's own `metaTitle` is its whole <title>, used without the site suffix (source.config.ts).
   const metaTitle = machineText(page.data.metaTitle);

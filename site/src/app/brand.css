@@ -1,24 +1,37 @@
 /*
- * The docs' brand rules on top of the kit tokens (tokens-docs.css): Geist and Geist Mono (the geist package, wired in
- * src/app/layout.tsx; the stacks keep the kit's fallbacks), a clean, dense, monochrome page (the title and headings in
- * Geist 600 with tight tracking, body in ink, the 720 px article column, links and inline code as the kit draws them),
- * light code cards with a hairline and no resting shadow (BD-5), stone pills for framework labels, the API reference's
- * method colors brought to the kit, the lockup, the search field, the section switch, the account buttons at the
- * sidebar's foot, the site footer, and the sidebar groups and page head sizes after Better Auth's docs (MIT). Rules here are unlayered, so they win over Fumadocs' utilities: keep them few
- * and scoped.
+ * The docs' layout and type rules on top of site v2's tokens (src/shared/tokens.css through fumadocs-map.css):
+ * Geist and Geist Mono (the geist package, wired in src/app/layout.tsx), Better Auth's docs measurements (sidebar
+ * 300 px, table of contents 280 px, text column 860 px, title 28 px, section headings 24 px with 48 px above and 24 px
+ * below, body 18 px on 28 px lines; layout mechanics after better-auth/better-auth, MIT, Copyright (c) 2024 Bereket
+ * Engida), hairline code cards, mono pills for code tab labels, the API reference's method colors brought to the
+ * tokens, the lockup, search, the account buttons at the sidebar's foot, the site footer, the sidebar groups and the
+ * docs components (steps, file headed code blocks, icon cards). Every color is a site token: no hex in this file.
+ * Rules here are unlayered, so they win over Fumadocs' utilities: keep them few and scoped.
  */
 
-/* --cd-size-docs-h2, --cd-size-docs-lede, --cd-text-secondary (light and dark) and --cd-article come from the kit's
-   generated tokens-docs.css. Fumadocs draws cards, code blocks, tabs and callouts with rounded-xl: map it to the
-   kit's 14 px card radius. */
+/* Fumadocs draws cards, code blocks, tabs and callouts with rounded-xl: map it to the site's near-square corner. The
+   font stacks are the site's (Geist through the geist package's variables, see docs-theme.css). */
 :root {
   --radius-xl: var(--cd-radius-lg);
+  --radius-lg: var(--cd-radius-lg);
+  --font-sans: var(--cd-font-sans);
+  --font-mono: var(--cd-font-mono);
+  --cd-font-heading: var(--font-sans);
+  --cd-docs-article: 53.75rem;
 }
 
-:root {
-  --font-sans: var(--font-geist-sans, "Geist"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-geist-mono, "Geist Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --cd-font-heading: var(--font-sans);
+/* Better Auth's columns: a 300 px sidebar from md and a 280 px table of contents from xl. Fumadocs sets 268 px on
+   #nd-docs-layout:has(...) inside its own breakpoints; the doubled id wins on specificity. */
+@media (min-width: 768px) {
+  #nd-docs-layout#nd-docs-layout {
+    --fd-sidebar-width: 300px;
+  }
+}
+
+@media (min-width: 1280px) {
+  #nd-docs-layout#nd-docs-layout {
+    --fd-toc-width: 280px;
+  }
 }
 
 body {
@@ -36,29 +49,20 @@ body {
  * to ink soft, and DELETE, an error and the required marks to the kit's warn, in light and in dark. Outside dark a
  * -400 step only colors a required mark, an error line or a repeated path. Nothing else on the docs uses these steps.
  */
-:root {
-  --color-green-600: #44403c;
-  --color-blue-600: #44403c;
-  --color-yellow-600: #44403c;
-  --color-orange-600: #44403c;
-  --color-green-500: #44403c;
-  --color-red-600: #b91c1c;
-  --color-red-500: #b91c1c;
-  --color-green-400: #44403c;
-  --color-blue-400: #44403c;
-  --color-yellow-400: #44403c;
-  --color-orange-400: #44403c;
-  --color-red-400: #b91c1c;
-}
-
+:root,
 .dark {
-  --color-green-500: #d6d3d1;
-  --color-red-500: #f87171;
-  --color-green-400: #d6d3d1;
-  --color-blue-400: #d6d3d1;
-  --color-yellow-400: #d6d3d1;
-  --color-orange-400: #d6d3d1;
-  --color-red-400: #f87171;
+  --color-green-600: var(--cd-text-secondary);
+  --color-blue-600: var(--cd-text-secondary);
+  --color-yellow-600: var(--cd-text-secondary);
+  --color-orange-600: var(--cd-text-secondary);
+  --color-green-500: var(--cd-text-secondary);
+  --color-red-600: var(--cd-state-failed-text);
+  --color-red-500: var(--cd-state-failed-text);
+  --color-green-400: var(--cd-text-secondary);
+  --color-blue-400: var(--cd-text-secondary);
+  --color-yellow-400: var(--cd-text-secondary);
+  --color-orange-400: var(--cd-text-secondary);
+  --color-red-400: var(--cd-state-failed-text);
 }
 
 /* The playground's required marks at full strength: at 80% the kit's warn falls under 4.5 on paper. */
@@ -66,19 +70,19 @@ body {
   color: var(--color-red-400);
 }
 
-/* The page title: Geist 600 with tight tracking, 32 px on a phone to 40 px on a desktop (--cd-size-docs-h1). */
+/* The page title: Geist 600 at 28 px with tight tracking, Better Auth's size on every width. */
 .cd-docs-title {
   font-family: var(--cd-font-heading);
   font-weight: 600;
-  font-size: var(--cd-size-docs-h1);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
-/* The page's type: H2 in Geist 600 at 26 to 28 px (never under 24) with tight tracking, H3 and H4 in Geist 600, body
-   in full ink at the kit's 1.625 leading, the lede in ink soft. Headings inside a not-prose block (cards, the API
-   reference's own panels) keep Fumadocs' type. */
+/* The page's type, at Better Auth's measurements: H2 in Geist 600 at 24 px with 48 px above and 24 px below, H3 at
+   18 px and H4 at 16 px in Geist 600, body 18 px on 28 px lines in full ink, the lede in secondary text. Headings
+   inside a not-prose block (cards, the API reference's own panels) keep Fumadocs' type. */
 .prose :where(h2, h3, h4):not(:where([class~=not-prose], [class~=not-prose] *)) {
   text-wrap: balance;
 }
@@ -86,11 +90,11 @@ body {
 .prose :where(h2):not(:where([class~=not-prose], [class~=not-prose] *)) {
   font-family: var(--cd-font-heading);
   font-weight: 600;
-  font-size: var(--cd-size-docs-h2);
-  line-height: 1.2;
-  letter-spacing: -0.03em;
-  margin-top: 2.25em;
-  margin-bottom: 0.6em;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  letter-spacing: -0.025em;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .prose :where(h3):not(:where([class~=not-prose], [class~=not-prose] *)) {
@@ -108,25 +112,25 @@ body {
 
 .prose {
   --tw-prose-body: var(--color-fd-foreground);
-  line-height: 1.625;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.prose :where(h3):not(:where([class~=not-prose], [class~=not-prose] *)) {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
 }
 
 .cd-docs-lede {
   color: var(--cd-text-secondary);
-  font-size: var(--cd-size-docs-lede);
-  line-height: 1.5;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
 }
 
-/* The article column: 720 px of text like a marketing article (DESIGN.md 4), on every page but the full-width API
-   reference. The page keeps Fumadocs' padding around it. */
+/* The article column: Better Auth's 860 px measure on every page but the full-width API reference, inside Fumadocs'
+   own padding. */
 #nd-page[data-full="false"] {
-  max-width: calc(var(--cd-article) + 3rem);
-}
-
-@media (min-width: 1280px) {
-  #nd-page[data-full="false"] {
-    max-width: calc(var(--cd-article) + 4rem);
-  }
+  max-width: var(--cd-docs-article);
 }
 
 /* Links as the kit draws them: ink, weight 500, a 1 px underline 3 px under the text, 2 px on hover. */
@@ -139,9 +143,10 @@ body {
   text-decoration-thickness: 2px;
 }
 
-/* Inline code: Geist Mono 13 px on paper 2 with a hairline, the kit's 6 px chip radius. */
+/* Inline code: Geist Mono on the band surface with a hairline and the site's near-square corner. */
 .prose :where(code):not(:where([class~=not-prose], [class~=not-prose] *)) {
-  border-radius: 6px;
+  border-radius: var(--cd-radius-md);
+  font-size: 0.875em;
 }
 
 /* Counts, limits and prices line up in tables. */
@@ -149,8 +154,8 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Code cards and callouts: the kit's light card with a 1 px line, the 14 px card radius and no resting shadow. A
-   Fumadocs callout has no class of its own, only the --callout-color it sets inline. */
+/* Code cards and callouts: a hairline card, the site's corner and no resting shadow. A Fumadocs callout has no class
+   of its own, only the --callout-color it sets inline. */
 figure.shiki,
 div[style*="--callout-color"] {
   box-shadow: none;
@@ -233,8 +238,8 @@ div[style*="--callout-color"] {
 [data-search-full] {
   min-height: 40px;
   padding-inline: 12px 8px;
-  border-radius: 8px;
-  border-color: var(--color-fd-border);
+  border-radius: var(--cd-radius-md);
+  border-color: var(--cd-hair-strong);
   background: var(--color-fd-background);
   color: var(--color-fd-muted-foreground);
   font-size: 0.875rem;
@@ -249,7 +254,7 @@ div[style*="--callout-color"] {
 [data-search-full] kbd {
   min-width: 22px;
   padding-inline: 5px;
-  border-radius: 4px;
+  border-radius: var(--cd-radius-sm);
   border-color: var(--color-fd-border);
   background: var(--color-fd-muted);
   color: var(--cd-text-secondary);
@@ -257,63 +262,6 @@ div[style*="--callout-color"] {
   font-size: 12px;
   line-height: 20px;
   text-align: center;
-}
-
-/* The section switch (src/components/section-switch.tsx): four links in a two by two grid of hairline cells; the
-   current one is filled with ink. 36 px cells, 44 px where the pointer is coarse. */
-.cd-sections ul {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--color-fd-border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-fd-border);
-}
-
-.cd-sections li {
-  display: flex;
-  background: var(--color-fd-card);
-}
-
-.cd-sections__link {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  min-height: 36px;
-  padding-inline: 10px;
-  color: var(--cd-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.2;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background-color 150ms, color 150ms;
-}
-
-.cd-sections__link:hover {
-  background: var(--color-fd-muted);
-  color: var(--color-fd-foreground);
-}
-
-.cd-sections__link[aria-current="true"] {
-  background: var(--color-fd-primary);
-  color: var(--color-fd-primary-foreground);
-}
-
-.cd-sections__link:focus-visible {
-  outline: 2px solid var(--color-fd-ring);
-  outline-offset: -4px;
-  border-radius: 6px;
-}
-
-@media (pointer: coarse) {
-  .cd-sections__link {
-    min-height: 44px;
-  }
 }
 
 /* The sidebar's foot (src/components/sidebar-account.tsx): the account buttons above the icon row, then the two
@@ -337,7 +285,7 @@ div[style*="--callout-color"] {
   justify-content: center;
   min-height: 36px;
   padding-inline: 12px;
-  border-radius: 8px;
+  border-radius: var(--cd-radius-md);
   border: 1px solid transparent;
   font-size: 0.875rem;
   font-weight: 500;
@@ -353,13 +301,13 @@ div[style*="--callout-color"] {
 }
 
 .cd-btn--primary:hover {
-  background: var(--cd-text-secondary);
+  background: var(--cd-action-primary-hover);
 }
 
 .cd-btn--secondary {
   background: var(--color-fd-card);
   color: var(--color-fd-foreground);
-  border-color: var(--color-fd-muted-foreground);
+  border-color: var(--cd-hair-strong);
 }
 
 .cd-btn--secondary:hover {
@@ -404,8 +352,9 @@ div[style*="--callout-color"] {
   }
 }
 
-/* Stone pills: a neutral gray badge for framework and language labels. .cd-pill is for markup; the tab triggers of a
-   code block group (cURL, Node and the like) take the same shape, and the selected one fills with ink. */
+/* Mono pills: a neutral badge for framework and language labels. .cd-pill is for markup; the tab triggers of a code
+   block group (cURL, Node and the like, and the package manager tabs) take the same shape, and the selected one
+   fills with ink, as Better Auth's install tabs do. */
 .cd-pill,
 .prose [role="tablist"] > [role="tab"] {
   display: inline-flex;
@@ -413,23 +362,16 @@ div[style*="--callout-color"] {
   gap: 6px;
   min-height: 24px;
   padding: 2px 10px;
-  border: 1px solid #e7e5e4;
-  border-radius: 9999px;
-  background: #f5f5f4;
-  color: #57534e;
+  border: 1px solid var(--cd-hair-strong);
+  border-radius: var(--cd-radius-md);
+  background: var(--cd-tint);
+  color: var(--cd-text-secondary);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: 0;
   white-space: nowrap;
-}
-
-.dark .cd-pill,
-.dark .prose [role="tablist"] > [role="tab"] {
-  border-color: #44403c;
-  background: #292524;
-  color: #d6d3d1;
 }
 
 .prose [role="tablist"]:has(> [role="tab"]) {
@@ -442,17 +384,11 @@ div[style*="--callout-color"] {
 }
 
 .prose [role="tablist"] > [role="tab"]:hover {
-  border-color: #a8a29e;
-  color: #1c1917;
+  border-color: var(--cd-text-muted);
+  color: var(--cd-text-primary);
 }
 
-.dark .prose [role="tablist"] > [role="tab"]:hover {
-  border-color: #78716c;
-  color: #fafaf9;
-}
-
-.prose [role="tablist"] > [role="tab"][data-state="active"],
-.dark .prose [role="tablist"] > [role="tab"][data-state="active"] {
+.prose [role="tablist"] > [role="tab"][data-state="active"] {
   border-color: var(--color-fd-primary);
   background: var(--color-fd-primary);
   color: var(--color-fd-primary-foreground);
@@ -508,7 +444,7 @@ div[style*="--callout-color"] {
 .cd-footer__links a:focus-visible {
   outline: 2px solid var(--color-fd-ring);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--cd-radius-sm);
 }
 
 @media (pointer: coarse) {
@@ -543,22 +479,4 @@ button[aria-controls]:has(> svg.cd-section-icon) > svg.cd-section-icon {
 
 button[aria-controls]:has(> svg.cd-section-icon)[data-state="open"] > svg.cd-section-icon {
   color: var(--color-fd-foreground);
-}
-
-/* Page head at Better Auth's sizes: the title 28 px, the description 18 px in ink soft. */
-.cd-docs-title {
-  font-size: 1.75rem;
-  line-height: 1.2;
-  letter-spacing: -0.03em;
-}
-
-.cd-docs-lede {
-  font-size: 1.125rem;
-}
-
-/* The article column on a desktop: 860 px with 32 px side padding, Better Auth's measure. */
-@media (min-width: 1280px) {
-  #nd-page[data-full="false"] {
-    max-width: 53.75rem;
-  }
 }
