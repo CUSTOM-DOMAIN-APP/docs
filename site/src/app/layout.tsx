@@ -37,7 +37,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script id="cd-auth-hint" dangerouslySetInnerHTML={{ __html: AUTH_HINT_SCRIPT }} />
       </head>
       <body className="flex min-h-screen flex-col">
-        <RootProvider>
+        {/* The search dialog (and its index client) loads when a reader opens search, not on every page view. */}
+        <RootProvider search={{ preload: false }}>
           {children}
           <SiteFooter />
         </RootProvider>

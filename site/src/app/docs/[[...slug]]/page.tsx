@@ -26,7 +26,7 @@ import { markdownPath } from "@/lib/markdown";
 import { machineText } from "@/lib/machine-text";
 import { getMDXComponents } from "@/components/mdx";
 import { openapi } from "@/lib/openapi";
-import { OpenAPIPage } from "@/lib/openapi-page";
+import { OpenAPIPage } from "@/lib/openapi-page-lazy";
 import type { GeneratedPageProps } from "fumadocs-openapi";
 
 type Params = { slug?: string[] };
