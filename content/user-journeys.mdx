@@ -1,6 +1,7 @@
 ---
 title: User journeys
-description: "Map every user-facing CustomDomain™ flow to the surface that implements it: widget for end customers, console and API for developers, and MCP for AI agents."
+description: "Which surface handles each user flow."
+metaDescription: "Map every user-facing CustomDomain™ flow to the surface that implements it: widget for end customers, console and API for developers, and MCP for AI agents."
 ---
 
 The completeness map: every user-facing flow and the surface that implements it.
@@ -13,7 +14,7 @@ The completeness map: every user-facing flow and the surface that implements it.
   **widget**.
 - **Platform operator**: runs and monitors the stack.
 
-## End-customer journeys (widget)
+## End-customer journeys in the widget [#end-customer-journeys-widget]
 
 | # | As a customer, I want to… | Surface / path |
 | --- | --- | --- |
@@ -27,7 +28,7 @@ The completeness map: every user-facing flow and the surface that implements it.
 | C8 | Forward my setup to a colleague to finish | Widget → Share (`loadSharedFlow`, `POST /v1/sharing/connect` → `GET /share/{token}`) |
 | C9 | Buy a new domain from within the widget | Widget → Buy (`purchaseDomain`, `POST /v1/registrar/checkout` → `/fulfill`) |
 
-## Developer journeys (console + API)
+## Developer journeys in the console and API [#developer-journeys-console--api]
 
 | # | As a developer, I want to… | Surface / path |
 | --- | --- | --- |
@@ -46,10 +47,10 @@ The completeness map: every user-facing flow and the surface that implements it.
 | D13 | Point an agent at the MCP server | Console → More → MCP server (`/app/mcp`: endpoint, client setup for Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT and others, a connection test). Switch it on under Settings → Features |
 | D14 | Review and revoke what agents may do | Console → More → Agents (`/app/settings/agents`: each grant's agent, application, last use and scopes, with Revoke). It switches on after your first approval on the consent page (`/agent/consent`) |
 
-## AI-agent journeys (MCP)
+## AI agent journeys through MCP [#ai-agent-journeys-mcp]
 
 An agent drives domains through the [MCP server](/docs/mcp/overview), hosted at
-`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API with forty-six tools.
+`https://mcp.customdomain.ai/mcp`, which wraps the same `/v1` API in tools an agent can call.
 A person approves what the agent may do first: see
 [Agent access](/docs/agents/overview).
 

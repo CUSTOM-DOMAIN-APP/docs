@@ -1,12 +1,13 @@
 ---
 title: Authentication and API keys
-description: "The four credential types (API keys, widget JWTs, agent tokens and operator secrets), their blast radius, member roles, and the unauthenticated surfaces."
+description: "The credentials CustomDomain™ accepts and what each one can do."
+metaDescription: "The four credential types (API keys, widget JWTs, agent tokens and operator secrets), their blast radius, member roles, and the unauthenticated surfaces."
 ---
 
 Authenticated requests send `Authorization: Bearer <token>`. Four credential
 types share the surface, each with a different blast radius.
 
-## API keys (tenant)
+## Tenant API keys [#api-keys-tenant]
 
 - Prefix `cd_live_` (production) or `cd_test_` (staging and development),
   followed by 32 lowercase hex characters, sent as
@@ -116,14 +117,14 @@ The `client_secret` is **not** an API key: its only job is to mint
 client secret, so you mint its tokens that way. See
 [Widget tokens](/docs/authentication/widget-tokens) for which path applies.
 
-## Widget JWTs (browser)
+## Widget JWTs in the browser [#widget-jwts-browser]
 
 Short-lived JWTs minted server-side with `POST /v1/tokens`, with an API key as
 the bearer or with the application's client secret. Scoped to one application and, optionally, one domain. They authorize only the browser-facing
 Connect endpoints. This is the only credential that ever reaches the browser;
 see [Widget tokens](/docs/authentication/widget-tokens).
 
-## Agent tokens (delegated)
+## Delegated agent tokens [#agent-tokens-delegated]
 
 When a person approves an AI agent, the agent receives a delegated **agent
 token** instead of a key. It is an **ES256** JWT signed by the control plane and
@@ -154,7 +155,7 @@ working at once: the control plane checks the grant on every call, and the MCP
 answers a refused call with HTTP `401`. See
 [Agent access](/docs/agents/overview) and [The OAuth flow](/docs/agents/oauth-flow).
 
-## Management & provision secrets (operator)
+## Operator management and provision secrets [#management--provision-secrets-operator]
 
 - The **management key** gates operator provisioning (`POST /v1/tenants`,
   `GET /v1/tenants/{id}`) and cross-tenant reads (e.g. the full audit log). In

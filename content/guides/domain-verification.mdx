@@ -1,6 +1,8 @@
 ---
-title: "Domain verification: publish another service's TXT record"
-description: "When your app asks customers to add a TXT record for another service (single sign-on, Search Console, a Bluesky handle), hand that record to CustomDomain™: written or shown exactly, checked, then a webhook."
+title: "Domain verification"
+metaTitle: "Domain verification: publish another service's TXT record | CustomDomain docs"
+description: "Publish another service's TXT record on a customer's domain."
+metaDescription: "When your app asks customers to add a TXT record for another service (single sign-on, Search Console, a Bluesky handle), hand that record to CustomDomain™: written or shown exactly, checked, then a webhook."
 ---
 
 Many services ask a customer to prove they control a domain by adding a DNS
@@ -80,7 +82,7 @@ refused, and the customer goes on with the manual steps.
 
 The record formats below are each service's own. The tokens are placeholders.
 
-### WorkOS (single sign-on and domain claims)
+### WorkOS, single sign-on and domain claims [#workos-single-sign-on-and-domain-claims]
 
 WorkOS documents the record as Name `domain-to-verify.com`, Value
 `verification_token=` followed by the token it returns, and checks for it
@@ -94,7 +96,7 @@ When `connection.live` arrives, read the domain's state from WorkOS, which says
 the domain endpoint can be polled once verification has started. WorkOS marks a
 domain `failed` if it has not verified within thirty days.
 
-### Google Search Console (Domain property)
+### Google Search Console, Domain property [#google-search-console-domain-property]
 
 A Domain property is verified by DNS only. Search Console gives a `TXT` value
 for the root of the domain.

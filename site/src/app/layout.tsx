@@ -12,10 +12,26 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { AUTH_HINT_SCRIPT } from "@/lib/auth-hint";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import localFont from "next/font/local";
 import { SiteFooter } from "./site-footer";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import "./globals.css";
+
+// Geist and Geist Mono (SIL Open Font License, src/fonts/LICENSE-Geist.txt), cut by fonttools to the characters
+// the docs use (Latin, Latin Extended A, Cyrillic, punctuation, arrows, check marks): about 48 KB each instead of 70.
+// To rebuild them, run pyftsubset on the geist package's variable files with the unicode list in src/fonts/README.md.
+const GeistSans = localFont({
+  src: "../fonts/Geist-Variable-docs.woff2",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+const GeistMono = localFont({
+  src: "../fonts/GeistMono-Variable-docs.woff2",
+  variable: "--font-geist-mono",
+  adjustFontFallback: false,
+  fallback: ["ui-monospace", "SFMono-Regular", "Roboto Mono", "Menlo", "Monaco", "Liberation Mono", "DejaVu Sans Mono", "Courier New", "monospace"],
+  weight: "100 900",
+});
 
 const fontVariables = `${GeistSans.variable} ${GeistMono.variable}`;
 
@@ -37,7 +53,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script id="cd-auth-hint" dangerouslySetInnerHTML={{ __html: AUTH_HINT_SCRIPT }} />
       </head>
       <body className="flex min-h-screen flex-col">
-        <RootProvider>
+        {/* The search dialog (and its index client) loads when a reader opens search, not on every page view. */}
+        <RootProvider search={{ preload: false }} components={{ Link: HoverPrefetchLink }}>
           {children}
           <SiteFooter />
         </RootProvider>

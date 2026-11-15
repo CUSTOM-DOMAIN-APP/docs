@@ -1,13 +1,15 @@
 ---
 title: Connection paths by provider
+icon: Plug
 metaTitle: How CustomDomain chooses a connection path
-description: "How CustomDomain™ picks the way in for each domain: provider sign-in, one-click setup, secure sign-in, an API key, records added by hand or DNS hosting."
+description: "How we choose the way to connect each domain."
+metaDescription: "How CustomDomain™ picks the way in for each domain: provider sign-in, one-click setup, secure sign-in, an API key, records added by hand or DNS hosting."
 ---
 
-When a customer enters a domain, we look up its nameservers to see who hosts its
-DNS, then offer the easiest way in that works at that provider. There are six
-[ways to connect](/docs/concepts/glossary#ways-to-connect), and the first five are
-offered in this order:
+When a customer enters a domain, we look up its nameservers. That tells us who
+hosts its DNS. We then offer the easiest way in that works at that provider.
+There are six [ways to connect](/docs/concepts/glossary#ways-to-connect), and
+the first five are offered in this order:
 
 1. **Sign in with the provider** (OAuth) or **approve access at the provider**:
    one click and nothing to paste. Whether the sign-in is kept afterwards
@@ -16,12 +18,12 @@ offered in this order:
    template after the customer approves it on the provider's site, then sends
    the customer back.
 3. **Secure sign-in**: for a provider that offers no sign-in a third party can
-   use. The customer signs in to the provider in a temporary browser, and where
-   the provider allows it our software makes a lasting API key there; otherwise
-   it edits the provider's DNS page for that one domain. A change that only adds
-   records goes ahead by itself; one that replaces or removes a record waits for
-   the customer's approval. Offered to selected workspaces for now (see
-   [With secure sign-in](#with-secure-sign-in)).
+   use. The customer signs in to the provider in a temporary browser. Where the
+   provider allows it, our software makes a lasting API key there. Otherwise it
+   edits the provider's DNS page for that one domain. A change that only adds
+   records goes ahead by itself. A change that replaces or removes a record
+   waits for the customer's approval. It is offered to selected workspaces for
+   now (see [With secure sign-in](#with-secure-sign-in)).
 4. **An API key**: the customer creates a scoped credential at the provider and
    pastes it; we write the records for them. At Amazon Route 53 an **access
    role** comes first: the customer lets our AWS account change the zone, with no
@@ -29,23 +31,20 @@ offered in this order:
 5. **Add the records**: the exact rows to copy, with provider-specific steps and a
    link to the provider's DNS page. This works at every provider.
 
-The sixth, **DNS hosting**, is offered beside these rather than after them: the
-domain's owner changes its nameservers once, where the domain was bought, and
-CustomDomain™ hosts the zone and writes every record. Your customers are offered it
-only when your application turns it on. See [Managed DNS](/docs/dns/managed-dns).
+The sixth, **DNS hosting**, is offered beside these, not after them. The
+domain's owner changes its nameservers once, where the domain was bought.
+CustomDomain™ then hosts the zone and writes every record. Your customers are
+offered it only when your application turns it on. See [Managed
+DNS](/docs/dns/managed-dns).
 
-CustomDomain™ knows more than 200 DNS hosts, registrars and domain platforms,
-among them every one of the 100 largest registrars (by domains under
-management in ICANN's registry reports for May 2026), and names most of them
-from the domain's nameservers. Knowing a provider is not the same as writing
-its records: most registrars give no third party a way to change DNS, so for
-them adding the records, with that provider's own steps (or a secure sign-in where
-one is offered), is the way in. The tables
-below are what the hosted service offers as of 2026-10-09. On 2026-10-31 the
-census lists 217: 73 have an automatic path (6 provider OAuth, 1 Domain
-Connect, 66 scoped API key) and the other 144 are connected by hand. The
-adapters are a separate count: `GET /v1/providers` lists 77, and every one of
-them belongs to a provider the census lists.
+CustomDomain™ knows many DNS hosts, registrars and domain platforms,
+and names most of them from the domain's nameservers. Knowing a provider is not
+the same as writing its records. Most registrars give no third party a way to
+change DNS. For them, the way in is adding the records with that provider's own
+steps, or a secure sign-in where one is offered. The tables below show what the
+hosted service offers as of 2026-10-09. The live list, with each provider's way
+in, is at `GET /v1/providers/census`. The adapters are a separate list at `GET
+/v1/providers`. Every adapter belongs to a provider the census lists.
 
 The console and the widget read the same verdict from
 `POST /v1/domains:check` (its `rails` block and `recommended_rail`), so they
@@ -73,13 +72,13 @@ records only you know (SES DKIM, a verification `TXT`), see
 
 On the hosted service, a sign-in or approval at Cloudflare, DigitalOcean,
 DNSimple, Linode, Netlify, Porkbun, Vercel or WordPress.com is kept by default
-as an encrypted grant, so we can put the records back later and remove them
+as an encrypted grant. That lets us put the records back later and remove them
 when the domain is disconnected, without asking again. In the console, untick
-**Keep this sign-in** to use it once instead; the widget tells the customer the
-permission is kept. Every other sign-in (Azure DNS, Dynadot
-and Unstoppable Domains) is used once to write the records and then dropped,
-which means we cannot repair those records later without asking again. See
-[Managed connections](/docs/connect-flow/managed-connections#managed-sign-in-grants).
+**Keep this sign-in** to use it once instead. The widget tells the customer the
+permission is kept. Every other sign-in (Azure DNS, Dynadot and Unstoppable
+Domains) is used once to write the records and then dropped. So we cannot repair
+those records later without asking again. See [Managed
+connections](/docs/connect-flow/managed-connections#managed-sign-in-grants).
 
 
 ### Built, but not switched on yet
@@ -92,44 +91,45 @@ today, so none of them appears in the console or the widget:
   hosted service has none, so OVHcloud connects with an application key.
 - **Sign in through the provider's MCP server** (Hostinger, Namecheap,
   Spaceship, XServer Domain and Muumuu Domain): the provider's own MCP server
-  signs the customer in and its DNS tools write the records. Each one is
+  signs the customer in, and its DNS tools write the records. Each one is
   switched on only after the provider approves CustomDomain™ and a live test
-  passes. Until then Hostinger, Namecheap and Spaceship connect with an API key
-  (Namecheap only for accounts that qualify), and XServer Domain and Muumuu
-  Domain take the records by hand.
+  passes. Until then, Hostinger, Namecheap and Spaceship connect with an API key
+  (Namecheap only for accounts that qualify). XServer Domain and Muumuu Domain
+  take the records by hand.
 
 ### Speaks one-click setup, but has not onboarded our templates
 
 GoDaddy, IONOS, Aruba and Squarespace answer Domain Connect discovery but have
-not onboarded our templates, so the console does not offer a one-click button
+not onboarded our templates. So the console does not offer a one-click button
 that would end on the provider's error page. Cloudflare and Vercel answer too
-and serve none of our templates, and WordPress.com has not onboarded them
-either; for those three, the sign-in is the one-click path. Until each provider
-onboards the templates, GoDaddy and IONOS connect with secure sign-in, where it is
-offered, or an API key; Squarespace connects with secure sign-in, where it is
-offered, or by hand; and Aruba takes the records by hand.
+and serve none of our templates. WordPress.com has not onboarded them either.
+For those three, the sign-in is the one-click path. Until each provider onboards
+the templates, here is how they connect. GoDaddy and IONOS use secure sign-in,
+where it is offered, or an API key. Squarespace uses secure sign-in, where it is
+offered, or records by hand. Aruba takes the records by hand.
 
 ## With secure sign-in
 
 Secure sign-in is for providers that offer no sign-in a third party can use. The
-hosted service has it on at eight of them, for the workspaces it is switched on
-for: Namecheap, GoDaddy, IONOS, Name.com, Squarespace, Hover, Spaceship and
-Hostinger. At six of them it also makes a lasting API key on the provider's own API
-page (Namecheap, GoDaddy, Name.com, Spaceship, Hostinger, and IONOS's US site), and
-the domain is then connected through the provider's API like any other key. At the
-others, and wherever no key can be made, our software edits the provider's DNS page
-for that one domain once the customer approves the changes. Network Solutions and
-Wix are not offered yet. `POST /v1/domains:check` says per domain whether it runs
-(`rails.cloud_browser`), and where it makes a key, `rails.cloud_browser.key` says
-what the key can do beyond DNS (`rights`) and when it ends. See [Secure sign-in](/docs/guides/secure-sign-in#which-providers), and
+hosted service has it on at Namecheap, GoDaddy, IONOS, Name.com, Squarespace,
+Hover, Spaceship and Hostinger, for the workspaces it is switched on for. At
+Namecheap, GoDaddy, Name.com, Spaceship, Hostinger and IONOS's US site, it also
+makes a lasting API key on the provider's own API page. The domain is then
+connected through the provider's API like any other key. Elsewhere, and wherever
+no key can be made, our software edits the provider's DNS page for that one
+domain once the customer approves the changes. Network Solutions and Wix are not
+offered yet. `POST /v1/domains:check` says per domain whether it runs
+(`rails.cloud_browser`). Where it makes a key, `rails.cloud_browser.key` says
+what the key can do beyond DNS (`rights`) and when it ends. See [Secure
+sign-in](/docs/guides/secure-sign-in#which-providers), and
 [GoDaddy](/docs/dns/provider-setup#godaddy) and
 [Namecheap](/docs/dns/provider-setup#namecheap) for those two.
 
 ## With an API key
 
-The console asks for each part as its own labeled field, links the page where
-the credential is created, and lists the steps; see
-[Provider setup](/docs/dns/provider-setup) for every provider's steps.
+The console asks for each part in its own labeled field. It links the page where
+the credential is created and lists the steps. See [Provider
+setup](/docs/dns/provider-setup) for every provider's steps.
 
 | Provider | What you create | Before you start |
 | --- | --- | --- |
@@ -207,22 +207,21 @@ the credential is created, and lists the steps; see
 `100.48.24.176` is the address the hosted service's DNS writes come from
 (the control plane's `CONNECT_CLIENT_IP`).
 
-Plesk, DirectAdmin and Exoscale are chosen by the customer, and nothing detects
-them from a domain's nameservers. Plesk and DirectAdmin run on a hosting company's
-own servers, which carry that company's nameservers, the same as cPanel hosts; an
-Exoscale DNS zone uses DNSimple's nameservers, so a domain there is detected as
-DNSimple.
+Plesk, DirectAdmin and Exoscale are chosen by the customer. Nothing detects them
+from a domain's nameservers. Plesk and DirectAdmin run on a hosting company's
+own servers, which carry that company's nameservers, the same as cPanel hosts.
+An Exoscale DNS zone uses DNSimple's nameservers, so a domain there is detected
+as DNSimple.
 
 The census also lists PowerDNS as an API key provider. PowerDNS is software
-people run on their own servers, and the hosted service has no way to be told
-where a customer's server is, so it is not a provider the hosted service can
-write to. Of the 77 adapters, the hosted service writes records through
-74: the other three are PowerDNS and the two sign-ins through a provider's MCP
-server (XServer Domain, Muumuu Domain) that are built but switched off. Since
-2026-10-21 the census also lists the eleven providers with an adapter that it
-used to leave out: Azure DNS, Bunny DNS, Constellix, deSEC, DNS Made Easy,
-GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr, each as an
-API key provider.
+people run on their own servers. The hosted service has no way to be told where
+a customer's server is, so it cannot write to PowerDNS. The hosted service
+writes records through every adapter except PowerDNS and the two sign-ins
+through a provider's MCP server (XServer Domain, Muumuu Domain), which are built
+but switched off. Since 2026-10-21 the census also lists the providers with an
+adapter that it used to leave out, each as an API key provider: Azure DNS, Bunny
+DNS, Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS,
+Njalla, PowerDNS and Vultr.
 
 ### Using a provider token through the API
 
@@ -291,8 +290,8 @@ yourself:
 ## By hand, with provider-specific steps
 
 Every provider can be connected by adding the records the console shows, with
-a link to the provider's DNS page where we know it. For 135 providers and
-platforms the widget also shows that provider's own steps (where the DNS page
+a link to the provider's DNS page where we know it. For the providers and platforms below, the widget
+also shows that provider's own steps (where the DNS page
 is, what the Name field wants for the root, and the pitfalls): 123 Reg, Akamai
 Cloud (Linode), Alibaba Cloud DNS, ALL-INKL.COM, Amazon Route 53, Arsys,
 Aruba.it, Atak Domain, Azure DNS, BigCommerce, BigRock, Bluehost, Bolt
@@ -319,8 +318,8 @@ other provider gets the same records with general steps.
 
 Wholesale, corporate and drop-catch registrars rarely give the end customer a
 DNS panel of their own. Their entries in `GET /v1/providers/census` say who
-edits the records instead: the reseller that sold the domain, the company's
-domain administrator, or NameBright for a domain won at DropCatch.
+edits the records instead. That is the reseller that sold the domain, the
+company's domain administrator, or NameBright for a domain won at DropCatch.
 
 ## Domains bought through a site builder or shop
 
@@ -329,41 +328,40 @@ product, and then the records go in on that product's DNS screen. Twenty
 platforms where people buy or keep a domain (mostly those, plus
 DomainDiscount24 and Just Host) are recognized with their own steps:
 
-- **With nameservers of their own**, named from the nameservers: Microsoft
-  365, Fastmail, Turbify, SITE123, BigCommerce, Jimdo and DomainDiscount24
-  (which registers domains bought when signing up for Google Workspace), plus
-  Just Host, whose zones are named Bluehost because Just Host now sends its
+- **With nameservers of their own**, named from the nameservers: Microsoft 365,
+  Fastmail, Turbify, SITE123, BigCommerce, Jimdo and DomainDiscount24 (which
+  registers domains bought when signing up for Google Workspace). Just Host is
+  here too. Its zones are named Bluehost, because Just Host now sends its
   customers there.
 - **On another provider's nameservers**, offered in the widget's provider list
   with their steps: Canva, Strikingly, Webnode, Lovable, Bolt, HighLevel,
   Kajabi, Elementor, Tumblr, Square Online, Yola and Odoo Online.
 
-Where a platform keeps its domains on another provider's nameservers,
-detection would name that provider, whose sign-in or API key cannot reach a
-zone held in the platform's account. So when the root also points at an
-address only that platform hands out, detection names the platform instead and
-shows its steps: a Shopify store on Google Cloud DNS's nameservers, a Tumblr
-domain on WordPress.com's, and a Canva domain on OpenSRS's shared DNS. The
-domain is then connected by adding the records in the platform's own settings.
+Some platforms keep their domains on another provider's nameservers. Detection
+would then name that provider, whose sign-in or API key cannot reach a zone held
+in the platform's account. So when the root also points at an address only that
+platform hands out, detection names the platform instead and shows its steps.
+Examples are a Shopify store on Google Cloud DNS's nameservers, a Tumblr domain
+on WordPress.com's, and a Canva domain on OpenSRS's shared DNS. The domain is
+then connected by adding the records in the platform's own settings.
 
 ## Where keys are kept
 
 Sign-ins and one-click setup store nothing unless the connection is
-[managed](/docs/connect-flow/managed-connections). On the hosted service a
+[managed](/docs/connect-flow/managed-connections). On the hosted service, a
 sign-in at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel
-or WordPress.com is kept that way by default (in the console, untick **Keep
-this sign-in** to use it once). An API key is used for the write and kept only
-when the customer leaves **Remember this key** ticked in the console (through
-the API, only when it is connected as a
-[provider account](/docs/connect-flow/provider-accounts)). A kept key or
-sign-in is encrypted, used only server-side, and revocable any
-time on the console's **Connected accounts** page. Account passwords,
-short-lived tokens and tokens that cannot be limited to DNS (ALL-INKL.COM,
-Arsys, Binary Lane, Google Cloud DNS, Azure DNS, INWX, Loopia, Openprovider,
-Plesk, Subreg) are never kept. See
-[Remembering a key](/docs/dns/provider-setup#remembering-a-key-optional).
+or WordPress.com is kept that way by default. In the console, untick **Keep this
+sign-in** to use it once. An API key is used for the write. It is kept only when
+the customer leaves **Remember this key** ticked in the console, or, through the
+API, when it is connected as a [provider
+account](/docs/connect-flow/provider-accounts). A kept key or sign-in is
+encrypted, used only on our servers, and revocable any time on the console's
+**Connected accounts** page. We never keep account passwords, short-lived
+tokens, or tokens that cannot be limited to DNS (ALL-INKL.COM, Arsys, Binary
+Lane, Google Cloud DNS, Azure DNS, INWX, Loopia, Openprovider, Plesk, Subreg).
+See [Remembering a key](/docs/dns/provider-setup#remembering-a-key-optional).
 
-## One-click setup (Rail A)
+## One-click setup, Rail A [#one-click-setup-rail-a]
 
 One-click setup uses the provider-hosted Domain Connect protocol and is
 redirect-based: the customer is sent to their provider, which applies a signed
@@ -374,10 +372,10 @@ synchronous redirect and the asynchronous variant are supported
 for providers that serve our templates.
 
 Every template we publish names our return domains (`syncRedirectDomain`:
-`api.customdomain.ai`, `app.customdomain.ai` and `customdomain.ai`), since
-version 2 of the templates was merged into the public Domain Connect template
-repository on 2026-09-29. So a synchronous apply always carries a signed
-return link: after the customer approves (or cancels) at the provider, the
-provider sends the browser back to us, the window closes, and the widget or
+`api.customdomain.ai`, `app.customdomain.ai` and `customdomain.ai`). That has
+been true since version 2 of the templates was merged into the public Domain
+Connect template repository on 2026-09-29. So a synchronous apply always carries
+a signed return link. After the customer approves or cancels at the provider,
+the provider sends the browser back to us. The window closes, and the widget or
 console that opened it learns the result. The records still count only once
-public DNS shows them; a return that says "done" is never taken as proof.
+public DNS shows them. A return that says "done" is never taken as proof.

@@ -1,12 +1,15 @@
 ---
 title: Connections
-description: "How a connection moves through pending, propagating, live and failed, the authoritative record set, how tenancy and idempotency work, and how drift is checked."
+icon: Activity
+description: "How a connection moves from pending to live."
+metaDescription: "How a connection moves through pending, propagating, live and failed, the authoritative record set, how tenancy and idempotency work, and how drift is checked."
 ---
 
-A **connection** is one customer domain being onboarded under an application. Its
+A **connection** is one customer domain being set up under an application. Its
 `id` doubles as the `jobId` the widget and webhooks report. Every connection
-carries an authoritative **desired record set** (the records that point the
-domain at the edge) and a **status**.
+carries a **desired record set** and a **status**. The desired record set is the
+list of records that point the domain at the edge, and it is the one source of
+truth for them.
 
 ## The connection lifecycle
 
@@ -30,50 +33,54 @@ The status machine is deliberately small:
 | `live` | Every desired record resolves to its intended value (see the note under Propagation to live on which types are value-checked). Re-applying records to a live connection moves it back to `propagating`. The edge serves TLS for the host (only when the record set includes an edge record; an email-only set is verified but never served). |
 | `failed` | A `propagating` connection's records never resolved within 24 hours (`propagation_timeout`). Only the poller sets it. **Not terminal.** See Retrying. |
 
-There is no separate ownership-challenge step. Control is proven **by the way
-itself**: a sign-in with the provider, a one-click setup apply, a secure sign-in
-to the account that holds the domain, or a scoped API key each demonstrate the
-customer controls the zone, and with DNS hosting the owner changes the domain's
-nameservers at its registrar. In the manual flow, the poller
-simply waits for the records to appear: a `pending` connection has no
-deadline (after 72 hours it is merely re-checked less often, with an honest
-`setup_incomplete` diagnosis).
+There is no separate ownership step. **The way to connect proves control.** A
+sign-in with the provider, a one-click setup, a secure sign-in to the account
+that holds the domain, or a scoped API key each shows the customer controls the
+zone. With DNS hosting, the owner changes the domain's nameservers at its
+registrar. When records are added by hand, we wait for them to appear. A
+`pending` connection has no deadline. After 72 hours it is checked less often,
+with the diagnosis `setup_incomplete`.
 
 ## Retrying
 
-`failed` is a diagnosis, not a tombstone. Three things revive a failed
-connection into `pending` with a fresh window and a cleared diagnosis:
-`POST /v1/connections/{id}:recheck` (the console's *Resume* / *Check now*),
-re-`POST /v1/connections` for the same domain (returns the revived row with
-`200`), and real traffic arriving at the edge for the host. The diagnosis that
-led to the failure stays readable in the meantime as `error_code` /
-`error_message`, and rides the webhook events.
+`failed` is a diagnosis, not an end. Three things move a failed connection back
+to `pending`, with a fresh window and a cleared diagnosis:
+
+- `POST /v1/connections/{id}:recheck`, which is *Resume* or *Check now* in the console.
+- `POST /v1/connections` again for the same domain. It returns the revived row with `200`.
+- Real traffic reaching the edge for the host.
+
+Until then you can still read the diagnosis in `error_code` and `error_message`,
+and on the webhook events.
 
 ## The authoritative record set
 
-`GET /v1/connections/{id}/records` returns the single source of truth the widget
-renders, the OAuth callback writes, and the poller verifies. Before anything is
-applied, the control-plane synthesizes the default edge record
-(`CNAME <host> → edge.customdomain.ai`, TTL 3600, or your configured edge
-target). Once a rail writes records, the stored set is returned instead.
+`GET /v1/connections/{id}/records` returns the one record set everything uses.
+The widget shows it, the provider sign-in writes it, and our checks verify it.
+Before anything is applied, it holds the default edge record:
+`CNAME <host>` to `edge.customdomain.ai`, TTL 3600, or your own edge target. Once
+a way to connect writes records, it returns the stored set instead.
 
-## Propagation → live
+## Propagation to live [#propagation--live]
 
-A background poller drains `propagating` and `pending` connections, resolving
-each desired record against public DNS with **value checking** (a CNAME must
-resolve to the expected target; an A/AAAA must contain the exact address; a
-TXT must contain the expected value). `MX`, `SPFM`, `SRV` and `CAA` records are
-written but not value-checked, so they count as satisfied. It
-looks for due connections every five seconds. A young connection is due every
+We check every `pending` and `propagating` connection against public DNS, and we
+check values, not just names:
+
+- A CNAME must resolve to the expected target.
+- An A or AAAA record must contain the exact address.
+- A TXT record must contain the expected value.
+
+`MX`, `SPFM`, `SRV` and `CAA` records are written but their values are not
+checked, so they count as found. We look for connections due a check every five
+seconds. A young connection is due every
 5 seconds for its first 5 minutes, then every 30 seconds until 15 minutes,
 every 2 minutes until an hour, and every 15 minutes after that; a rail's write
 makes it due at once. When the public resolver does not show a record yet
 (it may still remember the name as missing, or hold the old value), the check
 asks the zone's own nameservers, and every one that answers must serve the
 value, so a fresh write is usually verified within seconds.
-When all records resolve, the connection flips to `live` and `connection.live`
-fires exactly once, guarded by a compare-and-swap so the API and the worker
-can't double-fire.
+When all records resolve, the connection moves to `live` and `connection.live`
+fires exactly once, never twice.
 
 ## Error codes
 
@@ -92,7 +99,7 @@ see on a connection:
 | `spf_merge_failed` | An `SPFM` merge would exceed 10 lookup mechanisms or 255 characters |
 | `domain_already_connected` | Another account already serves this domain; the connection is not promoted to `live` |
 
-## Idempotency & tenancy
+## Idempotency and tenancy [#idempotency--tenancy]
 
 `POST /v1/connections` is idempotent per application + domain: if the app already
 has a non-failed connection for the domain, that connection is replayed (`200`)
@@ -104,8 +111,9 @@ application's. Cross-tenant ids return `404`, never another tenant's data.
 
 ## Drift
 
-After go-live, the [Monitor](/docs/webhooks/overview#event-catalog) sweep
-re-checks declared records against live DNS. If a record disappears or is
-repointed, `domain.record_missing` fires; when it returns, `domain.record_restored`
-fires, so you can alert the customer. The synchronous `POST /v1/monitor:check`
-(and the SDK's `checkRecords`) runs the same comparison on demand.
+After a domain goes live, we keep checking its records against live DNS (see
+[events](/docs/webhooks/overview#event-catalog)). If a record disappears or
+points somewhere else, `domain.record_missing` fires. When it comes back,
+`domain.record_restored` fires, so you can tell the customer.
+`POST /v1/monitor:check`, and the SDK's `checkRecords`, run the same check on
+demand.

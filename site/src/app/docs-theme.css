@@ -1,0 +1,23 @@
+/*
+ * The Fumadocs colors site v2 has no token for (callout accents, overlay, diff lines), each pointed at a site token
+ * from src/shared/tokens.css, so the docs need no hex of their own. Loaded after src/shared/fumadocs-map.css, which
+ * maps the main --color-fd-* names. The site's state colors double as callout accents: info and idea in secondary
+ * text, warning the propagating amber, error the failed red, success the live green. Light and dark follow the
+ * tokens, which switch on .dark.
+ */
+
+:root,
+.dark {
+  --color-fd-info: var(--cd-text-secondary);
+  --color-fd-idea: var(--cd-text-secondary);
+  --color-fd-warning: var(--cd-state-propagating-text);
+  --color-fd-error: var(--cd-state-failed-text);
+  --color-fd-success: var(--cd-state-live-text);
+  --color-fd-overlay: var(--cd-overlay);
+  --color-fd-diff-add: var(--cd-state-live-bg);
+  --color-fd-diff-add-symbol: var(--cd-state-live-text);
+  --color-fd-diff-remove: var(--cd-state-failed-bg);
+  --color-fd-diff-remove-symbol: var(--cd-state-failed-text);
+  --cd-font-geist: var(--font-geist-sans);
+  --cd-font-geist-mono: var(--font-geist-mono);
+}

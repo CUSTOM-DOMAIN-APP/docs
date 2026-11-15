@@ -1,6 +1,7 @@
 ---
 title: Changelog
-description: "How CustomDomain™ ships updates without numbered releases, the additive-only /v1 API versioning policy, and a running list of notable product milestones."
+description: "How we ship changes, and what changed."
+metaDescription: "How CustomDomain™ ships updates without numbered releases, the additive-only /v1 API versioning policy, and a running list of notable product milestones."
 ---
 
 CustomDomain™ doesn't yet cut numbered releases. The hosted service is
@@ -479,7 +480,7 @@ never change meaning or disappear without a new major version. See the
   own, so their notes send you to the company that sold you the domain. A nameserver move for a domain registered at
   one of them, or at Hetzner, Domeneshop, 101domain, easyDNS, World4You, Combell, Webnames.ca, WEDOS, Freename or
   Hostpoint, now goes to that registrar (OnlineNIC, COREhub and RegistryGate sell through resellers, so they are
-  named, not chosen). The census lists 217 providers.
+  named, not chosen).
 - **October 31, 2026: an AI agent cannot move a domain's nameservers while DNS hosting is off, and a waiting move says what to press next.** A delegated agent token (the MCP's `migrate-nameservers`)
   is now refused with `403 ns_not_offered` when the application's DNS hosting is off, for a start and for carrying on a
   move a person began, and nothing is changed; the tool tells the agent not to retry and that a person can turn DNS hosting
@@ -543,7 +544,7 @@ never change meaning or disappear without a new major version. See the
   each nameserver move it starts, resumes or reverses, and a saved key's use even when the provider failed halfway.
   See [Agent access](/docs/agents/overview#what-makes-it-safe) and
   [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
-- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server (now 23 tools) has three more:
+- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server has three more tools:
   `list-provider-accounts` lists the provider accounts your workspace has connected, never a key, with `provider`,
   `domain` and `applicationId` to narrow it; `find-saved-access` lists the saved keys that may write one connected
   domain's records (`GET /v1/connections/{id}/saved-access`); and `use-saved-access` writes them with one
@@ -827,11 +828,10 @@ never change meaning or disappear without a new major version. See the
   **Settings → Notifications**. Where CustomDomain™ fills in a domain's mail provider SPF include from its MX
   records, a mailbox at Zoho's EU data center (`mx.zoho.eu`) now gets `include:spf.zoho.eu`, not the US
   `include:zoho.com`. See [Notifications](/docs/guides/notifications) and [Email DNS](/docs/dns/email-dns).
-- **October 21, 2026: eleven more providers in the census, a confirmation before routing changes, and one
+- **October 21, 2026: more providers in the census, a confirmation before routing changes, and one
   rule for Needs attention.** The census now lists every provider with a built-in adapter: Azure DNS, Bunny DNS,
   Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr are
-  listed as API key providers, so `GET /v1/providers/census` counts 189 (73 with an automatic path, 116 by
-  hand). How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
+  listed as API key providers in `GET /v1/providers/census`. How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
   target on your own infrastructure: it lists the records customers will add and how many domains follow or
   stay, and saves on confirm. `existing_domains.kept` now also counts a waiting domain already on the new
   routing, so the counts add up to every domain the change reaches. In the console, a domain needs attention

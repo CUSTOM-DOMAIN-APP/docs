@@ -1,20 +1,23 @@
 ---
 title: API, provision domains from your server
-description: "Provision custom domains from your server with an API key: pre-flight check, create, apply records, verify and react, plus mistakes integrators actually make."
+icon: Code
+description: "Provision custom domains from your server."
+metaDescription: "Provision custom domains from your server with an API key: pre-flight check, create, apply records, verify and react, plus mistakes integrators actually make."
 ---
 
-Use the API when **your server** decides which domains get connected: a
-platform that provisions a custom domain per customer, a migration script, an
-internal tool. The browser-embedded path is the [widget](/docs/getting-started/widget).
+Use the API when **your server** decides which domains get connected. Think of a
+platform that provisions a custom domain per customer, a migration script, or an
+internal tool. To let customers connect domains in the browser, use the
+[widget](/docs/getting-started/widget) instead.
 
-Base URL for the hosted service: `https://api.customdomain.ai`. Auth:
-`Authorization: Bearer cd_live_…`. Every workspace has a default key, which owners
-can view at the top of the console's **API & SDK** page with no card on file. It
-acts with admin authority and cannot create keys. To make another, press
-**Create key** there (admins and owners; a card on
-file starts the 14 day free trial, and without one the request is refused with
-`402 billing_required`).
-Keys created before the switch to `cd_` start with `sk_` and keep working.
+The base URL is `https://api.customdomain.ai`. Send `Authorization: Bearer cd_live_…`.
+
+Every workspace has a default key. Owners can view it at the top of the
+console's **API & SDK** page, with no card on file. It acts with admin authority
+and cannot create keys. To make another key, press **Create key** there. Only
+admins and owners can. A card on file starts the 14 day free trial; without one
+the request is refused with `402 billing_required`. Keys created before the
+switch to `cd_` start with `sk_` and keep working.
 
 The Node samples use the built-in `fetch` (Node 18 or newer) and read the key from
 `CUSTOMDOMAIN_API_KEY`.
@@ -96,7 +99,7 @@ For records only you know (SES DKIM, verification `TXT`), follow with
 
 <Step>
 
-### Apply (optional) [#3-apply-optional]
+### Apply, optional [#3-apply-optional]
 
 If you hold a provider credential for the zone, write the records yourself.
 The body takes `credential` as an object with the scoped `token`, used once and

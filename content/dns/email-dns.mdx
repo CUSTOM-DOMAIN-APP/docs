@@ -1,7 +1,9 @@
 ---
-title: Email DNS & SPF merge
+title: "Email DNS and SPF merge"
+icon: Mail
 metaTitle: "Email DNS: SPF merge, MX, DKIM and DMARC | CustomDomain docs"
-description: "Add MX, SPF, DKIM and DMARC records with a domain connection. SPFM merges your SPF mechanisms into the published record, so the domain keeps one SPF record."
+description: "Add email records without breaking your SPF record."
+metaDescription: "Add MX, SPF, DKIM and DMARC records with a domain connection. SPFM merges your SPF mechanisms into the published record, so the domain keeps one SPF record."
 ---
 
 Connecting a domain points **web** traffic at your product. Many customers also
@@ -33,7 +35,7 @@ If nothing is published yet, the `SPFM` record is materialized into a fresh
 result would exceed 10 DNS-lookup mechanisms or 255 characters. This append-never-clobber behavior is applied for both
 Rail B (API-token apply) and the automatic rails.
 
-## Provider records (reference)
+## Provider records reference [#provider-records-reference]
 
 | Provider | Typical records |
 | --- | --- |
@@ -65,7 +67,7 @@ the poller does not treat it differently from other records today:
 { "type": "MX", "host": "@", "value": "smtp.google.com", "priority": 1, "essential": true }
 ```
 
-## DKIM & DMARC
+## DKIM and DMARC [#dkim--dmarc]
 
 - **DKIM** keys are generated in the provider's admin console (unique per
   domain), so they can't be derived; add the provider's `selector._domainkey`

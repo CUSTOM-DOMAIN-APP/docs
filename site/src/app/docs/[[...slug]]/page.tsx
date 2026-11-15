@@ -3,8 +3,8 @@
  * GitHub links, TechArticle and breadcrumb JSON-LD, and its metadata and social card. Every page in the source is
  * generated at build; an unknown slug returns a 404. Machine fields (title, description, social tags, alt text and
  * schema.org names) carry no ™ (D-2, lib/machine-text.ts). The visible title and description keep it. The title is
- * set in the brand serif through the cd-docs-title class and the description in the kit's lede through cd-docs-lede
- * (src/app/brand.css).
+ * set in Geist through the cd-docs-title class and the description in the kit's lede through cd-docs-lede
+ * (src/app/brand.css). The table of contents is Fumadocs' rail style (clerk).
  */
 
 import { notFound } from "next/navigation";
@@ -26,7 +26,7 @@ import { markdownPath } from "@/lib/markdown";
 import { machineText } from "@/lib/machine-text";
 import { getMDXComponents } from "@/components/mdx";
 import { openapi } from "@/lib/openapi";
-import { OpenAPIPage } from "@/lib/openapi-page";
+import { OpenAPIPage } from "@/lib/openapi-page-lazy";
 import type { GeneratedPageProps } from "fumadocs-openapi";
 
 type Params = { slug?: string[] };
@@ -72,7 +72,7 @@ export default async function Page({
       "@context": "https://schema.org",
       "@type": "TechArticle",
       headline: machineText(page.data.title),
-      description: machineText(description) ?? undefined,
+      description: machineText(page.data.metaDescription ?? description) ?? undefined,
       url: pageUrl,
       mainEntityOfPage: pageUrl,
       author: { "@type": "Organization", name: "CustomDomain", url: "https://customdomain.ai" },
@@ -89,7 +89,7 @@ export default async function Page({
   ];
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage toc={page.data.toc} full={page.data.full} tableOfContent={{ style: "clerk" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -131,7 +131,8 @@ export async function generateMetadata({
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  const description = machineText(pageDescription(slug, page));
+  // Search and social tags take the longer metaDescription when a page has one; the visible line stays short.
+  const description = machineText(page.data.metaDescription ?? pageDescription(slug, page));
   const canonical = `/docs/${(slug ?? []).join("/")}`;
   // A page's own `metaTitle` is its whole <title>, used without the site suffix (source.config.ts).
   const metaTitle = machineText(page.data.metaTitle);
