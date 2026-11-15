@@ -3,6 +3,7 @@
  * API reference, Changelog). The sections are shown as four links at the top of the sidebar and the phone drawer
  * (src/components/section-switch.tsx, the sidebar banner) instead of Fumadocs' dropdown, so `tabs` is off for the
  * layout itself. The account buttons and site links sit at the sidebar's foot (src/components/sidebar-account.tsx).
+ * In the sidebar each meta.json group becomes a collapsible folder with its icon (groupedBySeparators below).
  */
 
 import type { ReactNode } from "react";
@@ -41,6 +42,35 @@ function withoutEmptySeparators(nodes: Node[]): Node[] {
   return nodes.filter((node, i) => node.type !== "separator" || (i + 1 < nodes.length && nodes[i + 1].type !== "separator"));
 }
 
+/**
+ * Turns each `---[Icon]Group---` run of the sidebar into a collapsible folder with its icon and a chevron, as
+ * Better Auth's docs show their groups (layout mechanics after better-auth/better-auth, MIT, Copyright (c) 2024
+ * Bereket Engida). Only the sidebar changes: pages, URLs and the llms.txt order still come from content/meta.json.
+ * Get started opens by default; Fumadocs also opens the group that holds the current page.
+ */
+function groupedBySeparators(nodes: Node[]): Node[] {
+  const out: Node[] = [];
+  let group: PageTree.Folder | null = null;
+  for (const node of nodes) {
+    if (node.type === "separator") {
+      group = {
+        type: "folder",
+        $id: `group:${String(node.name)}`,
+        name: node.name,
+        icon: node.icon,
+        defaultOpen: out.length === 0,
+        children: [],
+      };
+      out.push(group);
+    } else if (group) {
+      group.children.push(node);
+    } else {
+      out.push(node);
+    }
+  }
+  return out;
+}
+
 function docsTree(): { tree: PageTree.Root; tabs: LayoutTab[] } {
   const full = source.getPageTree();
   const tabFolders = full.children.filter(isTabFolder);
@@ -48,7 +78,7 @@ function docsTree(): { tree: PageTree.Root; tabs: LayoutTab[] } {
 
   const tree: PageTree.Root = {
     ...full,
-    children: docs,
+    children: groupedBySeparators(docs),
     fallback: {
       ...(full.fallback ?? { $id: `${full.$id ?? "root"}:tabs`, name: full.name }),
       type: "root",

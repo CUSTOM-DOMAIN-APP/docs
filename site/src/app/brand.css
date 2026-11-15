@@ -4,7 +4,7 @@
  * Geist 600 with tight tracking, body in ink, the 720 px article column, links and inline code as the kit draws them),
  * light code cards with a hairline and no resting shadow (BD-5), stone pills for framework labels, the API reference's
  * method colors brought to the kit, the lockup, the search field, the section switch, the account buttons at the
- * sidebar's foot and the site footer. Rules here are unlayered, so they win over Fumadocs' utilities: keep them few
+ * sidebar's foot, the site footer, and the sidebar groups and page head sizes after Better Auth's docs (MIT). Rules here are unlayered, so they win over Fumadocs' utilities: keep them few
  * and scoped.
  */
 
@@ -514,5 +514,51 @@ div[style*="--callout-color"] {
 @media (pointer: coarse) {
   .cd-footer__links a {
     min-height: 44px;
+  }
+}
+
+/* Sidebar groups (src/app/docs/layout.tsx groupedBySeparators): each group is a row with its icon, label and chevron,
+   split from the next by a hairline, the label in ink at 14 px and weight 500, as Better Auth's docs draw them (layout
+   mechanics after better-auth/better-auth, MIT, Copyright (c) 2024 Bereket Engida). Applies in the desktop sidebar
+   and the phone drawer alike. */
+div[data-state]:has(> button[aria-controls] > svg.cd-section-icon) {
+  border-top: 1px solid var(--color-fd-border);
+  padding-block: 0.25rem;
+}
+
+div[data-state]:has(> button[aria-controls] > svg.cd-section-icon):first-child {
+  border-top: 0;
+}
+
+button[aria-controls]:has(> svg.cd-section-icon) {
+  color: var(--color-fd-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding-block: 0.625rem;
+}
+
+button[aria-controls]:has(> svg.cd-section-icon) > svg.cd-section-icon {
+  color: var(--color-fd-muted-foreground);
+}
+
+button[aria-controls]:has(> svg.cd-section-icon)[data-state="open"] > svg.cd-section-icon {
+  color: var(--color-fd-foreground);
+}
+
+/* Page head at Better Auth's sizes: the title 28 px, the description 18 px in ink soft. */
+.cd-docs-title {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.cd-docs-lede {
+  font-size: 1.125rem;
+}
+
+/* The article column on a desktop: 860 px with 32 px side padding, Better Auth's measure. */
+@media (min-width: 1280px) {
+  #nd-page[data-full="false"] {
+    max-width: 53.75rem;
   }
 }
