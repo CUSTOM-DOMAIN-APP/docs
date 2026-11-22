@@ -1,25 +1,20 @@
-# CustomDomain™ documentation
-
-The source of truth for docs.customdomain.ai, the guides that teach a developer to ship a connect-your-domain flow.
-
-**Status:** Live at docs.customdomain.ai · rebuilt from `main` at every product deploy
-
-[![status](https://img.shields.io/badge/status-status.customdomain.ai-1c1917?style=flat)](https://status.customdomain.ai)
-[![docs](https://img.shields.io/badge/docs-docs.customdomain.ai-1c1917?style=flat)](https://docs.customdomain.ai/docs)
-[![license](https://img.shields.io/badge/license-MIT-1c1917?style=flat)](./LICENSE)
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/media/customdomain-mark-dark.png"><img src=".github/media/customdomain-mark.png" alt="CustomDomain" width="56"></picture></p>
+<h1 align="center">CustomDomain Docs</h1>
+<p align="center"><b>The source of docs.customdomain.ai: how to embed the CustomDomain™ widget so your users connect their own domain.</b></p>
+<p align="center"><a href="https://docs.customdomain.ai/docs"><img src="https://img.shields.io/badge/docs-docs.customdomain.ai-1c1917?style=flat" alt="docs"></a> <a href="https://status.customdomain.ai"><img src="https://img.shields.io/badge/status-status.customdomain.ai-1c1917?style=flat" alt="status"></a> <a href="https://docs.customdomain.ai/docs/llms.txt"><img src="https://img.shields.io/badge/llms.txt-agent%20index-1c1917?style=flat" alt="llms.txt"></a> <a href="https://www.producthunt.com/products/custom-domain"><img src="https://img.shields.io/badge/Product%20Hunt-CustomDomain-1c1917?style=flat&logo=producthunt&logoColor=white" alt="Product Hunt"></a></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/media/widget-flow-dark.png"><img src=".github/media/widget-flow-light.png" alt="The CustomDomain widget: your user types their domain, signs in at their provider, and it goes live" width="860"></picture></p>
 
 [Website](https://customdomain.ai) · [Docs](https://docs.customdomain.ai/docs) · [Console](https://app.customdomain.ai) · [API reference](https://docs.customdomain.ai/docs/api-reference) · [Changelog](https://docs.customdomain.ai/docs/changelog) · [llms.txt](https://docs.customdomain.ai/docs/llms.txt)
 
 |  |  |
 |---|---|
 | **What it is** | The MDX content and the Next.js renderer behind the CustomDomain™ docs site |
-| **Who it's for** | Developers integrating custom domains, and anyone debugging a stuck connection |
+| **Who it's for** | Developers at software companies that embed the CustomDomain™ widget |
 | **Live at** | [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs) · uptime at [status.customdomain.ai](https://status.customdomain.ai) |
 | **Stack** | MDX · Fumadocs 16 · Next.js 16 · React 19 · Tailwind 4 · Docker on the production host |
-| **Status** | Live · `site/` reads `content/` directly · a merge to `main` goes live at the next docs deploy |
 
-[CustomDomain™](https://customdomain.ai) lets a platform's users connect a domain they already
-own in one click. This repository holds everything the documentation site renders: the concepts,
+[CustomDomain™](https://customdomain.ai) lets the users of a software product connect a domain they
+already own. This repository holds everything the documentation site renders: the concepts,
 the connect flow, the REST API reference, the widget and SDK guides, the hosted MCP server, and
 the DNS and TLS troubleshooting. If you want the rendered version, read
 [docs.customdomain.ai/docs](https://docs.customdomain.ai/docs): it has search, navigation and
@@ -27,24 +22,8 @@ runnable API examples that GitHub's MDX preview does not.
 
 ## What it covers
 
-Connecting a customer's domain means provider detection across more than 200 DNS hosts,
-registrars and domain platforms (all of the 100 largest registrars among them), one-click
-provider authorization (or a secure sign-in where the provider offers none, a scoped API key,
-DNS hosting, or a guided manual flow with automatic verification), TLS certificates that issue and renew on their own, and a managed reverse-proxy
-edge that terminates TLS with strict multi-tenant isolation. Records written through provider
-authorization are usually verified within seconds of the approval.
-
-There is no separate ownership challenge and no verification TXT record to paste: control is
-proven by the rail that writes the DNS, or by the records appearing in the domain's own
-authoritative DNS. Documenting that honestly takes room, which is why this runs to well over a
-hundred pages and not a single one.
-
-The honest limit, stated here as plainly as it is stated in the docs: **144 of the 217 providers
-in the census are connected by hand**, because they ship no DNS write a third party can use,
-gate it, or ship one that replaces a whole zone. Those domains go through the guided manual path:
-the app shows the exact records and verifies them automatically, but a human still pastes them.
-The census of 2026-10-31: 217 catalogued, 66 provider API, 6 OAuth, 1 Domain Connect,
-144 manual.
+Everything a developer needs to let their users connect a domain: embedding the widget, the API behind it,
+what the user sees at their DNS provider, certificates, and what to do when a domain is not live yet.
 
 Where to start, depending on why you are here:
 
