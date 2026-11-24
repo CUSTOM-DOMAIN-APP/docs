@@ -1,12 +1,13 @@
 ---
 title: Authentication and API keys
-description: "The four credential types (API keys, widget JWTs, agent tokens and operator secrets), their blast radius, member roles, and the unauthenticated surfaces."
+description: "The credentials CustomDomain™ accepts and what each one can do."
+metaDescription: "The four credential types (API keys, widget JWTs, agent tokens and operator secrets), their blast radius, member roles, and the unauthenticated surfaces."
 ---
 
 Authenticated requests send `Authorization: Bearer <token>`. Four credential
 types share the surface, each with a different blast radius.
 
-## API keys (tenant)
+## Tenant API keys [#api-keys-tenant]
 
 - Prefix `cd_live_` (production) or `cd_test_` (staging and development),
   followed by 32 lowercase hex characters, sent as
@@ -17,18 +18,21 @@ types share the surface, each with a different blast radius.
   as `cd_live_` or `cd_test_`.
 - **The prefix is not the mode.** A `cd_test_` key is made for a staging or
   development environment and works on real domains. A key is a
-  [test mode](/docs/guides/test-mode) key only when its application was made with
+  [Sandbox](/docs/guides/test-mode) key only when its application was made with
   `"sandbox": true`; read that field from `GET /v1/applications`.
 - Stored only as a hash; the full key is shown **once**, at creation.
+- **A key can be limited.** When you create one, you can choose what it can do
+  and when it expires. A limited key is refused (`403`) outside what it was
+  given, and an expired key gets `401`.
 - **The default key is the exception you can view any time.** Every workspace has one, labelled
   `Default key`, made with the workspace (or the first time an owner opens the **API & SDK**
   page in a workspace that is older than it), with no card needed. It reaches the whole workspace
   like any key, but it acts with **admin** authority, never an owner's: it cannot create API keys,
   make, unmake or remove an owner, or delete the workspace (`403`). Only an owner
-  sees it at the top of **API & SDK** as `CUSTOMDOMAIN_API_KEY=cd_live_…`, masked; the eye
-  shows it for 30 seconds and **Copy** copies it without showing it. Admins, members and viewers
-  see only its prefix, and only an owner can rotate it. The control plane still keeps only its hash: the console keeps a copy sealed with its own
-  secret (AES-256-GCM), and every view is recorded in the audit log, without the key; a view the
+  sees it at the top of **API & SDK** in a key bar: `CUSTOMDOMAIN_API_KEY` is a label above the
+  masked key (`cd_live_…`); the eye shows the key for 30 seconds and **Copy** copies the key
+  alone, without the label and without showing it. Admins, members and viewers
+  see only its prefix, and only an owner can rotate it. The control plane still keeps only its hash: the console keeps an encrypted copy, and every view is recorded in the audit log, without the key; a view the
   audit log cannot record is refused.
   **Rotate** makes a new default key and the old one stops working at once; your other keys are
   untouched. If someone revokes it in the list, the page says **Default key revoked** and offers
@@ -52,7 +56,8 @@ types share the surface, each with a different blast radius.
     member, key and billing mutations. Demote or remove the member and the next
     request already reflects it; a key whose member no longer exists is denied
     everything.
-- Revocable; a revoked key stops authenticating on its next request. Removing a
+- Revocable; a revoked key stops authenticating on its next request. Only an owner
+  can revoke a key that acts as an owner (`403 credential_outranks_caller`). Removing a
   member revokes their member-scoped key.
 - **Every application in the tenant.** A key belongs to one application, but it
   reads and acts on a connection of any application in its tenant: detail,
@@ -62,7 +67,7 @@ types share the surface, each with a different blast radius.
   `application_id` of the key's tenant, defaulting to the key's own:
   `POST /v1/connections`, `POST /v1/domains:check` and
   `POST /v1/sharing/connect`.
-- **A test mode key is the exception.** A key of a [test mode](/docs/guides/test-mode)
+- **A Sandbox key is the exception.** A key of a [Sandbox](/docs/guides/test-mode)
   application is pinned to that application. It runs the connect flow for it and reads
   its webhooks, and every other route, and every other application of the tenant, is
   refused or answers as if it were someone else's. `403 sandbox_not_allowed` names what
@@ -95,25 +100,31 @@ revokes its keys. It is refused for the tenant's default application, for the
 application the calling key belongs to, and while the application still has
 domains.
 
-Each application also has a `client_secret` (`sk_` plus 32 hex characters),
-returned once at application creation over the API, or from `tenants:provision`.
+### API key or client secret
+
+Two credentials look alike and do different jobs:
+
+| | API key | Client secret |
+| --- | --- | --- |
+| What it is | A workspace key, `cd_live_…` or `cd_test_…`. It proves a call comes from your server. | One application's secret, `sk_` plus 32 hex characters. |
+| Where to find it | **API & SDK** in the console (the default key, or **Create key**), shown once when made. | Returned once at application creation over the API, or from `tenants:provision`. An application made in the console never shows it. |
+| What it can do | Everything its role allows in the workspace (above), or less if it was created with limits. Keep it on your server. | Mint [widget JWTs](/docs/authentication/widget-tokens) for that application, and nothing else. |
+
 The `client_secret` is **not** an API key: its only job is to mint
 [widget JWTs](/docs/authentication/widget-tokens), and an API key placed in the
-`client_secret` field is refused with `401`. An application created in the
-console never shows its client secret; the console keeps it sealed and mints
-tokens for you when you call `POST https://app.customdomain.ai/api/widget-token`
-with an API key. See
+`client_secret` field is refused with `401`: send an API key as the bearer of
+`POST /v1/tokens` instead. An application created in the console never shows its
+client secret, so you mint its tokens that way. See
 [Widget tokens](/docs/authentication/widget-tokens) for which path applies.
 
-## Widget JWTs (browser)
+## Widget JWTs in the browser [#widget-jwts-browser]
 
-Short-lived JWTs minted server-side, with an API key through the console's
-`/api/widget-token` or with the application's client secret through
-`POST /v1/tokens`. Scoped to one application and, optionally, one domain. They authorize only the browser-facing
+Short-lived JWTs minted server-side with `POST /v1/tokens`, with an API key as
+the bearer or with the application's client secret. Scoped to one application and, optionally, one domain. They authorize only the browser-facing
 Connect endpoints. This is the only credential that ever reaches the browser;
 see [Widget tokens](/docs/authentication/widget-tokens).
 
-## Agent tokens (delegated)
+## Delegated agent tokens [#agent-tokens-delegated]
 
 When a person approves an AI agent, the agent receives a delegated **agent
 token** instead of a key. It is an **ES256** JWT signed by the control plane and
@@ -144,7 +155,7 @@ working at once: the control plane checks the grant on every call, and the MCP
 answers a refused call with HTTP `401`. See
 [Agent access](/docs/agents/overview) and [The OAuth flow](/docs/agents/oauth-flow).
 
-## Management & provision secrets (operator)
+## Operator management and provision secrets [#management--provision-secrets-operator]
 
 - The **management key** gates operator provisioning (`POST /v1/tenants`,
   `GET /v1/tenants/{id}`) and cross-tenant reads (e.g. the full audit log). In
@@ -162,7 +173,8 @@ answers a refused call with HTTP `401`. See
 
 Human access is governed by tenant **membership**, not per-key scopes. A member
 has a role (`owner`, `admin`, `member`, or `viewer`), invited and managed via
-`POST /v1/members`, `PATCH /v1/members/{id}`, and `POST /v1/members:accept`. The
+`POST /v1/members` and `PATCH /v1/members/{id}`. An invitee accepts in the console,
+signed in with the invited email; the invite link alone does not accept. The
 role/permission matrix is served as static reference at `GET /v1/rbac`.
 
 Roles are **enforced at the control-plane**, not just the console: each sensitive
@@ -184,8 +196,8 @@ matrix and the exact route list.
 
 - `GET /healthz`: liveness + database readiness. No secrets, no tenant data.
 - `POST /internal/ask`: the edge host-authorization gate. Not bearer-auth: it
-  uses a shared secret (`X-Edge-Auth` / `EDGE_ASK_SECRET`) and must be
-  network-isolated to the edge in production. It answers only `{ approved }`.
+  uses a shared secret and is reachable only from the edge. It answers only
+  `{ approved }`.
 - `GET /v1/connect/oauth/callback`: the OAuth redirect target, authenticated by
   its signed single-use `state` rather than a bearer token.
 

@@ -1,6 +1,7 @@
 ---
 title: SaaS platforms
-description: "Let your users connect a domain they already own inside your product: embed the widget, mint tokens on your server, and serve every customer domain."
+description: "Let your users connect their own domains in your product."
+metaDescription: "Let your users connect a domain they already own inside your product: embed the widget, mint tokens on your server, and serve every customer domain."
 ---
 
 Your product gives each customer a page, a store, a help center or an app, and
@@ -33,9 +34,9 @@ domains get connected and there is no customer in the loop, the
 
 Your backend holds the credential and trades it for a short-lived widget token
 (15 minutes, one application, optionally one domain and one end user). For an
-application made in the console that is an API key sent to
-`POST https://app.customdomain.ai/api/widget-token`; for one made over the API it
-is the application's `client_secret` sent to `POST /v1/tokens`. Only the token
+application made in the console that is an API key sent as the bearer to
+`POST /v1/tokens`; for one made over the API it is the application's
+`client_secret` sent to `POST /v1/tokens`. Only the token
 reaches the browser. See [Widget tokens](/docs/authentication/widget-tokens).
 
 </Step>
@@ -79,22 +80,21 @@ one. `GET /v1/connections/{id}` is the fallback.
 
 </Steps>
 
-Build it on [test mode](/docs/guides/test-mode) first: a test mode application
+Build it on [Sandbox](/docs/guides/test-mode) first: a Sandbox application
 runs the widget, the API and your webhooks on made up `.test` names, with no card
 and nothing billed.
 
 <Callout title="What one click covers">
-  Of the 217 providers in the census on 2026-10-31, 73 have an automatic path
-  (6 provider OAuth, 1 Domain Connect, 66 scoped API key). Customers at the other
-  144 add the records by hand, with the exact rows shown and verified
-  automatically. The live split is at `GET /v1/providers/census`; see
-  [DNS providers](/docs/dns/providers).
+  Some providers connect automatically, by provider sign-in, one-click setup or
+  a scoped API key. Customers at other providers add the records by hand, and we
+  show the exact rows and check each one. The live list is at
+  `GET /v1/providers/census`. See [DNS providers](/docs/dns/providers).
 </Callout>
 
 ## What to read next
 
 <Cards>
-  <Card title="Quickstart" href="/docs/getting-started/quickstart" description="A first connection and the widget, end to end in test mode." />
+  <Card title="Quickstart" href="/docs/getting-started/quickstart" description="A first connection and the widget, end to end in the Sandbox." />
   <Card title="Widget" href="/docs/getting-started/widget" description="Mint a token, open the modal, and what customers see per DNS provider." />
   <Card title="Installation & embed" href="/docs/widget-sdk/installation-and-embed" description="npm, React, embedded mode and white-label theming." />
   <Card title="Serve customer domains from your app" href="/docs/guides/serve-customer-domains-from-your-app" description="Set an origin and tell domains apart with X-Forwarded-Host." />

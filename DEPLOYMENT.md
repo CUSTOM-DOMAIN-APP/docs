@@ -134,8 +134,8 @@ Each is a deliberate decision for a human, and none blocks a docs change.
    API changes. No check compares them with the product today, so a missed copy
    shows up only as a stale reference page.
 
-   **Known differences from the product spec (2026-10-31): none.** `site/openapi-v1.yaml`
-   is the product's `apps/app/openapi-v1.yaml` at `2bfc3760` (release batch 1b, final),
+   **Known differences from the product spec (2026-11-13): none.** `site/openapi-v1.yaml`
+   is the product's `apps/app/openapi-v1.yaml` at `f05d2597` (deployed as 0.1.2967),
    byte for byte. The two edits this copy carried on 2026-10-30 are the product's now:
    `createApplication` is `required: [name]`, and `tenant_id` says it is required only
    with the management key and ignored with a tenant API key (docs #82); and the five

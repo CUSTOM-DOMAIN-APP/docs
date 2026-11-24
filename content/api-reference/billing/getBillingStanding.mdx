@@ -14,7 +14,8 @@ _openapi:
           The lean read the MCP server's `check-billing-status` tool uses:
           whether a new connection is refused right now, and if so the same
           `code`, `title` and `details` the refusal carries
-          (`billing_required`), plus the plan and this month's usage. It has no
+          (`billing_required`), plus the plan and its usage over the quota window (12 months on
+          Starter, else this month). It has no
           dates, amounts, invoices or card; owners and admins read those from
           `GET /billing/status`. Any workspace credential may read it: a tenant
           API key of any role, a delegated agent token with `domains:read`, or a

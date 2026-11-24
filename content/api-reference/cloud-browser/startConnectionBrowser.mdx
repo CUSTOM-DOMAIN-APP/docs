@@ -39,6 +39,16 @@ _openapi:
           `browser_reconnect_unavailable`, and a `provider` other than the key's
           own is a `400`. A reconnect link (`POST
           /connections/{id}:reconnect-link`) opens the hosted page in this mode.
+          A share link's token never starts one (`403` `forbidden`, before the
+          key is looked at): a share link sets a domain up and cannot renew the
+          end user's key. It starts a sign in only on a connection its sharer
+          owned, for a domain it is bound to (`token_wrong_end_user` otherwise).
+          A key an end user's own sign in made is renewed only by that end
+          user's own session: any other session is refused with `403`
+          `forbidden` before it starts (nothing is paid for and nobody signs
+          in), such as a reconnect link on a connection that names no end user
+          while the key was made at a sign in by a token that names one, an API
+          key without the console's signed forward, the console or a member.
 
 
           Returns the address of the popup page that shows the browser. Its

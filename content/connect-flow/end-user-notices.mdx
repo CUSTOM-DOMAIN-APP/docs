@@ -1,6 +1,7 @@
 ---
 title: End user notices
-description: "Give CustomDomain™ the end user's email, from your server or the widget: after a Move they get one email with the new DNS records, and a reconnect email when their provider's API key needs them, sent on your behalf."
+description: "Email your customer their DNS records and reconnect requests."
+metaDescription: "Give CustomDomain™ the end user's email, from your server or the widget: after a Move they get one email with the new DNS records, and a reconnect email when their provider's API key needs them, sent on your behalf."
 ---
 
 When a connected domain is [moved](/docs/connect-flow/routing#changing-where-domains-point),
@@ -41,7 +42,10 @@ The end user can skip it.
 - A widget token bound to another end user than the connection's (`end_user_ref`)
   sets none: the `PUT` answers `403`, the create stores neither this address nor
   one given when the token was minted, and the create does not ask for one.
-- Turn the field off with the widget option `askEndUserEmail: false`.
+- Turn the field off with the widget option `askEndUserEmail: false`
+  (customdomain-js 0.5.9 or later passes it to the widget).
+- An application whose email sender is **Don't send** (`none`) is never asked:
+  it tells its end users itself, so the widget does not collect an address.
 
 ## What the end user gets
 

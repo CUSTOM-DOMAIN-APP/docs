@@ -1,6 +1,7 @@
 ---
 title: Widget tokens
-description: "Mint short-lived widget JWTs with POST /v1/tokens, choose between the connect and app scopes, and keep a long browser session alive without exposing an API key."
+description: "Mint short-lived widget tokens on your server."
+metaDescription: "Mint short-lived widget JWTs with POST /v1/tokens, choose between the connect and app scopes, and keep a long browser session alive without exposing an API key."
 ---
 
 The widget must never see an API key or an application `client_secret`. Your
@@ -10,7 +11,7 @@ created:
 
 | How the application was created | You have | Mint with |
 | --- | --- | --- |
-| **You signed up in the console** (most customers; every console signup gets an application) | An API key from **API & SDK**. The console never shows you the application's client secret. | [`POST https://app.customdomain.ai/api/widget-token`](#with-an-api-key-console-accounts) with `Authorization: Bearer <API key>` |
+| **You signed up in the console** (most customers; every console signup gets an application) | An API key from **API & SDK**. The console never shows you the application's client secret. | [`POST /v1/tokens`](#with-an-api-key-console-accounts) with `Authorization: Bearer <API key>` |
 | **The application was created over the API** (`POST /v1/applications`, or `tenants:provision`) | The `client_secret` in that creation response | [`POST /v1/tokens`](#with-the-client-secret-v1tokens) with the secret in the body |
 
 The **Install** tab on the console's **Widget** page generates code for both. Its
@@ -22,37 +23,51 @@ An API key and a client secret are different credentials. Do not swap them:
 | --- | --- | --- |
 | Looks like | `cd_live_` or `cd_test_` plus 32 hex characters (older keys: `sk_live_` / `sk_test_`) | `sk_` plus 32 hex characters |
 | Where you get it | **API & SDK**: the workspace's default key at the top (owners can view it any time), or **Create key** (admins and owners; shown once). | The response of `POST /v1/applications` (shown once). A console-created application never shows it. |
-| Sent as | `Authorization: Bearer …` | `client_secret` in the body of `POST /v1/tokens` |
+| Sent as | `Authorization: Bearer …` (also to `POST /v1/tokens`) | `client_secret` in the body of `POST /v1/tokens` |
 | What it does | Calls the API for your whole workspace | Mints widget tokens for one application, nothing else |
 
-Never put an API key in the `client_secret` field: `POST /v1/tokens` always
-answers `401` with `unknown application or secret`. See
+Never put an API key in the `client_secret` field: send it as the bearer
+instead. In `client_secret`, `POST /v1/tokens` answers `401` with
+`unknown application or secret`. See
 [Troubleshooting](/docs/troubleshooting#401-unknown-application-or-secret-when-minting-a-widget-token).
 
-## With an API key (console accounts)
+## With an API key from the console [#with-an-api-key-console-accounts]
 
 Create a key on the console's **API & SDK** page with **Create key**, keep it in
-an environment variable on your server, and call the console's token endpoint:
+an environment variable on your server, and send it as the bearer to
+`POST /v1/tokens`, with no `client_secret`:
 
 ```bash
-curl -X POST https://app.customdomain.ai/api/widget-token \
+curl -X POST https://api.customdomain.ai/v1/tokens \
   -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "application_id": "app_...", "domain": "app.customer.com" }'
-# → 200 { "application_id": "app_...", "token": "eyJ…", "expires_in": 900, "token_type": "Bearer" }
+# → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
-- `application_id` is optional and defaults to your account's first application.
-  `domain` is optional; pass it to bind the token to one hostname.
+- `application_id` is required (the console shows it on **Widget**). `domain` is
+  optional; pass it to bind the token to one hostname. The other fields are the
+  same as with a client secret (below).
 - The API key stays on your server. Only the 15 minute token reaches the browser.
-- This endpoint mints the default `connect` scope only. It takes no `scope` or
-  `end_user_ref`. For an `app` scope token, use `POST /v1/tokens` with a client
-  secret.
+- The key needs the `tokens:mint` permission (members, admins and owners). Below
+  admin it mints the `connect` scope only; an `app` scope token needs an admin's
+  or owner's key.
+
+| Status | Meaning |
+| --- | --- |
+| `401` | The bearer key is missing, revoked or not accepted. |
+| `403` | The key's role may not mint this token (`tokens:mint`, or `scope` `app` below admin). |
+| `404` | `application_id` is not an application of the key's workspace. |
+
+Keys used with the console's older endpoint,
+`POST https://app.customdomain.ai/api/widget-token`, keep working there.
 - Creating a key needs a card on file (the workspace's 14 day free trial; nothing
   is charged until it ends). Without one, **Create key** and
   `POST /v1/applications/{id}/keys` answer `402 billing_required`: an owner or
   admin starts the trial under **Billing**. The workspace's default key needs no
   card, and neither do your first ten domains.
+
+That older endpoint answers with these errors:
 
 | Status | `error` | Meaning |
 | --- | --- | --- |
@@ -64,7 +79,7 @@ curl -X POST https://app.customdomain.ai/api/widget-token \
 | `502` | `mint_failed` | The token service did not return a token. Try again shortly. |
 
 The console keeps each console-created application's client secret sealed and
-uses it for this endpoint, the widget preview and **Try it live**. **Do not
+uses it for the older endpoint, the widget preview and **Try it live**. **Do not
 rotate that secret** (`POST /v1/applications/{id}/client-secret:rotate`): the
 console's copy is not updated, so all three stop working for that application.
 
@@ -110,6 +125,52 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
   the token; a connection created with the token takes it, unless the connection
   already has an address (the stored one stays) or belongs to another end user
   than this token's `end_user_ref` (it stores none).
+- A token acts only on its own customer's connections. A connection that names a
+  customer is the token's when that is the token's `end_user_ref`. Another
+  customer's token, or a token with no `end_user_ref` when the connection names
+  one, answers `403 token_wrong_end_user` on creating a connection for a domain
+  that customer connected, on every other route that takes the connection's id
+  (reading it, its records, certificate, diagnosis, SSL and Power; applying
+  records; starting a sign in, Domain Connect or the Route 53 role; rechecking,
+  re-applying, turning off its managed mode with `DELETE /v1/connections/{id}/grant`),
+  and on every managed DNS and nameserver move route. Removing the domain, and
+  reading its monitoring, services or timeline, keep their own rule and answer
+  `403 forbidden`. A connection that names no customer (you made it with your API
+  key) is any token's on those routes. For managed DNS and nameserver moves it is a
+  token's only when its domain is one the token is bound to (`domain` or `domains`);
+  a token with no `end_user_ref` and no `domain` counts only the domain of the
+  connection the call is about, and a token with an `end_user_ref` and no `domain`
+  owns none of those. **If you create connections with an `end_user_ref`, mint each
+  widget token with the same `end_user_ref` and the `domain` it is for.** A token with
+  no `end_user_ref` now gets `403` on a connection that names one, including a
+  connection that token created by sending `end_user_ref` in the request body.
+  Share links keep working, under one rule (see
+  [Email these instructions to someone else](/docs/widget-sdk/reference)): **a share
+  link's token owns exactly what the token that made it owned, and may touch only the
+  shared domains.** It acts as the end user who shared it, for the connections that
+  end user owned: a link made by a token that names no customer and is bound to no
+  `domain` counts only the one connection a call is about as its own, so a zone that
+  links several of the shared domains is not its own, and a link made by a token that
+  names a customer and is bound to no `domain` owns none of your connections that name
+  no customer. It reaches only the shared domains, so a customer who is bound to no
+  `domain` and shares one of their domains gives a link for that domain and none of
+  their others. A widget token can share only a domain whose connection it owns by the
+  rules above (otherwise `403 token_wrong_end_user` and no link; a domain with no
+  connection yet can be shared). A share link sets its domain up as its sharer could
+  (the secure sign-in, managed DNS, a nameserver move, the monitoring, services and
+  timeline reads). It cannot remove the domain (`DELETE`, `:disconnect` and the
+  sign-in to remove answer `403 forbidden`, whether or not the connection names a
+  customer), cannot set the customer's contact address on any connection, cannot renew
+  the customer's key (a sign-in in reconnect mode answers `403 forbidden`), is never
+  offered the customer's saved keys, and a key made at a sign-in it starts is not the
+  customer's own: it never replaces a key the customer already keeps, and it is never
+  offered to the customer on another domain. A reconnect link is the customer's own and
+  its token stays the customer, with two changes: one whose key was replaced by another,
+  or whose connection is gone, now answers `404` like an expired link (it used to open
+  the plain flow), and a sign-in in reconnect mode that is not the customer's own
+  session on a key the customer's own sign-in made (a reconnect link on a connection
+  that names no customer, an API key without the console's signed forward, the console)
+  is refused with `403 forbidden` before it starts.
 - Only the creation response shows a client secret. If you lost it, rotate it
   (`POST /v1/applications/{id}/client-secret:rotate`, needs `keys:manage`),
   except for a console-created application (see above).
@@ -119,6 +180,9 @@ curl -X POST https://api.customdomain.ai/v1/tokens \
 - The default lifetime is 15 minutes (`expires_in` is in seconds). Adding DNS records by hand
   often takes longer than that, so give the widget a way to get a fresh token.
   See [Keeping a session alive](#keeping-a-session-alive).
+- To end every token an application has issued, for example after a leak, call
+  `POST /v1/applications/{id}/tokens:revoke` (needs `keys:manage`), or rotate the
+  client secret with `{"revoke_tokens": true}`. Tokens minted afterwards work.
 
 ## Scopes
 
@@ -153,13 +217,13 @@ the application-wide endpoints listed above. No widget token can create
 applications, manage keys, or manage members: those need an API key or the
 management key.
 
-## Tokens for a test mode application
+## Tokens for a Sandbox application
 
-A token minted with the `client_secret` of a [test mode](/docs/guides/test-mode)
+A token minted with the `client_secret` of a [Sandbox](/docs/guides/test-mode)
 application carries a signed `sandbox: true` claim, which is how the widget knows to
 say so and to ask for a `.test` name. Nothing else about minting changes. The claim is
 never what grants or refuses anything: the control plane decides from the application
-on every call, and a test mode token can run the connect flow for its own `.test`
+on every call, and a Sandbox token can run the connect flow for its own `.test`
 names and read its own webhooks, and nothing else (`403 sandbox_not_allowed`). A token
 of a live application has no such claim.
 

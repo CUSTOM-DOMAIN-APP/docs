@@ -15,7 +15,7 @@ _openapi:
           with that member's tenant API key (a widget token is refused, because
           it lives in browsers). The key's member needs `agent:manage` (owners
           and admins), and `member_id` must belong to the workspace. The
-          approved scopes are a subset of what was requested. The grant is bound
+          workspace default key cannot approve (`403`). The approved scopes are a subset of what was requested. The grant is bound
           to one `application_id` of the workspace. An agent whose code goes to
           an unverified host needs `acknowledged_unverified: true`, and one
           whose name imitates a brand is refused (`403`). `domains:purchase`

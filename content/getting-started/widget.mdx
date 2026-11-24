@@ -1,16 +1,34 @@
 ---
 title: Widget, let your customers connect their domains
-description: "Let your customers connect domains inside your product: mint a widget token on your server, open the modal, and see what customers get per DNS provider."
+icon: LayoutTemplate
+description: "Let your customers connect domains inside your product."
+metaDescription: "Let your customers connect domains inside your product: mint a widget token on your server, open the modal, and see what customers get per DNS provider."
 ---
 
-Use the widget when **your customers** own the domains and should connect
-them **inside your product**. You never touch their DNS; the modal detects the
-provider, offers the best rail it can actually complete, and reports back.
+Use the widget when **your customers** own the domains and should connect them
+**inside your product**. You never touch their DNS. The modal detects the
+provider, offers the best [way to connect](/docs/concepts/glossary#ways-to-connect)
+it can finish, and reports back.
 
-No customer domain to try it with yet? Make a [test mode](/docs/guides/test-mode)
+No customer domain to try it with yet? Make a [Sandbox](/docs/guides/test-mode)
 application and follow the steps below with its `client_secret` and a name such as
 `www.acme.test`. The widget runs end to end on a simulated DNS, with no card, no free
 domain used and nothing billed.
+
+## Have your coding agent do it
+
+The **Install** tab on **Widget** in the console starts with **Hand it to your
+coding agent**. **Copy prompt** gives you one block of text to paste into Claude
+Code, Cursor, Codex or any agent that edits your project. It names your
+application ID, the install guide, the SDK reference and the docs index
+(`llms.txt`), picks up the server language and page framework you chose on the
+tab, and lists the steps in order: the server route, the button, the result
+handling. The agent shows you each change before it makes it.
+
+The prompt never contains a secret. It tells the agent that the API key lives in
+your server's environment, that you set it yourself, and that it must never ask
+you to paste it into the chat or write it into code. Your application ID is the
+only identifier in it, and that one is public.
 
 <Steps>
 
@@ -20,21 +38,21 @@ domain used and nothing billed.
 
 Your server trades a credential for a short-lived widget token, and only that
 token reaches the browser. If you signed up in the console (most customers),
-create an API key on **API & SDK** with **Create key** and call the console's
-token endpoint. This is what the **Install** tab on the **Widget** page generates
+create an API key on **API & SDK** with **Create key** (the **Install** tab's
+**Get your API key** button opens the same form) and send it as the bearer to
+`POST /v1/tokens`. You see the key once: store it as `CUSTOMDOMAIN_API_KEY`. This is what the **Install** tab on the **Widget** page generates
 by default:
 
 ```bash
-curl -X POST https://app.customdomain.ai/api/widget-token \
+curl -X POST https://api.customdomain.ai/v1/tokens \
   -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"application_id":"app_...","domain":"shop.acme.com"}'
-# → 200 { "application_id": "app_...", "token": "eyJ…", "expires_in": 900, "token_type": "Bearer" }
+# → 201 { "token": "eyJ…", "token_type": "Bearer", "expires_in": 900, "scope": "connect" }
 ```
 
 If you created the application over the API, you have its `client_secret`
-instead; mint with `POST /v1/tokens`. The console never shows a client secret, so
-an API key is not a substitute for it. Both calls, the errors and the difference
+instead; send it in the body of the same `POST /v1/tokens`, with no bearer key. Both calls, the errors and the difference
 between the two credentials are on [Widget tokens](/docs/authentication/widget-tokens).
 
 `domain` binds the token to one hostname (recommended). Tokens last 15
@@ -95,12 +113,12 @@ pass `wwwRedirect` to decide for them. See [Root domains](/docs/dns/root-domains
 | --- | --- | --- |
 | Cloudflare, DigitalOcean, DNSimple, Linode (Akamai Cloud), Netlify, WordPress.com | **Authorize with the provider** (OAuth). On the hosted service the permission is kept, encrypted, so records can be repaired, and the modal says so | nothing |
 | Azure DNS, Dynadot, Unstoppable Domains | **Authorize with the provider** (Dynadot and Unstoppable Domains through their MCP servers; Dynadot needs MCP switched on in its API settings first). The permission is used once | nothing |
-| Google Cloud DNS | The project ID and an access token. The Google Cloud sign-in is not offered on the hosted service until Google verifies the app | nothing |
+| Google Cloud DNS | **Sign in with Google Cloud**. Until Google finishes reviewing the app, Google may show a notice that it has not verified the app yet. The project ID and an access token are the other option | nothing, or the project ID and an access token |
 | Vercel | **Install CustomDomain™ on Vercel**, on the team that owns the domain | nothing |
 | Porkbun | **Approve access at Porkbun** (API access must be on for the domain) | nothing |
 | NameSilo, Glauca Digital, Domain Chief | **One-click setup** at the provider, which sends them back when they approve | nothing |
-| GoDaddy, Namecheap, Name.com, IONOS, Squarespace, Hover, Spaceship, Hostinger | **Secure sign-in** (offered to selected workspaces for now, and only where the token is bound to the domain and the end user): they sign in to the provider in a secure window and approve the exact changes. Where the provider allows it, a lasting API key is made and kept, so the domain stays connected through the provider's API. Where no key can be made, our software makes the changes on the provider's DNS page once they approve them. If the sign-in does not finish, or secure sign-in is not on for the workspace, the modal shows the records, as in the next row | their provider login, and a code if the provider asks for one (we never see the password) |
-| OVHcloud, Route 53, Network Solutions, Wix, a site builder or shop that sold the domain (Shopify, Canva and more), everything else | **Add the records**, with *why* the automatic ways aren't available, the Name to type in their panel, step-by-step instructions for their provider (135 providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where your application turns on [DNS hosting](/docs/dns/managed-dns)) let you keep the domain working for them by moving its nameservers | the records (about two minutes), or nothing |
+| GoDaddy, Namecheap, Name.com, IONOS, Squarespace, Hover, Spaceship, Hostinger | **Secure sign-in** (offered to selected workspaces for now, and only where the token is bound to the domain and the end user): they sign in to the provider in a secure window. Where the provider allows it, a lasting API key is made and kept, so the domain stays connected through the provider's API. Where no key can be made, our software makes the changes on the provider's DNS page. A change that only adds records goes ahead by itself; one that replaces or removes a record is shown first and waits for their approval ([details](/docs/guides/secure-sign-in#review)). If the sign-in does not finish, or secure sign-in is not on for the workspace, the modal shows the records, as in the next row | their provider login, and a code if the provider asks for one (we never see the password) |
+| OVHcloud, Route 53, Network Solutions, Wix, a site builder or shop that sold the domain (Shopify, Canva and more), everything else | **Add the records**, with *why* the automatic ways aren't available, the Name to type in their panel, step-by-step instructions for their provider (most providers and platforms have their own), and a live check of each record; or hand the job to an AI assistant, email it to whoever manages DNS, or (where your application turns on [DNS hosting](/docs/dns/managed-dns)) let you keep the domain working for them by moving its nameservers | the records (about two minutes), or nothing |
 | Unknown provider | a provider picker, then the records | the records |
 
 This table is what `POST /v1/domains:check` returns as `rails`; the widget

@@ -1,123 +1,136 @@
 ---
-title: Plans & quotas
-description: "The plan catalog and entitlements, trials and subscriptions, how metered monthly domain usage and quotas work, and how Stripe checkout and the portal fit in."
+title: "Plans and quotas"
+icon: CreditCard
+metaTitle: "Plans & quotas | CustomDomain docs"
+description: "Plans, trials, usage and how billing works."
+metaDescription: "The plan catalog and entitlements, trials and subscriptions, how metered monthly domain usage and quotas work, and how Stripe checkout and the portal fit in."
 ---
 
 ## Plans
 
-The public catalog is returned by `GET /v1/plans` (along with a
-`billing: { configured, mode, trial_days }` block).
+`GET /v1/plans` returns the public catalog, with a `billing: { configured, mode, trial_days }` block.
+The figures it returns are the defaults.
+A deployment's operator can change some of them without a release.
+They can change a plan's price (`price_cents`) and its domain allowance (`domains_per_year`, and so `domains_per_month`).
+They can also change its trial (`trial_days`) and whether it blocks at quota (`hard_cap`).
+So read them from `GET /v1/plans` instead of hard coding them.
+`billing.trial_days` is the default plan's trial.
 
-Entitlements gate which products a tenant may use. **Enforced today:** `Power`
-(serving domains through the CustomDomain™ edge: the `/v1/connections/{id}/power*`
-surface, the application's default origin, and an `application_url` sent with
-`POST /v1/connections`) and `Secure` (the `/v1/ssl*` surface); an unentitled
-tenant gets `402 plan_upgrade_required`. `WhiteLabel`
-(widget branding) is enforced by dropping the branding, as described below.
-`Connect` is included on every plan and needs no gate. `Monitor` is listed as an entitlement on Premium and Enterprise, but nothing
-enforces it: every connection that has `monitor` on (the default) is monitored, on every plan. The deployment-level
-`MONITOR_ALERTS_ENABLED` flag governs alert delivery for everyone.
+Entitlements gate which products a tenant may use.
+**Enforced today** are `Power` and `Secure`.
+`Power` covers serving domains through the CustomDomain™ edge.
+That means the `/v1/connections/{id}/power*` surface, the application's default origin, and an `application_url` sent with `POST /v1/connections`.
+`Secure` covers the `/v1/ssl*` surface.
+An unentitled tenant gets `402 plan_upgrade_required`.
+`WhiteLabel` (widget branding) is enforced by dropping the branding, as described below.
+`Connect` is included on every plan and needs no gate.
+`Monitor` is listed as an entitlement on Premium and Enterprise, but nothing enforces it.
+Every connection that has `monitor` on (the default) is monitored, on every plan.
+The deployment-level `MONITOR_ALERTS_ENABLED` flag governs alert delivery for everyone.
 
-| Plan | Price | Domains / year (sold) | Domains / month | Refused at quota? | Entitlements | Motion |
+| Plan | Price | Domains / year (sold) | Enforced allowance | Refused at quota? | Entitlements | Motion |
 | --- | --- | --- | --- | --- | --- | --- |
-| `starter` | $10/mo | 10 | 1 | **yes** | Connect | self-serve, 14 day free trial |
-| `startup` | $149/mo | 600 | 50 | no | Connect | self-serve, 14 day free trial |
-| `growth` | $649/mo | 600 | 50 | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
-| `premium` | demo-gated | 12,000 | 1,000 | no | + Monitor (listed, not enforced) | contact sales |
-| `enterprise` | custom | 12,000+ | 1,000 | no | + white-label | contact sales |
+| `starter` | $10/mo | 10 | 10 in any 12 months | **yes** | Connect | self-serve, 14 day free trial |
+| `startup` | $149/mo | 600 | 50 a month | no | Connect | self-serve, 14 day free trial |
+| `growth` | $649/mo | 600 | 50 a month | no | Connect · Power · Secure/SSL | self-serve, 14 day free trial |
+| `premium` | demo-gated | 12,000 | 1,000 a month | no | + Monitor (listed, not enforced) | contact sales |
+| `enterprise` | custom | 12,000+ | 1,000 a month | no | + white-label | contact sales |
 
-Prices and both domain columns above are transcribed from `GET /v1/plans`
-(`price_cents`, `domains_per_year`, `domains_per_month`). If this table and that
-endpoint ever disagree, the endpoint is right and this page is stale.
+Prices and the domain columns above are transcribed from `GET /v1/plans`
+(`price_cents`, `domains_per_year`, and `quota` over `quota_window_months`). If
+this table and that endpoint ever disagree, the endpoint is right and this page
+is stale.
 
-**Starter replaced the Free plan on 2026-09-29.** `free` is retired: no new
-workspace is put on it, `GET /v1/plans` no longer lists it and Checkout refuses
-it. Workspaces that were on Free keep working while they move to a paid plan;
-see [The Free plan's retirement](#the-free-plans-retirement).
+**Starter replaced the Free plan on 2026-09-29.** `free` is retired.
+No new workspace is put on it, `GET /v1/plans` no longer lists it, and Checkout refuses it.
+Workspaces that were on Free keep working while they move to a paid plan.
+See [The Free plan's retirement](#the-free-plans-retirement).
 
 ### Two numbers, and which one gates you
 
-A tier is **sold** annually but **metered** monthly: the meter counts domain
-connections per UTC calendar month, and the quota gate compares against
-`domains_per_month`, which is `ceil(domains_per_year / 12)`. Startup's 600/year
-is therefore **50 in any one month**, and Starter's 10/year is **1/month**.
-Ceiling division means the annualized entitlement never shrinks below what was
-sold (Starter's 1/month is 12/year effective).
+A tier is **sold** annually. The meter counts domain connections per UTC
+calendar month, and the quota gate compares a count against the plan's
+**`quota`** over its **`quota_window_months`**:
 
-> **Whether that monthly number *blocks* takes both a plan property and a
-> deployment switch.** The plan property is `hard_cap`, and it is `true` only on
-> `starter` (and the retired `free`); see [Overage](#overage) for why no larger
-> tier is ever refused. The switch is `BILLING_ENFORCE_QUOTA`:
-> `infra/docker-compose.prod.yml` ships it defaulted to `0`, so the hosted
-> service runs meter only and refuses nothing at quota; `1` turns enforcement
-> on. Both must hold. The gate also fails **open** by design even when enabled:
-> a billing lookup error allows the connect rather than blocking a customer
-> during a billing outage. The gate is `enforceQuota` in
-> `services/control-plane/internal/api/billing.go`; the billing service applies
-> the same `hard_cap` rule in `ConnectDomain`, so the two cannot disagree.
+- **Starter (and the retired Free): 10 over a rolling 12 months.**
+  The gate adds this month's count to the 11 months before it.
+  So a Starter workspace can connect several domains in one month, as long as it stays within 10 in any 12 months.
+  Before November 2, 2026, Starter was held to 1 a month.
+- **Every other tier: its monthly slice, `domains_per_month`**, which is
+  `ceil(domains_per_year / 12)`, over 1 month. Startup's 600/year is therefore
+  **50 in any one month**. Ceiling division means the annualized entitlement
+  never shrinks below what was sold.
 
-Both numbers are published on `GET /v1/plans` (`domains_per_year` and
-`domains_per_month`); `GET /v1/billing/usage`'s `quota` is the monthly one,
-because `used` is a monthly count.
+> **Whether that monthly number *blocks* takes both a plan property and a deployment switch.**
+> The plan property is `hard_cap`, and it is `true` only on `starter` (and the retired `free`).
+> See [Overage](#overage) for why no larger tier is ever refused.
+> The switch is `BILLING_ENFORCE_QUOTA`.
+> `infra/docker-compose.prod.yml` ships it defaulted to `0`, so the hosted service only meters and refuses nothing at quota.
+> `1` turns enforcement on.
+> Both must hold.
+> The gate also fails **open** by design, even when enabled.
+> A billing lookup error allows the connect, instead of blocking a customer during a billing outage.
+> The gate is `enforceQuota` in `services/control-plane/internal/api/billing.go`.
+> The billing service applies the same `hard_cap` rule in `ConnectDomain`, so the two cannot disagree.
+
+All of these are published on `GET /v1/plans` (`domains_per_year`,
+`domains_per_month`, `quota` and `quota_window_months`). `GET /v1/billing/usage`
+compares its `quota_used` (the count over the window) with `quota`; its `used`
+stays this month's count.
 
 Self-serve plans (`starter`, `startup`, `growth`) are bought through Stripe
 Checkout. `premium` and `enterprise` route to a "book a demo" CTA and have no
 public price.
 
-**White-label is enforced server-side, not just hidden in the console.** A
-direct widget `open()` always applies whatever branding you configure: that's
-your own client-side config, and the control plane never sees it. But when a
-connect is forwarded through a share link and a teammate resumes it
-(`loadSharedFlow`), the control plane checks the sharing tenant's plan and
-strips any `whiteLabel` branding from the resumed session unless it's on
-`enterprise`; the flow itself still works, it just falls back to default,
-unbranded styling. See
-[Widget SDK reference](/docs/widget-sdk/reference#white-label-configuration).
+**White-label is enforced on the server, not just hidden in the console.**
+A direct widget `open()` always applies whatever branding you configure.
+That's your own client-side config, and the control plane never sees it.
+A connect may be forwarded through a share link and resumed by a teammate (`loadSharedFlow`).
+Then the control plane checks the sharing tenant's plan.
+It strips any `whiteLabel` branding from the resumed session unless the tenant is on `enterprise`.
+The flow itself still works, and falls back to default, unbranded styling.
+See [Widget SDK reference](/docs/widget-sdk/reference#white-label-configuration).
 
-> **Not included, despite older copy:** **SSO** and **SCIM** are *not* built and
-> no tier grants them. No `/scim/v2/*` endpoint exists, and
-> the console's authentication supports email/password, optional Google and GitHub
-> sign-in, and WebAuthn passkeys; there is no SAML/OIDC provider. **Monitor** is DNS
-> *record drift* detection only; nothing probes a domain or origin for
-> reachability, status code or latency, so there is no uptime monitoring. Drift
-> alerts are additionally off unless the deployment sets
-> `MONITOR_ALERTS_ENABLED`; see [Webhooks](/docs/webhooks/overview).
+> **Not included, despite older copy:** **SSO** and **SCIM** are *not* built, and no tier grants them.
+> No `/scim/v2/*` endpoint exists.
+> The console's authentication supports email and password, optional Google and GitHub sign-in, and WebAuthn passkeys.
+> There is no SAML or OIDC provider.
+> **Monitor** is DNS *record drift* detection only.
+> Nothing probes a domain or origin for reachability, status code or latency, so there is no uptime monitoring.
+> Drift alerts are also off unless the deployment sets `MONITOR_ALERTS_ENABLED` (see [Webhooks](/docs/webhooks/overview)).
 
 ## Subscriptions and trials
 
-Every workspace needs an active subscription (or a free trial of one) to
-connect **new** domains and to hold **new credentials**: creating an API key,
-creating an application and rotating an application's secret. The one exception
-is a new workspace's **first ten domains**, which are free (see
-[The first ten domains are free](#the-first-ten-domains-are-free)). Domains that are
-already connected are never touched by billing: live traffic, certificate
-renewals, rechecks and monitoring carry on whatever the billing state, and
-credentials that already exist keep working.
+Every workspace needs an active subscription, or a free trial of one, to connect **new** domains.
+It also needs one to hold **new credentials**: creating an API key, creating an application, and rotating an application's secret.
+The one exception is a new workspace's **first ten domains**, which are free (see [The first ten domains are free](#the-first-ten-domains-are-free)).
+Billing never touches domains that are already connected.
+Live traffic, certificate renewals, rechecks and monitoring carry on whatever the billing state.
+Credentials that already exist keep working.
 
-- **A new workspace** can look around first. Signing up does not require a card:
-  you can check domains, design and preview your widget and read the docs without
-  one, and your first ten domains connect without one. The setup flow is offered
-  once, after all ten are connected and the tenth is live, and skipping it sticks.
-  The card is asked for where it is needed, when you create an API key, create an
-  application or connect an eleventh domain, and that starts a **14 day free trial** in a checkout
-  on the page itself, not a pop-up. The order summary, the total and the buttons
-  are the console's own, in light or dark; only the card fields are Stripe's.
-  The first charge happens when the trial ends; canceling before then costs
-  nothing. Until the trial starts, new credentials are refused, and so is every
-  connection after the first.
-- **Promotion codes** are typed into the order summary of the checkout, or sent
-  as `promotion_code` when you start one yourself
-  (`POST /v1/billing/checkout`), or applied to a running subscription with
-  `POST /v1/billing/promotion-code`. Both accept only codes that belong to this
-  deployment (made through the operator console, or limited to its products in
-  Stripe) and answer `404` for any other code on a shared Stripe account, the
-  same as for a code that does not exist, so a code cannot be told apart from a
-  stranger's. Stripe's own code field is never shown on the checkout. A
-  checkout started with a code carries it as its one discount, and a Checkout
-  Session cannot be given a discount after it is created, so adding or taking
-  off a code in the order summary starts a new checkout in its place: the card
-  fields of the old one are empty again, and nothing is charged by either until
-  the payment is confirmed.
+- **A new workspace** can look around first.
+  Signing up does not require a card.
+  You can check domains, design and preview your widget, and read the docs without one.
+  Your first ten domains also connect without one.
+  The setup flow is offered once, after all ten are connected and the tenth is live, and skipping it sticks.
+  We ask for the card where it is needed: when you create an API key, create an application, or connect an eleventh domain.
+  That starts a **14 day free trial** in a checkout on the page itself, not a pop-up.
+  The order summary, the total and the buttons are the console's own, in light or dark.
+  Only the card fields are Stripe's.
+  The first charge happens when the trial ends, and canceling before then costs nothing.
+  Until the trial starts, new credentials are refused, and so is every connection after the first.
+- **Promotion codes** go in the order summary of the checkout.
+  You can also send one as `promotion_code` when you start a checkout yourself (`POST /v1/billing/checkout`).
+  Or apply one to a running subscription with `POST /v1/billing/promotion-code`.
+  Both accept only codes that belong to this deployment: made through the operator console, or limited to its products in Stripe.
+  They answer `404` for any other code on a shared Stripe account, the same as for a code that does not exist.
+  So a code cannot be told apart from a stranger's.
+  Stripe's own code field is never shown on the checkout.
+  A checkout started with a code carries it as its one discount.
+  A Checkout Session cannot be given a discount after it is created.
+  So adding or taking off a code in the order summary starts a new checkout in its place.
+  The card fields of the old one are empty again.
+  Neither charges anything until the payment is confirmed.
 - **Changing plans** on a running subscription is
   `POST /v1/billing/change-plan`; Stripe prorates the difference. During a
   trial, the new price applies from the trial's end.
@@ -141,27 +154,25 @@ of eight states. Only the last two refuse new connections.
 | `blocked` | No subscription after the trial, grace or comp (`reason`: `setup_required`, `grace_ended`, `comp_ended`), or a subscription Stripe gave up on after its retries (`unpaid`). | **refused** (except a new workspace's first ten domains) |
 | `canceled` | The subscription ended. | **refused** |
 
-`GET /v1/billing/status` also returns `payment_method`, what the workspace is
-charged on, or `null` when there is none. `type` is `card`, `link` or `cashapp`.
-A card has `brand`, `last4`, `exp_month` and `exp_year`, and `wallet`
-(`apple_pay` or `google_pay`) when it was paid through a wallet. A Link account
-has the `email` of the account (the card behind it is never shown), and Cash App
-Pay has only its type. Any of them counts as a payment method on file, so a
-workspace that paid with Link is not shown "No card on file" and is not refused
-by the card check on agent purchases. Checkout opens with the owner's email
-already filled in.
+`GET /v1/billing/status` also returns `payment_method`: what the workspace is charged on, or `null` when there is none.
+`type` is `card`, `link` or `cashapp`.
+A card has `brand`, `last4`, `exp_month` and `exp_year`.
+It also has `wallet` (`apple_pay` or `google_pay`) when it was paid through a wallet.
+A Link account has the account's `email`, and the card behind it is never shown.
+Cash App Pay has only its type.
+Any of them counts as a payment method on file.
+So a workspace that paid with Link is not shown "No card on file", and is not refused by the card check on agent purchases.
+Checkout opens with the owner's email already filled in.
 
 ### What a refusal looks like
 
-The control plane refuses at one place, before a connection is created, for
-every surface that can start one: the console, the API, bulk connect, the MCP
-server, the embedded widget and the start of a domain purchase. Creating an API
-key (`POST /v1/applications/{id}/keys`), creating an application
-(`POST /v1/applications` with an API key) and rotating an application's secret
-(`POST /v1/applications/{id}/client-secret:rotate`) are refused the same way
-while a workspace has no trial or subscription, so a widget you embed never
-meets a billing refusal in front of your own customers. Reading, listing, checking
-domains and the billing routes themselves stay open.
+The control plane refuses at one place, before a connection is created.
+That covers every surface that can start one: the console, the API, bulk connect, the MCP server, the embedded widget and the start of a domain purchase.
+Three more calls are refused the same way while a workspace has no trial or subscription.
+They are creating an API key (`POST /v1/applications/{id}/keys`) and creating an application (`POST /v1/applications` with an API key).
+The third is rotating an application's secret (`POST /v1/applications/{id}/client-secret:rotate`).
+So a widget you embed never meets a billing refusal in front of your own customers.
+Reading, listing, checking domains and the billing routes themselves stay open.
 
 - The workspace itself (an API key, an agent token, an app-scoped token) gets
   `402 billing_required`, with the reason and where to fix it in `details`.
@@ -176,65 +187,59 @@ subscribe), nothing is refused. The check fails open on a lookup error.
 
 ### The first ten domains are free
 
-A brand new workspace, one that has never had a subscription or a trial,
-connects its **first ten** domains without a card, whether it connects from the
-console, the API, the MCP server or the embedded widget, so you can see your
-domains work before you are asked for one. While the workspace has fewer than ten
-pending, propagating or live connections, a new connection (and the start of a
-domain purchase) goes through. A connection that failed does not count, posting
-the same domain again returns it with `200`, as it always did, and removing a
-domain frees its place at once. The eleventh domain is refused with
-`402 billing_required`, whose `title` says a card is needed to connect more
-domains. Creating an API key or an application still needs the trial.
+A brand new workspace has never had a subscription or a trial.
+It connects its **first ten** domains without a card, from the console, the API, the MCP server or the embedded widget.
+So you can see your domains work before we ask for one.
+While the workspace has fewer than ten pending, propagating or live connections, a new connection goes through.
+So does the start of a domain purchase.
+A connection that failed does not count.
+Posting the same domain again returns it with `200`, as it always did.
+Removing a domain frees its place at once.
+The eleventh domain is refused with `402 billing_required`, whose `title` says a card is needed to connect more domains.
+Creating an API key or an application still needs the trial.
 
-`GET /v1/billing/notice` and `GET /v1/billing/status` carry
-`first_domain_free: true` for such a workspace (owners and admins only), with
-`free_domains`, how many domains it may connect before a card (ten). While a
-free domain is left `restricted` is `false` and the console says "Your first 10
-domains are free"; once all of them are connected `restricted` is `true` and the
-notice says a card is for more domains.
+`GET /v1/billing/notice` and `GET /v1/billing/status` carry `first_domain_free: true` for such a workspace, for owners and admins only.
+They add `free_domains`, how many domains it may connect before a card (ten).
+While a free domain is left, `restricted` is `false`, and the console says "Your first 10 domains are free".
+Once all of them are connected, `restricted` is `true`, and the notice says a card is for more domains.
 
 The console asks owners and admins for a card only once every free place is used.
-With one to nine of the ten connected nobody is sent to the setup flow and no
-card prompt appears; you keep connecting. Once the tenth is connected, the live
-card and the domain page say a card is for more domains, and the setup flow is
-offered once, the next time the console loads after the tenth is live (not while it is still
-connecting). Skipping it sticks, invited teammates are never sent there, and a
-billing read that fails never keeps anyone out of the console. With an allowance
-of one, all of this happens after that one domain, as before.
+With one to nine of the ten connected, nobody is sent to the setup flow and no card prompt appears.
+You keep connecting.
+Once the tenth is connected, the live card and the domain page say a card is for more domains.
+The setup flow is offered once, the next time the console loads after the tenth is live, not while it is still connecting.
+Skipping it sticks, and invited teammates are never sent there.
+A billing read that fails never keeps anyone out of the console.
+With an allowance of one, all of this happens after that one domain, as before.
 `GET /v1/billing/standing` says the same to an agent or a server holding an API key.
 
-A domain that was a typo holds a free place until it is removed: remove it from
-Domains, which frees its place at once. (When a workspace's allowance is one, the
-Connect page also offers to remove the one domain still waiting for its records
-and connect the new one in the same step.)
+A domain that was a typo holds a free place until it is removed.
+Remove it from Domains, which frees its place at once.
+When a workspace's allowance is one, the Connect page also offers a shortcut.
+It removes the one domain still waiting for its records and connects the new one in the same step.
 
-Support can set a different number of free domains for a workspace, from 1 to 50,
-and the same reads then say how many ("Your first 3 domains are free"); setting
-it back to `0` returns the workspace to the default of ten. It changes nothing for
-a workspace the rule does not cover.
+Support can set a different number of free domains for a workspace, from 1 to 50.
+The same reads then say how many ("Your first 3 domains are free").
+Setting it back to `0` returns the workspace to the default of ten.
+It changes nothing for a workspace the rule does not cover.
 
-The free domains stay for as long as the workspace has no subscription, because
-billing never touches a live domain. The rule never applies to a workspace that
-had a trial, a subscription, a comp or the Free plan. Its switch is
-`BILLING_FIRST_DOMAIN_FREE` (default `1`); with it set to `0`, or switched off
-at runtime, a new workspace is refused its first connection exactly as it was
-before.
+The free domains stay as long as the workspace has no subscription, because billing never touches a live domain.
+The rule never applies to a workspace that had a trial, a subscription, a comp or the Free plan.
+Its switch is `BILLING_FIRST_DOMAIN_FREE`, which defaults to `1`.
+With it set to `0`, or switched off at runtime, a new workspace is refused its first connection, exactly as before.
 
 ### The Free plan's retirement
 
 A workspace that was on Free keeps its 10 domains a year while it moves:
 
-1. **The grace starts** the first time an owner or admin signs in to the
-   console after the change, or at the workspace's first connection attempt,
-   whichever comes first. (Starting it at deploy time would have run the clock
-   down for workspaces nobody had looked at.) Owners and admins are emailed
-   when it starts.
-2. **For 14 days** everything keeps working. Owners and admins see the setup
-   flow when they sign in to their own workspace (with a "Not now" for the rest
-   of that session; someone who joined the workspace by invite gets the banner
-   instead), a banner on every console page, and email reminders with 7, 3 and
-   1 days left.
+1. **The grace starts** the first time an owner or admin signs in to the console after the change.
+   Or it starts at the workspace's first connection attempt, whichever comes first.
+   Starting it at deploy time would have run the clock down for workspaces nobody had looked at.
+   Owners and admins are emailed when it starts.
+2. **For 14 days** everything keeps working.
+   Owners and admins see the setup flow when they sign in to their own workspace, with a "Not now" for the rest of that session.
+   Someone who joined the workspace by invite gets the banner instead.
+   They also see a banner on every console page, and get email reminders with 7, 3 and 1 days left.
 3. **Subscribing during the grace costs nothing before the grace ends:** the
    subscription starts with a trial that runs exactly to the grace's end.
 4. **After the grace**, without a subscription, new connections are refused.
@@ -242,15 +247,15 @@ A workspace that was on Free keeps its 10 domains a year while it moves:
 
 ### Payment failures
 
-A failed payment moves the subscription to `past_due`: owners and admins get an
-email with a link to update the card in the Billing Portal, and a banner, while
-Stripe retries on its own schedule. Nothing is refused during the retries. If
-every retry fails, what happens next is the Stripe account's setting
-("if all retries for a payment fail"): **cancel the subscription** or **mark it
-unpaid** both end in new connections being refused (`canceled`, or `blocked`
-with `reason: "unpaid"`), with an email first. Leaving it past due would never
-restrict anything. An unpaid subscription is fixed with a working card, which
-pays the open invoice; a second checkout is refused (`409`).
+A failed payment moves the subscription to `past_due`.
+Owners and admins get an email with a link to update the card in the Billing Portal, and a banner.
+Stripe retries on its own schedule, and nothing is refused during the retries.
+If every retry fails, the Stripe account's setting decides what happens next ("if all retries for a payment fail").
+**Cancel the subscription** and **mark it unpaid** both end in new connections being refused.
+The states are `canceled`, or `blocked` with `reason: "unpaid"`, and an email comes first.
+Leaving it past due would never restrict anything.
+You fix an unpaid subscription with a working card, which pays the open invoice.
+A second checkout is refused (`409`).
 
 ### When a paid plan ends
 
@@ -262,22 +267,21 @@ active again, and then they serve again at once.
 
 - A `past_due` plan (Stripe still retrying), a running trial, a workspace that
   never subscribed and a comped workspace never lapse.
-- The hold page is a plain `503` that says "This site is temporarily
-  unavailable." It carries no brand and no link, asks search engines not to
-  index it, and sets `Retry-After` to an hour. Certificates keep renewing, so
-  the domain works the moment the plan is back.
+- The hold page is a plain `503` that says "This site is temporarily unavailable."
+  It carries no brand and no link, asks search engines not to index it, and sets `Retry-After` to an hour.
+  Certificates keep renewing, so the domain works the moment the plan is back.
 - A workspace is never held before its owners got the first email.
 
 ### Who sees billing
 
-Billing belongs to a workspace's **owners and admins** (`billing:manage`). The
-billing routes (status, invoices, checkout, portal, plan changes, promotion
-codes, the grace start) answer members, viewers and widget tokens with `403`,
-and the console shows members and viewers a neutral note ("ask an owner or
-admin") instead of the billing page. Two reads stay open to every member:
-`GET /v1/billing/usage` gives them the counts without the billing fields, and
-`GET /v1/billing/notice` tells them only whether billing needs attention and
-whether new connections are paused, never the plan, dates or amounts.
+Billing belongs to a workspace's **owners and admins** (`billing:manage`).
+The billing routes answer members, viewers and widget tokens with `403`.
+Those routes are status, invoices, checkout, portal, plan changes, promotion codes and the grace start.
+The console shows members and viewers a neutral note ("ask an owner or admin") instead of the billing page.
+Two reads stay open to every member.
+`GET /v1/billing/usage` gives them the counts without the billing fields.
+`GET /v1/billing/notice` tells them only whether billing needs attention and whether new connections are paused.
+It never shows the plan, dates or amounts.
 
 ### Billing emails
 
@@ -313,6 +317,8 @@ derived from the authenticated credential, never a query parameter, and
   "plan_name": "Growth",
   "quota": 50,
   "limit": 50,
+  "quota_used": 412,
+  "quota_window_months": 1,
   "metered": true,
   "hard_cap": false,
   "status": "active",
@@ -324,61 +330,64 @@ derived from the authenticated credential, never a query parameter, and
 }
 ```
 
-Compare `used` against **`quota`**: the plan's included connections for one
-calendar month, i.e. `domains_per_month` from the catalog (`0` means unlimited).
-`limit` is an alias carrying the identical value: the published schema had
-always declared `limit` while the handler only ever emitted `quota`, so both are
-sent now and either may be read. `status`, `has_billing_account` and
-`billing_state` are billing data and are only sent to a credential that holds
-`billing:manage`.
+`used` is this month's count.
+Compare **`quota_used`** against **`quota`**.
+`quota_used` is the count over the last `quota_window_months` months.
+That's 12 on Starter, so this month plus the 11 before it, and 1 on every other tier, where it equals `used`.
+`quota` is the plan's allowance over that window, and `0` means unlimited.
+`limit` is an alias carrying the same value.
+The published schema always declared `limit`, while the handler only ever emitted `quota`.
+So both are sent now, and you can read either.
+`status`, `has_billing_account` and `billing_state` are billing data.
+They are only sent to a credential that holds `billing:manage`.
 
 `quota_state` is the server's own verdict: `ok`, `approaching` (at or past 80%
-of quota) or `at_limit`. `remaining` is `quota - used` floored at zero, omitted
-entirely on an unlimited plan.
+of quota) or `at_limit`. `remaining` is `quota - quota_used` floored at zero,
+omitted entirely on an unlimited plan.
 
-`hard_cap` is the plan's refusal policy (`true` only on `starter`), and
-`quota_enforced` reports whether a `402` is actually possible **right now**: it
-needs `hard_cap` *and* the deployment's `BILLING_ENFORCE_QUOTA`, the second of
-which a client cannot see. On every larger tier `quota_enforced` is `false` at
-any usage. The example above is a `growth` tenant at 412 used against a quota of
-50: `at_limit`, `quota_enforced: false`, and nothing refused. Treat `at_limit`
-as "over the line", never as "blocked"; check `quota_enforced` for that.
+`hard_cap` is the plan's refusal policy, and it is `true` only on `starter`.
+`quota_enforced` reports whether a `402` is actually possible **right now**.
+It needs `hard_cap` *and* the deployment's `BILLING_ENFORCE_QUOTA`, and a client cannot see the second.
+On every larger tier, `quota_enforced` is `false` at any usage.
+The example above is a `growth` tenant at 412 used against a quota of 50.
+It reads `at_limit` and `quota_enforced: false`, and nothing is refused.
+Treat `at_limit` as "over the line", never as "blocked", and check `quota_enforced` for that.
 
 ### Overage
 
-**No plan above Starter is ever refused a connection at quota.** On `startup`,
-`growth`, `premium` and `enterprise`, a connection past the monthly quota is
-allowed, recorded as overage, and surfaced, never blocked. `starter` is the only
-tier that returns `402 quota_exceeded` at its quota (where the deployment
-enforces quotas at all).
+**No plan above Starter is ever refused a connection at quota.**
+On `startup`, `growth`, `premium` and `enterprise`, a connection past the monthly quota is allowed.
+It is recorded as overage and surfaced, never blocked.
+`starter` is the only tier that returns `402 quota_exceeded` at its quota, where the deployment enforces quotas at all.
 
-The reason is the blast radius of the refusal, not generosity. The quota gate
-sits on the connection path that the **embedded widget** calls with an end user
-credential, so a `402` does not land on the tenant's admin; it lands on *their*
-end user, mid-connect, inside the customer's own signup funnel. Breaking a
-paying customer's funnel to collect overage is a bad trade at any quota, and
-doubly so here because **no code path has ever reported usage to Stripe**: the
-Stripe client has no usage record or meter event call at all, so the debt being
-enforced was never billed in the first place.
+The reason is the blast radius of the refusal, not generosity.
+The quota gate sits on the connection path that the **embedded widget** calls with an end user credential.
+So a `402` does not land on the tenant's admin.
+It lands on *their* end user, mid-connect, inside the customer's own signup funnel.
+Breaking a paying customer's funnel to collect overage is a bad trade at any quota.
+It is worse here, because **no code path has ever reported usage to Stripe**.
+The Stripe client has no usage record or meter event call at all.
+So the debt being enforced was never billed in the first place.
 
-Overage is instead recorded and surfaced: `/v1/billing/usage` reports
-`quota_state` and `remaining`, the console warns at 80% and again past quota,
-and the usage band feeds the CRM so the account team can right-size the plan.
+Overage is recorded and surfaced instead.
+`/v1/billing/usage` reports `quota_state` and `remaining`.
+The console warns at 80%, and again past quota.
+The usage band feeds the CRM, so the account team can right-size the plan.
 An overage becomes a conversation, not an outage.
 
 `metered` on `growth`/`enterprise` describes how a tier is *priced* and carries
 no enforcement meaning at all. Read **`hard_cap`** for a plan's refusal policy.
 
-> **Retraction.** An earlier revision of this page said every tier was hard
-> capped, and promised that metered tiers would only stop blocking *in the same
-> change that started charging for overage*. **That promise is withdrawn.** Paid
-> tiers stopped blocking, and no charging was introduced: the change is strictly
-> in the customer's favour, which is why it shipped without the notice period
-> that promise described. If usage based billing is ever built (Stripe Billing
-> Meters; the legacy Usage Records API is deprecated), it will be announced
-> before it takes effect.
+> **Retraction.** An earlier revision of this page said every tier was hard capped.
+> It promised metered tiers would only stop blocking *in the same change that started charging for overage*.
+> **That promise is withdrawn.**
+> Paid tiers stopped blocking, and no charging was introduced.
+> The change is strictly in the customer's favour.
+> That's why it shipped without the notice period that promise described.
+> If usage based billing is ever built, it will be announced before it takes effect.
+> That would use Stripe Billing Meters, since the legacy Usage Records API is deprecated.
 
-## Checkout & portal
+## Checkout and portal [#checkout--portal]
 
 ```bash
 # Start a Stripe Checkout for a self-serve plan (a new workspace gets its 14 day trial)
@@ -395,25 +404,21 @@ curl -X POST https://api.customdomain.ai/v1/billing/portal \
 
 Pass `return_url` instead of `success_url` and `cancel_url` for Stripe
 **Embedded** Checkout; the response then carries a `client_secret` to mount.
-Checkout and the portal require `STRIPE_SECRET_KEY` and the `STRIPE_PRICE_*`
-ids (`STRIPE_PRICE_STARTER`, `STRIPE_PRICE_STARTUP`, `STRIPE_PRICE_GROWTH`);
-without them these routes return `503 service_unavailable` while the plan
-catalog stays public. A workspace that already has a running subscription is
+When billing is not available, these routes return `503 service_unavailable`
+while the plan catalog stays public. A workspace that already has a running subscription is
 refused a second checkout with `409`. Enforcement is on the control plane's
 write path only, never on the edge `ask` hot path, so serving traffic never
 blocks on billing.
 
-`promotion_code` is optional: the code as a customer types it (at most 64
-characters, never a Stripe `promo_` id). The control plane checks it before
-Stripe is asked for a session, takes it only when it is one of this
-deployment's own (see Promotion codes above), and makes it the session's one
-discount. A code that does not exist, ran out, or belongs to another product on
-the same Stripe account is a `404`, and no session is created; a code of this
-deployment that Stripe will not give this order (a first order only code, a
-minimum amount) is a `400`. Stripe's own code field is never switched on, and a
-session cannot be given a discount after it is created, so to change the code,
-start the checkout again with the new one (or none) and mount the new
-`client_secret`.
+`promotion_code` is optional: the code as a customer types it.
+It holds at most 64 characters, and never a Stripe `promo_` id.
+The control plane checks it before asking Stripe for a session.
+It takes the code only when it is one of this deployment's own (see Promotion codes above), and makes it the session's one discount.
+A code that does not exist, ran out, or belongs to another product on the same Stripe account is a `404`, and no session is created.
+A code of this deployment that Stripe will not give this order is a `400`.
+Examples are a first order only code, or a minimum amount.
+Stripe's own code field is never switched on, and a session cannot be given a discount after it is created.
+So to change the code, start the checkout again with the new one (or none), and mount the new `client_secret`.
 
 ```bash
 curl -X POST https://api.customdomain.ai/v1/billing/checkout \
@@ -421,25 +426,24 @@ curl -X POST https://api.customdomain.ai/v1/billing/checkout \
   -d '{"plan":"starter","return_url":"https://app.acme.example/done","promotion_code":"LAUNCH50"}'
 ```
 
-`ui_mode` is optional and picks how the session is shown. Leave it out (or send
-`embedded`; `null` and an empty string count as leaving it out) and nothing
-changes: Stripe Embedded Checkout, an iframe Stripe styles itself, when
-`return_url` is set, and the hosted redirect when only `success_url` and
-`cancel_url` are. `elements` is Elements with the Checkout Sessions API: you
-render the whole page (the plan, the price, the trial, the promotion code box,
-the totals) and mount only Stripe's Payment Element with the returned
-`client_secret`, so the page can wear your own theme. It needs `return_url`. An
-`elements` session is created on Stripe API version `2026-08-26.dahlia`, pinned
-on that one request. This is the one place the exact version is written down
-(the API reference says only that it is the dahlia release train), so mount the
-session with a Stripe.js of the dahlia train. Every response carries `ui_mode`,
-the mode the session really has: `embedded`, `elements`, or `hosted` for the
-redirect flow. An `elements` request answers `embedded` when Stripe cannot
-create an Elements session, so read the response before you mount anything.
-`hosted` is only ever an answer: a client that keeps the response's `ui_mode`
-must not send it back, because any value other than `embedded` and `elements`
-is a `400`. The same field works on `POST /v1/billing/setup` (save a card) and
-`POST /v1/registrar/checkout` (buy a domain).
+`ui_mode` is optional and picks how the session is shown.
+Leave it out, or send `embedded`, and nothing changes.
+`null` and an empty string count as leaving it out.
+You then get Stripe Embedded Checkout, an iframe Stripe styles itself, when `return_url` is set.
+You get the hosted redirect when only `success_url` and `cancel_url` are set.
+`elements` is Elements with the Checkout Sessions API.
+You render the whole page: the plan, the price, the trial, the promotion code box and the totals.
+You mount only Stripe's Payment Element with the returned `client_secret`, so the page can wear your own theme.
+It needs `return_url`.
+An `elements` session is created on Stripe API version `2026-08-26.dahlia`, pinned on that one request.
+This is the one place the exact version is written down; the API reference says only that it is the dahlia release train.
+So mount the session with a Stripe.js of the dahlia train.
+Every response carries `ui_mode`, the mode the session really has: `embedded`, `elements`, or `hosted` for the redirect flow.
+An `elements` request answers `embedded` when Stripe cannot create an Elements session.
+So read the response before you mount anything.
+`hosted` is only ever an answer.
+A client that keeps the response's `ui_mode` must not send it back, because any value other than `embedded` and `elements` is a `400`.
+The same field works on `POST /v1/billing/setup` (save a card) and `POST /v1/registrar/checkout` (buy a domain).
 
 ```bash
 curl -X POST https://api.customdomain.ai/v1/billing/checkout \
@@ -450,33 +454,16 @@ curl -X POST https://api.customdomain.ai/v1/billing/checkout \
 
 ### When the subscription is recorded
 
-**Starting a checkout grants nothing.** `POST /v1/billing/checkout` validates the
-tier (unknown ids, the retired `free` and the two contact-sales tiers are
-rejected with `400`) and opens a Stripe session stamped with the tenant and
-tier. The subscription is recorded only from a session that reads
-`status: "complete"` **and** `payment_status: "paid"` (or
-`no_payment_required`, which is what a trial reads), confirmed either by
-Stripe's signature-verified `checkout.session.completed` event or by
-`POST /v1/billing/checkout:confirm`, which the console calls when Stripe returns
-the browser and which reads the session from Stripe itself. An abandoned,
-expired or unpaid session leaves the tenant exactly where it was.
-
-> **Operators: `STRIPE_WEBHOOK_SECRET` is required**, and the webhook endpoint
-> must subscribe to `checkout.session.completed`,
-> `customer.subscription.created`, `customer.subscription.updated`,
-> `customer.subscription.deleted`, `customer.subscription.trial_will_end`,
-> `invoice.paid` and `invoice.payment_failed`. Without them renewals, payment
-> failures and cancellations never reach the workspace's state.
-
-> **Operators: set `STRIPE_PRODUCT_IDS`** (comma separated `prod_...` ids) on
-> every deployment that makes promotion codes. The Stripe account may be shared with other products,
-> and a coupon without a product list would discount all of them, so with it
-> empty, making a promotion code in the operator console is refused (`503`) and
-> creates nothing. The same ids decide which hand-made Stripe codes customers can redeem. To turn
-> the in-page checkout off, set `CHECKOUT_UI_MODE=embedded` on the console and
-> recreate its container (no rebuild); the console then asks for Stripe's own
-> embedded checkout. Deploy the control plane before a console that sends
-> `ui_mode`.
+**Starting a checkout grants nothing.**
+`POST /v1/billing/checkout` validates the tier.
+It rejects unknown ids, the retired `free` and the two contact-sales tiers with `400`.
+Then it opens a Stripe session stamped with the tenant and tier.
+The subscription is recorded only from a session that reads `status: "complete"` **and** `payment_status: "paid"`.
+A trial reads `no_payment_required`, which also counts.
+Two things can confirm it.
+One is Stripe's signature-verified `checkout.session.completed` event.
+The other is `POST /v1/billing/checkout:confirm`, which the console calls when Stripe returns the browser, and which reads the session from Stripe itself.
+An abandoned, expired or unpaid session leaves the tenant exactly where it was.
 
 `customer.subscription.*` events apply Stripe's subscription (its status, trial
 end, period end, price and cancellation) to the workspace, and the state above

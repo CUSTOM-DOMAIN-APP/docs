@@ -1,0 +1,182 @@
+/**
+ * CustomDomain design tokens: the ONE hand-edited token file for site v2 and, through the T-57 sync, the docs host
+ * (decision P-14). Since 2026-11-07 the values follow Better Auth's monochrome system (owner ruling, plan in
+ * docs/05-build-plan/REDESIGN-BETTER-AUTH-LOOK.md; D-1's warm palette is superseded for site v2): white and near-black
+ * stone neutrals, hairline borders drawn as the text color at low alpha, Geist and Geist Mono, near-square corners,
+ * and a light and a dark set. The values are read from better-auth/better-auth (MIT, copyright Bereket Engida)
+ * docs/app/globals.css (`--background`, `--foreground`, `--border`, `--muted-foreground`, `--radius`) and
+ * rounded to hex; see NOTICE.md. Components use only the semantic tokens (--cd-surface-*, --cd-text-*, --cd-border-*,
+ * --cd-hair*, --cd-action-*, --cd-state-*, --cd-code-*). Change a value here and nowhere else, then run
+ * `node scripts/build-tokens.mjs`, which regenerates tokens.json, fumadocs-map.css and the two Shiki themes; the build
+ * fails when they are stale. No hex value may appear in site code outside this file (token lint in that script).
+ * Light is the default; the inline script in app/layout.tsx sets data-theme="dark" from the visitor's choice or the
+ * system setting before first paint.
+ */
+:root {
+  /* Primitives (names kept from the first build so every page keeps compiling; values are Better Auth's stone set) */
+  --cd-ink: #0c0a09;
+  --cd-ink-soft: #292524;
+  --cd-stone-600: #57534e;
+  --cd-muted: #6f6862;
+  --cd-faint: #a8a29e;
+  --cd-line-strong: #8c857f;
+  --cd-line: #e7e5e4;
+  --cd-line-soft: #f0efee;
+  --cd-paper: #ffffff;
+  --cd-paper-2: #fafaf9;
+  --cd-card: #ffffff;
+  --cd-ink-deep: #0c0a09;
+  --cd-ink-deep-fg: #fafaf9;
+  --cd-ink-deep-line: #292524;
+  --cd-ink-deep-muted: #a8a29e;
+
+  /* Semantic (light) */
+  --cd-surface-page: var(--cd-paper);
+  --cd-surface-band: var(--cd-paper-2);
+  --cd-surface-raised: var(--cd-card);
+  --cd-text-primary: var(--cd-ink);
+  --cd-text-secondary: var(--cd-stone-600);
+  --cd-text-muted: var(--cd-muted);
+  --cd-border-default: var(--cd-line);
+  --cd-border-input: var(--cd-line-strong);
+  --cd-action-primary-bg: var(--cd-ink);
+  --cd-action-primary-fg: var(--cd-ink-deep-fg);
+  --cd-action-primary-hover: var(--cd-ink-soft);
+  --cd-focus: var(--cd-ink);
+  --cd-overlay: rgb(12 10 9 / 0.5);
+
+  /* Hairlines: the text color at low alpha, as Better Auth draws them (foreground/6, /8, /10, /15). */
+  --cd-hair-soft: color-mix(in oklab, var(--cd-text-primary) 6%, transparent);
+  --cd-hair: color-mix(in oklab, var(--cd-text-primary) 9%, transparent);
+  --cd-hair-strong: color-mix(in oklab, var(--cd-text-primary) 15%, transparent);
+  --cd-tint: color-mix(in oklab, var(--cd-text-primary) 3%, transparent);
+  --cd-tint-strong: color-mix(in oklab, var(--cd-text-primary) 6%, transparent);
+
+  --cd-state-pending-text: #57534e;
+  --cd-state-pending-bg: #f5f5f4;
+  --cd-state-pending-border: #e7e5e4;
+  --cd-state-propagating-text: #92400e;
+  --cd-state-propagating-bg: #fbf3e6;
+  --cd-state-propagating-border: #e9d3b4;
+  --cd-state-live-text: #15803d;
+  --cd-state-live-bg: #f0f7f1;
+  --cd-state-live-border: #cfe5d5;
+  --cd-live-strong: #0f6b33;
+  --cd-state-failed-text: #b91c1c;
+  --cd-state-failed-bg: #fbf2f1;
+  --cd-state-failed-border: #f1cfcb;
+
+  /* Code colors (light). scripts/build-tokens.mjs writes shared/shiki/customdomain-light.json from these: ink code,
+     stone punctuation and keys, muted comments, and the one accent (keywords and the command word), as Better Auth's
+     purple in its install line. */
+  --cd-code-fg: var(--cd-ink);
+  --cd-code-bg: var(--cd-paper-2);
+  --cd-code-punctuation: var(--cd-stone-600);
+  --cd-code-comment: var(--cd-muted);
+  --cd-code-error: var(--cd-state-failed-text);
+  --cd-code-accent: #9333ea;
+
+  /* Layout: Better Auth's split shell (x3-layout-patterns.md section 1) and our rhythm */
+  --cd-wrap: 70rem;
+  --cd-prose: 45rem;
+  --cd-measure: 38rem;
+  --cd-gutter: 1.25rem;
+  --cd-gap: 1.5rem;
+  --cd-header-h: 3rem;
+  --cd-pane-w: 40%;
+  --cd-pane-pad: 1.75rem;
+  --cd-main-pad: 1.25rem;
+  --cd-main-top: 1.5rem;
+  --cd-section-y: 2.5rem;
+  --cd-section-y-tight: 2rem;
+  --cd-hero-top: 1.5rem;
+  --cd-hero-bottom: 1.5rem;
+  --cd-sticky-bottom: 0rem;
+
+  /* Radii (Better Auth: --radius 0.2rem, most frames square), shadow */
+  --cd-radius-sm: 2px;
+  --cd-radius-md: 3px;
+  --cd-radius-lg: 4px;
+  --cd-radius-pill: 999px;
+  --cd-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 16px 40px rgb(0 0 0 / 0.12);
+
+  /* Layers (02 section 2.1): no z-index literal anywhere else */
+  --cd-z-sticky: 10;
+  --cd-z-float: 20;
+  --cd-z-sidebar: 30;
+  --cd-z-menu: 50;
+  --cd-z-drawer: 80;
+  --cd-z-header: 90;
+  --cd-z-toast: 100;
+  --cd-z-skip: 200;
+
+  /* Type: Geist and Geist Mono (SIL Open Font License), set by next/font on <html> in site v2. No serif. */
+  --cd-font-sans: var(--cd-font-geist, "Geist"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --cd-font-mono: var(--cd-font-geist-mono, "Geist Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cd-text-display: clamp(1.5rem, 1.1rem + 1.4vw, 2.25rem);
+  --cd-text-h1: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  --cd-text-h2: 1.125rem;
+  --cd-text-h3: 0.9375rem;
+  --cd-text-lede: 0.9375rem;
+  --cd-text-body: 0.9375rem;
+  --cd-text-small: 0.8125rem;
+  --cd-text-caption: 0.75rem;
+  --cd-text-label: 0.75rem;
+
+  color-scheme: light;
+}
+
+@media (min-width: 40rem) {
+  :root { --cd-gutter: 1.5rem; --cd-main-pad: 1.5rem; }
+}
+@media (min-width: 64rem) {
+  :root {
+    --cd-header-h: 2.75rem;
+    --cd-main-pad: 2rem;
+    --cd-main-top: 5rem;
+    --cd-section-y: 2.5rem;
+    --cd-section-y-tight: 2rem;
+    --cd-hero-top: 0rem;
+    --cd-hero-bottom: 2rem;
+  }
+}
+
+/* Dark set: site v2 and the docs host. Better Auth's dark values (background black, foreground stone-50). */
+:root[data-theme="dark"],
+.dark {
+  --cd-surface-page: #000000;
+  --cd-surface-band: #0c0a09;
+  --cd-surface-raised: #0c0a09;
+  --cd-text-primary: #fafaf9;
+  --cd-text-secondary: #d6d3d1;
+  --cd-text-muted: #a8a29e;
+  --cd-border-default: #292524;
+  --cd-border-input: #78716c;
+  --cd-action-primary-bg: #fafaf9;
+  --cd-action-primary-fg: #0c0a09;
+  --cd-action-primary-hover: #d6d3d1;
+  --cd-focus: #fafaf9;
+  --cd-overlay: rgb(0 0 0 / 0.7);
+  --cd-ink-deep: #0c0a09;
+  --cd-ink-deep-line: #292524;
+  --cd-state-pending-text: #a8a29e;
+  --cd-state-pending-bg: #1c1917;
+  --cd-state-pending-border: #292524;
+  --cd-state-propagating-text: #e0a96a;
+  --cd-state-propagating-bg: #241a0f;
+  --cd-state-propagating-border: #4a3418;
+  --cd-state-live-text: #6fc28b;
+  --cd-state-live-bg: #12201a;
+  --cd-state-live-border: #24452f;
+  --cd-live-strong: #8fd4a6;
+  --cd-state-failed-text: #f0938a;
+  --cd-state-failed-bg: #2a1514;
+  --cd-state-failed-border: #4d2522;
+  --cd-code-fg: #fafaf9;
+  --cd-code-bg: #050505;
+  --cd-code-punctuation: #d6d3d1;
+  --cd-code-comment: #a8a29e;
+  --cd-code-error: #f0938a;
+  --cd-code-accent: #c084fc;
+  color-scheme: dark;
+}
