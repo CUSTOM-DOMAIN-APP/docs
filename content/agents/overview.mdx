@@ -1,6 +1,8 @@
 ---
 title: Agent access
-description: "How an AI agent gets human-approved, scoped and revocable access to your domains through the MCP server using OAuth with PKCE, and where owners manage it."
+icon: KeyRound
+description: "Give an AI agent scoped access you can revoke."
+metaDescription: "How an AI agent gets human-approved, scoped and revocable access to your domains through the MCP server using OAuth with PKCE, and where owners manage it."
 ---
 
 > **Live on customdomain.ai.** An agent can register, ask for scopes, and be
@@ -66,10 +68,18 @@ A grant carries one or more scopes; each MCP tool requires exactly one:
 
 | Scope | Grants |
 | --- | --- |
-| `domains:read` | Observe only: availability, suggestions, connection, certificate and order status, diagnosis, provider discovery, listings, billing standing. |
-| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, and email setup. It does not remove a domain. |
+| `domains:read` | Observe only: availability, suggestions, connection, certificate, order and nameserver move status, diagnosis, provider discovery, listings, billing standing, the connected provider accounts and which saved keys may act for a domain. |
+| `domains:connect` | Set a domain up: connect, re-apply, recheck, forward, email setup, move its nameservers or move them back, and write a domain's records with a saved key. It does not remove a domain. |
 | `domains:disconnect` | Take a connected domain offline. Its own scope, so a grant that may set domains up cannot also remove them. |
 | `domains:purchase` | **Spends money**: registers a domain. Isolated on its own scope, and requires a saved card and a monthly spend cap. Purchases through MCP are off on the hosted service. |
+| `stats:read` | Read plan usage and the billing notice. Plan and payment changes stay with a person in the console. |
+| `audit:read` | Read the workspace audit log. |
+| `app:read` | Read applications, their connect target, webhooks and webhook deliveries. |
+| `app:write` | Create and change applications, set the connect target, and manage webhooks. |
+| `tokens:mint` | Mint a short lived widget token for an application. |
+| `member:read` | List members and open invitations. |
+| `member:manage` | Invite members, change their role and remove them. Never makes an owner. |
+| `keys:manage` | List, create and revoke API keys. A key an agent creates acts as a member and expires within 90 days. |
 {/* NEW SCOPES GO HERE: add one row per new scope directly above this line, and trim the matching words from the domains:connect row. This marker stays; the docs sync test reads it. */}
 
 A read only token can never connect, disconnect or buy; a connect token can never
@@ -100,8 +110,24 @@ with that scope. Nothing else about the grant changes.
   for the one exception).
 - **Owner emails**: you are emailed when an agent connects, when it acts, and
   immediately when it spends money.
+- **It reads less than your key**: an agent token is bound to one application and
+  reads only that application's connections and keys. It never learns your
+  customer's id (`end_user_ref`), a key's customer number, sign-in session or
+  name, the provider's words about a failed key, which member of your workspace
+  made a key, or the other applications a key is shared with. A key made for
+  another application and shared with its own reads as `<Provider> key`. Your API
+  key reads all of it. [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account)
+  has the list.
+- **It never acts as your customer**: an agent token cannot set a customer's email
+  address through `end_user_email` (refused with `403`, your API key sets it),
+  cannot make a [reconnect link](/docs/guides/secure-sign-in#reconnect) (only your
+  API key can, because the link signs in as the customer), and never resumes the
+  [nameserver move](/docs/guides/nameserver-migration#api) another application of
+  your workspace has open.
 - **A trail**: what an agent does and spends is in the audit log, under the actor
-  `agent:<grant id>`.
+  `agent:<grant id>`. Its changes to a domain's DNS are `agent.acted` rows: using
+  a saved key, re-applying a domain's records, moving a domain's nameservers or
+  moving them back. A call refused before anything was sent leaves no row.
 
 ## Hosted endpoints
 

@@ -1,0 +1,43 @@
+---
+title: "2. Mint tokens"
+description: "Your server opens the widget for one user at a time."
+metaDescription: "Stage 2 of the CustomDomain™ Quickstart: mint a short-lived widget token on your server with POST /v1/tokens and load the widget with it."
+---
+
+The widget never sees an API key. Your server mints a short-lived token for each
+user who opens it.
+
+<Steps>
+
+<Step>
+
+### Get a key
+
+Open **API & SDK** in the console and copy your key. Keep it on your server, in an
+environment variable. A key for real domains needs a plan.
+
+</Step>
+
+<Step>
+
+### Mint a token
+
+```bash
+curl -X POST https://api.customdomain.ai/v1/tokens \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "application_id": "app_...", "domain": "app.customer.com" }'
+```
+
+The answer holds a `token`. Pass it to the widget in your page.
+
+</Step>
+
+</Steps>
+
+**Done when** the widget opens in your product with a token from your server.
+
+More: [Widget tokens](/docs/authentication/widget-tokens) and
+[installing the widget](/docs/widget-sdk/installation-and-embed).
+
+Next: [Set routing](/docs/quickstart/set-routing).

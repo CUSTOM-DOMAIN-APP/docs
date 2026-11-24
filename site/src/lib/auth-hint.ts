@@ -4,7 +4,7 @@
  * identifier and is a hint, never a credential: /app checks the real session and sends anyone without one to
  * /login. AUTH_HINT_SCRIPT runs inline in <head> (src/app/layout.tsx) before the body is parsed and adds
  * cd-signed-in to <html> when the cookie is there. The two rules in src/app/globals.css then show one of the two
- * links that src/components/auth-link.tsx prerenders, so the choice is made before first paint: no flash, no
+ * pairs that src/components/sidebar-account.tsx prerenders, so the choice is made before first paint: no flash, no
  * layout shift. Without JavaScript or the cookie, "Sign in" shows. customdomain.ai does the same from its head
  * code (block cd-console-swap). The snippet has no ampersand or less-than sign, so it needs no escaping.
  */
