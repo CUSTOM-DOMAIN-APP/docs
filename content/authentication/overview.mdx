@@ -18,7 +18,7 @@ types share the surface, each with a different blast radius.
   as `cd_live_` or `cd_test_`.
 - **The prefix is not the mode.** A `cd_test_` key is made for a staging or
   development environment and works on real domains. A key is a
-  [test mode](/docs/guides/test-mode) key only when its application was made with
+  [Sandbox](/docs/guides/test-mode) key only when its application was made with
   `"sandbox": true`; read that field from `GET /v1/applications`.
 - Stored only as a hash; the full key is shown **once**, at creation.
 - **A key can be limited.** When you create one, you can choose what it can do
@@ -67,7 +67,7 @@ types share the surface, each with a different blast radius.
   `application_id` of the key's tenant, defaulting to the key's own:
   `POST /v1/connections`, `POST /v1/domains:check` and
   `POST /v1/sharing/connect`.
-- **A test mode key is the exception.** A key of a [test mode](/docs/guides/test-mode)
+- **A Sandbox key is the exception.** A key of a [Sandbox](/docs/guides/test-mode)
   application is pinned to that application. It runs the connect flow for it and reads
   its webhooks, and every other route, and every other application of the tenant, is
   refused or answers as if it were someone else's. `403 sandbox_not_allowed` names what
