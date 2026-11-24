@@ -1,6 +1,7 @@
 ---
 title: SaaS platforms
-description: "Let your users connect a domain they already own inside your product: embed the widget, mint tokens on your server, and serve every customer domain."
+description: "Let your users connect their own domains in your product."
+metaDescription: "Let your users connect a domain they already own inside your product: embed the widget, mint tokens on your server, and serve every customer domain."
 ---
 
 Your product gives each customer a page, a store, a help center or an app, and
@@ -33,9 +34,9 @@ domains get connected and there is no customer in the loop, the
 
 Your backend holds the credential and trades it for a short-lived widget token
 (15 minutes, one application, optionally one domain and one end user). For an
-application made in the console that is an API key sent to
-`POST https://app.customdomain.ai/api/widget-token`; for one made over the API it
-is the application's `client_secret` sent to `POST /v1/tokens`. Only the token
+application made in the console that is an API key sent as the bearer to
+`POST /v1/tokens`; for one made over the API it is the application's
+`client_secret` sent to `POST /v1/tokens`. Only the token
 reaches the browser. See [Widget tokens](/docs/authentication/widget-tokens).
 
 </Step>
@@ -46,9 +47,11 @@ reaches the browser. See [Widget tokens](/docs/authentication/widget-tokens).
 
 `customdomain-js` (or `@customdomain/react`, or the hosted script) opens the
 connect modal. It detects the customer's DNS provider and offers the way in it
-can actually complete: a sign-in with the provider, the provider's one-click
-setup, or the records to add by hand with the provider's own steps and a live
-check of each record. See [Widget](/docs/getting-started/widget).
+can actually complete, from the six [ways to connect](/docs/concepts/glossary#ways-to-connect):
+a sign-in with the provider, the provider's one-click setup, a secure sign-in, a
+scoped API key, the records to add by hand with the provider's own steps and a live
+check of each record, or, where you turn it on, DNS hosting. See
+[Widget](/docs/getting-started/widget).
 
 </Step>
 
@@ -82,11 +85,10 @@ runs the widget, the API and your webhooks on made up `.test` names, with no car
 and nothing billed.
 
 <Callout title="What one click covers">
-  Of the 189 providers in the census on 2026-10-21, 73 have an automatic path
-  (6 provider OAuth, 1 Domain Connect, 66 scoped API key). Customers at the other
-  116 add the records by hand, with the exact rows shown and verified
-  automatically. The live split is at `GET /v1/providers/census`; see
-  [DNS providers](/docs/dns/providers).
+  Some providers connect automatically, by provider sign-in, one-click setup or
+  a scoped API key. Customers at other providers add the records by hand, and we
+  show the exact rows and check each one. The live list is at
+  `GET /v1/providers/census`. See [DNS providers](/docs/dns/providers).
 </Callout>
 
 ## What to read next

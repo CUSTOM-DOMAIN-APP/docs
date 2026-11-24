@@ -1,7 +1,13 @@
 ---
-title: Setup types & the ask gate
-description: "How a domain is classified as automatic or manual, how async one-click setup fits in, what proves control for each rail, and how the ask gate guards the edge."
+title: "Setup types and the ask gate"
+icon: Fingerprint
+metaTitle: "Setup types & the ask gate | CustomDomain docs"
+description: "How each domain is set up and how control is proven."
+metaDescription: "How a domain is classified as automatic or manual, how async one-click setup fits in, what proves control for each rail, and how the ask gate guards the edge."
 ---
+
+Each domain gets a setup type, and each way to connect proves you control the
+domain in its own way. This page explains both.
 
 ## Setup types
 
@@ -86,10 +92,21 @@ instead:
   Google Cloud DNS.
 - **`end_user_automatic`**: true only when the recommended rail is OAuth or
   one-click. This is the fact `supports_automatic` was always misread as.
+- **`registrar`**: the company the domain is registered with, which may differ
+  from its DNS provider. Always present; `null` when it is not known.
 - **`blocked_reason`**: present when *no* rail can connect the domain:
-  `unregistered` (no nameservers: fix at the registrar) or
+  `unregistered` (no nameservers: fix at the registrar),
+  `registration_hold` (see below) or
   `platform_subdomain` (`www.<name>.vercel.app`, which is the platform's DNS, not the
   user's; `POST /v1/connections` refuses it with the same code).
+- **`registration_hold`**: `hold`, `redemption` or `pending_delete`, present with
+  `blocked_reason: registration_hold`. The domain is registered but does not work
+  until its registrar resolves the hold, and no rail is offered meanwhile.
+- **`connection_plan`**: where to make the change and by which way, when the domain
+  can be reached from more than one place. `place` is `dns_host`, `registrar` or
+  `none`; `change` is `records`, `nameservers` or `none`; `rail` is one of the ways in
+  `rails`, or `manual`; `reason` is a short code. `provider` names the place when
+  there is one.
 - **`dashboard_url`**: a best-effort deep link into the provider's DNS panel,
   for the "add these records" step.
 
@@ -117,9 +134,17 @@ the customer controls the zone:
   async ([managed](/docs/connect-flow/managed-connections)) variant additionally
   leaves a durable, encrypted grant, used only to re-apply or revert that same
   template;
-- an **API token** is a scoped credential only the zone owner can mint;
+- a **secure sign-in** happens in the customer's own session at the provider, and
+  the changes can be made only in the account that holds the domain: a sign-in to
+  an account that does not hold it changes nothing and the customer is asked to
+  use another ([signed in to the wrong
+  account](/docs/guides/secure-sign-in#signed-in-to-the-wrong-account));
+- an **API key** is a scoped credential only the zone owner can mint;
 - the **manual** flow requires the records to actually appear in the domain's
-  authoritative DNS, value-checked.
+  authoritative DNS, value-checked;
+- **DNS hosting** is the owner's own change of the domain's nameservers at its
+  registrar, and the zone turns active only when the registry lists every one of
+  them as ours ([Managed DNS](/docs/dns/managed-dns#how-it-works)).
 
 For one-click setup specifically, the catalog ships a `connect-verified` template
 that points the apex `A` at the CustomDomain™ edge and publishes the ownership TXT
@@ -137,7 +162,7 @@ console, **Remember this key for my *&lt;provider&gt;* account** starts ticked,
 so the key is kept as a provider account unless the user unticks it.
 Account passwords and tokens that expire within hours are never saved.
 
-A remembered key is encrypted at rest (AES-256-GCM) and its plaintext never
+A remembered key is encrypted at rest and its plaintext never
 leaves the server. On the next connect at that
 provider, **"Use saved key"** applies records in one click without re-entering
 anything, and for Cloudflare, GoDaddy, Route 53, Namecheap, IONOS,

@@ -28,8 +28,11 @@ export const docs = defineDocs({
     // `metaTitle` (optional) is the page's whole <title>, written out in full and used as it is, without the
     // " | CustomDomain docs" suffix the site template adds to `title`. It lets a page keep a short H1 and sidebar
     // label while its search title says what the page answers (docs/dns/providers, docs/dns/email-dns).
+    // `metaDescription` (optional) is the longer description for search and social tags (150 to 160 characters
+    // reads best there); the visible `description` under the title stays one short line, as Better Auth's docs.
     schema: frontmatterSchema.extend({
       metaTitle: frontmatterSchema.shape.title.optional(),
+      metaDescription: frontmatterSchema.shape.title.optional(),
     }),
     // Exposes page.data.getText("processed"): the page as Markdown, which the
     // /docs/<slug>.md route serves and the "Copy Markdown" button copies.
@@ -93,6 +96,9 @@ export default defineConfig({
   // title and icon) stays as Fumadocs ships it.
   mdxOptions: {
     rehypeCodeOptions: { themes: codeThemes },
+    // A ```npm block becomes package manager tabs (npm, pnpm, yarn, bun), and the reader's choice is kept across
+    // pages, as Better Auth's install steps do.
+    remarkNpmOptions: { persist: { id: "package-manager" } },
   },
   plugins: [
     lastModified({

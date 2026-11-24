@@ -1,6 +1,7 @@
 ---
 title: Reference
-description: "Reference for the eight window.customdomain methods, window events and callbacks, the open() config, widget statuses, white-label options and theming tokens."
+description: "Every widget method, event and option."
+metaDescription: "Reference for the eight window.customdomain methods, window events and callbacks, the open() config, widget statuses, white-label options and theming tokens."
 ---
 
 ## Methods
@@ -49,7 +50,7 @@ whether your users are offered it is your application's
 `{ domain, inSync, records[] }`, where each record is
 `{ host, type, ok, observed[] }`.
 
-## Events & callbacks
+## Events and callbacks [#events--callbacks]
 
 Every meaningful transition fires **both** a `window` `CustomEvent` (read
 `event.detail`) and, where you provided one, the matching `open()` callback.
@@ -60,31 +61,30 @@ Every meaningful transition fires **both** a `window` `CustomEvent` (read
 | `customdomain:success` | `onSuccess(result)` | when the domain reaches `live`, or a reconnect renewed its key | `{ jobId, domain, setupType, provider, success: true }`. `setupType` is `automatic` or `manual`, or `reconnect` with `reconnected: true` after a [reconnect](/docs/guides/secure-sign-in#reconnect). `alreadyConnected: true` is added when the domain was already live and this was a resume. With several domains queued it also carries `processedDomains` and `pendingDomains` |
 | `customdomain:close` | `onClose(detail)` | when the modal closes | `{ lastStatus, error?, shared?, manualScreenDisabled? }`. `shared` is set when the user forwarded the setup to a colleague before closing |
 | `customdomain:error` | `onError(err)` | when the widget shows an error | `{ code, message, title?, details? }` |
-| `customdomain:fallback` | `onFallback(detail)` | once per analysis, when the user is routed to a non-automatic screen | `{ reason, provider?, screen, message? }`. `reason` is one of `no_end_user_rail` (no sign-in or one-click at this provider), `conflicts_exceed_tolerance`, `provider_unsupported`, `unknown_provider`; `message` is the human explanation shown |
+| `customdomain:fallback` | `onFallback(detail)` | once per domain, when the user goes to the records: routed there because no way connects automatically, or by choosing **Add the records** over an open card. A sign-in the user cancels, or that fails, keeps the card and does not fire it | `{ reason, provider?, screen, message? }`. `reason` is one of `no_end_user_rail` (no sign-in or one-click at this provider), `conflicts_exceed_tolerance`, `provider_unsupported`, `unknown_provider`, or `chose_records` (the user picked **Add the records** from the card); `message` is the human explanation shown, when there is one |
 | `customdomain:purchase` | none | the buy flow created a checkout session | `{ domain, sessionId?, clientSecret?, url? }`: mount Stripe Embedded Checkout with `clientSecret` |
 | `customdomain:removed` | `onRemoved(result)` | a removal finished (npm packages 0.5.2 or newer) | `{ domain, connectionId, records, removed, restored, leftInPlace, user? }`. `records` is `removed`, `partly_removed`, `kept`, `manual` (the user deletes them; the widget listed how), `in_use` or `not_needed` |
 | `customdomain:request-close` | none | host-delegated dismissal (`whiteLabel.delegateClose`) | provider payload; you call `close()` |
 | `customdomain:doc-click` | none | user clicked a documentation link | link payload |
 | `customdomain:shared` | none | a setup link was handed over: the instructions were emailed, the user chose *Copy link instead*, or your `forwardLink` page took it | `{ domain, link?, jobId? }` |
 
-`onError(err)` receives a `CustomDomainError` (`{ code, message, details?, status? }`).
-`status` (0.5.4 or newer) is the HTTP status of the control plane response the
-error came from; it is unset when the widget raised the error itself. A `status`
-of 429 or any 5xx is safe to retry after a moment; any other 4xx gives the same
-answer until the token, domain or records change. `checkDomain` and
-`checkRecords` throw the same class.
-The hosted script also fires a `customdomain:ready` window event once
-`window.customdomain` is attached.
-Error codes are an open union, so branch on the ones you handle and treat the
-rest as a generic failure. The ones the widget raises include `SessionError`
+`onError(err)` receives a `CustomDomainError` (`{ code, message, details?,
+status? }`). `status` (0.5.4 or newer) is the HTTP status of the control plane
+response the error came from. It is unset when the widget raised the error
+itself. A `status` of 429 or any 5xx is safe to retry after a moment. Any other
+4xx gives the same answer until the token, domain or records change.
+`checkDomain` and `checkRecords` throw the same class. The hosted script also
+fires a `customdomain:ready` window event once `window.customdomain` is
+attached. Error codes are an open union. Branch on the ones you handle and treat
+the rest as a generic failure. The ones the widget raises include `SessionError`
 (the token expired or was refused, including a domain-bound token used for
 another host), `InvalidDomainError`, `DomainAlreadyConnectedError`,
 `UnregisteredDomainError`, `PlatformSubdomainError`, `InvalidNameservers`,
 `ProviderAuthenticationError`, `AccessDeniedError`, `PopupBlockedError`,
 `DomainConnectError`, `ProviderError`, `TimeoutError`, `RateLimitError`,
-`NetworkError`, `PlanLimitError` (the account's plan or allowance does not
-allow another connection; the end user only sees a neutral message) and
-`GenericError`.
+`NetworkError`, `PlanLimitError` and `GenericError`. `PlanLimitError` means the
+account's plan or allowance does not allow another connection. The end user only
+sees a neutral message.
 
 > A **failed** connection is not a dead end in the widget: it shows the manual
 > screen with the records and the control plane's reason, and *Check now*
@@ -95,12 +95,12 @@ allow another connection; the end user only sees a neutral message) and
 > success screen and closes itself when the user is done (or when you call
 > `close()`).
 
-## `open()` / `OpenConfig`
+## `open()` or `OpenConfig` [#open--openconfig]
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `applicationId` *(required)* | `string` | Public application id. |
-| `token` *(required)* | `string` | Widget JWT (scope `connect`), minted on your server: `POST /api/widget-token` with an API key for applications created in the console, or `POST /v1/tokens` with the client secret for applications created over the API. See [Installation & embed](/docs/widget-sdk/installation-and-embed#1-mint-a-token-on-your-server). |
+| `token` *(required)* | `string` | Widget JWT (scope `connect`), minted on your server with `POST /v1/tokens`: with an API key as the bearer for applications created in the console, or with the client secret for applications created over the API. See [Installation & embed](/docs/widget-sdk/installation-and-embed#1-mint-a-token-on-your-server). |
 | `getToken` | `() => string \| Promise<string>` | Returns a fresh widget token; have it call your own server route, never the mint endpoint directly. Called when the current one expires mid-setup, so long manual setups never stop. See [Keeping a session alive](/docs/authentication/widget-tokens#keeping-a-session-alive). |
 | `domain` | `string` | Pre-filled domain. |
 | `prefilledDomain` | `string \| string[]` | Alias accepted for the pre-fill. |
@@ -132,95 +132,109 @@ types include `A`, `AAAA`, `CNAME`, `CAA`, `MX`, `NS`, `TXT`, plus the meta-type
 
 ## What the end user can type
 
-The domain field accepts what people actually paste: a full URL
+The domain field accepts what people paste. That includes a full URL
 (`https://www.acme.com/pricing`), an email address (`me@acme.com`), a host with
 a port, uppercase, internationalized names and full-width dots. The widget
-reduces each to the hostname, offers a correction for a mistyped ending
-("Did you mean acme.com?"), and otherwise says exactly what is wrong.
+reduces each to the hostname. It offers a correction for a mistyped ending ("Did
+you mean acme.com?"). Otherwise it says exactly what is wrong.
 
 When the result is a root domain (`acme.com`), the widget asks before creating
-anything: root and `www` (recommended), the root alone, or a subdomain instead.
-Where the user's DNS provider cannot point a root at a hostname, the widget
-uses the provider's IP address records if your deployment publishes them, and
-otherwise steers the user to `www` or a subdomain. See
-[Root domains](/docs/dns/root-domains).
+anything. The choices are root and `www` (recommended), the root alone, or a
+subdomain instead. Some DNS providers cannot point a root at a hostname. There
+the widget uses the provider's IP address records if your deployment publishes
+them. Otherwise it steers the user to `www` or a subdomain. See [Root
+domains](/docs/dns/root-domains).
 
 ## Manual setup and live DNS checks
 
-On the manual screen the widget shows each record with the Name to type into
-the provider's panel (`@`, `www`, `shop`) and the provider's own label for the
-record type, then reads public DNS for every record through
-`GET /v1/connections/{id}/diagnose`. Each record shows one of: found, not found
-yet, saved at the provider and waiting for caches, or still pointing somewhere
-else (named when it is a known service, such as "Still points to Squarespace").
-It also flags the mistakes that block a connection even when a record looks
-right: the full hostname typed into the Name field, Cloudflare's proxy turned
-on, a leftover IPv6 record, extra A records, a conflicting record, or a CAA
-record that blocks certificates. The connection goes live the moment everything
-is in place.
+On the manual screen, the widget shows each record with the Name to type into
+the provider's panel (`@`, `www`, `shop`). It also shows the provider's own
+label for the record type. It then reads public DNS for every record through
+`GET /v1/connections/{id}/diagnose`. Each record shows one of four states:
+found, not found yet, saved at the provider and waiting for caches, or still
+pointing somewhere else. A known service is named, such as "Still points to
+Squarespace". The widget also flags mistakes that block a connection even when a
+record looks right. These are the full hostname typed into the Name field,
+Cloudflare's proxy turned on, a leftover IPv6 record, extra A records, a
+conflicting record, or a CAA record that blocks certificates. The connection
+goes live the moment everything is in place.
 
-Each record card says exactly what to type at *that* provider: the Name for a
-root domain is `@`, an empty field, or the full domain depending on the panel;
-a hostname value keeps its final dot where the panel would otherwise append the
-zone; on Cloudflare the card adds *Proxy: DNS only*. The provider's step-by-step
+Each record card says exactly what to type at *that* provider. The Name for a
+root domain is `@`, an empty field, or the full domain, depending on the panel.
+A hostname value keeps its final dot where the panel would otherwise append the
+zone. On Cloudflare the card adds *Proxy: DNS only*. The provider's step-by-step
 guide and known pitfalls sit behind *Show me how*. Warnings appear only for
-problems the live check actually found.
+problems the live check found.
 
 ### Other ways to finish
 
 Below the records, the screen offers three ways out for people who can't, or
 would rather not, edit DNS themselves.
 
-**Let an AI assistant do it.** *Copy prompt* copies one self-contained prompt,
-and a row of icons opens it in ChatGPT (covers Codex), Claude, Gemini, Grok,
+**Let an AI assistant do it.** *Copy prompt* copies one self-contained prompt. A
+row of icons opens it in ChatGPT (covers Codex), Claude, Gemini, Grok,
 Perplexity or Microsoft Copilot. ChatGPT, Claude, Perplexity and Grok open with
-the prompt already filled in; Gemini and Copilot have no prefill, so the widget
+the prompt already filled in. Gemini and Copilot have no prefill, so the widget
 copies the prompt, opens the app and says *Prompt copied. Paste it in.* The
-prompt (English, so any assistant can act on it) names the domain, the DNS
-provider and its DNS panel link, and each record with its type, the Name to
-type at that provider, the value and the TTL. It turns the live check into
-exact instructions (delete the old A or AAAA record, turn Cloudflare's proxy
-off, remove a doubled name), adds the provider's pitfalls, works for assistants
+prompt is in English, so any assistant can act on it. It names the domain, the
+DNS provider and its DNS panel link. It lists each record with its type, the
+Name to type at that provider, the value and the TTL. It turns the live check
+into exact steps: delete the old A or AAAA record, turn Cloudflare's proxy off,
+remove a doubled name. It adds the provider's pitfalls. It works for assistants
 that drive a browser (the user signs in and handles two factor codes) and for
-ones that run code (the provider's DNS API with a token the user supplies),
-forbids touching MX or email TXT records, and ends with `dig` commands and the
-answers to expect. It also carries a status page link, minted with
-`POST /v1/sharing/connect` the first time the user reaches for the section;
-that link works once. The prompt shares the domain and its records, nothing
-about your application beyond `applicationName`.
+ones that run code (the provider's DNS API with a token the user supplies). It
+forbids touching MX or email TXT records. It ends with `dig` commands and the
+answers to expect. It also carries a status page link, minted with `POST
+/v1/sharing/connect` the first time the user opens the section. That link works
+once. The prompt shares the domain and its records, and nothing about your
+application beyond `applicationName`.
 
 **Email these instructions to someone else.** An inline form takes the
-recipient's address and an optional note (up to 280 characters) and calls
-`POST /v1/sharing/connect` with `recipient_email` and `note`; the control plane
-emails the records and a link to finish. On success the widget shows *Sent to
-name@company.com* and reports `FINISHED_SUCCESSFULLY_LINK_SHARED` with
+recipient's address and an optional note (up to 280 characters). It calls `POST
+/v1/sharing/connect` with `recipient_email` and `note`. The control plane emails
+the records and a link to finish. On success the widget shows *Sent to
+name@company.com*. It reports `FINISHED_SUCCESSFULLY_LINK_SHARED` with
 `customdomain:shared`. A rejected address (`400`), too many sends (`429`), or an
-email that could not be sent (`email_error`) each get a plain explanation, and
-the last still hands over the link. *Copy link instead* mints a link and copies
+email that could not be sent (`email_error`) each get a plain explanation. The
+last one still hands over the link. *Copy link instead* mints a link and copies
 it. If you configured `customProperties.forwardLink.url`, the row opens your
 page with the link instead, as before.
 
-**Let your platform keep the domain working.** The row reads "Let Acme Sites
-keep your domain working", with your `applicationName`. Offered only when your application
-turns on [Domain maintenance](/docs/guides/nameserver-migration) (its
-`nameserver_migration` setting), the one switch for every DNS hosting offer the
-widget makes. The user agrees once, and the widget moves their nameservers to
-CustomDomain™ or to your own DNS host. With the setting off (the default), the
-widget offers no DNS hosting, even where `managed_dns.available` is `true`, and
-when the offer comes back `available: false` for a domain it shows no hosting
-row at all.
+The person who opens the link acts as the end user who shared it. A widget token
+shares as its own `end_user_ref`. Your API key, or an `app` scope token, shares
+as the `end_user_ref` of your connection for the one domain the link names. So
+the link keeps working on a connection that names a customer. The link is a
+credential for finishing that one setup, not for the customer. It cannot remove
+the domain or set the customer's contact address. It is never offered the
+customer's kept keys (saved access). A key made at a sign-in it starts is not
+the customer's own and never replaces theirs. One rule governs a link: its token
+owns exactly what the token that made it owned, and may touch only the shared
+domains. A widget token can share only a domain whose connection it owns. A link
+made before this release stops working, so ask for a new one. See [Widget
+tokens](/docs/authentication/widget-tokens).
 
-**Finishing a zone CustomDomain™ already hosts.** A connection whose end user
-started [managed DNS](/docs/dns/managed-dns) in an earlier session (before the
-setting decided every offer) gets a row titled *Let CustomDomain™ host your DNS*
-to pick up where they left off. The widget no longer offers it to anyone new.
-The row leads to the copied records (where a zone file exported from the
-current provider can be pasted), then the nameservers to set with the
-registrar's name and link and short steps, including turning DNSSEC off first.
-The widget watches `GET /v1/connections/{id}/managed-dns` until the delegation
-is `active`, then continues to the normal success path (`IN_PROGRESS`, then
-`FINISHED_SUCCESSFULLY` with `setupType: "automatic"`). These screens report
-`MANUAL_CONFIGURATION`.
+**Let your platform keep the domain working.** The row reads "Let Acme Sites
+keep your domain working", with your `applicationName`. It is offered only when
+your application turns on [Domain
+maintenance](/docs/guides/nameserver-migration), its `nameserver_migration`
+setting. That setting is the one switch for every DNS hosting offer the widget
+makes. The user agrees once, and the widget moves their nameservers to
+CustomDomain™ or to your own DNS host. With the setting off (the default), the
+widget offers no DNS hosting, even where `managed_dns.available` is `true`. When
+the offer comes back `available: false` for a domain, it shows no hosting row at
+all.
+
+**Finishing a zone CustomDomain™ already hosts.** Some end users started
+[managed DNS](/docs/dns/managed-dns) in an earlier session, before the setting
+decided every offer. Their connection gets a row titled *Let CustomDomain™ host
+your DNS*, so they can pick up where they left off. The widget no longer offers
+it to anyone new. The row leads to the copied records, where a zone file
+exported from the current provider can be pasted. Then it shows the nameservers
+to set, with the registrar's name, link and short steps, including turning
+DNSSEC off first. The widget watches `GET /v1/connections/{id}/managed-dns`
+until the delegation is `active`. Then it continues to the normal success path
+(`IN_PROGRESS`, then `FINISHED_SUCCESSFULLY` with `setupType: "automatic"`).
+These screens report `MANUAL_CONFIGURATION`.
 
 To turn one off, set `customProperties.aiHandoff.hide` or
 `customProperties.forwardLink.hide` (the email row). DNS hosting is turned on
@@ -244,7 +258,7 @@ and two layout behaviors:
 | `hideLogo` | Hide the powered-by footer. |
 | `hideConfetti` | Disable the success confetti. |
 | `tokens` | Override any of the ~90 raw design tokens (`modal-width`, `color-primary`, `radius-md`, `shadow-modal`, …). |
-| `screens.disable` | Array of optional screens to hide. |
+| `screens.disable` | Array of optional screens to skip: `existingRecords`, `dkim`, `email`, `manualConfiguration`, `unsupported`, `provider-list` and `congratulations`. A skipped screen moves on as its main button would. With `congratulations` skipped, `onSuccess` still fires for each domain, then the widget opens the next queued domain or closes, and that close is not counted as abandoned. |
 | `delegateClose` | The widget never tears itself down; it posts `customdomain:request-close` and you call `close()`. |
 | `embedded` | Render as a flat, full-bleed panel inside your `container` instead of a fullscreen modal. |
 | `darkMode` / `darkTokens` | `"disabled"` (default), `"enabled"` or `"auto"` (follows the OS); `darkTokens` fine-tunes the dark palette. |
@@ -252,16 +266,16 @@ and two layout behaviors:
 
 Tokens are emitted as CSS custom properties (`--je-<token>`) on the widget's
 shadow host, so they cannot affect your page. Every value must be a plain CSS
-value (a color, length, font stack or shadow); anything that could inject CSS
-or script is dropped, and custom icons are rebuilt from an allowlist of SVG
-elements and attributes.
+value: a color, length, font stack or shadow. Anything that could inject CSS or
+script is dropped. Custom icons are rebuilt from an allowlist of SVG elements
+and attributes.
 
-The default look follows one system: a 12, 13, 14, 15, 17 and 21 px type scale
-(`font-size-xs` through `font-size-h2`, plus `font-size-lg`), a 4 px spacing
-rhythm (`space-2xs` through `space-xl`), and one motion curve. Screens slide in
-the direction of travel (`motion-duration`, `motion-ease`,
-`motion-slide-distance`), the modal glides between heights, and controls react
-in `motion-duration-fast`. Under `prefers-reduced-motion` all of it is off and
+The default look follows one system. It has a 12, 13, 14, 15, 17 and 21 px type
+scale (`font-size-xs` through `font-size-h2`, plus `font-size-lg`), a 4 px
+spacing rhythm (`space-2xs` through `space-xl`), and one motion curve. Screens
+slide in the direction of travel (`motion-duration`, `motion-ease`,
+`motion-slide-distance`). The modal glides between heights, and controls react
+in `motion-duration-fast`. Under `prefers-reduced-motion`, all of it is off and
 spinners only slow down.
 
 ## Widget statuses
@@ -273,45 +287,45 @@ fixed 15-value set of stable names: `INITIAL`, `ENTER_DOMAIN`,
 `EXIT_WITH_ERROR`, `DKIM_SETUP`, `FINISHED_SUCCESSFULLY`,
 `FINISHED_SUCCESSFULLY_MANUAL`, `FINISHED_SUCCESSFULLY_LINK_SHARED`.
 
-The removal flow uses the same set: reading what removal would do is
-`DOMAIN_ANALYSIS`, the choice is `DOMAIN_SETUP`, one more sign-in is `LOGIN`,
-removing is `IN_PROGRESS`, and the summary is `FINISHED_SUCCESSFULLY`.
+The removal flow uses the same set. Reading what removal would do is
+`DOMAIN_ANALYSIS`. The choice is `DOMAIN_SETUP`. One more sign-in is `LOGIN`.
+Removing is `IN_PROGRESS`, and the summary is `FINISHED_SUCCESSFULLY`.
 
-## Token lifecycle & accessibility
+## Token lifecycle and accessibility [#token-lifecycle--accessibility]
 
-Widget tokens expire (15 minutes by default). With `getToken` the widget
-refreshes itself and carries on; without it, the user is told they can close
-the window while the connection finishes on its own. A domain-bound token may
-only act on the hostname it was minted for.
+Widget tokens expire (15 minutes by default). With `getToken`, the widget
+refreshes itself and carries on. Without it, the user is told they can close the
+window while the connection finishes on its own. A domain-bound token may only
+act on the hostname it was minted for.
 
 Focus trap, `aria-modal`, a live-region announcer, generous touch targets,
-safe-area insets, `prefers-reduced-motion`, and `prefers-color-scheme` dark mode
-are built in. Enter submits every form; each new step moves focus to its
-heading (or its one input) so screen readers announce it; Escape asks before
-leaving; live checks announce only real changes. On phones the widget takes
-the full screen. The iframe is sandboxed with `allow-popups`/
-`allow-popups-to-escape-sandbox` so provider OAuth windows and the AI
+safe-area insets, `prefers-reduced-motion` and `prefers-color-scheme` dark mode
+are built in. Enter submits every form. Each new step moves focus to its
+heading, or its one input, so screen readers announce it. Escape asks before
+leaving. Live checks announce only real changes. On phones the widget takes the
+full screen. The iframe is sandboxed with `allow-popups` and
+`allow-popups-to-escape-sandbox`, so provider OAuth windows and the AI
 assistants can open in a new tab.
 
 ## Analytics
 
-Every widget session reports its funnel (opened, domain entered, provider
+Every widget session reports its funnel: opened, domain entered, provider
 detected, offered one-click or sign-in, shown records to copy, live, or closed
-early) with the provider, the rail (`oauth`, `domain_connect`, `api_key`,
-`managed_dns`, `cloud_browser` for [secure sign-in](/docs/guides/secure-sign-in),
-or `manual`), and whether the domain was a root or a subdomain. Read it in the
-console under **Analytics**, or from your server with
-`GET /v1/analytics/connect` (an API key). The records screen's alternatives
-report as their own steps: `handoff-ai` (copied or opened the AI prompt),
-`share-email` (sent the instructions, or copied the link instead), and
-`managed-dns` (opened or started DNS hosting).
+early. Each step carries the provider, the rail (`oauth`, `domain_connect`,
+`api_key`, `managed_dns`, `cloud_browser` for [secure
+sign-in](/docs/guides/secure-sign-in), or `manual`), and whether the domain was
+a root or a subdomain. Read it in the console under **Analytics**, or from your
+server with `GET /v1/analytics/connect` (an API key). The records screen's
+alternatives report as their own steps. These are `handoff-ai` (copied or opened
+the AI prompt), `share-email` (sent the instructions, or copied the link
+instead), and `managed-dns` (opened or started DNS hosting).
 
 ### What a widget session records
 
-Each time the widget opens, CustomDomain™ keeps one record of that session,
-attributed to your workspace and application, for security, abuse prevention,
-support and to improve the widget. It never holds the domain name, anything the
-end user typed, a cookie or an account.
+Each time the widget opens, CustomDomain™ keeps one record of that session. It
+is attributed to your workspace and application. It is kept for security, abuse
+prevention, support and to improve the widget. It never holds the domain name,
+anything the end user typed, a cookie or an account.
 
 | From | What is kept |
 | --- | --- |
@@ -320,9 +334,9 @@ end user typed, a cookie or an account.
 | How it went | The first and last step, the rail, the provider, whether it worked, the error code, and the connection and any secure sign-in it started. |
 
 The IP address is kept for as long as your account exists, unless the deployment
-sets a window (`IP_RETENTION_DAYS`, the number of days after which the address
-is cleared and the rest of the record stays). The record is deleted with the
-application it belongs to. You see counts only: the devices, countries,
-browsers, systems and embeds in **Analytics**, **Devices and places**, and in
-`audience` on `GET /v1/analytics/connect`. No address, city or single session
-is ever shown.
+sets a window. That window is `IP_RETENTION_DAYS`, the number of days after
+which the address is cleared while the rest of the record stays. The record is
+deleted with the application it belongs to. You see counts only: the devices,
+countries, browsers, systems and embeds in **Analytics**, **Devices and
+places**, and in `audience` on `GET /v1/analytics/connect`. No address, city or
+single session is ever shown.

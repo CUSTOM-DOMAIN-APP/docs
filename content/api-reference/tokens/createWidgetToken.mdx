@@ -11,8 +11,11 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          Server-side only. Trade an application's `client_secret` for a
-          short-lived widget JWT the browser can use on the Connect endpoints.
+          Server-side only. Trade an application's `client_secret`, or send one
+          of your API keys as the bearer instead, for a short-lived widget JWT
+          the browser can use on the Connect endpoints. With an API key, leave
+          `client_secret` out: the key needs the `tokens:mint` permission
+          (member and above), and below admin it mints `scope` `connect` only.
           Never ship the `client_secret` or an API key to the browser.
 ---
 

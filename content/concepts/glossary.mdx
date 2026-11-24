@@ -1,6 +1,8 @@
 ---
 title: Glossary
-description: "The words the CustomDomain™ console uses, one name per thing, each with a plain definition and where to read more."
+icon: BookOpen
+description: "The words the console uses, each defined once."
+metaDescription: "The words the CustomDomain™ console uses, one name per thing, each with a plain definition and where to read more."
 ---
 
 The console uses one name for each thing. This page lists them, in plain words, with
@@ -65,8 +67,10 @@ API calls them provider accounts. See [Provider accounts](/docs/connect-flow/pro
 
 ## Managed
 
-A domain is managed when we keep a lasting sign-in or key for it and put its records
-back if someone changes them. See
+A domain is managed when we keep a lasting way to change its DNS (a key, a sign-in, a
+one-click setup, the AWS access role or our DNS hosting) and put its records back if
+someone changes them. The domain's page says which one on its **How CustomDomain™ reaches
+this domain** card, and reads **Not managed** only when we keep none. See
 [Managed connections](/docs/connect-flow/managed-connections#what-managed-means).
 
 ## Ways to connect
@@ -77,7 +81,7 @@ The six ways a domain's records get added, by the names the console and these do
 | --- | --- |
 | **Sign in with** your provider | Approve access once at the DNS provider, in a popup, and we add the records. |
 | **One-click setup** | The provider shows the exact change and you approve it there (Domain Connect). |
-| **Secure sign-in** | You sign in to the provider in a secure window we run, approve the exact changes, and we add the records. |
+| **Secure sign-in** | You sign in to the provider in a secure window we run, and we add the records. A change that only adds records goes ahead by itself; one that replaces or removes a record waits for your approval. |
 | **API key** | You make a key at the DNS provider and paste it once, so we can write the records. |
 | **Add the records** | You copy a few rows into your DNS provider's panel yourself, and we check them. |
 | **DNS hosting** | The owner points the domain's nameservers at us once, and we host every record. |
@@ -135,6 +139,7 @@ We stop serving it and, where we still have access, take our records back out. S
 | Old name | Now |
 | --- | --- |
 | Edge serving (the page) | **Routing**, titled **Where domains point**. **Edge serving** names only the route through our edge. |
+| Edge (a domain's tab) | **Serving**. The page it opens still says **Edge serving** for the feature. |
 | Domain routing | **Routing** |
 | Domain maintenance, Maintain your users' domains, Managed DNS | **DNS hosting** |
 | Domains you maintain | **Hosted domains** |
