@@ -72,16 +72,12 @@ You can do the same any time under **Settings, Security**.
 
 ## 2. Tell us who the domains are for
 
-The first time you sign in, the welcome asks one question: **Who are you connecting domains for?**
-Two cards answer it, and a click on either moves on:
+A new workspace goes straight to the path for **My product's users**: "I run a product or platform. My users bring their own
+domains, through our widget or API." There is no question to answer first.
 
-- **My product's users**: "I run a product or platform. My users bring their own
-  domains, through our widget or API."
-- **My clients**: "I'm an agency or freelancer. I connect and look after domains
-  for the businesses I work for."
-
-Under the cards, the link **Just connecting a domain of my own?** is the third answer.
-Each answer sets up only the steps it needs, and you must answer the question.
+A workspace that already chose another path keeps it. The older welcome asked **Who are you connecting domains for?**
+and also offered **My clients** and the link **Just connecting a domain of my own?**.
+Each answer sets up only the steps it needs.
 Every later step has **Skip to dashboard** at the bottom right, which takes you to the console.
 What is left stays on the checklist on **Overview**.
 **Change my answers** there opens the welcome again.
@@ -90,7 +86,6 @@ A step whose own button does the work also has **Not now**, which moves to the n
 | You pick | The steps after the question |
 | --- | --- |
 | **My product's users** | Your product's website (see below), your brand with a live preview on the real widget, then who writes the code: **I am writing the code** or **My AI writes the code**. The same screen shows your application ID and your default key to copy. Then the widget code, or for your AI, the setup for the agent you use and one prompt to copy (it has your application ID, never your key). That is the last step |
-| **My clients** | A box to paste your domains into, with a client's name beside each (or one domain, if that is all you have). See [Many domains, and whose they are](#many-domains-and-whose-they-are) |
 | **Just connecting a domain of my own?** | Your domain, with an option to set up email on it in the same step |
 
 **I am writing the code** shows the widget code in four steps, each with a copy button.
@@ -134,9 +129,7 @@ Change anything that is off.
 The domain step finds where the domain is registered and hosted as soon as you type it.
 It says whether we can set it up automatically or will show you the records.
 Then it opens the same connect widget your customers use.
-If the domain is not registered yet, it lists close names you can buy, with the first year price.
-It also links to the console's domain search to buy one.
-If you have no domain yet, **I don't have a domain yet** offers that search.
+If the domain is not registered yet, it says so.
 You can also carry on and connect one when you have it.
 When something is left, it says what and who can do it.
 Anyone with access to your DNS host can finish it.
@@ -178,17 +171,17 @@ not when you visited a page, and each row says what was checked:
 | Row | Done when |
 | --- | --- |
 | **Start your free trial** (owners and admins) | Billing is set up and a trial or a plan is running. A card starts the 14 day trial and nothing is charged until it ends. Creating API keys needs it |
-| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live, including one you connect from [**Try it live**](#try-it-live). A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in test mode on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
+| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live, including one you connect from [**Try it live**](#try-it-live). A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in the Sandbox on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
 | **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count: it is the console's own, minted for you and not for a customer |
 | **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Growth plan) |
 | **Get told when a domain goes live** | A webhook delivery was answered with a success status |
 | **Make the widget yours** (optional) | A look was saved, for the workspace or for an application |
 | **Connect your first customer** | A real customer connected a domain through your widget, which is a connection that carries the customer id your server passed when it minted the token. A domain you connect from **Try it live** carries the console's own id for you (`console:<member>`), so it never counts as a customer, however many you try |
 
-Test mode is a separate application you switch to from the application switcher, marked
-**Test mode** wherever it appears. It needs no card, it is not counted or billed, and
+Sandbox is a separate application you switch to from the application switcher, marked
+**Sandbox** wherever it appears. It needs no card, it is not counted or billed, and
 its domains show on **Domains** and **Activity** only while you are switched to it. See
-[Test mode](/docs/guides/test-mode) for what each ending does and what it leaves out.
+[Sandbox](/docs/guides/test-mode) for what each ending does and what it leaves out.
 
 A row can be done and still warn.
 Examples are a default origin that failed its check, or a webhook whose newest delivery failed.
@@ -225,7 +218,7 @@ The list itself opens on **All**.
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). **Connect an account** adds one in [three steps](#add-an-account). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Notifications** holds your own switches (push on this device, and the bell and push switch for each kind of alert) with **What we send** under them: one line per kind of email, and a closed row listing every email, who gets it and how to stop it (see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), its **Workspace ID** and **Default application ID** for support, the workspace, your role and the plan, and the console's version with the time it was built (for example "Nov 2, 2026, 14:05 UTC"). **Team**, **Billing**, **Usage** and **Applications** open under it. |
-| **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
+| **Activity**, **Monitor**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
 
 Every page opens with one line on what it is for.
 It also has a **Docs** link to the part of these docs that explains it.
@@ -244,7 +237,7 @@ The menu is grouped by what you are doing.
 At the top are the workspace, the application picker (from two applications), search and the main button.
 Then come **Overview**, **Widget**, **Domains**, **Connected accounts**, **Activity** and **Analytics**.
 An **Integrate** group holds **API keys & webhooks** and **Routing**, followed by **Settings**.
-**Buy a domain** and **MCP & agents** appear when you have switched them on.
+**MCP & agents** appears when you have switched it on.
 Docs, Help and your account menu sit at the bottom.
 The account menu holds Profile, Security, Notification settings, Privacy, the theme and Sign out.
 Related pages share one tab bar.
@@ -314,7 +307,7 @@ The console's copy would go stale, and the preview and **Try it live** would sto
 See [Widget tokens](/docs/authentication/widget-tokens).
 
 Optional surfaces stay off until you need them.
-They are the activity log, DNS monitoring, buying domains, the MCP server and agent access.
+They are the activity log, DNS monitoring, the MCP server and agent access.
 Switch them on under **Settings → Features**.
 Owners and admins can switch them on.
 A member or viewer who opens a page that is off is told who can, with a link to that feature's docs, and gets no button.
@@ -323,7 +316,6 @@ Agent access switches on by itself when you approve an agent.
 Each switch shows or hides a page and nothing else.
 **DNS monitoring** shows the **Monitor** page.
 Every live domain is checked, with alerts on drift, whether the switch is on or off.
-**Buy domains** shows **Buy a domain**, where you search for a name and buy it yourself.
 
 ### The console follows who the domains are for
 
@@ -392,11 +384,11 @@ Pages that set one up act on the active application.
 These are **Widget**, **Domain routing**, **Connect a domain** (a new domain lands in it) and adding a webhook endpoint.
 A link to **Widget** with `?app=<application id>` switches to that application first.
 An API key works across the whole workspace.
-A test mode application's keys work only there.
+A Sandbox application's keys work only there.
 A domain a key connects lands in the key's application unless the call names another.
 
 Viewers see applications and their domains but cannot create one or use its
-widget, and the console says so. Buying a domain, bulk connect and the widget's
+widget, and the console says so. Bulk connect and the widget's
 token need the `member` role or above.
 
 **New application** asks for a name (with one-tap suggestions such as
@@ -415,7 +407,7 @@ The page has tabs: **Domains**, **API keys**, **Routing** and **Settings**.
 The **DNS hosting** section says whether DNS hosting is **Off**, **Offered** or **Offered first**.
 It also says who runs it, links to **See hosted domains**, and has the same **Change**.
 DNS hosting is [set in Ways to connect](#domain-maintenance), so you change it in one place.
-A test mode application has none.
+A Sandbox application has none.
 Deleting asks you to type the name, and it revokes the application's API keys.
 It is refused for your workspace's default application and for one that still has domains.
 Disconnect them first.
@@ -657,7 +649,7 @@ them any time after the domain is set up:
   [what removing does](/docs/connect-flow/offboarding).
 
 Members, admins and owners can change a domain's settings. A viewer reads the same cards as values, with
-**Remove domain** turned off and the reason under it. A test mode domain has **Who it is for** and
+**Remove domain** turned off and the reason under it. A Sandbox domain has **Who it is for** and
 **Remove this domain** only. Every change is recorded in the [audit log](/docs/security/overview) as
 **Domain settings changed**.
 
@@ -1223,7 +1215,7 @@ A person's provider is the company that runs the domain's DNS: the settings that
 | **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **See hosted domains** opens **Domains** narrowed to the domains it hosts ([DNS hosting](#domain-maintenance)). | Owners, admins and members. |
 
 A viewer sees every control off with the reason, and can still follow **See hosted
-domains**. A test mode application keeps no saved access and never offers DNS
+domains**. A Sandbox application keeps no saved access and never offers DNS
 hosting, and its rows say so.
 
 Every row the widget has a screen for has **Preview this**.
@@ -1246,7 +1238,7 @@ With it on, your platform keeps your users' domains working for them once each u
 Records stay correct, certificates renew, and problems get fixed.
 The user changes one setting where they bought the domain: its *nameservers*, which say who runs the domain's DNS.
 See [the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
-A test mode application has none.
+A Sandbox application has none.
 **Off**, **Offer it** and **Offer it first** save when you pick one.
 **Change** beside **Who runs it** opens the form, which has:
 
@@ -1342,8 +1334,8 @@ That keeps a test apart from a customer:
   receiver can skip.
 
 A test minted here does not prove **Mint widget tokens on your server**: that
-row needs your backend's own route. In test mode the same card connects made up
-`.test` names and counts for nothing; see [Test mode](/docs/guides/test-mode).
+row needs your backend's own route. In the Sandbox the same card connects made up
+`.test` names and counts for nothing; see [Sandbox](/docs/guides/test-mode).
 
 ## What the console is *not*
 
