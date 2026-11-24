@@ -33,9 +33,24 @@ deployment and the follow-ups still open.
   components that resolve against this spec. `openapi-v1.yaml` here is a
   **vendored copy** of `apps/app/openapi-v1.yaml` in the product repo, not a
   new canonical location; see `../DEPLOYMENT.md` for how the two are kept in step.
-- `src/lib/layout.shared.tsx`: nav/header options (deliberately plain: default
-  Fumadocs chrome and no brand restyle, because this is a minimal scaffold, not
-  a redesign).
+- `src/lib/layout.shared.tsx`: nav/header options: the wordmark
+  (`src/components/wordmark.tsx`), the sidebar links and the "Sign in" or
+  "Console" pair.
+- Theme: Fumadocs' chrome on site v2's design system, so the docs and
+  customdomain.ai look the same. `src/shared/` holds exact copies of site v2's
+  `site/shared/tokens.css` (Geist, Geist Mono, monochrome, light and dark),
+  `fumadocs-map.css` (every `--color-fd-*` pointed at a site token) and the two
+  Shiki themes, with their hashes in `src/shared/SOURCE.json`.
+  `scripts/check-shared.mjs` runs before every build and fails when a copy was
+  edited here or is stale against the site repo checked out beside this one.
+  Never edit the copies: change `site/shared` in the site repo, copy the files,
+  then run `node scripts/check-shared.mjs --write`.
+  `src/app/docs-theme.css` maps the few Fumadocs colors the site has no token
+  for (callouts, diffs) to site tokens, and `src/app/brand.css` holds the docs
+  layout and type after Better Auth's docs. Fonts come from the `geist` package
+  through next/font, so no font is requested from Google.
+  `src/lib/code-themes.ts` reads the shared Shiki themes for MDX code blocks
+  and the API reference samples.
 - `next.config.ts`: `output: "standalone"` for the Docker image, plus
   `outputFileTracingRoot`/`turbopack.root` pinned to the repo root (required
   because content lives one level above `site/`; see the comments in that file

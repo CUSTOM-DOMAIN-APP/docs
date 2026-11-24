@@ -1,9 +1,11 @@
 ---
 title: Security model
-description: "CustomDomain™ security model: tenant isolation, credentials and roles, value-checked DNS verification, provider credentials and unauthenticated surfaces."
+icon: ShieldCheck
+description: "How CustomDomain™ keeps tenants, keys and domains safe."
+metaDescription: "CustomDomain™ security model: tenant isolation, credentials and roles, value-checked DNS verification, provider credentials and unauthenticated surfaces."
 ---
 
-## Tenancy & isolation
+## Tenancy and isolation [#tenancy--isolation]
 
 Every object belongs to a tenant. Tenant-scoped endpoints filter by the caller's
 credential, and all `/applications/{id}/*` mutations verify the application
@@ -39,7 +41,7 @@ not per-key scopes, and is **enforced at the control-plane**; see
 credential itself, server-side, on every request; nothing trusts a
 console-supplied role.
 
-## Roles & permissions
+## Roles and permissions [#roles--permissions]
 
 Each member holds one of four roles on a strict ladder
 (`viewer` &lt; `member` &lt; `admin` &lt; `owner`), which maps to a fixed set of
@@ -53,9 +55,12 @@ as static reference) at `GET /v1/rbac`:
 | `app:read` | ✅ | ✅ | ✅ | ✅ | View app config |
 | `member:read` | ✅ | ✅ | ✅ | ✅ | List members |
 | `app:write` | | ✅ | ✅ | ✅ | Mutate app settings, rotate secrets, **and every mutating connection route** (see below) |
+| `tokens:mint` | | ✅ | ✅ | ✅ | Mint widget tokens with an API key (`POST /v1/tokens`); below admin, end user (`connect`) tokens only |
 | `member:manage` | | | ✅ | ✅ | Invite / remove members, change roles |
 | `keys:manage` | | | ✅ | ✅ | Mint / revoke API keys |
 | `identity:manage` | | | ✅ | ✅ | White-label branding. (Reserved for SSO / SCIM, which are **not built**; see [Plans & quotas](/docs/billing/plans-and-quotas).) |
+| `workspace:manage` | | | ✅ | ✅ | Change workspace settings in the console |
+| `webhooks:manage` | | | ✅ | ✅ | Add, remove and rotate webhook endpoints in the console |
 | `agent:manage` | | | ✅ | ✅ | Approve, list and revoke delegated-agent grants (a grant can carry `domains:purchase` with a spend cap against the tenant's saved card, so it is gated at the same tier as billing) |
 | `billing:manage` | | | ✅ | ✅ | Billing: the subscription, plan changes, card and invoices (Stripe Billing Portal), promotion codes. Owners and admins since 2026-09-29; members and viewers get `403` on every billing route |
 | `org:delete` | | | | ✅ | Delete / transfer the org |
@@ -111,6 +116,8 @@ particular:
 - A caller can never grant a role above their own, and **only an owner can
   create, promote-to, or demote an owner**. The org's **last owner** cannot be
   demoted or removed.
+- **Anyone can leave a workspace they were invited to**, from **Team** in the console,
+  whatever their role. The last owner cannot leave.
 - **The workspace's default key acts as an admin**, never as an owner: it is
   refused (`403`) when it would make, unmake or remove an owner or delete the
   workspace, and it cannot mint API keys at all. Only an owner can view or rotate
@@ -137,8 +144,7 @@ discard it, unless it is kept as a provider account or a managed sign-in grant
 - **OAuth (Rail C)** exchanges a code for an access token, writes the records,
   and drops the token unless the sign-in is kept. The flow uses **PKCE (S256)**
   and an **HMAC-signed, single-use `state`**; the callback only postMessages its
-  outcome to a **return origin on the server's allowlist**
-  (`OAUTH_ALLOWED_RETURN_ORIGINS`).
+  outcome to an **allowed return origin**.
 - **API token (Rail B)** uses the scoped credential you pass on a single write.
   `POST /v1/connections/{id}/apply` **discards it after that write**; the
   console's remember box, which starts ticked, keeps it as a provider account
@@ -155,22 +161,21 @@ with `POST /v1/provider-accounts`, or when the console's **Remember this key for
 my ... account** box stays ticked (it starts ticked and the user can untick it).
 A sign-in is kept as a
 [managed sign-in grant](/docs/connect-flow/managed-connections#managed-sign-in-grants)
-only at a provider the deployment lists in `OAUTH_MANAGED_PROVIDERS`. The hosted
-service lists Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
-Vercel and WordPress.com, and keeps a sign-in there unless the user unticks
+only at a provider whose sign-ins are kept: Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
+Vercel and WordPress.com. A sign-in there is kept unless the user unticks
 **Keep this sign-in** or the call sends `"access": "one_time"`; the widget tells
 the customer the permission is kept. A
 [secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys) keeps the lasting
 API key it made at the provider (never the sign-in itself), as a provider account
-that serves only the application whose domain it was made for, after one read
-only call proved it works; its `rights` say what it can do beyond DNS. Account
+that serves the application whose domain it was made for and the ones an admin
+shares it with, after one read only call proved it works; its `rights` say what
+it can do beyond DNS. Account
 passwords and tokens that expire within hours are never kept: the control plane
 refuses to keep them
 ([credentials that are used once](/docs/connect-flow/provider-accounts#credentials-that-are-used-once)).
 Whatever is kept:
 
-- is **sealed at rest** with **AES-256-GCM** under the control plane's
-  `GRANT_ENCRYPTION_KEY`;
+- is **encrypted at rest**;
 - **never leaves the server**: the control plane uses it itself and never
   returns it; the browser sees only details such as the provider, a label, the
   domains and the last use;
@@ -185,10 +190,7 @@ Whatever is kept:
   key made at sign-in), which deletes it and leaves the domains connected. A key
   made at sign-in also lives at the provider until it is revoked there.
 
-A deployment without `GRANT_ENCRYPTION_KEY` keeps no provider accounts or
-sign-ins. Its console keeps a remembered key itself instead, sealed with
-AES-256-GCM under `WEB_SECRET_KEY` (per-blob HKDF-SHA256 key) for one workspace
-and provider, and only to connect more domains. A sign-in that is not kept and
+A sign-in that is not kept and
 one-click setup (which uses no server token) store nothing. See
 [Provider setup](/docs/dns/provider-setup#remembering-a-key-optional).
 
@@ -198,14 +200,14 @@ one-click setup (which uses no server token) store nothing. See
   as SHA-256 hashes; the plaintext is shown once and never returned again. The
   workspace's default key is one exception: the console keeps a sealed copy that
   an owner can view. An application created in the console is the other: the console keeps its
-  `client_secret` sealed (AES-256-GCM) so it can mint widget tokens for you, and
+  `client_secret` encrypted so it can mint widget tokens for you, and
   never displays it. An application created over the API returns the secret once.
 - Widget JWTs are signed per application, using a dedicated server-side signing
   key (`HMAC-SHA256` over the application's id), never the application's own
   secret hash, so a token is only valid for its own application and a leaked
   application record can't be used to forge one.
 - The console never exposes the tenant's control-plane API key to the browser: it
-  is sealed at rest (AES-256-GCM under `WEB_SECRET_KEY`) and opened server-side
+  is encrypted at rest and opened server-side
   per request behind a proxy; see [Architecture](/docs/concepts/architecture).
 - Internal errors return a generic `title`; the specifics (including any driver
   errors) are logged server-side under a request id, never returned.
@@ -214,8 +216,7 @@ one-click setup (which uses no server token) store nothing. See
 
 - `GET /healthz`: liveness + DB readiness; no secrets, no tenant data.
 - `POST /internal/ask`: the edge host-authorization gate, authenticated by a
-  shared secret (`EDGE_ASK_SECRET`) and meant to be **network-isolated** to the
-  edge. It answers only `{ approved }` and never reveals the tenant.
+  shared secret and reachable only from the edge. It answers only `{ approved }` and never reveals the tenant.
 - `GET /v1/connect/oauth/callback`: authenticated by its signed single-use
   `state`, not a bearer token.
 

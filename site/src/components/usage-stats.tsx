@@ -1,13 +1,19 @@
 "use client";
 
+/**
+ * The live npm usage card (<UsageStats /> in MDX): downloads of customdomain-js over 30 and 7 days, polled from
+ * /api/stats, labelled with the window and the date npm's data runs through. Colors come only from the theme's
+ * --color-fd-* variables; text is 14 px or larger (13 px for code) at full muted contrast, so it passes WCAG AA.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import type { StatsPayload } from "@/app/api/stats/route";
 
 // Live SDK usage, rendered from /api/stats.
 //
 // THEMING. Every colour here is a fumadocs CSS variable (--color-fd-*), not a
-// literal. The docs site ships the `black` preset with light and dark modes, and
-// a card with hardcoded hex would be congruent in exactly one of them. Using the
+// literal. The docs site maps those variables to the brand kit in light and dark
+// modes, and a card with hardcoded hex would be congruent in exactly one of them. Using the
 // variables means this inherits whatever the surrounding page is doing, now and
 // after any future retheme.
 //
@@ -56,8 +62,8 @@ function Stat({ label, value, sub }: { label: string; value: number; sub?: strin
       <span className="text-2xl font-semibold tabular-nums tracking-tight text-fd-foreground">
         {shown.toLocaleString()}
       </span>
-      <span className="text-xs font-medium text-fd-muted-foreground">{label}</span>
-      {sub ? <span className="text-[11px] text-fd-muted-foreground/70">{sub}</span> : null}
+      <span className="text-sm font-medium text-fd-muted-foreground">{label}</span>
+      {sub ? <span className="text-sm text-fd-muted-foreground">{sub}</span> : null}
     </div>
   );
 }
@@ -112,7 +118,7 @@ export function UsageStats() {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-fd-primary opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-fd-primary" />
         </span>
-        <span className="text-xs font-medium text-fd-muted-foreground">
+        <span className="text-sm font-medium text-fd-muted-foreground">
           Live from npm
         </span>
       </div>
@@ -146,15 +152,15 @@ export function UsageStats() {
                 href={p.url}
                 target="_blank"
                 rel="noreferrer"
-                className="group flex items-baseline gap-2 text-xs text-fd-muted-foreground transition-colors hover:text-fd-foreground"
+                className="group flex items-baseline gap-2 text-sm text-fd-muted-foreground transition-colors hover:text-fd-foreground"
               >
-                <code className="font-mono text-[11px] group-hover:underline">{p.name}</code>
+                <code className="font-mono text-[13px] group-hover:underline">{p.name}</code>
                 <span className="tabular-nums">{p.lastMonth.toLocaleString()}/mo</span>
               </a>
             ))}
           </div>
 
-          <p className="mt-3 text-[11px] leading-relaxed text-fd-muted-foreground/70">
+          <p className="mt-3 text-sm leading-relaxed text-fd-muted-foreground">
             Registry downloads, not unique users. The React package depends on{" "}
             <code className="font-mono">customdomain-js</code>, so the two rows
             above are not additive. npm publishes daily totals on a short lag

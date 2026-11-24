@@ -1,45 +1,59 @@
 ---
 title: How the widget works
-description: "Learn how customdomain-js adds a drop-in modal for connecting a domain, how a widget JWT keeps keys out of the browser, and the screens a customer sees."
+icon: LayoutTemplate
+description: "How the drop-in connect widget works."
+metaDescription: "Learn how customdomain-js adds a drop-in modal for connecting a domain, how a widget JWT keeps keys out of the browser, and the screens a customer sees."
 ---
 
-`customdomain-js` is a framework-free SDK that renders a drop-in **"Connect your
-domain"** modal. The UI runs in a sandboxed iframe (host CSS can't leak in or
-out), is keyboard-accessible, and takes the full screen on phones. The global
-is `window.customdomain`.
+Add a **Connect your domain** modal to your product with `customdomain-js`. It
+works with any framework. The modal runs in a sandboxed iframe, so your page's
+CSS cannot leak in or out. It works from the keyboard and takes the full screen
+on phones. The global is `window.customdomain`.
 
 ## How it fits together
 
 1. Your backend mints a short-lived [widget JWT](/docs/authentication/widget-tokens).
-   For an application created in the console it sends an API key to
-   `POST /api/widget-token`; for one created over the API it sends the
-   application's `client_secret` to `POST /v1/tokens`. The key or secret stays
+   It calls `POST /v1/tokens` with an API key as the bearer (an application
+   created in the console) or with the application's `client_secret` (one
+   created over the API). The key or secret stays
    on your server; only the token reaches the browser.
 2. The browser loads `customdomain-js` (npm, `@customdomain/react`, or the
    hosted script) and calls `window.customdomain.open({ applicationId, token })`.
 3. The widget drives the [connect flow](/docs/connect-flow/overview): it detects
    the customer's DNS provider and applies records through whichever
-   [rail](/docs/connect-flow/overview#the-four-rails) fits (OAuth into the
-   provider, provider-hosted one-click setup, an API token, or guided-manual),
-   then watches propagation to `live`.
+   [way to connect](/docs/connect-flow/overview#the-four-rails) fits (signing in
+   with the provider, provider-hosted one-click setup, a
+   [secure sign-in](/docs/guides/secure-sign-in), adding the records by hand, or,
+   where your application offers it, DNS hosting; the other way, an API key, is
+   for the console and the API, since your customer is never asked to paste one in
+   the widget), then watches propagation to `live`.
 
 The SDK bridges the widget's `postMessage` protocol onto **both** callback props
 (`onSuccess`, `onClose`, `onStepChange`, `onError`, `onFallback`) and native `customdomain:*`
 window `CustomEvent`s, so you can integrate imperatively or declaratively.
 
-## The flow (screens)
+## The screens a customer sees [#the-flow-screens]
 
 - **Enter domain** → validates the domain.
 - **Domain analysis** → detects the DNS provider and setup type (`domains:check`).
-- **Setup** → the best available rail: authorize with the provider, a Domain
-  Connect redirect, a [secure sign-in](/docs/guides/secure-sign-in) where it is
-  offered, or copy the exact records to add, with a live check of each record.
+- **Connect** → one open card for the way CustomDomain™ recommends for this
+  domain's DNS host, the same way the console leads with: **Sign in with** the
+  provider's name (authorize at the provider), **One-click setup** (a Domain
+  Connect redirect) or [**Secure sign-in**](/docs/guides/secure-sign-in) where it
+  is offered. The card is marked **Recommended** when there is another way, and the
+  other ways are rows under **Other ways to connect**: **Add the records**, and
+  **DNS hosting** where your application turns it on. A sign-in the customer
+  cancels, or that fails, keeps the card with one line saying so, so they can
+  try again or pick another way. **Add the records** opens the records screen:
+  the exact records to add, with a live check of each record, and a **Back** to
+  the card. When no way connects automatically for the host, the records screen
+  is the first screen.
 - **Other ways to finish** (on the records screen) → hand a ready prompt to an
   AI assistant, or email the instructions to whoever manages DNS. Where your
   application turns it on, the end user can instead let your platform keep the
-  domain working, with one change of its nameservers
-  ([Domain maintenance](/docs/guides/nameserver-migration)). That setting is the
-  only way the widget offers DNS hosting.
+  domain working, with one change of its nameservers (DNS hosting, which the
+  [nameserver migration guide](/docs/guides/nameserver-migration) calls Domain
+  maintenance). That setting is the only way the widget offers DNS hosting.
 - **In progress** → polls propagation; shows a stall hint after a while.
 - **Success** → the domain is `live`; the certificate is issued on the next
   TLS handshake.

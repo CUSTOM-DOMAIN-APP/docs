@@ -1,19 +1,24 @@
 ---
-title: Quickstart
-description: "Connect your first domain end to end in test mode: create a test application, connect a .test name, watch it go live and open the widget. No card needed."
+title: Quickstart in a terminal
+icon: Terminal
+description: "Connect your first domain in the Sandbox."
+metaDescription: "Connect your first domain end to end in the Sandbox: create a test application, connect a .test name, watch it go live and open the widget. No card needed."
 ---
 
-This page runs the whole connect flow once, from your terminal, without a real
-domain and without a card. It uses [test mode](/docs/guides/test-mode): a test
-mode application connects made up `.test` names on a simulated DNS, so nothing is
-looked up, written to a DNS provider, served or billed, and it does not use up any
-of your free domains.
+Run the whole connect flow once, from your terminal, with no real domain and no
+card. You'll use [Sandbox](/docs/guides/test-mode). A Sandbox application
+connects made up `.test` names on a simulated DNS. Nothing is looked up, written
+to a DNS provider, served or billed, and none of your free domains are used.
 
-You need a CustomDomain™ account. [Sign up](https://app.customdomain.ai/signup)
-if you have none; signing up asks for no card. Every request below is shown as
-cURL and as Node (18 or newer, saved as an `.mjs` file so `await` works at the top
-level). The responses are trimmed to the fields this page uses; the field names
-are exact.
+## Before you begin
+
+- A CustomDomain™ account. [Sign up](https://app.customdomain.ai/signup) if you
+  have none. Signing up asks for no card.
+- cURL, or Node 18 or newer. Save Node samples as an `.mjs` file so `await` works
+  at the top level.
+
+Every request is shown in both. The responses are trimmed to the fields this page
+uses, and the field names are exact.
 
 <Steps>
 
@@ -40,9 +45,9 @@ not the key.
 
 <Step>
 
-### Create a test mode application
+### Create a Sandbox application
 
-Send `"sandbox": true` when you create the application. A test mode application
+Send `"sandbox": true` when you create the application. A Sandbox application
 needs no card.
 
 ```bash tab="cURL"
@@ -87,7 +92,7 @@ widget:
 export CUSTOMDOMAIN_CLIENT_SECRET="sk_..."
 ```
 
-A workspace holds up to 3 test mode applications. A fourth is refused with
+A workspace holds up to 3 Sandbox applications. A fourth is refused with
 `409 sandbox_limit`.
 
 </Step>
@@ -139,7 +144,7 @@ shown for a real domain:
 }
 ```
 
-There is nothing to add anywhere: in test mode the simulated DNS shows these
+There is nothing to add anywhere: in the Sandbox the simulated DNS shows these
 records by itself. Sending the same request again returns the same connection
 with `200`, which is how it behaves for a real domain too.
 
@@ -149,7 +154,7 @@ with `200`, which is how it behaves for a real domain too.
 
 ### Watch it reach `live`
 
-Read the connection until its `status` is `live`. In test mode that happens about
+Read the connection until its `status` is `live`. In the Sandbox that happens about
 15 seconds after it was created.
 
 ```bash tab="cURL"
@@ -192,9 +197,9 @@ yet), `propagating` (a rail wrote them and DNS is being watched), `live` and
 | `conflict.acme.test` | It stays `pending` with `error_code: domain_already_connected`, as a domain another account already serves would. |
 
 In your own code, react to the `connection.live` and `connection.failed`
-[webhooks](/docs/webhooks/overview) and keep the read as the fallback. A test mode
+[webhooks](/docs/webhooks/overview) and keep the read as the fallback. A Sandbox
 application's events are signed and delivered like any other, and carry
-`"sandbox": true`; see [Webhooks in test mode](/docs/guides/test-mode#webhooks).
+`"sandbox": true`; see [Webhooks in the Sandbox](/docs/guides/test-mode#webhooks).
 
 </Step>
 
@@ -251,7 +256,7 @@ the button:
 </script>
 ```
 
-The widget shows a **Test mode** strip across the top, goes straight to the manual
+The widget shows a **Sandbox** strip across the top, goes straight to the manual
 setup, which says there is nothing to add, and reaches the connected screen when
 the simulated DNS shows the records. `onSuccess` fires then.
 
@@ -278,7 +283,7 @@ route for one each time it opens the widget. See
   `https://mcp.customdomain.ai/mcp`, to the agent and install the
   [agent skill](/docs/agents/skills), which teaches it the safe way to use the
   tools. See [MCP: drive it from an agent](/docs/getting-started/mcp). An agent
-  grant cannot be given a test mode application, so an agent works on your live
+  grant cannot be given a Sandbox application, so an agent works on your live
   application and real domains.
 
 ## Next steps

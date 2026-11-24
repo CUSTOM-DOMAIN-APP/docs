@@ -1,7 +1,12 @@
 ---
 title: Architecture
-description: "How tenants, applications, the connect plane and the edge plane fit together, sharing one database over HTTP, and why the TLS hot path never waits on billing."
+icon: Blocks
+description: "How the parts of CustomDomain™ fit together."
+metaDescription: "How tenants, applications, the connect plane and the edge plane fit together, sharing one database over HTTP, and why the TLS hot path never waits on billing."
 ---
+
+Here is how the parts of CustomDomain™ fit together, from your workspace to the
+edge that serves your customers' domains.
 
 ## Tenants and applications
 
@@ -13,8 +18,8 @@ against an application, and its `client_secret` is what your server exchanges fo
 
 ## The two planes
 
-- **Connect plane** (the control-plane): the `/v1` REST API, the four DNS
-  [connect rails](/docs/connect-flow/overview#the-four-rails), the propagation
+- **Connect plane** (the control-plane): the `/v1` REST API, the six
+  [ways to connect](/docs/connect-flow/overview#the-four-rails), the propagation
   poller, quotas/metering, webhooks, and the OAuth and one-click setup machinery.
 - **Edge plane**: on-demand TLS termination + reverse proxy, gated by an
   internal `ask` call to the control-plane.
@@ -30,8 +35,7 @@ the control-plane process, not as separate services.
 
 ## The edge hot path
 
-`POST /internal/ask` (shared-secret auth via `X-Edge-Auth` / `EDGE_ASK_SECRET`)
-is the call that gates certificate issuance. It answers `{ approved }` from a
+`POST /internal/ask` (shared-secret auth, reachable only from the edge) is the call that gates certificate issuance. It answers `{ approved }` from a
 lookup of the connection for the host, with no billing logic, so the TLS
 handshake never blocks on business logic. A host is approved iff a connection for
 it exists and is `live` or `propagating`, it has not been removed, and its record

@@ -1,6 +1,7 @@
 ---
 title: Managing access
-description: "Learn how an owner approves an agent grant, sets monthly spend caps for purchases, receives owner emails, and reviews or revokes agent access from the console."
+description: "Approve, limit and revoke what an agent can do."
+metaDescription: "Learn how an owner approves an agent grant, sets monthly spend caps for purchases, receives owner emails, and reviews or revokes agent access from the console."
 ---
 
 Everything an agent can do is gated by a **grant** a human owner approved. This
@@ -36,7 +37,8 @@ freely: **where its access would go**, the host your approval sends the browser
 The page also shows when the agent registered, or which site publishes its
 details. You approve a subset of the scopes, choose whether access is
 **persistent** (the default) or expiring, and, if `domains:purchase` is
-requested, set a monthly spend cap and save a card. On approval the browser is
+requested, set a monthly spend cap and save a card. Access also ends when the
+person who approved it leaves the workspace or stops being an owner or admin. On approval the browser is
 handed back to the agent to finish the token exchange. **Deny** cancels the
 request so it cannot be approved later; a verified or local agent is told it was
 denied, and an unverified or blocked one is not sent anywhere.
@@ -44,7 +46,7 @@ denied, and an unverified or blocked one is not sent anywhere.
 The page also says **where it acts**: your workspace, by name, and the
 application the agent will work in. With one live application it is named; with
 several you choose one, and the application selected in the console is chosen to
-start with. Test mode applications are not offered, because they have no real
+start with. Sandbox applications are not offered, because they have no real
 domains, and a workspace with no live application cannot approve an agent. The
 grant is bound to the application you approve, so the agent can act only on that
 application's domains.

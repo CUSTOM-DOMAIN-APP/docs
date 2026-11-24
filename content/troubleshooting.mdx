@@ -1,6 +1,8 @@
 ---
 title: Troubleshooting
-description: "Fix stuck connections and common failures: pending or propagating domains, DNS mistakes, rail errors, provider tokens, certificate issues and DNS drift."
+icon: LifeBuoy
+description: "Fix stuck connections and common failures."
+metaDescription: "Fix stuck connections and common failures: pending or propagating domains, DNS mistakes, rail errors, provider tokens, certificate issues and DNS drift."
 ---
 
 <Callout title="Start with what the connection says">
@@ -57,11 +59,16 @@ Common reasons the records never show up:
 - **The domain doesn't resolve at all**: unregistered, or registered but never
   delegated to a DNS provider. The connect flow now refuses these up front with
   an explanation; fix the delegation at your registrar first.
+- **The domain's registration is on hold.** The domain check answers
+  `blocked_reason: registration_hold` with `registration_hold` set to `hold`,
+  `redemption` or `pending_delete`. The domain is registered but does not work
+  until its registrar resolves the hold, so nothing is offered meanwhile. Resolve
+  it with the registrar, then check the domain again.
 - **A hosting platform's subdomain** (`something.vercel.app`, `*.netlify.app`,
   `*.github.io`, …) can't be connected: the platform owns its DNS. Use a domain
   you control.
 
-## My domain points at CustomDomain™ but shows a connection / certificate error
+## My domain points at CustomDomain™ but shows a connection or certificate error [#my-domain-points-at-customdomain-but-shows-a-connection--certificate-error]
 
 If you added the DNS records **after** the connection had been marked failed,
 visitors' browsers reach our edge but the connection isn't serving yet. The edge
@@ -79,7 +86,7 @@ slow. **Finish setup** on the domain page resumes a failed connection (same
 row, history kept); adding the same domain again does the same thing rather
 than creating a duplicate.
 
-## The verification email never arrived / the link expired
+## The verification email never arrived or the link expired [#the-verification-email-never-arrived--the-link-expired]
 
 Verification links last one hour and work once. On the *Check your email*
 screen use **Resend the link**; an expired link lands on a page where you can
@@ -94,8 +101,11 @@ Token. Open GoDaddy's
 click **+ Generate Token**, tick only `domains.domain:read` and
 `domains.dns:update`, set a short expiration and copy the token (GoDaddy shows it
 once). An older key and secret pair still works, but GoDaddy has deprecated it
-for the Domains API. If you would rather not create a token, add the records
-shown in the console by hand; that works on every GoDaddy account. GoDaddy's
+for the Domains API. If you would rather not create a token, use
+[secure sign-in](/docs/guides/secure-sign-in) where it is offered: you sign in to
+GoDaddy and it makes the token for you. Or add the records shown in the console by
+hand; that works on every GoDaddy account. See
+[GoDaddy setup](/docs/dns/provider-setup#godaddy). GoDaddy's
 one-click setup (Domain Connect) isn't available yet: it is waiting on GoDaddy to
 onboard our templates.
 
@@ -124,9 +134,8 @@ Records were written but aren't all resolving to their intended values yet.
 
 `POST /v1/connections/{id}/apply` (and the OAuth / one-click setup starts)
 return `503 service_unavailable` when the corresponding engine isn't wired for
-your plan or environment: no DNS provider registry, no OAuth client for the
-provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
-(`DC_SIGNING_KEY_FILE`). Contact support if you hit this on the hosted service.
+your plan or environment: the provider's sign-in or one-click setup is not
+offered. Contact support if you hit this.
 
 ## Rail B write failed
 
@@ -143,9 +152,8 @@ password pair); see [Provider setup](/docs/dns/provider-setup).
 - **PopupBlockedError**: the browser blocked the authorize window; trigger
   `oauth:start` from a direct user gesture.
 - The OAuth callback, and the one-click return page
-  (`GET /v1/connect/dc/return/{state}`), only postMessage to a `return_origin`
-  on the server's allowlist (`OAUTH_ALLOWED_RETURN_ORIGINS`); a mismatched
-  origin silently drops the result.
+  (`GET /v1/connect/dc/return/{state}`), only postMessage to an allowed
+  `return_origin`; a mismatched origin silently drops the result.
 - An expired or replayed `state` returns `400` from the callback; re-run
   `oauth:start` to get a fresh one.
 - Either way the connection keeps being checked, and it goes live once public
@@ -164,8 +172,8 @@ demand.
 
 Certificates are issued **on demand at the TLS handshake**, gated by
 `POST /internal/ask` returning `{ approved: true }`, which happens only once the
-connection is `propagating` or `live`. If the edge can't reach the gate, check
-`EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
+connection is `propagating` or `live`. If a live connection still has no
+certificate after a few minutes, contact support.
 
 ## 401 "unknown application or secret" when minting a widget token
 
@@ -174,12 +182,12 @@ connection is `propagating` or `live`. If the edge can't reach the gate, check
 usual cause is an **API key** in the `client_secret` field. An API key
 (`cd_live_…`, `cd_test_…`, or an older `sk_live_…`) and an application client
 secret (`sk_` plus 32 hex characters) are different credentials, and the key
-never works there.
+never works in that field.
 
 - **You signed up in the console** (most customers): you have no client secret,
-  because the console never shows it. Call
-  `POST https://app.customdomain.ai/api/widget-token` with
-  `Authorization: Bearer <API key>` instead. Create the key on **API & SDK**; the
+  because the console never shows it. Send the API key as
+  `Authorization: Bearer <API key>` to `POST /v1/tokens`, with no
+  `client_secret`, instead. Create the key on **API & SDK**; the
   **Install** tab on **Widget** generates the code. See
   [Widget tokens](/docs/authentication/widget-tokens).
 - **You created the application over the API**: use the `client_secret` from
@@ -188,9 +196,9 @@ never works there.
   `POST /v1/applications/{id}/client-secret:rotate`.
 - **Do not rotate a console-created application's secret.** The console keeps its
   own copy, which would no longer match: its widget preview, **Try it live** and
-  `/api/widget-token` then fail for that application.
+  its older `/api/widget-token` endpoint then fail for that application.
 
-The console endpoint has its own errors: `503 no_widget_credentials` means the
+The console's older endpoint has its own errors: `503 no_widget_credentials` means the
 application was not created in the console (mint with `/v1/tokens` and its
 secret), and `403 forbidden` means the `application_id` is not in the key's
 workspace.

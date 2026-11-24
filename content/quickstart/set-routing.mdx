@@ -1,0 +1,41 @@
+---
+title: "3. Set routing"
+description: "Choose where connected domains point."
+metaDescription: "Stage 3 of the CustomDomain™ Quickstart: choose whether connected domains go through the CustomDomain™ edge or point straight at your own servers."
+---
+
+Every connected domain points somewhere. Choose where, once, for the application.
+
+<Steps>
+
+<Step>
+
+### Pick a destination
+
+Open **Routing** in the console. Send domains through the edge, which also serves
+HTTPS, or point them at your own servers.
+
+</Step>
+
+<Step>
+
+### Set your origin
+
+For the edge, set the address that answers for every customer's domain.
+
+```bash
+curl -X PUT https://api.customdomain.ai/v1/applications/<APP_ID>/power:default \
+  -H "Authorization: Bearer $CUSTOMDOMAIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "default_origin": "https://app.example.com" }'
+```
+
+</Step>
+
+</Steps>
+
+**Done when** your origin answers our check.
+
+More: [Where domains point](/docs/connect-flow/routing).
+
+Next: [Connect a user's domain](/docs/quickstart/connect-a-user-domain).

@@ -23,12 +23,13 @@ _openapi:
           application of the same tenant. A viewer's key is refused.
 
 
-          `end_user_ref` labels every connection the call creates, the way it
-          does on a single create: an agency adds a client's domains together
-          under the client's name, and the Domains page shows, filters and
-          exports the label. It is set once, when the connection is created. A
-          domain that already exists keeps the label it has and is reported
-          `already`.
+          `client_label` names the client every connection the call creates is
+          for, the way it does on a single create: an agency adds a client's
+          domains together under the client's name, and the Domains page shows,
+          filters and exports it. `PATCH /connections/{id}` changes it later.
+          `end_user_ref` is your own id for the end user, set once and never
+          changed. A domain that already exists keeps what it has and is
+          reported `already`.
 
 
           A workspace with no subscription yet connects its first ten domains,

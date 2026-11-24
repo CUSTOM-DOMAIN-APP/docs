@@ -1,3 +1,9 @@
+/**
+ * The social card for each docs page (/og/docs/<slug>/image.png), rendered once per page at build time: the page
+ * title and description on the brand kit's paper and ink (D-1), with the muted label and host. The renderer cannot
+ * read woff2, so the card uses its built-in sans face rather than the docs fonts.
+ */
+
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 import { source } from "@/lib/source";
@@ -30,12 +36,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
           width: "100%",
           height: "100%",
           padding: "64px 72px",
-          backgroundColor: "#0c0a09",
-          color: "#fafaf9",
-          borderBottom: "18px solid rgba(168,162,158,0.35)",
+          backgroundColor: "#faf8f5",
+          color: "#1c1917",
+          borderBottom: "18px solid #e7e5e4",
         }}
       >
-        <div style={{ display: "flex", fontSize: 30, color: "#a8a29e", marginBottom: 28 }}>CustomDomain™ docs</div>
+        <div style={{ display: "flex", fontSize: 30, color: "#6f6862", marginBottom: 28 }}>CustomDomain™ docs</div>
         <div style={{ display: "block", fontSize: titleSize, fontWeight: 700, lineHeight: 1.12, lineClamp: 3 }}>{title}</div>
         {description ? (
           <div
@@ -43,7 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
               display: "block",
               fontSize: 32,
               lineHeight: 1.4,
-              color: "#d6d3d1",
+              color: "#44403c",
               marginTop: 28,
               lineClamp: 3,
             }}
@@ -51,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
             {description}
           </div>
         ) : null}
-        <div style={{ display: "flex", marginTop: "auto", fontSize: 28, color: "#a8a29e" }}>
+        <div style={{ display: "flex", marginTop: "auto", fontSize: 28, color: "#6f6862" }}>
           docs.customdomain.ai
         </div>
       </div>

@@ -1,11 +1,13 @@
 ---
 title: "MCP: drive it from an agent"
-description: "Let an AI agent discover providers, start domain connections and read their status through the hosted MCP server, with API key or scoped agent token access."
+icon: Bot
+description: "Let an AI agent connect and check domains."
+metaDescription: "Let an AI agent discover providers, start domain connections and read their status through the hosted MCP server, with API key or scoped agent token access."
 ---
 
-Use the MCP server when an **agent** (Claude, Cursor, a custom MCP client)
-should discover providers, start connections and read status on a user's
-behalf. It is the same control plane behind a tool interface.
+Use the MCP server when an **agent** should connect domains for a user. Claude,
+Cursor or your own MCP client can find providers, start connections and read
+their status. It is the same API, behind a tool interface.
 
 ## Connect
 
@@ -18,10 +20,12 @@ behalf. It is the same control plane behind a tool interface.
   agent gets (`domains:read`, `domains:connect`, `domains:disconnect`,
   `domains:purchase`) and can revoke it at any time. See
   [Agent access](/docs/agents/overview).
-- **Purchases through MCP are off on the hosted service.** Buy a domain in the
-  console instead.
+- **Purchases through MCP are off on the hosted service.**
 - The console's **MCP server** page (switch it on in **Settings → Features**)
   has ready made setup for each client (with a key) and a connection test.
+- **VS Code in one command:**
+  `code --add-mcp '{"name":"customdomain","type":"http","url":"https://mcp.customdomain.ai/mcp"}'`.
+  VS Code opens your browser to sign in the first time it connects.
 
 ## Set up an agent from the welcome
 
@@ -50,12 +54,23 @@ to it: a command, or a few fields to fill in.
 ## The flow an agent should follow
 
 1. `discover-provider { domain }` is read only. It says where the domain's DNS
-   lives and which rails can run: `rails`, `recommendedRail` and `blockedReason`
-   (the same truth as `rails` on `POST /v1/domains:check`). Do this **before**
-   promising anything.
-2. `connect-domain { domain }` creates the connection and returns a `link` for
-   the **human** to complete (sign in with the provider, one click, or the
-   records to add) plus a `connectionId`. The agent never writes DNS itself.
+   lives and which ways can run: `rails` (`domainConnect`, `oauth`, `secureSignIn`,
+   `apiKey`, `manual`, `dnsHosting` and `savedAccess`), `recommendedRail` and
+   `blockedReason` (the same truth as `rails` on `POST /v1/domains:check`). A person
+   starts a secure sign in, never an agent, so for an agent `secureSignIn` reads
+   `available: false` with `reason: caller_cannot_start` even where the provider
+   offers it: that is not a missing way. Do this **before** promising anything.
+2. `connect-domain { domain }` creates the connection and returns the `records` to
+   add, a `connectionId` and a `link` for the **human** to complete, with a
+   `linkKind` that says who opens it: `domain_connect` (one click at their DNS
+   provider) and `guided_setup` (a single use setup page for this one domain, with
+   no account, where they take a sign in, a secure sign in or the records) are for
+   the user; `console` needs a login to the workspace, so it is for a member of the
+   workspace. An API key or a client credentials token gets `guided_setup` where the
+   provider has no one click page; an agent token always gets `console`, so give the
+   user the `records`. A `guided_setup` link is a bearer link that lasts 30 days and
+   lets whoever opens it first set up the domain, so send it only to the person who
+   owns the domain. The agent never supplies DNS records: the server works them out.
 3. `check-connection-status { connectionId }` returns a `status` of `pending`,
    `propagating`, `live` or `failed`. Stop when `connected` is `true`. A failed
    connection says why in `errorCode`. `pending` has no deadline; a `failed`
@@ -65,10 +80,12 @@ to it: a command, or a few fields to fill in.
    what public DNS shows and what is missing. Once the person has fixed it,
    `recheck-connection` runs the check now. `check-certificate-status` reads the
    HTTPS certificate; certificates renew on their own.
-5. `list-connections { status?, limit?, cursor? }` lists the connected domains
-   with their status (every application in the workspace when you use an API
-   key). A page that was cut says `truncated: true`; call again with
-   `nextCursor` as `cursor`.
+5. `list-connections { status?, dnsHosting?, limit?, cursor? }` lists the
+   connected domains with their status (every application in the workspace when
+   you use an API key). Each row carries `dnsHosting`, who runs the domain's DNS,
+   and `dnsHosting: "hosted"` (or `moving`, or `any`) keeps only the domains
+   CustomDomain™ runs. A page that was cut says `truncated: true`; call again
+   with `nextCursor` as `cursor`.
 
 When a connect fails with `billing_required`, `check-billing-status` says why and
 where an owner fixes it.
@@ -80,14 +97,25 @@ forwarding: `add-email`, `forward-domain`. Moving a domain's nameservers to the
 application's DNS host: `migrate-nameservers` and `rollback-nameservers` (both ask
 the person first and send `confirm: true`), and `check-nameserver-status` to follow
 the move. With an agent token, the application's setting decides where the
-nameservers go: `target` and `nameservers` are refused. See
+nameservers go: `target` and `nameservers` are refused, and it never resumes the
+move another application of the workspace has open. An agent may move nameservers
+only while the application's DNS hosting is on; with it off the call fails with
+`ns_not_offered` and changes nothing, and a person can turn DNS hosting on in the
+application's settings, or the platform can start the move with its API key. Each move an agent token
+starts, resumes or reverses is in the audit log as `agent.acted` under its grant. See
 [Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
 
 ## Re-apply and disconnect
 
-- `reapply-connection` re-pushes the stored records of a **managed** connection.
-  A connection with no stored grant answers `409` (`conflict`), so read `managed`
-  on `list-connections` or `check-connection-status` first. See
+- `reapply-connection` rewrites a connection's records through the access
+  CustomDomain™ keeps for the domain: the stored grant of a **managed** connection,
+  a DNS zone CustomDomain™ hosts for it (`dnsHosting` `hosted` on
+  `list-connections`) or a connected provider account that keeps it. A connection
+  with none of these answers `409` (`conflict`), so check first, and repair it with
+  `find-saved-access` and `use-saved-access`, or have the person add the records
+  at their DNS provider or sign in again. `managed: false` does not mean a repair
+  needs the person at their DNS provider. With an agent token
+  each re-apply that reached a write is in the audit log as `agent.acted`. See
   [Managed connections](/docs/connect-flow/managed-connections).
 - `disconnect-domain { connectionId, confirm }` removes any connection of the
   application, managed or not. The domain stops being served and its certificate
