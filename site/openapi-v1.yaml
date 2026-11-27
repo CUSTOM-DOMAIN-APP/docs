@@ -422,6 +422,18 @@ paths:
           required: false
           schema: { type: string }
           description: Required only when listing with the management key.
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Applications
@@ -435,6 +447,10 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Application' }
                   count: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
@@ -713,6 +729,19 @@ paths:
       security:
         - apiKey: []
         - agentToken: ['member:read']
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Members
@@ -725,6 +754,11 @@ paths:
                   members:
                     type: array
                     items: { $ref: '#/components/schemas/Member' }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
   /members:preview:
@@ -6880,6 +6914,18 @@ paths:
           required: false
           schema: { type: string }
           description: Narrow to one application, which is how a live key reaches a test mode application's endpoints.
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Endpoints
@@ -6892,6 +6938,11 @@ paths:
                   webhooks:
                     type: array
                     items: { $ref: '#/components/schemas/WebhookEndpoint' }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
@@ -8684,6 +8735,19 @@ paths:
       security:
         - widgetJWT: []
         - apiKey: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Certificates
@@ -8695,6 +8759,11 @@ paths:
                   certificates:
                     type: array
                     items: { $ref: '#/components/schemas/Certificate' }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
