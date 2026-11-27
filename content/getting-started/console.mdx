@@ -215,7 +215,7 @@ The list itself opens on **All**.
 | **Analytics** | Four tabs: the widget funnel, with **Devices and places** under it and the step people most often stop at; **Traffic**, for what your domains receive at the edge; **Providers**, for how many domains each DNS provider started and connected, how long it took and why the rest are stuck; and **Secure sign-in**, for how long a secure sign-in takes and where people stop. See [Analytics](#analytics). |
 | **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, a **Get your API key** button, and **Hand it to your coding agent**; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
-| **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
+| **Hosting** | Each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). **Connect an account** adds one in [three steps](#add-an-account). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Notifications** holds your own switches (push on this device, and the bell and push switch for each kind of alert) with **What we send** under them: one line per kind of email, and a closed row listing every email, who gets it and how to stop it (see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), its **Workspace ID** and **Default application ID** for support, the workspace, your role and the plan, and the console's version with the time it was built (for example "Nov 2, 2026, 14:05 UTC"). **Team**, **Billing**, **Usage** and **Applications** open under it. |
 | **Activity**, **Monitor**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
@@ -236,7 +236,7 @@ A workspace that had picked Classic now sees the same menu as everyone else.
 The menu is grouped by what you are doing.
 At the top are the workspace, the application picker (from two applications), search and the main button.
 Then come **Overview**, **Widget**, **Domains**, **Connected accounts**, **Activity** and **Analytics**.
-An **Integrate** group holds **API keys & webhooks** and **Routing**, followed by **Settings**.
+An **Integrate** group holds **API keys & webhooks** and **Hosting**, followed by **Settings**.
 **MCP & agents** appears when you have switched it on.
 Docs, Help and your account menu sit at the bottom.
 The account menu holds Profile, Security, Notification settings, Privacy, the theme and Sign out.
@@ -328,7 +328,7 @@ what **Overview** and **Domains** lead with.
 
 | | My product's users | My clients | A domain of my own |
 | --- | --- | --- | --- |
-| **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Routing and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Routing. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Routing and Connected accounts. Widget and API & SDK are under **Integrate** |
+| **Menu** | Overview, Widget, Domains, Analytics, then API & SDK, Hosting and Connected accounts | Overview, Domains, Connected accounts, Analytics, then Hosting. Widget and API & SDK are under **Integrate**: click its name to open it | Overview, Domains, Analytics, then Hosting and Connected accounts. Widget and API & SDK are under **Integrate** |
 | **Main button** | **Open the widget** | **Connect a domain**, straight to your own domain: it does not ask who is connecting it | The same |
 | **Overview** | The go-live list, then the domains that need attention (when any do), your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts and the domains that need attention (when any do) |
 | **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Add your domains", with a button to paste a list | "Connect your domain" |
@@ -383,7 +383,7 @@ Pages that list or count show every application.
 These are **Overview**, **Domains** (narrow it with its application filter), **Analytics** (all applications to start with) and the keys on **API & SDK**.
 Each key is named with its application.
 Pages that set one up act on the active application.
-These are **Widget**, **Domain routing**, **Connect a domain** (a new domain lands in it) and adding a webhook endpoint.
+These are **Widget**, **Hosting**, **Connect a domain** (a new domain lands in it) and adding a webhook endpoint.
 A link to **Widget** with `?app=<application id>` switches to that application first.
 An API key works across the whole workspace.
 A Sandbox application's keys work only there.
@@ -661,7 +661,7 @@ Members, admins and owners can change a domain's settings. A viewer reads the sa
 
 Live means the edge terminates TLS and proxies the domain to your application's **origin** (**Edge serving**).
 If you haven't set an origin, the domain shows a "not configured" page.
-Set it under **Routing**, on the page titled **Where domains point**, as the **Application address**.
+Set it under **Hosting** as the **Application address**.
 Or point the domains straight at your own servers there instead.
 See [Where domains point](/docs/connect-flow/routing).
 The domain's **Serving** tab shows whether the edge serves it and where your application runs.
