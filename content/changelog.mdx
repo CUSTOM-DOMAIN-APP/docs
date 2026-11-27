@@ -17,6 +17,9 @@ application to a dated API version.
 
 ## Notable milestones
 
+- **November 27, 2026: rate limit headers.** Responses on rate limited routes carry `RateLimit-Limit`,
+  `RateLimit-Remaining` and `RateLimit-Reset` (seconds), and every `429` carries `Retry-After`. See the
+  [API reference](/docs/api-reference).
 - **November 12, 2026: the `customdomain` command line client.** Install it with npm or Homebrew, or run
   `npx @customdomain/cli init` in a project to approve a sign-in in your browser and get an API key written to `.env.local`.
   See [CLI](/docs/getting-started/cli).
