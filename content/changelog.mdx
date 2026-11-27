@@ -54,6 +54,9 @@ never change meaning or disappear without a new major version. See the
   `connection.attempt.way_ended` say when a way to connect starts and how it ended, with a `cause`, who can fix it
   and whether trying again can help. A sign-in that does not finish is now visible without polling the connection.
   See [Webhooks](/docs/webhooks/overview).
+- **November 7, 2026: `GET /v1/me`.** Ask which workspace an API key belongs to, the role it acts with, and
+  whether it is a member's key. Any role may call it. See
+  [Who the API key acts as](/docs/api-reference/members/getMe).
 - **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
   over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
   `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
