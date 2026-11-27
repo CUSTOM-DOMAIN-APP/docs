@@ -18,7 +18,9 @@ _openapi:
           never charged twice.
 
 
-          A delegated agent token needs `domains:purchase`; the grant's monthly
+          A delegated agent token needs `domains:purchase`, plus the `quote_id`
+          from `POST /registrar/purchase-quote` and the `confirm_code` the person
+          received by email; the grant's monthly
           spend cap is charged first, and a purchase that would pass it answers
           `409`. A tenant API key is refused with `401`. A workspace that
           billing refuses answers `402`.
