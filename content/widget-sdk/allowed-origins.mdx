@@ -1,0 +1,28 @@
+---
+title: Allowed origins
+icon: Globe
+description: "List the sites where your widget is allowed to open."
+metaDescription: "What an allowed origin is for a CustomDomain™ application, how to write one, and what to do when the widget check does not turn green."
+---
+
+An origin is the address of a website: `https://app.yourcompany.com`. An
+application keeps a list of the sites that may open the widget for your
+customers.
+
+## Add an origin
+
+Add one for each site where your product opens the widget, including staging.
+
+- Start with `https://`.
+- Give the host, and a port only if it is not the usual one.
+- Leave out any path, and do not use a wildcard.
+- You can list up to 20.
+
+`https://app.yourcompany.com` is valid. `https://yourcompany.com/app` and
+`https://*.yourcompany.com` are not.
+
+## If the check does not pass
+
+The setup check on [Widget](/docs/getting-started/widget#check-it-works) may wait
+because the site where you opened the widget is not on the list. Add its address
+and try again.

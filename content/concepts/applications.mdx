@@ -1,0 +1,44 @@
+---
+title: Applications, Sandbox and Live
+icon: AppWindow
+description: "What an application holds, and how Sandbox differs from Live."
+metaDescription: "What a CustomDomain™ application holds, the difference between Sandbox and Live, how to switch between applications, and what deleting one does."
+---
+
+An application is one product of yours that lets customers connect domains. A
+workspace can hold several, for example one for your product and one for
+testing.
+
+<OpenInConsole to="/app/apps" label="Open Applications in console" />
+
+Each application has its own:
+
+- widget credentials and widget look
+- API keys
+- domains
+- hosting choice (see [Hosting modes](/docs/guides/hosting-modes))
+
+## Switch between applications
+
+The **Application** switcher at the top of the sidebar lists your applications.
+Choose one to work in it, or choose **New application** to make another. Pages
+that set something up, such as **Widget** and **Routing**, act on the one you
+picked. Pages that list things, such as **Domains**, can show all of them.
+
+## Sandbox and Live [#sandbox-and-live]
+
+- **Live** applications connect real domains. A domain you connect counts toward your plan and is served.
+- **Sandbox** applications run the same flow on made up `.test` names. They need no card, count for nothing and are never billed.
+
+You choose which one when you create the application, and it does not change
+afterward. Make a Sandbox application first to try your whole integration, then
+create a Live one when a customer has a real domain. See [Sandbox](/docs/guides/test-mode).
+
+## Deleting an application [#deleting-an-application]
+
+Open the application, then **Settings**, then **Delete application**, and type
+its name to confirm.
+
+- Its API keys stop working.
+- You cannot delete your workspace's default application.
+- You cannot delete an application that still has domains. Disconnect them first.

@@ -10,6 +10,8 @@ Use the widget when **your customers** own the domains and should connect them
 provider, offers the best [way to connect](/docs/concepts/glossary#ways-to-connect)
 it can finish, and reports back.
 
+<OpenInConsole to="/app/embed" label="Open Widget in console" />
+
 No customer domain to try it with yet? Make a [Sandbox](/docs/guides/test-mode)
 application and follow the steps below with its `client_secret` and a name such as
 `www.acme.test`. The widget runs end to end on a simulated DNS, with no card, no free
@@ -169,6 +171,15 @@ fallback.
 </Step>
 
 </Steps>
+
+## Check that it works [#check-it-works]
+
+When you have added the widget, the console checks that it opened on your site.
+If it does not turn green, do these in order:
+
+1. Make sure the widget is on the page you are looking at, and that your server creates the token in step 1.
+2. Make sure your site's address is listed as an [allowed origin](/docs/widget-sdk/allowed-origins).
+3. Reload the page and try again.
 
 ## Don't
 

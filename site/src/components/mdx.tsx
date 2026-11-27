@@ -15,6 +15,7 @@ import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { TypeTable } from "fumadocs-ui/components/type-table";
+import { OpenInConsole } from "@/components/open-in-console";
 import { UsageStats } from "@/components/usage-stats";
 import { ForAgents } from "@/components/for-agents";
 import type { MDXComponents } from "mdx/types";
@@ -42,6 +43,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     UsageStats,
     // The "For AI agents" section, on content/for-ai-agents/index.mdx.
     ForAgents,
+    // The button below a console step: <OpenInConsole to="/app/keys" label="Open Keys in console" />.
+    OpenInConsole,
     ...components,
   } satisfies MDXComponents;
 }
