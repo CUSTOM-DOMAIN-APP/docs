@@ -6547,8 +6547,11 @@ paths:
 
         A delegated agent token needs `domains:purchase`; the grant's monthly
         spend cap is charged first, and a purchase that would pass it answers
-        `409`. A tenant API key is refused with `401`. A workspace that billing
-        refuses answers `402`.
+        `409`. A delegated agent must also send the `quote_id` from
+        `POST /registrar/purchase-quote` and the `confirm_code` the person
+        received by email; without a current quote it answers `400`, and a
+        wrong code answers `403`. A tenant API key is refused with `401`. A
+        workspace that billing refuses answers `402`.
       security:
         - widgetJWT: []
         - agentToken: ['domains:purchase']
@@ -6563,6 +6566,8 @@ paths:
               required: [domain, buyer]
               properties:
                 domain: { type: string }
+                quote_id: { type: string, description: A delegated agent only. The quote_id of a current quote for this domain. }
+                confirm_code: { type: string, description: A delegated agent only. The code the person received by email. }
                 buyer:
                   type: object
                   required: [email]
@@ -6579,6 +6584,49 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /registrar/purchase-quote:
+    post:
+      operationId: quoteAgentPurchase
+      summary: Quote a purchase for a delegated agent
+      tags: [Registrar]
+      description: >-
+        For a delegated agent token with `domains:purchase`. Returns the price
+        and a `quote_id`, and emails the person who approved the grant a code
+        for this purchase. The code is never in the answer. Send the `quote_id`
+        and the code to `POST /registrar/purchase`. A quote is good for a short
+        time and one purchase. Off while purchasing is off.
+      security:
+        - agentToken: ['domains:purchase']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string }
+      responses:
+        '200':
+          description: Quote
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quote_id: { type: string }
+                  domain: { type: string }
+                  price_cents: { type: integer }
+                  currency: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  confirmation: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Monitor
@@ -11175,8 +11223,11 @@ components:
         - challenge_required
         - changed_elsewhere
         - check_domain_required
+        - confirm_code_invalid
+        - confirm_code_required
         - confirmation_mismatch
         - confirmation_required
+        - confirmation_unavailable
         - conflict
         - connection_removal_vetoed
         - connection_vetoed
@@ -11233,6 +11284,12 @@ components:
         - provider_unavailable
         - ProviderAuthenticationError
         - quota_exceeded
+        - quote_domain_mismatch
+        - quote_expired
+        - quote_invalid
+        - quote_price_changed
+        - quote_required
+        - quote_used
         - rate_limited
         - reach_quota
         - reauthorization_required
@@ -11267,6 +11324,8 @@ components:
         - scope_all_needs_list
         - serves_every_application
         - service_unavailable
+        - spend_cap_exceeded
+        - spend_cap_required
         - stripe_error
         - target_not_allowed
         - token_not_bound
