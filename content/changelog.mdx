@@ -17,6 +17,11 @@ application to a dated API version.
 
 ## Notable milestones
 
+- **November 27, 2026: clearer answers for a repeated purchase request.** `POST /v1/registrar/purchase` now returns
+  the first result, with `Idempotency-Replayed: true`, when the same `Idempotency-Key` and body are sent again. The
+  same key with a different body answers `422 idempotency_key_reused`, and a key whose first request is still
+  running answers `409 idempotency_in_progress`. A replay answers `201`, as the first request did. See
+  [Register a domain](/docs/api-reference/registrar/purchaseDomain).
 - **November 12, 2026: the `customdomain` command line client.** Install it with npm or Homebrew, or run
   `npx @customdomain/cli init` in a project to approve a sign-in in your browser and get an API key written to `.env.local`.
   See [CLI](/docs/getting-started/cli).

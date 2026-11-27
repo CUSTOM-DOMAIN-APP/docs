@@ -6618,8 +6618,12 @@ paths:
         Off on the hosted service. This route registers a domain without taking
         a payment, so it needs both `SELL_PURCHASE_ENABLED` and its own switch
         `SELL_DIRECT_PURCHASE_ENABLED`; buy through checkout instead. A required
-        `Idempotency-Key` header dedupes retries so a registration is never
-        charged twice.
+        `Idempotency-Key` header (1 to 255 visible ASCII characters, kept for
+        24 hours) dedupes retries so a registration is never charged twice. The
+        same key and body again answers the first result with the response header
+        `Idempotency-Replayed: true`; the same key with another body answers `422`
+        `idempotency_key_reused`; a key still running answers `409`
+        `idempotency_in_progress` with `Retry-After`.
 
 
         A delegated agent token needs `domains:purchase`; the grant's monthly
@@ -6653,15 +6657,18 @@ paths:
                     email: { type: string }
                     country: { type: string }
       responses:
-        '200':
-          description: Order (idempotent replay)
         '201':
-          description: Order
+          description: 'Order. A replay of the same key and body answers the same status and body with `Idempotency-Replayed: true`.'
+          headers:
+            Idempotency-Replayed:
+              description: 'Set to `true` when this is the stored answer of an earlier request with the same key.'
+              schema: { type: string, enum: ['true'] }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
         '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /registrar/purchase-quote:
     post:
@@ -11358,6 +11365,8 @@ components:
         - forbidden
         - forwarding_not_supported
         - fulfillment_in_progress
+        - idempotency_in_progress
+        - idempotency_key_reused
         - installation_pending
         - internal_error
         - invalid
