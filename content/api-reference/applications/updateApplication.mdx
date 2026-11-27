@@ -31,7 +31,7 @@ _openapi:
           `end_user_saved_access` sets whether a returning end user may reuse
           the access their own secure sign-in kept (`true` is the default; see
           the `Application` schema). It takes `true` or `false`, never `null`. A
-          test mode application keeps no saved access, so `true` is refused for
+          Sandbox application keeps no saved access, so `true` is refused for
           it with `400`. Needs a key that may write the application (a viewer's
           key is a `403`). A delegated agent token needs `app:write`.
 ---

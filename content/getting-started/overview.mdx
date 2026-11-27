@@ -23,7 +23,7 @@ same on every path:
 | A product that provisions domains for customers **from your server** | the **API** (`/v1`, `cd_` API key) | [API](/docs/getting-started/api) |
 | A product whose customers connect **their** domains inside **your** UI | the **widget** (`customdomain-js`) | [Widget](/docs/getting-started/widget) |
 | An AI agent or MCP client | the **MCP server** (`mcp.customdomain.ai`) | [MCP](/docs/getting-started/mcp) |
-| Building one of the above before you have a customer's domain | **test mode**, made up `.test` names, no card | [Test mode](/docs/guides/test-mode) |
+| Building one of the above before you have a customer's domain | **Sandbox**, made up `.test` names, no card | [Sandbox](/docs/guides/test-mode) |
 
 ## Shared truths
 
@@ -47,8 +47,8 @@ them, that is a bug. Tell us.
   domain again revives it (`200`). Real traffic at the edge revives it too.
 - **The diagnosis is on the connection.** Read `error_code` and `error_message`
   on `GET /v1/connections/{id}`, on every list, and on the webhook events.
-- **Test mode runs all of this on made up names.** A
-  [test mode](/docs/guides/test-mode) application connects `.test` names. They go
+- **Sandbox runs all of this on made up names.** A
+  [Sandbox](/docs/guides/test-mode) application connects `.test` names. They go
   `live`, stay `pending` or fail on a short simulated clock chosen by the name.
   They send the same webhooks, marked `"sandbox": true`, and count for nothing:
   no free domain, no allowance, no bill.
