@@ -10770,7 +10770,7 @@ components:
       schema: { type: string, format: email }
   responses:
     Error:
-      description: 'Error envelope: {code, title, details}.'
+      description: 'Error envelope: {code, title, details, request_id}.'
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -11133,6 +11133,7 @@ components:
         code: { $ref: '#/components/schemas/ErrorCode' }
         title: { type: string, description: human-readable summary }
         details: { type: string, description: optional extra context }
+        request_id: { type: string, description: "The id of this call, the same as the `X-Request-Id` header. Quote it to support." }
         challenge:
           type: object
           description: On `428 challenge_required` only. The challenge to solve; see the API description.
@@ -13237,7 +13238,7 @@ components:
             Where the edge sends every visit to the domain (a `301`, keeping
             the visit's path and query): a plain `https://` address of a public
             domain, `""` to clear it. It needs edge serving, which comes with
-            Growth and up: `402` `plan_upgrade_required` on a plan without it
+            the Edge plan and up: `402` `plan_upgrade_required` on a plan without it
             and `503` where the deployment has it off (clearing a forward needs
             neither). `400` for an address that is not https (`http:`,
             `javascript:`, `data:`, a scheme-less address), has a username or

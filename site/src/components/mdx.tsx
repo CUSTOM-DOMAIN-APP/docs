@@ -12,6 +12,7 @@ import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { TypeTable } from "fumadocs-ui/components/type-table";
+import { OpenInConsole } from "@/components/open-in-console";
 import { UsageStats } from "@/components/usage-stats";
 import type { MDXComponents } from "mdx/types";
 
@@ -36,6 +37,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     TypeTable,
     // Live npm usage card: drop <UsageStats /> into any .mdx page.
     UsageStats,
+    // The button below a console step: <OpenInConsole to="/app/keys" label="Open Keys in console" />.
+    OpenInConsole,
     ...components,
   } satisfies MDXComponents;
 }

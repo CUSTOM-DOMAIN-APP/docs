@@ -1,0 +1,57 @@
+---
+title: "Hosting modes: Hosted by CustomDomain™ or Your servers"
+icon: Server
+description: "Pick who serves your customers' domains."
+metaDescription: "Choose Hosted by CustomDomain™ or Your servers for an application, see what each one asks you to fill in, and which plans include it."
+---
+
+Every application serves its customers' domains one of two ways. You pick one
+for the application. You can change it later.
+
+<OpenInConsole to="/app/routing" label="Open Routing in console" />
+
+| | Hosted by CustomDomain™ | Your servers |
+| --- | --- | --- |
+| You give us | The address of your app | A hostname, and addresses for bare domains |
+| Plans | Edge and up | Every plan |
+
+## Hosted by CustomDomain™ [#hosted-by-customdomain]
+
+We serve your customers' domains and send their visitors to your app.
+
+1. Open **Routing** in the console, then choose **Hosted by CustomDomain™**.
+2. Enter **Your app's address**, for example `https://app.yourcompany.com`.
+3. Save.
+
+Your customers then add the records the widget shows them, or approve a
+one-click setup. You do nothing for each domain.
+
+## Your servers [#your-servers]
+
+Your own servers or load balancer serve the domains, and your customers point
+their domains at you.
+
+1. Open **Routing** in the console, then choose **Your servers**.
+2. Enter a **Hostname**, for example `domains.yourcompany.com`. Create it in your DNS before your first customer connects.
+3. If you want bare domains such as `acme.com` to work for every customer, add up to four **Addresses for the bare domain**. Without them, a bare domain works only where the customer's DNS host offers an ALIAS-style record. See [Root domains](/docs/dns/root-domains).
+4. Save.
+
+You issue the certificates for these domains yourself.
+
+## What it needs [#what-it-needs]
+
+- **Hosted by CustomDomain™** is part of the Edge plan and up. On a lower plan the card shows **Edge** and the button reads **Upgrade**. Compare plans on [Plans and quotas](/docs/billing/plans-and-quotas).
+- **Your servers** is on every plan.
+- On a plan below Edge, the page opens with **Your servers** picked. Until you save a hostname, or upgrade and set your app's address, your customers' domains will not load yet.
+
+## One domain different [#one-domain-different]
+
+Changing the choice for an application does not change domains that are already
+connected. Domains still waiting for DNS take the new records. Connected domains
+keep working where they are until you move them.
+
+To move one connected domain, open it in the console and choose **Move this
+domain**. Your customer then replaces their old records with the new ones. To undo it, use the undo option on the same page.
+
+See [Where domains point](/docs/connect-flow/routing) for the API calls behind
+both choices.

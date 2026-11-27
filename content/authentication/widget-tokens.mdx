@@ -9,6 +9,8 @@ backend mints a short-lived JWT and hands only that to the browser. There are
 two ways to mint it, and which one applies depends on how the application was
 created:
 
+<OpenInConsole to="/app/keys" label="Open Keys in console" />
+
 | How the application was created | You have | Mint with |
 | --- | --- | --- |
 | **You signed up in the console** (most customers; every console signup gets an application) | An API key from **API & SDK**. The console never shows you the application's client secret. | [`POST /v1/tokens`](#with-an-api-key-console-accounts) with `Authorization: Bearer <API key>` |

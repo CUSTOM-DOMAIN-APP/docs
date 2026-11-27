@@ -134,9 +134,7 @@ you are unsure: would this page make sense to someone who will never see the sou
 - [customdomain-mcp](https://github.com/CUSTOM-DOMAIN-APP/customdomain-mcp): the MCP server for AI agents, hosted at mcp.customdomain.ai
 - [custom-domain-checks](https://github.com/CUSTOM-DOMAIN-APP/custom-domain-checks): a GitHub App for continuous DNS and TLS health checks on custom domains
 - [awesome-custom-domains](https://github.com/CUSTOM-DOMAIN-APP/awesome-custom-domains): a curated list of tools, APIs and services for custom domains
-- [connect-domain-for-ai-agents](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-ai-agents): connecting domains from an AI agent through the MCP server and REST API
 - [connect-domain-for-email-platforms](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-email-platforms): SPF, DKIM, DMARC and MX setup for email platforms
-- [connect-domain-for-agencies](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-agencies): white-label client domains for agencies, with working examples
 - [connect-domain-for-website-builders](https://github.com/CUSTOM-DOMAIN-APP/connect-domain-for-website-builders): domain connection for site builders and no-code platforms
 - [customdomain-brand-kit](https://github.com/CUSTOM-DOMAIN-APP/customdomain-brand-kit): the brand reference: name rule, mark, color and type
 

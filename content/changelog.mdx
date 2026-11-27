@@ -61,6 +61,9 @@ never change meaning or disappear without a new major version. See the
   billing reads carry the new names. The console's plan cards and the plans table in these docs now name each
   entitlement by what it does instead of its key: DNS setup, Edge serving, Certificates and Drift monitoring. See
   [Plans and quotas](/docs/billing/plans-and-quotas).
+- **November 7, 2026: `GET /v1/me`.** Ask which workspace an API key belongs to, the role it acts with, and
+  whether it is a member's key. Any role may call it. See
+  [Who the API key acts as](/docs/api-reference/members/getMe).
 - **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
   over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
   `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
