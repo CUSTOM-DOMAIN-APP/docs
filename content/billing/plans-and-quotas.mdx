@@ -16,6 +16,8 @@ They can also change its trial (`trial_days`) and whether it blocks at quota (`h
 So read them from `GET /v1/plans` instead of hard coding them.
 `billing.trial_days` is the default plan's trial.
 
+<OpenInConsole to="/app/billing/plans" label="Open Plans in console" />
+
 Entitlements gate which products a tenant may use.
 **Enforced today** are `Power` and `Secure`.
 `Power` covers serving domains through the CustomDomain™ edge.
@@ -309,6 +311,8 @@ connections** for the period against the plan's included quota. The tenant is
 derived from the authenticated credential, never a query parameter, and
 `?period=` defaults to the current UTC calendar month.
 
+<OpenInConsole to="/app/usage" label="Open Usage in console" />
+
 ```json
 {
   "org": "ten_1a2b3c",
@@ -390,6 +394,8 @@ no enforcement meaning at all. Read **`hard_cap`** for a plan's refusal policy.
 > That would use Stripe Billing Meters, since the legacy Usage Records API is deprecated.
 
 ## Checkout and portal [#checkout--portal]
+
+<OpenInConsole to="/app/billing" label="Open Billing in console" />
 
 ```bash
 # Start a Stripe Checkout for a self-serve plan (a new workspace gets its 14 day trial)
