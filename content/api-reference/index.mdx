@@ -78,7 +78,10 @@ sync when a code changes.
 - **Idempotency**: `POST /v1/connections` is idempotent per application +
   domain (an existing, non-failed connection is replayed with `200`).
   `POST /v1/registrar/purchase` **requires** an `Idempotency-Key` header so a
-  registration is never charged twice.
+  registration is never charged twice. Repeating a request with the same key
+  and body returns the first result with `Idempotency-Replayed: true`; the
+  same key with a different body is refused with `422`, and a key whose first
+  request is still running is refused with `409`. A key is kept for 24 hours.
 - **Scoping**: list endpoints are tenant-scoped by the authenticated
   credential, never by a query parameter. Cross-tenant ids simply match nothing.
 - **Versioning**: the surface is under `/v1`, additive-only within a version;
