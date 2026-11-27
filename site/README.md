@@ -36,17 +36,21 @@ deployment and the follow-ups still open.
 - `src/lib/layout.shared.tsx`: nav/header options: the wordmark
   (`src/components/wordmark.tsx`), the sidebar links and the "Sign in" or
   "Console" pair.
-- Theme: Fumadocs' own chrome on the brand kit. `src/app/tokens-docs.css` is the
-  kit's `--color-fd-*` mapping, light and dark, copied unchanged from the brand
-  kit's token build (`build_tokens.py` writes it from `tokens.json`, the brand
-  kit's one token source). To change a color, change the token and copy the
-  rebuilt file over this one; do not edit it here.
-  `src/app/brand.css` holds the few docs rules on top: the font stacks, the page
-  title in Instrument Serif, light code cards and the wordmark.
-  `src/lib/fonts.ts` self-hosts Inter, Geist Mono and Instrument Serif from
-  `src/fonts/` (licenses beside them), so the site requests no font from Google.
-  `src/lib/code-themes.ts` is the syntax theme for MDX code blocks and the API
-  reference samples.
+- Theme: Fumadocs' chrome on site v2's design system, so the docs and
+  customdomain.ai look the same. `src/shared/` holds exact copies of site v2's
+  `site/shared/tokens.css` (Geist, Geist Mono, monochrome, light and dark),
+  `fumadocs-map.css` (every `--color-fd-*` pointed at a site token) and the two
+  Shiki themes, with their hashes in `src/shared/SOURCE.json`.
+  `scripts/check-shared.mjs` runs before every build and fails when a copy was
+  edited here or is stale against the site repo checked out beside this one.
+  Never edit the copies: change `site/shared` in the site repo, copy the files,
+  then run `node scripts/check-shared.mjs --write`.
+  `src/app/docs-theme.css` maps the few Fumadocs colors the site has no token
+  for (callouts, diffs) to site tokens, and `src/app/brand.css` holds the docs
+  layout and type after Better Auth's docs. Fonts come from the `geist` package
+  through next/font, so no font is requested from Google.
+  `src/lib/code-themes.ts` reads the shared Shiki themes for MDX code blocks
+  and the API reference samples.
 - `next.config.ts`: `output: "standalone"` for the Docker image, plus
   `outputFileTracingRoot`/`turbopack.root` pinned to the repo root (required
   because content lives one level above `site/`; see the comments in that file

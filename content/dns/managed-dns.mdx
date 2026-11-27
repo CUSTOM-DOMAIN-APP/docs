@@ -1,42 +1,43 @@
 ---
 title: Managed DNS
-description: "Point a domain's nameservers at CustomDomain™ once and every later record is written for you. How DNS hosting works, the API and the limits."
+description: "Point a domain's nameservers at us once."
+metaDescription: "Point a domain's nameservers at CustomDomain™ once and every later record is written for you. How DNS hosting works, the API and the limits."
 ---
 
-When a domain's DNS provider offers no sign-in, one-click setup, secure sign-in or
-API key that fits, the only other way to connect it is to add the records in the
-provider's panel by hand, and that is where most connections stall. **Managed DNS**
-replaces the typing with one change the domain's owner makes once: set the
-domain's nameservers to CustomDomain™'s. From then on CustomDomain™ hosts the whole
-zone, and every record, now and later, is written automatically. The console and
-the widget call it **DNS hosting**, the sixth of the
-[ways to connect](/docs/concepts/glossary#ways-to-connect); the API calls it
-managed DNS and, for the move itself, nameserver migration.
+Sometimes a domain's DNS provider offers no sign-in, one-click setup, secure
+sign-in or API key that fits. Then the only other way to connect it is to add
+the records in the provider's panel by hand. That is where most connections
+stall. **Managed DNS** replaces the typing with one change the domain's owner
+makes once: set the domain's nameservers to CustomDomain™'s. From then on,
+CustomDomain™ hosts the whole zone and writes every record, now and later. The
+console and the widget call it **DNS hosting**, the sixth of the [ways to
+connect](/docs/concepts/glossary#ways-to-connect). The API calls it managed DNS
+and, for the move itself, nameserver migration.
 
 Managed DNS is rolling out gradually, so
 `POST /v1/domains:check` tells you whether it is available for a domain.
 
 **Your end users are offered it only when your application turns it on.** One
-setting decides every DNS hosting offer the widget makes: the application's
-**DNS hosting** setting (`nameserver_migration`, which the
+setting decides every DNS hosting offer the widget makes. It is the
+application's **DNS hosting** setting (`nameserver_migration`, which the
 [nameserver migration guide](/docs/guides/nameserver-migration) calls Domain
-maintenance). With it on, the widget asks
-each end user once, with their consent, and moves their nameservers either to
-CustomDomain™ or to a DNS host of your own (Cloudflare, Amazon Route 53, Google
-Cloud DNS, Azure DNS, or your own nameservers); see
-[Domain maintenance (nameserver migration)](/docs/guides/nameserver-migration).
-With it off (the default), the widget offers no DNS hosting, even where
-`managed_dns.available` is `true`. From your own server, with an API key or an
-app-scoped token, you can start managed DNS for any connection either way.
+maintenance). With it on, the widget asks each end user once, with their
+consent. It moves their nameservers either to CustomDomain™ or to a DNS host of
+your own: Cloudflare, Amazon Route 53, Google Cloud DNS, Azure DNS, or your own
+nameservers. See [Domain maintenance (nameserver
+migration)](/docs/guides/nameserver-migration). With it off (the default), the
+widget offers no DNS hosting, even where `managed_dns.available` is `true`. From
+your own server, with an API key or an app-scoped token, you can start managed
+DNS for any connection either way.
 
 ## How it works
 
 1. **Check.** `POST /v1/domains:check` returns
    `"managed_dns": {"available": true, "reason": ""}` when the domain can be
    hosted.
-2. **Start.** `POST /v1/connections/{id}/managed-dns` creates a hosted zone
-   for the connection's **registrable domain** (`acme.com`, also when the
-   connection is `shop.acme.com`), copies the records the domain serves today,
+2. **Start.** `POST /v1/connections/{id}/managed-dns` creates a hosted zone for
+   the connection's **registrable domain**. That is `acme.com`, also when the
+   connection is `shop.acme.com`. It copies the records the domain serves today,
    adds the records the connection needs, and looks up the registrar.
 3. **Switch.** The domain's owner replaces the domain's nameservers, at its
    registrar, with the `nameservers` in the response. Nothing changes for
@@ -47,27 +48,27 @@ app-scoped token, you can start managed DNS for any connection either way.
    ours, the zone turns `active`, the connection is verified right away, and it
    goes live.
 
-Every record change for the connection after that (a `www` redirect switched
-on, a CAA opt-in, a `:reapply`, a disconnect) is written into the zone by
-CustomDomain™. Nobody is asked to edit DNS again.
+After that, CustomDomain™ writes every record change for the connection into the
+zone. That covers a `www` redirect switched on, a CAA opt-in, a `:reapply` and a
+disconnect. Nobody is asked to edit DNS again.
 
 ### The next name under an active zone [#next-name]
 
-Once the zone is `active`, the next name under the same registrable domain
-(`blog.acme.com`, after `shop.acme.com`) needs no start and no switch. When it is
-created with `POST /v1/connections`, it joins the zone: its records are written
-into the zone, it is checked at once, and the answer can already say `live`.
-Nobody is asked again.
+Once the zone is `active`, the next name under the same registrable domain needs
+no start and no switch. An example is `blog.acme.com`, after `shop.acme.com`.
+When it is created with `POST /v1/connections`, it joins the zone. Its records
+are written into the zone and checked at once, and the answer can already say
+`live`. Nobody is asked again.
 
 A zone is one customer's whole DNS, so only the right caller joins it:
 
-- A widget token, only when the zone is the token's own, by the same rule as every
-  other managed DNS call of a widget token ("Whose zone it is", below): the
-  new connection is the token's, and so is every connection already linked to the
-  zone, in the same application. The application must still offer DNS hosting on
-  CustomDomain™'s own DNS. Who started the zone does not decide it: once your API
-  key (or another end user) has a name in the zone, it is no longer that end
-  user's, so their next name does not join it.
+- A widget token, only when the zone is the token's own. The rule is the same as
+  for every other managed DNS call of a widget token (see "Whose zone it is",
+  below). The new connection is the token's, and so is every connection already
+  linked to the zone, in the same application. The application must still offer
+  DNS hosting on CustomDomain™'s own DNS. Who started the zone does not decide
+  it. Once your API key, or another end user, has a name in the zone, it is no
+  longer that end user's. So their next name does not join it.
 - An API key, or an app-scoped token, for the application the zone was started in.
 - Never a delegated agent token, a token that does not own the zone, another
   application or another workspace. Those names prove control by DNS, as before,
@@ -100,11 +101,11 @@ Names outside that list are not found this way. **Before switching, check the
 record list**, and import a zone file or add anything that is missing. Most DNS
 providers can export a zone file.
 
-**DNSSEC.** The zones CustomDomain™ hosts are not signed yet. If DNSSEC is
-turned on for the domain at its registrar (the registry publishes a `DS`
-record), resolvers that validate DNSSEC would stop answering for the domain
-after the switch. The zone's `warnings` say so while a `DS` record exists: turn
-DNSSEC off at the registrar when changing the nameservers.
+**DNSSEC.** The zones CustomDomain™ hosts are not signed yet. DNSSEC may be
+turned on for the domain at its registrar, which means the registry publishes a
+`DS` record. Then resolvers that validate DNSSEC would stop answering for the
+domain after the switch. The zone's `warnings` say so while a `DS` record
+exists. Turn DNSSEC off at the registrar when you change the nameservers.
 
 ## Where records come from
 
@@ -120,15 +121,15 @@ one wins:
 
 What "wins" means:
 
-- A `CNAME` can't share its name, so a higher `CNAME` removes everything
-  below it at that name, and a lower `CNAME` gives way to anything above it.
+- A `CNAME` can't share its name. So a higher `CNAME` removes everything below
+  it at that name, and a lower `CNAME` gives way to anything above it.
 - A zone file is authoritative for what it defines: an imported `MX` set
   replaces the copied `MX` set.
 - Records added by hand are **added**: adding a second `MX` keeps the first.
 - A name can hold only one `v=spf1`, one `v=DMARC1`, one `v=DKIM1` TXT record.
 - Where CustomDomain™ points a name (`shop.acme.com` to the edge), older
-  addresses for that name are removed, including `AAAA`, so no visitor is sent
-  to the old host.
+  addresses for that name are removed, including `AAAA`. No visitor is sent to
+  the old host.
 
 Every record that was replaced or skipped is explained in `warnings`.
 
@@ -140,13 +141,13 @@ Every record that was replaced or skipped is explained in `warnings`.
 "managed_dns": { "available": false, "reason": "platform_subdomain" }
 ```
 
-`reason` is `""` when available, otherwise `disabled` (off on this
+`reason` is `""` when available. Otherwise it is `disabled` (off on this
 deployment), `platform_subdomain` (`someone.github.io`: the name belongs to a
 hosting platform), `unsupported_tld` (no registrable domain whose nameservers a
 registrar can change) or `reserved`.
 
 This is the deployment's and the domain's verdict only. It doesn't say whether
-your application offers DNS hosting to its end users: that is the
+your application offers DNS hosting to its end users. That is the
 `nameserver_migration` block of the same response, present only when the
 application's setting is on.
 
@@ -200,11 +201,11 @@ Every connection carries `dns_hosting`, on `GET /v1/connections` and on
 "dns_hosting": { "state": "hosted", "by": "customdomain", "zone": "acme.com", "since": "2026-10-01T09:00:00Z" }
 ```
 
-`state` is `hosted` (the nameservers point at the zone, so it is what the world
-resolves), `moving` (the zone is being set up, or the nameservers are being
-moved), `failed` (the zone never became active, or the domain moved its
-nameservers away again) or `none`, which carries nothing else. `by` is
-`customdomain` for managed DNS here, `dns_host` for your own account at a DNS
+`state` is one of four values. `hosted` means the nameservers point at the zone,
+so it is what the world resolves. `moving` means the zone is being set up, or
+the nameservers are being moved. `failed` means the zone never became active, or
+the domain moved its nameservers away again. `none` carries nothing else. `by`
+is `customdomain` for managed DNS here, `dns_host` for your own account at a DNS
 host (`provider` names it) and `custom` for your own nameservers. `zone` is the
 domain or the parent domain that is hosted: `shop.acme.com` is hosted when
 `acme.com` is.
@@ -218,22 +219,22 @@ curl "https://api.customdomain.ai/v1/connections?dns_hosting=hosted" \
   -H "Authorization: Bearer cd_live_…"
 ```
 
-`hosted` keeps the domains served from a zone we run, `moving` those being set
-up or moved, and `any` every domain with hosting in play (hosted, moving or
-failed). The filter pages like the unfiltered list: follow `next_cursor`. Any
-other value is a `400`. Another account's zone never counts, and a test mode
+`hosted` keeps the domains served from a zone we run. `moving` keeps those being
+set up or moved. `any` keeps every domain with hosting in play: hosted, moving
+or failed. The filter pages like the unfiltered list, so follow `next_cursor`.
+Any other value is a `400`. Another account's zone never counts, and a Sandbox
 connection is never hosted.
 
-On the detail read, an API key (and an app-scoped or agent token) also gets
-`reach`, which says how CustomDomain™ writes the domain's DNS: `kind` is
-`account`, `sign_in`, `domain_connect`, `dns_hosting`, `route53_role` or `none`,
-with `can_reapply` (whether `:reapply` can write now) and `managed_possible`
-(whether the one-click sign-in can be offered for the domain's provider here).
-A hosted domain is reached by its hosting, whoever runs the zone. An agent token
-reads `reach` and the connection's `credential` with less: the key's customer
-number, sign-in session and name are left out, and `label` reads `<Provider> key`
-for a key made for another application, because the label the agent made it with
-names that application's domain.
+On the detail read, an API key, an app-scoped token and an agent token also get
+`reach`. It says how CustomDomain™ writes the domain's DNS. `kind` is `account`,
+`sign_in`, `domain_connect`, `dns_hosting`, `route53_role` or `none`.
+`can_reapply` says whether `:reapply` can write now. `managed_possible` says
+whether the one-click sign-in can be offered for the domain's provider here. A
+hosted domain is reached by its hosting, whoever runs the zone. An agent token
+reads `reach` and the connection's `credential` with less. The key's customer
+number, sign-in session and name are left out. `label` reads `<Provider> key`
+for a key made for another application, because the label the agent chose names
+that application's domain.
 
 ### Import a zone file or add records
 
@@ -258,11 +259,11 @@ Send exactly one of `zone_file` or `records`. Names may be relative (`@`,
 `AAAA`, `CNAME`, `MX`, `TXT`, `SRV` (value `"<weight> <port> <target>"`,
 priority separate), `CAA` and `NS` (for subdomains only).
 
-The zone file parser reads BIND format: `$ORIGIN`, `$TTL` (also `1h`, `2d`),
-`@`, relative and absolute names, a blank name (the line above's), comments,
-parentheses, quoted and multi-string `TXT`. Anything it can't host (the `SOA`,
-the zone's own `NS` records, other types, names outside the zone, `$INCLUDE`,
-`$GENERATE`) is skipped with a warning naming the line.
+The zone file parser reads BIND format. It understands `$ORIGIN`, `$TTL` (also
+`1h`, `2d`), `@`, relative and absolute names, a blank name (the line above's),
+comments, parentheses, and quoted and multi-string `TXT`. Anything it can't host
+is skipped with a warning naming the line. That covers the `SOA`, the zone's own
+`NS` records, other types, names outside the zone, `$INCLUDE` and `$GENERATE`.
 
 A record added by hand that would override a `customdomain` record is refused
 with `409`; an imported one is skipped with a warning.
@@ -276,20 +277,20 @@ content, so they stay the same across reads.
 
 ### Who can call what
 
-The routes are authorized like the other connection routes: an API key for any
-connection in the tenant, or a widget token of the connection's own
+The routes are authorized like the other connection routes. That means an API
+key for any connection in the tenant, or a widget token of the connection's own
 application and domain. Changes need a role that can write connections.
 
 An end user's **connect-scoped** widget token can start managed DNS only when
-the application offers DNS hosting on CustomDomain™ (its `nameserver_migration`
-mode is `offer` or `prefer` and its target is `managed`). With the setting off,
+the application offers DNS hosting on CustomDomain™. Its `nameserver_migration`
+mode must be `offer` or `prefer` and its target `managed`. With the setting off,
 the start answers `403` with "this application does not offer nameserver
-migration". With the target `dns_host` or `custom`, your users' DNS goes to
-your own DNS host or nameservers, so the start answers `403` with "this
-application hosts its users' DNS elsewhere; the nameserver move is its offer".
-Either way no zone is created. A connection that already
-has a zone can still call the start, to resume it, and read or edit its records
-as below. An API key or an app-scoped token is not limited by the setting.
+migration". With the target `dns_host` or `custom`, your users' DNS goes to your
+own DNS host or nameservers. Then the start answers `403` with "this application
+hosts its users' DNS elsewhere; the nameserver move is its offer". Either way no
+zone is created. A connection that already has a zone can still call the start,
+to resume it, and read or edit its records as below. An API key or an app-scoped
+token is not limited by the setting.
 
 Once a zone is `active` it answers for the whole domain, email included, so an
 end user's **connect-scoped** widget token may only read it. Records can still
@@ -350,14 +351,14 @@ are not limited by any of this.
 | `active` | Every nameserver the registry lists is ours. Re-checked every 6 hours. |
 | `failed` | The switch didn't happen within 14 days, or the nameservers later moved away. The first warning says which. A failed zone is still checked twice a day and turns `active` as soon as the delegation appears. |
 
-If the registry lists some of our nameservers and some others, the zone stays
-`awaiting_delegation` with a warning naming the extra ones: resolvers that pick
-one of them would still get the old answers.
+The registry may list some of our nameservers and some others. Then the zone
+stays `awaiting_delegation`, with a warning naming the extra ones. Resolvers
+that pick one of them would still get the old answers.
 
 ## Root domains
 
-A hosted zone can't alias a hostname outside it, so a root domain
-(`acme.com`) is pointed at the edge with `A` records to the platform's
-published apex addresses (`APEX_A_TARGETS`). A deployment without them can't
-host a root connection's records, and the zone says so in `warnings`; connect
-`www` instead. See [Root domains](/docs/dns/root-domains).
+A hosted zone can't alias a hostname outside it. So a root domain (`acme.com`)
+is pointed at the edge with `A` records to the platform's published apex
+addresses (`APEX_A_TARGETS`). A deployment without them can't host a root
+connection's records, and the zone says so in `warnings`. Connect `www` instead.
+See [Root domains](/docs/dns/root-domains).

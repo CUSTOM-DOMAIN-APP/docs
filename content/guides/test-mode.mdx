@@ -1,10 +1,12 @@
 ---
-title: Test mode
-description: Run the widget, the API and your webhooks end to end on made up .test names, before a customer has a domain. Nothing is looked up, served, billed or counted.
+title: Sandbox
+icon: ListChecks
+description: "Try everything on made up .test names first."
+metaDescription: Run the widget, the API and your webhooks end to end on made up .test names, before a customer has a domain. Nothing is looked up, served, billed or counted.
 ---
 
-Test mode lets you build and check your whole integration before a customer has a
-domain, and before you have added a card. A test mode application runs the real
+The Sandbox lets you build and check your whole integration before a customer has a
+domain, and before you have added a card. A Sandbox application runs the real
 connect flow: the widget's screens, the API calls and the webhooks. The one thing it
 makes up is DNS. It connects names that end in `.test`, decides how each one ends,
 and counts for nothing. It does not use up your free domains or your plan's allowance,
@@ -20,14 +22,14 @@ Use it to:
 It does not try a DNS provider's sign in, real DNS, certificates or hosting. Those
 need a real domain in a live application.
 
-## Make a test mode application
+## Make a Sandbox application
 
 In the console, each of these makes one, switches the console to it, and needs no card:
 
-- **Try test mode** in the application switcher.
-- **Applications**, then **New application**, then **Test mode**.
-- **Try it in test mode** in **Run your first connection**, the **Start** button on the go-live list on **Overview**.
-- **Try it in test mode**, on the **Preview** tab of **Embed**.
+- **Try Sandbox** in the application switcher.
+- **Applications**, then **New application**, then **Sandbox**.
+- **Try it in Sandbox** in **Run your first connection**, the **Start** button on the go-live list on **Overview**.
+- **Try it in Sandbox**, on the **Preview** tab of **Embed**.
 
 With the API, send `"sandbox": true` when you create the application:
 
@@ -35,22 +37,22 @@ With the API, send `"sandbox": true` when you create the application:
 curl -X POST https://api.customdomain.ai/v1/applications \
   -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test mode","sandbox":true}'
+  -d '{"name":"Sandbox","sandbox":true}'
 # → 201 { "id": "app_…", "sandbox": true, "environment": "development", "client_secret": "…", … }
 ```
 
 - `sandbox` is fixed when the application is made and never changes. Leave
-  `environment` out: a test mode application is always a development application.
-- A workspace holds up to 3 test mode applications, and each holds up to 100 test
+  `environment` out: a Sandbox application is always a development application.
+- A workspace holds up to 3 Sandbox applications, and each holds up to 100 test
   domains. Past that, the answer is `409 sandbox_limit`.
 - It has its own `client_secret`, and `POST /v1/applications/{id}/keys` makes its API
-  keys. Neither needs a card, because nothing a test mode application holds can reach
+  keys. Neither needs a card, because nothing a Sandbox application holds can reach
   anything that costs money or serves a site.
-- **A key's prefix does not tell you the mode.** A test mode application's keys start
+- **A key's prefix does not tell you the mode.** A Sandbox application's keys start
   with `cd_test_`, and so does any key made for a staging or development environment,
   which works on real domains like a `cd_live_` key does. The application's `sandbox`
   field is what decides: `GET /v1/applications` and `GET /v1/applications/{id}` carry
-  `"sandbox": true` for a test mode application and no field for a live one.
+  `"sandbox": true` for a Sandbox application and no field for a live one.
 
 ## Run the widget on it
 
@@ -58,7 +60,7 @@ Mint a widget token with the test application's `client_secret`, the way you do 
 any application ([Widget tokens](/docs/authentication/widget-tokens)), and open the
 widget with it. The token carries a signed `sandbox: true`, and the widget:
 
-- shows a **Test mode** strip across the top of the modal;
+- shows a **Sandbox** strip across the top of the modal;
 - asks for a `.test` name, with `www.acme.test` as the example, and says what to type
   when someone enters a real one;
 - goes straight to the manual setup, which says there is nothing to add: a simulated
@@ -86,7 +88,7 @@ the simulated DNS keeps time from when the domain was added or last re-checked.
 
 The first part has to be exactly `conflict` or `timeout`: `conflict-2.acme.test` goes
 live. A name that does not end in `.test` is refused with `400 sandbox_domain_required`
-in a test mode application, and a `.test` name in a live application with
+in a Sandbox application, and a `.test` name in a live application with
 `400 sandbox_domain_reserved`, so the two never mix. `.test` is reserved by the
 internet standards for testing and can never be a real domain, so a test domain cannot
 collide with a customer's.
@@ -96,7 +98,7 @@ on the connection, which you read with `GET /v1/connections/{id}` or in the
 `connection.failed` event, the same way you would for a real domain that never
 resolved.
 
-## What the API does in test mode
+## What the API does in the Sandbox
 
 The calls are the ones you already use, with the same bodies, errors and statuses:
 
@@ -126,14 +128,14 @@ curl https://api.customdomain.ai/v1/connections/<ID> -H "Authorization: Bearer <
 - The records are the ones a live domain would be shown, so your own screens that print
   them can be checked as they are. They are never looked up.
 - `DELETE /v1/connections/{id}` removes a test domain at once, with
-  `connection.disconnected`. Deleting a test mode application removes its test domains
+  `connection.disconnected`. Deleting a Sandbox application removes its test domains
   with it.
 - `GET /v1/connections:lookup?domain=www.acme.test` finds a test domain by its exact
   name, with a key or a token of the test application, or with a workspace key.
 
 ### What a test credential can reach
 
-A key or widget token of a test mode application can run the connect flow and read its
+A key or widget token of a Sandbox application can run the connect flow and read its
 own webhooks, and nothing else: `domains:check`, `connections` (create, list, read,
 records, diagnose, recheck, remove, lookup), `webhooks` and `webhook-deliveries`,
 `tokens`, the catalogs the widget reads (`plans`, `providers`, `templates`, `config`),
@@ -148,18 +150,18 @@ nothing.
 
 The wall works the other way too. A test domain is served only on those same routes,
 whoever asks, so a workspace key cannot start SSL, Power or a provider sign in on a name
-that has no DNS. And an AI agent cannot be given a test mode application: consent and
+that has no DNS. And an AI agent cannot be given a Sandbox application: consent and
 grants are for live applications.
 
 ## Webhooks
 
-A test mode application has its own endpoints, made with its own key or token, and its
+A Sandbox application has its own endpoints, made with its own key or token, and its
 events reach only those. Every event about a test domain carries `"sandbox": true`; a
 live event carries no such field ([Webhooks](/docs/webhooks/overview)). They are signed
 and retried like any other, so your receiver can be checked end to end. A receiver that
 writes to a real customer's account should read the field and skip them.
 
-`GET /v1/webhooks` with a workspace key leaves a test mode application's endpoints out
+`GET /v1/webhooks` with a workspace key leaves a Sandbox application's endpoints out
 unless you pass `?app_id=` naming it, so a test endpoint is never mistaken for a live
 one.
 
@@ -170,7 +172,7 @@ A test domain is left out of everything that counts, bills or serves real domain
 - your free domains, your trial, your plan's allowance and your bill, and usage metering;
 - the workspace's totals and every list that covers all of your applications.
   **Domains** and **Activity** show a test application's rows only while the console
-  is switched to it, marked **Test mode**, and they are never in a total;
+  is switched to it, marked **Sandbox**, and they are never in a total;
 - notifications and email: a test domain going live rings no bell, sends no push and
   sends no email;
 - the edge, certificates, monitoring and DNS provider accounts: none of them has
@@ -181,7 +183,7 @@ A test domain is left out of everything that counts, bills or serves real domain
 
 ## Move to a real domain
 
-A test mode application is a place to rehearse, so nothing carries over. When you are
+A Sandbox application is a place to rehearse, so nothing carries over. When you are
 ready, switch the console to your live application (the application switcher), mint
 tokens with its client secret, and connect a real name. Your server code does not change
 apart from the credentials. If you read `sandbox` on webhook events, real events simply

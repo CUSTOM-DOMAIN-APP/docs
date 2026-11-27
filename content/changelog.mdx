@@ -1,6 +1,7 @@
 ---
 title: Changelog
-description: "How CustomDomain™ ships updates without numbered releases, the additive-only /v1 API versioning policy, and a running list of notable product milestones."
+description: "How we ship changes, and what changed."
+metaDescription: "How CustomDomain™ ships updates without numbered releases, the additive-only /v1 API versioning policy, and a running list of notable product milestones."
 ---
 
 CustomDomain™ doesn't yet cut numbered releases. The hosted service is
@@ -14,6 +15,112 @@ never change meaning or disappear without a new major version. See the
 [API reference](/docs/api-reference) for the current surface.
 
 ## Notable milestones
+
+- **November 12, 2026: the `customdomain` command line client.** Install it with npm or Homebrew, or run
+  `npx @customdomain/cli init` in a project to approve a sign-in in your browser and get an API key written to `.env.local`.
+  See [CLI](/docs/getting-started/cli).
+- **November 12, 2026: a quick browser check for the widget, per application.** Set `challenge_mode` with
+  `PATCH /v1/applications/{id}` (`off` by default, `report` or `on`). Under `on`, the widget's calls that start or
+  check a setup may answer `428 challenge_required`; the widget solves it and retries on its own. See
+  [Update an application](/docs/api-reference/applications/updateApplication).
+- **November 12, 2026: match a sign-in popup to the start that opened it.** The sign-in starts accept an
+  optional `client_nonce`, and the popup's result repeats it as `payload.nonce`. See
+  [Begin the sign-in to the DNS provider](/docs/api-reference/connections/startConnectionOAuth).
+- **November 12, 2026: revoke an application's widget tokens.** `POST /v1/applications/{id}/tokens:revoke`
+  ends every widget token the application has issued; rotating the client secret does the same when the request
+  sends `{"revoke_tokens": true}`. See [Revoke widget tokens](/docs/api-reference/applications/revokeWidgetTokens).
+- **November 10, 2026: `change-member-role` takes `confirm`.** The MCP tool now needs `confirm`, which repeats
+  the member's id, like `remove-member`: a lower role takes rights away at once. A call without it changes nothing.
+  See [MCP overview](/docs/mcp/overview).
+- **November 10, 2026: clearer answers about registrars and removed keys.** The domain check always carries
+  `registrar`, the company a domain is registered with (`null` when not known), and can answer
+  `blocked_reason: registration_hold` with `registration_hold` (`hold`, `redemption` or `pending_delete`) for a
+  domain that does not work until its registrar resolves the hold. Removing a provider account now answers
+  `removed_here` and `revoke_at_provider`: the key must still be deleted at the provider, and `revoked` is
+  deprecated. When a nameserver move does not know the registrar, it names no company and says "where the domain
+  is registered". A session's timeline reports `verified`, and `POST /v1/webhooks/{id}:test` sends a test event.
+  The domain check also answers `connection_plan`, where to make the change and by which way when a domain's DNS
+  provider and registrar differ, and `POST /v1/domains:check` accepts `prewarm` while a name is being typed.
+  See [Domain check](/docs/api-reference/domains/checkDomain) and
+  [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
+- **November 9, 2026: the MCP server runs the workspace too.** Twenty-two new tools cover applications, the
+  connect target, widget tokens, API keys, webhooks, members, the audit log, usage and the billing notice, under
+  eight new scopes. An agent sees only the tools its grant allows, and plan, payment, ownership and sign in
+  settings stay with a person in the console. See [MCP server](/docs/mcp/overview#tools).
+- **November 11, 2026: a webhook when a sign-in needs your customer.** `connection.attempt.needs_attention` fires when
+  a secure sign-in is waiting for a code, an approval, a passkey or a password. `attempt.need` says which.
+  See [Webhooks](/docs/webhooks/overview).
+- **November 9, 2026: webhooks for each way a connection tries.** `connection.attempt.started` and
+  `connection.attempt.way_ended` say when a way to connect starts and how it ended, with a `cause`, who can fix it
+  and whether trying again can help. A sign-in that does not finish is now visible without polling the connection.
+  See [Webhooks](/docs/webhooks/overview).
+- **November 7, 2026: invites are accepted in the console.** An invite link alone no longer accepts an invite
+  over the API: `POST /v1/members:accept` is now for the console only, and a direct call is refused with
+  `403 invite_accept_requires_console` without using up the invite. To join a workspace, open the invite link
+  and sign in with the invited email, as before. See [Accept an invite](/docs/api-reference/members/acceptMember).
+- **November 7, 2026: only an owner revokes an owner's key.** Revoking an API key that acts with more authority
+  than the key making the call, such as an owner's key revoked with an admin's, is refused with
+  `403 credential_outranks_caller`. See [Revoke an API key](/docs/api-reference/applications/revokeApiKey).
+- **November 7, 2026: the audit log shows each credential only what it may see.** `GET /v1/audit` returns
+  events as recorded to keys held by owners and admins. For keys held by members and viewers, and for widget
+  tokens, addresses, email addresses and free-text reasons are removed, and a widget token sees only events about
+  its own application. See [Audit log](/docs/api-reference/enterprise/getAudit).
+- **November 6, 2026: Sign in with Netlify matches Netlify's current DNS.** A root domain on Netlify DNS now
+  gets `A` records (Netlify DNS has no `ALIAS`), SRV and CAA records are written in Netlify's own fields, and
+  records Netlify manages for a site are left alone. A domain that is not on Netlify DNS gets a plain message
+  saying so. See [Connect a Netlify domain](/docs/providers/netlify).
+- **November 6, 2026: Sign in with Azure DNS names the account.** When a check fails, the message now names
+  the Microsoft account you used even if it has no mailbox, by its sign-in name. Microsoft's consent screen also
+  lists your basic profile. See [Provider setup](/docs/dns/provider-setup).
+- **November 6, 2026: a new address to allow.** CustomDomain™ now reaches provider APIs from **`100.48.24.176`**.
+  Providers that only answer listed addresses (Namecheap, Dynadot, Epik, Internet.bs, REG.RU, Vultr and others) need
+  `100.48.24.176` in their API settings in place of `34.192.32.132`. See
+  [Provider setup](/docs/dns/provider-setup).
+- **November 3, 2026 (evening): secure sign-in for OVHcloud serves every workspace.**
+  - **OVHcloud** secure sign-in is offered to every workspace, for accounts on OVHcloud's European manager. The
+    session opens the domain's DNS zone page and can only add, edit and delete that one domain's records: other
+    domains, the zone's reset, text mode, history and default TTL, and the domain's other tabs are off limits.
+    OVHcloud US accounts are not served. See [Secure sign-in](/docs/guides/secure-sign-in).
+- **November 3, 2026 (secure sign-in): a password asked again is answered on our screen.** When a provider asks for
+  the account password again after the sign-in (Infomaniak does before every new key), the popup asks your customer for
+  it on its own password screen and types it into the provider's page from your customer's browser. The session view
+  carries `password_again` while it waits; no keystroke goes through CustomDomain™. See
+  [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (secure sign-in): every key's name ends in a code of its own.** A key the secure sign-in
+  makes is named "CustomDomain", your application's name, the day and minute in UTC and now a four character code
+  of the session's own ("CustomDomain Acme 2026-11-03 1528 3f9a"), so two sign-ins that start in the same minute
+  never make two keys of one name at the provider. The session view's `kept_key.name` carries the full name; the
+  domain check's `rails.cloud_browser.key.name` names a key without the code, so look for a key that begins with
+  it. See [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 3, 2026 (evening): secure sign-in at OpenSRS for every workspace.**
+  - Your customer signs in to OpenSRS' Manage Web Interface, the panel for the domain's owner. Its sign-in is for one
+    domain, so CustomDomain™ fills in the domain and your customer types only the user name and password. A sign-in
+    that shows another domain ends with nothing changed. Resellers' branded copies of that panel are not covered.
+    See [Secure sign-in](/docs/guides/secure-sign-in#opensrs).
+
+- **November 3, 2026 (WordPress.com): long TXT and SRV records.** A WordPress.com connect now writes TXT
+  values up to 2048 characters (it was 255), so a long DKIM key goes in with the rest, and writes SRV records the
+  way WordPress.com stores them. See [WordPress.com](/docs/providers/wordpresscom).
+
+- **November 3, 2026 (Google Cloud DNS): Sign in with Google Cloud is on.** On the hosted service, a customer on
+  Google Cloud DNS can sign in with the Google account that can edit the domain's public Cloud DNS zone.
+  CustomDomain™ finds the Google Cloud project that holds the zone and writes the records. It asks for the scopes
+  `openid`, `email`, `ndev.clouddns.readwrite` and `cloudplatformprojects.readonly`. Until Google finishes reviewing
+  the app, Google may show a notice that it has not verified the app yet. The project ID and access token way still
+  works as the other option. See [Provider setup](/docs/dns/provider-setup#google-cloud-dns-gcpdns).
+- **November 3, 2026 (secure sign-in): account details stay your customer's.** Some providers make no API key
+  until the account holds a detail, such as the postal address Gandi needs on an organization. When the provider's
+  page says one is missing, the popup shows that page with one line asking your customer to fill it in and save,
+  and the setup goes on after. Our software never types an address, a phone number or any other personal detail.
+  The session view says `handback.reason` `account` while it waits. See
+  [Secure sign-in](/docs/guides/secure-sign-in).
+
+- **November 5, 2026: Realtime Register by API key.** If you have a Realtime Register portal login, you can connect a domain on its
+  nameservers (`yoursrs.com` or `premiumdns.zone`) with an API key from your profile page. We read the zone, merge our records into it
+  and send it back, and we stop with a plain message if the zone is linked to a DNS template. Customers of a reseller have no portal
+  login, so for them nothing changes. See [Provider setup](/docs/dns/provider-setup#registrars-and-dns-hosts).
 
 - **November 3, 2026 (Porkbun): a plain answer when a domain's API access is off.** Porkbun lets an API key
   change only domains with **API Access** switched on. Connecting such a domain with a Porkbun key, or adding it
@@ -81,6 +188,14 @@ never change meaning or disappear without a new major version. See the
   - **Sign up and design.** Signing up with GitHub or Google Workspace fills in the welcome's company and website. The
     Design preview adds **Provider not supported**, **Reconnected**, **Remove: sign in**, **Remove: done** and **Paused
     session**. See [Design the widget](/docs/getting-started/console#design-the-widget).
+
+- **November 2, 2026: Starter allows 10 new domains in any 12 months.** Starter (and the retired Free plan) was held
+  to 1 new domain a calendar month; it now counts over a rolling 12 months, so a workspace can connect several domains
+  in one month as long as it stays within 10 in any 12. Other plans are unchanged. `GET /v1/plans` adds `quota` and
+  `quota_window_months`, `GET /v1/billing/usage` adds `quota_used` and `quota_window_months`, and the usage on
+  `GET /v1/billing/status` and `GET /v1/billing/standing` now covers the window and says so in `window_months`. See
+  [Plans and quotas](/docs/billing/plans-and-quotas).
+
 - **November 2, 2026: the console after two review sessions, and a quieter secure sign-in.**
   - **Navigation.** The console has one menu. The Classic or New choice under **Settings → General** is gone and every
     workspace is on the grouped menu. **Settings → Notifications** now holds your own switches with **What we send**
@@ -365,7 +480,7 @@ never change meaning or disappear without a new major version. See the
   own, so their notes send you to the company that sold you the domain. A nameserver move for a domain registered at
   one of them, or at Hetzner, Domeneshop, 101domain, easyDNS, World4You, Combell, Webnames.ca, WEDOS, Freename or
   Hostpoint, now goes to that registrar (OnlineNIC, COREhub and RegistryGate sell through resellers, so they are
-  named, not chosen). The census lists 217 providers.
+  named, not chosen).
 - **October 31, 2026: an AI agent cannot move a domain's nameservers while DNS hosting is off, and a waiting move says what to press next.** A delegated agent token (the MCP's `migrate-nameservers`)
   is now refused with `403 ns_not_offered` when the application's DNS hosting is off, for a start and for carrying on a
   move a person began, and nothing is changed; the tool tells the agent not to retry and that a person can turn DNS hosting
@@ -429,7 +544,7 @@ never change meaning or disappear without a new major version. See the
   each nameserver move it starts, resumes or reverses, and a saved key's use even when the provider failed halfway.
   See [Agent access](/docs/agents/overview#what-makes-it-safe) and
   [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
-- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server (now 23 tools) has three more:
+- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server has three more tools:
   `list-provider-accounts` lists the provider accounts your workspace has connected, never a key, with `provider`,
   `domain` and `applicationId` to narrow it; `find-saved-access` lists the saved keys that may write one connected
   domain's records (`GET /v1/connections/{id}/saved-access`); and `use-saved-access` writes them with one
@@ -713,11 +828,10 @@ never change meaning or disappear without a new major version. See the
   **Settings → Notifications**. Where CustomDomain™ fills in a domain's mail provider SPF include from its MX
   records, a mailbox at Zoho's EU data center (`mx.zoho.eu`) now gets `include:spf.zoho.eu`, not the US
   `include:zoho.com`. See [Notifications](/docs/guides/notifications) and [Email DNS](/docs/dns/email-dns).
-- **October 21, 2026: eleven more providers in the census, a confirmation before routing changes, and one
+- **October 21, 2026: more providers in the census, a confirmation before routing changes, and one
   rule for Needs attention.** The census now lists every provider with a built-in adapter: Azure DNS, Bunny DNS,
   Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr are
-  listed as API key providers, so `GET /v1/providers/census` counts 189 (73 with an automatic path, 116 by
-  hand). How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
+  listed as API key providers in `GET /v1/providers/census`. How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
   target on your own infrastructure: it lists the records customers will add and how many domains follow or
   stay, and saves on confirm. `existing_domains.kept` now also counts a waiting domain already on the new
   routing, so the counts add up to every domain the change reaches. In the console, a domain needs attention

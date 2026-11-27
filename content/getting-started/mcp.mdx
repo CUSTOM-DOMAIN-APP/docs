@@ -1,11 +1,13 @@
 ---
 title: "MCP: drive it from an agent"
-description: "Let an AI agent discover providers, start domain connections and read their status through the hosted MCP server, with API key or scoped agent token access."
+icon: Bot
+description: "Let an AI agent connect and check domains."
+metaDescription: "Let an AI agent discover providers, start domain connections and read their status through the hosted MCP server, with API key or scoped agent token access."
 ---
 
-Use the MCP server when an **agent** (Claude, Cursor, a custom MCP client)
-should discover providers, start connections and read status on a user's
-behalf. It is the same control plane behind a tool interface.
+Use the MCP server when an **agent** should connect domains for a user. Claude,
+Cursor or your own MCP client can find providers, start connections and read
+their status. It is the same API, behind a tool interface.
 
 ## Connect
 
@@ -18,10 +20,12 @@ behalf. It is the same control plane behind a tool interface.
   agent gets (`domains:read`, `domains:connect`, `domains:disconnect`,
   `domains:purchase`) and can revoke it at any time. See
   [Agent access](/docs/agents/overview).
-- **Purchases through MCP are off on the hosted service.** Buy a domain in the
-  console instead.
+- **Purchases through MCP are off on the hosted service.**
 - The console's **MCP server** page (switch it on in **Settings → Features**)
   has ready made setup for each client (with a key) and a connection test.
+- **VS Code in one command:**
+  `code --add-mcp '{"name":"customdomain","type":"http","url":"https://mcp.customdomain.ai/mcp"}'`.
+  VS Code opens your browser to sign in the first time it connects.
 
 ## Set up an agent from the welcome
 
@@ -66,7 +70,7 @@ to it: a command, or a few fields to fill in.
    provider has no one click page; an agent token always gets `console`, so give the
    user the `records`. A `guided_setup` link is a bearer link that lasts 30 days and
    lets whoever opens it first set up the domain, so send it only to the person who
-   owns the domain. The agent never writes DNS itself.
+   owns the domain. The agent never supplies DNS records: the server works them out.
 3. `check-connection-status { connectionId }` returns a `status` of `pending`,
    `propagating`, `live` or `failed`. Stop when `connected` is `true`. A failed
    connection says why in `errorCode`. `pending` has no deadline; a `failed`

@@ -1,6 +1,8 @@
 ---
-title: Installation & embed
-description: "Install customdomain-js, mint a widget token on your server, open the connect modal in the browser, and use React, embedded mode and white-label theming."
+title: "Installation and embed"
+metaTitle: "Installation & embed | CustomDomain docs"
+description: "Install the widget and open it in your app."
+metaDescription: "Install customdomain-js, mint a widget token on your server, open the connect modal in the browser, and use React, embedded mode and white-label theming."
 ---
 
 <Steps>
@@ -16,27 +18,27 @@ how the application was created.
 
 **Applications created in the console** (every console signup gets one): use an
 **API key**. The application's `client_secret` is sealed in the console and is
-never shown anywhere, so `POST /v1/tokens` has nothing to authenticate with.
-Create a key on the **API & SDK** page (**Create key**; copy it when it is
-shown, it appears once), keep it in a server environment variable, and call
-the console's `POST /api/widget-token`:
+never shown anywhere, so you mint with an API key instead. Create a key on the
+**API & SDK** page (**Create key**; copy it when it is shown, it appears once),
+keep it in a server environment variable, and send it as the bearer to
+`POST /v1/tokens`:
 
-```js
+```js title="server/customdomain-token.js"
 // Your server route, for example POST /api/customdomain-token.
 // Only signed-in users should reach it: add your own auth check.
-const res = await fetch("https://app.customdomain.ai/api/widget-token", {
+const res = await fetch("https://api.customdomain.ai/v1/tokens", {
   method: "POST",
   headers: {
     Authorization: `Bearer ${process.env.CUSTOMDOMAIN_API_KEY}`, // server only
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    application_id: "app_...", // optional: defaults to your first application
+    application_id: "app_...", // required: shown on the console's Widget page
     domain: "app.customer.com", // optional: bind the token to one host
   }),
 });
-const { application_id, token } = await res.json();
-// Return { application_id, token } to your own front end. Never the API key.
+const { token } = await res.json();
+// Return the token (and your application_id) to your own front end. Never the API key.
 ```
 
 The response is `200 { "application_id", "token", "expires_in": 900, "token_type": "Bearer" }`.
@@ -54,7 +56,7 @@ The errors you can get back:
 returns the `client_secret` once. Keep it on your server and exchange it with
 `POST /v1/tokens`:
 
-```js
+```js title="server/customdomain-token.js"
 const res = await fetch("https://api.customdomain.ai/v1/tokens", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -67,17 +69,17 @@ const res = await fetch("https://api.customdomain.ai/v1/tokens", {
 const { token } = await res.json(); // 201, expires_in 900, scope "connect"
 ```
 
-Do not put an API key in `client_secret`: `/v1/tokens` only accepts the
-application's own secret and answers `401 unknown application or secret`.
+Do not put an API key in `client_secret`: send it as the bearer. In
+`client_secret`, `/v1/tokens` answers `401 unknown application or secret`.
 Do not rotate the client secret of a console-created application either: the
-console keeps its own copy and its widget preview and `/api/widget-token` stop
-working for that application.
+console keeps its own copy, and its widget preview and its older
+`/api/widget-token` endpoint stop working for that application.
 
 What runs where:
 
 | Runs on your server | Runs in the browser |
 | --- | --- |
-| Holds the API key or client secret. Mints the token (`/api/widget-token` or `/v1/tokens`). Exposes one route of your own, such as `/api/customdomain-token`. | Calls your route, never CustomDomain™'s mint endpoint. Passes the token to `open()`. `getToken` is a function that calls your route again for a fresh token. |
+| Holds the API key or client secret. Mints the token (`/v1/tokens`). Exposes one route of your own, such as `/api/customdomain-token`. | Calls your route, never CustomDomain™'s mint endpoint. Passes the token to `open()`. `getToken` is a function that calls your route again for a fresh token. |
 
 See [Widget tokens](/docs/authentication/widget-tokens) for the full token
 lifecycle, scopes and both mint paths.
@@ -96,6 +98,18 @@ Pick one way to load the SDK.
 | npm | `npm install customdomain-js` | 0.5.5 |
 | React | `npm install @customdomain/react customdomain-js react react-dom` | 0.5.5 |
 
+Install the package with your package manager:
+
+```npm
+npm install customdomain-js
+```
+
+For React, add the hook package too:
+
+```npm
+npm install @customdomain/react customdomain-js react react-dom
+```
+
 <UsageStats />
 
 `getToken`, `wwwRedirect` and `onFallback` need `customdomain-js` 0.5.0 or
@@ -104,7 +118,7 @@ newer; `removeDomain()`, `onRemoved` and the `customdomain:removed` event need
 need 0.5.4; the `"reconnect"` mode's types, `reconnected` and `advisories` need
 0.5.5. The hosted script always has all of them.
 
-```js
+```js title="app/connect-domain.js"
 import { customdomain } from "customdomain-js";
 // (the hosted <script> build attaches window.customdomain instead)
 
@@ -179,7 +193,7 @@ Every option, event and status is in the [reference](/docs/widget-sdk/reference#
 window events into callback props, removes its listeners and closes the modal
 when the component unmounts, and is safe to render on the server.
 
-```jsx
+```jsx title="app/ConnectDomain.jsx"
 import { useCustomdomain } from "@customdomain/react";
 
 async function fetchToken() {
