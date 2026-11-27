@@ -8873,6 +8873,40 @@ paths:
         '402': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /applications/{id}/embed:
+    get:
+      operationId: getEmbedFact
+      summary: Whether the widget has opened on your site
+      tags: [Applications]
+      description: >-
+        Reports the first time this application's widget opened on a page of
+        your own (a `localhost` page counts), with that page's origin. Tests
+        run from the console do not count, and a test mode application may not
+        report it. Informational only.
+      security:
+        - apiKey: []
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: Embed fact
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [application_id, embed]
+                properties:
+                  application_id: { type: string }
+                  embed:
+                    type: object
+                    required: [seen, origin, at, sandbox]
+                    properties:
+                      seen: { type: boolean, description: 'The widget has opened on a page of your own.' }
+                      origin: { type: string, description: 'That page''s origin (scheme, host and port), or empty.' }
+                      at: { type: string, format: date-time, nullable: true, description: 'When it first opened there, or null.' }
+                      sandbox: { type: boolean, description: 'It was a test mode application.' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
   /applications/{id}/connect-target:
     get:
       operationId: getConnectTarget
