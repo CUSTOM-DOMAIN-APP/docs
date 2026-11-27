@@ -1,6 +1,7 @@
 ---
 title: Changelog
-description: "How CustomDomain™ ships updates without numbered releases, the additive-only /v1 API versioning policy, and a running list of notable product milestones."
+description: "How we ship changes, and what changed."
+metaDescription: "How CustomDomain™ ships updates without numbered releases, the additive-only /v1 API versioning policy, and a running list of notable product milestones."
 ---
 
 CustomDomain™ doesn't yet cut numbered releases. The hosted service is
@@ -15,6 +16,44 @@ never change meaning or disappear without a new major version. See the
 
 ## Notable milestones
 
+- **November 12, 2026: the `customdomain` command line client.** Install it with npm or Homebrew, or run
+  `npx @customdomain/cli init` in a project to approve a sign-in in your browser and get an API key written to `.env.local`.
+  See [CLI](/docs/getting-started/cli).
+- **November 12, 2026: a quick browser check for the widget, per application.** Set `challenge_mode` with
+  `PATCH /v1/applications/{id}` (`off` by default, `report` or `on`). Under `on`, the widget's calls that start or
+  check a setup may answer `428 challenge_required`; the widget solves it and retries on its own. See
+  [Update an application](/docs/api-reference/applications/updateApplication).
+- **November 12, 2026: match a sign-in popup to the start that opened it.** The sign-in starts accept an
+  optional `client_nonce`, and the popup's result repeats it as `payload.nonce`. See
+  [Begin the sign-in to the DNS provider](/docs/api-reference/connections/startConnectionOAuth).
+- **November 12, 2026: revoke an application's widget tokens.** `POST /v1/applications/{id}/tokens:revoke`
+  ends every widget token the application has issued; rotating the client secret does the same when the request
+  sends `{"revoke_tokens": true}`. See [Revoke widget tokens](/docs/api-reference/applications/revokeWidgetTokens).
+- **November 10, 2026: `change-member-role` takes `confirm`.** The MCP tool now needs `confirm`, which repeats
+  the member's id, like `remove-member`: a lower role takes rights away at once. A call without it changes nothing.
+  See [MCP overview](/docs/mcp/overview).
+- **November 10, 2026: clearer answers about registrars and removed keys.** The domain check always carries
+  `registrar`, the company a domain is registered with (`null` when not known), and can answer
+  `blocked_reason: registration_hold` with `registration_hold` (`hold`, `redemption` or `pending_delete`) for a
+  domain that does not work until its registrar resolves the hold. Removing a provider account now answers
+  `removed_here` and `revoke_at_provider`: the key must still be deleted at the provider, and `revoked` is
+  deprecated. When a nameserver move does not know the registrar, it names no company and says "where the domain
+  is registered". A session's timeline reports `verified`, and `POST /v1/webhooks/{id}:test` sends a test event.
+  The domain check also answers `connection_plan`, where to make the change and by which way when a domain's DNS
+  provider and registrar differ, and `POST /v1/domains:check` accepts `prewarm` while a name is being typed.
+  See [Domain check](/docs/api-reference/domains/checkDomain) and
+  [Remove an account](/docs/connect-flow/provider-accounts#remove-an-account).
+- **November 9, 2026: the MCP server runs the workspace too.** Twenty-two new tools cover applications, the
+  connect target, widget tokens, API keys, webhooks, members, the audit log, usage and the billing notice, under
+  eight new scopes. An agent sees only the tools its grant allows, and plan, payment, ownership and sign in
+  settings stay with a person in the console. See [MCP server](/docs/mcp/overview#tools).
+- **November 11, 2026: a webhook when a sign-in needs your customer.** `connection.attempt.needs_attention` fires when
+  a secure sign-in is waiting for a code, an approval, a passkey or a password. `attempt.need` says which.
+  See [Webhooks](/docs/webhooks/overview).
+- **November 9, 2026: webhooks for each way a connection tries.** `connection.attempt.started` and
+  `connection.attempt.way_ended` say when a way to connect starts and how it ended, with a `cause`, who can fix it
+  and whether trying again can help. A sign-in that does not finish is now visible without polling the connection.
+  See [Webhooks](/docs/webhooks/overview).
 - **November 7, 2026: `GET /v1/me`.** Ask which workspace an API key belongs to, the role it acts with, and
   whether it is a member's key. Any role may call it. See
   [Who the API key acts as](/docs/api-reference/members/getMe).
@@ -444,7 +483,7 @@ never change meaning or disappear without a new major version. See the
   own, so their notes send you to the company that sold you the domain. A nameserver move for a domain registered at
   one of them, or at Hetzner, Domeneshop, 101domain, easyDNS, World4You, Combell, Webnames.ca, WEDOS, Freename or
   Hostpoint, now goes to that registrar (OnlineNIC, COREhub and RegistryGate sell through resellers, so they are
-  named, not chosen). The census lists 217 providers.
+  named, not chosen).
 - **October 31, 2026: an AI agent cannot move a domain's nameservers while DNS hosting is off, and a waiting move says what to press next.** A delegated agent token (the MCP's `migrate-nameservers`)
   is now refused with `403 ns_not_offered` when the application's DNS hosting is off, for a start and for carrying on a
   move a person began, and nothing is changed; the tool tells the agent not to retry and that a person can turn DNS hosting
@@ -508,7 +547,7 @@ never change meaning or disappear without a new major version. See the
   each nameserver move it starts, resumes or reverses, and a saved key's use even when the provider failed halfway.
   See [Agent access](/docs/agents/overview#what-makes-it-safe) and
   [Provider accounts](/docs/connect-flow/provider-accounts#who-can-manage-an-account).
-- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server (now 23 tools) has three more:
+- **October 30, 2026: an AI agent can use a key you already keep.** The MCP server has three more tools:
   `list-provider-accounts` lists the provider accounts your workspace has connected, never a key, with `provider`,
   `domain` and `applicationId` to narrow it; `find-saved-access` lists the saved keys that may write one connected
   domain's records (`GET /v1/connections/{id}/saved-access`); and `use-saved-access` writes them with one
@@ -792,11 +831,10 @@ never change meaning or disappear without a new major version. See the
   **Settings → Notifications**. Where CustomDomain™ fills in a domain's mail provider SPF include from its MX
   records, a mailbox at Zoho's EU data center (`mx.zoho.eu`) now gets `include:spf.zoho.eu`, not the US
   `include:zoho.com`. See [Notifications](/docs/guides/notifications) and [Email DNS](/docs/dns/email-dns).
-- **October 21, 2026: eleven more providers in the census, a confirmation before routing changes, and one
+- **October 21, 2026: more providers in the census, a confirmation before routing changes, and one
   rule for Needs attention.** The census now lists every provider with a built-in adapter: Azure DNS, Bunny DNS,
   Constellix, deSEC, DNS Made Easy, GleSYS, Akamai Cloud (Linode), LuaDNS, Njalla, PowerDNS and Vultr are
-  listed as API key providers, so `GET /v1/providers/census` counts 189 (73 with an automatic path, 116 by
-  hand). How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
+  listed as API key providers in `GET /v1/providers/census`. How each of them connects is unchanged. **Domain routing** in the console asks before it saves a
   target on your own infrastructure: it lists the records customers will add and how many domains follow or
   stay, and saves on confirm. `existing_domains.kept` now also counts a waiting domain already on the new
   routing, so the counts add up to every domain the change reaches. In the console, a domain needs attention

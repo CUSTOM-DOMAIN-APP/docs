@@ -1,6 +1,8 @@
 ---
 title: Troubleshooting
-description: "Fix stuck connections and common failures: pending or propagating domains, DNS mistakes, rail errors, provider tokens, certificate issues and DNS drift."
+icon: LifeBuoy
+description: "Fix stuck connections and common failures."
+metaDescription: "Fix stuck connections and common failures: pending or propagating domains, DNS mistakes, rail errors, provider tokens, certificate issues and DNS drift."
 ---
 
 <Callout title="Start with what the connection says">
@@ -57,11 +59,16 @@ Common reasons the records never show up:
 - **The domain doesn't resolve at all**: unregistered, or registered but never
   delegated to a DNS provider. The connect flow now refuses these up front with
   an explanation; fix the delegation at your registrar first.
+- **The domain's registration is on hold.** The domain check answers
+  `blocked_reason: registration_hold` with `registration_hold` set to `hold`,
+  `redemption` or `pending_delete`. The domain is registered but does not work
+  until its registrar resolves the hold, so nothing is offered meanwhile. Resolve
+  it with the registrar, then check the domain again.
 - **A hosting platform's subdomain** (`something.vercel.app`, `*.netlify.app`,
   `*.github.io`, …) can't be connected: the platform owns its DNS. Use a domain
   you control.
 
-## My domain points at CustomDomain™ but shows a connection / certificate error
+## My domain points at CustomDomain™ but shows a connection or certificate error [#my-domain-points-at-customdomain-but-shows-a-connection--certificate-error]
 
 If you added the DNS records **after** the connection had been marked failed,
 visitors' browsers reach our edge but the connection isn't serving yet. The edge
@@ -79,7 +86,7 @@ slow. **Finish setup** on the domain page resumes a failed connection (same
 row, history kept); adding the same domain again does the same thing rather
 than creating a duplicate.
 
-## The verification email never arrived / the link expired
+## The verification email never arrived or the link expired [#the-verification-email-never-arrived--the-link-expired]
 
 Verification links last one hour and work once. On the *Check your email*
 screen use **Resend the link**; an expired link lands on a page where you can
@@ -127,9 +134,8 @@ Records were written but aren't all resolving to their intended values yet.
 
 `POST /v1/connections/{id}/apply` (and the OAuth / one-click setup starts)
 return `503 service_unavailable` when the corresponding engine isn't wired for
-your plan or environment: no DNS provider registry, no OAuth client for the
-provider (`OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`), or no one-click signing key
-(`DC_SIGNING_KEY_FILE`). Contact support if you hit this on the hosted service.
+your plan or environment: the provider's sign-in or one-click setup is not
+offered. Contact support if you hit this.
 
 ## Rail B write failed
 
@@ -146,9 +152,8 @@ password pair); see [Provider setup](/docs/dns/provider-setup).
 - **PopupBlockedError**: the browser blocked the authorize window; trigger
   `oauth:start` from a direct user gesture.
 - The OAuth callback, and the one-click return page
-  (`GET /v1/connect/dc/return/{state}`), only postMessage to a `return_origin`
-  on the server's allowlist (`OAUTH_ALLOWED_RETURN_ORIGINS`); a mismatched
-  origin silently drops the result.
+  (`GET /v1/connect/dc/return/{state}`), only postMessage to an allowed
+  `return_origin`; a mismatched origin silently drops the result.
 - An expired or replayed `state` returns `400` from the callback; re-run
   `oauth:start` to get a fresh one.
 - Either way the connection keeps being checked, and it goes live once public
@@ -167,8 +172,8 @@ demand.
 
 Certificates are issued **on demand at the TLS handshake**, gated by
 `POST /internal/ask` returning `{ approved: true }`, which happens only once the
-connection is `propagating` or `live`. If the edge can't reach the gate, check
-`EDGE_ASK_URL`, `EDGE_ASK_SECRET`, and `EDGE_ACME_PROD`/`EDGE_ACME_EMAIL`.
+connection is `propagating` or `live`. If a live connection still has no
+certificate after a few minutes, contact support.
 
 ## 401 "unknown application or secret" when minting a widget token
 

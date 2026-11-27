@@ -1,12 +1,13 @@
 ---
 title: Domain forwarding
-description: "Redirect a connected domain to another URL, or send the apex to www, with a 301 issued at the edge that keeps the path and query and never contacts your origin."
+description: "Redirect a connected domain to another address."
+metaDescription: "Redirect a connected domain to another URL, or send the apex to www, with a 301 issued at the edge that keeps the path and query and never contacts your origin."
 ---
 
 Domain forwarding turns a connected domain into a redirect instead of a proxied
-origin. When a customer wants `oldbrand.example` (or a bare apex) to send visitors
-somewhere else, the edge answers the request with an **HTTP 301 Moved Permanently**
-and never contacts an origin.
+origin. Say a customer wants `oldbrand.example`, or a bare apex, to send
+visitors somewhere else. The edge answers the request with an **HTTP 301 Moved
+Permanently** and never contacts an origin.
 
 ## What it does
 
@@ -21,26 +22,31 @@ There are two forms, both resolved on the edge's hot path right after the
   `www.` counterpart (`https://www.example.com/…`), again preserving path + query.
   A request already on `www.` is proxied normally, so there is no redirect loop.
 
-Because the 301 is emitted at the edge, the customer's origin never sees the
-request and no certificate on the origin side is required for the old hostname
-(only the edge cert, which is issued automatically once the domain is
-[live](/docs/connect-flow/verify-and-go-live#watch-propagation--live)).
+The 301 comes from the edge, so the customer's origin never sees the request. No
+certificate is needed on the origin side for the old hostname. Only the edge
+certificate is needed, and it is issued automatically once the domain is
+[live](/docs/connect-flow/verify-and-go-live#watch-propagation--live).
 
 ## From the console
 
-Open the domain, then its **Settings** tab ([a domain's settings](/docs/getting-started/console#domain-settings)).
-**Forwarding** is a field: type an `https://` address and **Save**, or **Clear** to stop forwarding.
-**www redirect**, for a root domain, is a switch with its own **Save**. After a save the tab says what it did.
-For the www redirect that is whether we wrote the `www` record for you or you add it where you manage DNS (the
-record is shown, with a link to the **DNS** tab). Members, admins and owners can change them; a viewer reads them.
+Open the domain, then its **Settings** tab ([a domain's
+settings](/docs/getting-started/console#domain-settings)). **Forwarding** is a
+field. Type an `https://` address and **Save**, or **Clear** to stop forwarding.
+**www redirect**, for a root domain, is a switch with its own **Save**. After a
+save, the tab says what it did. For the www redirect, that is whether we wrote
+the `www` record for you or you add it where you manage DNS. The record is
+shown, with a link to the **DNS** tab. Members, admins and owners can change
+them. A viewer can read them.
 
-## Enabling it with the API (edge-served)
+## Turn it on at the edge with the API [#enabling-it-with-the-api-edge-served]
 
-Forwarding is part of the Power feature set and is driven by the control plane: the redirect target
-(`redirect_to`) and the apex→www flag (`www_redirect`) are attributes of the connection. Change them with
-`PATCH /v1/connections/{id}` ([API reference](/docs/api-reference/connections/updateConnection)), or with
-`POST /v1/connections/{id}/power` (and `POST /v1/connections/{id}/power:repower` to change a connection that
-is already powered; omitting `application_url` there keeps the current origin):
+Forwarding is part of edge serving and is set on the connection. The redirect
+target (`redirect_to`) and the apex to www flag (`www_redirect`) are attributes
+of the connection. Change them with `PATCH /v1/connections/{id}` ([API
+reference](/docs/api-reference/connections/updateConnection)). You can also use
+`POST /v1/connections/{id}/power`, and `POST /v1/connections/{id}/power:repower`
+to change a connection that already serves through the edge. Leaving out
+`application_url` there keeps the current origin:
 
 ```bash
 curl -X PATCH https://api.customdomain.ai/v1/connections/<ID> \
@@ -52,14 +58,16 @@ curl -X PATCH https://api.customdomain.ai/v1/connections/<ID> \
 Send `"redirect_to": ""` to clear a redirect. The edge picks up the intent within one ask-cache TTL, with no
 redeploy. When neither is set, the domain is proxied to its origin as usual.
 
-- **The plan.** `redirect_to` needs edge serving, which is included on Growth, Premium and Enterprise: on
-  Starter and Startup, setting or changing it returns `402` with the code `plan_upgrade_required` (clearing
-  one never does). `www_redirect` is on every plan, and `client_label` too. Where the deployment has edge
-  serving off, `redirect_to` returns `503`.
-- **Who may call it.** An API key of a member, admin or owner, or a token with the `app` scope for a connection
-  of its own application. A viewer's key, an end user's widget token (its own connection too) and a delegated
-  agent token are refused with `403`; the target of a redirect decides where a domain's visitors go, so the
-  platform that owns the domain decides it.
+- **The plan.** `redirect_to` needs edge serving, which is included on Growth,
+  Premium and Enterprise. On Starter and Startup, setting or changing it returns
+  `402` with the code `plan_upgrade_required`. Clearing one never does.
+  `www_redirect` is on every plan, and so is `client_label`. Where the
+  deployment has edge serving off, `redirect_to` returns `503`.
+- **Who may call it.** An API key of a member, admin or owner, or a token with
+  the `app` scope for a connection of its own application. A viewer's key, an
+  end user's widget token (even on its own connection) and a delegated agent
+  token are refused with `403`. The target of a redirect decides where a
+  domain's visitors go, so the platform that owns the domain decides it.
 - **The address is checked.** `redirect_to` must be a plain `https://` address of a public domain. `400
   invalid_request` names the reason when it is not `https` (`http:`, `javascript:`, `data:` and an address with no
   scheme are all refused), when it holds a user name or password (`https://acme.com@evil.example`), when it is an
@@ -78,30 +86,37 @@ redeploy. When neither is set, the domain is proxied to its origin as usual.
   If a check cannot read who owns the address's domain, the answer is `500` and nothing is stored. The same
   checks apply to `redirect_to` on `/power` and `/power:repower`. An address equal to the one already set is not
   checked again.
-- **Two requests at once.** Redirect changes of one workspace are made one at a time, each checked against the
-  domains as they are when its turn comes, so two changes made together cannot make a circle between them: the
-  second answers `422 redirect_loop`. A change that waits too long for its turn answers `503` with the code
-  `redirects_busy` and a `Retry-After` header, and changes nothing: send it again. A request writes only the
-  settings it changes, and a value it sends back as it read it is not a change, so a setting another request has
-  changed since is not undone. `DELETE /v1/connections/{id}/power` clears the forward and the root path access
-  through the same checks: on a domain whose `www` redirect is on, taking the forward off is refused (`422
-  redirect_loop`) when `www` forwards back to the root. A domain that is being removed answers `409` to all of
-  these, also when the removal starts while the change waits.
-- **The www redirect and its record.** `www_redirect` is for a root domain only (`422 www_redirect_apex_only`
-  for a subdomain). Turning it on adds a `www` record to the records the domain needs. A zone CustomDomain™ hosts
-  is rewritten at once, and a domain whose records were written through a connected provider account is
-  rewritten when `move_rewrite` is on. For any other domain the response has `customer_action_required: true`
-  and `connection.records_outdated` is sent, and the person adds the record. The domain stays live meanwhile.
-  Turning it off also stops the edge answering for `www.` that domain, unless it is a connection of its own.
-- **Test mode.** A test mode domain takes `client_label` only; the two redirects answer `403
+- **Two requests at once.** Redirect changes of one workspace are made one at a
+  time. Each is checked against the domains as they are when its turn comes. So
+  two changes made together cannot make a circle between them: the second
+  answers `422 redirect_loop`. A change that waits too long for its turn answers
+  `503` with the code `redirects_busy` and a `Retry-After` header, and changes
+  nothing. Send it again. A request writes only the settings it changes. A value
+  it sends back as it read it is not a change, so a setting another request has
+  changed since is not undone. `DELETE /v1/connections/{id}/power` clears the
+  forward and the root path access through the same checks. On a domain whose
+  `www` redirect is on, taking the forward off is refused (`422 redirect_loop`)
+  when `www` forwards back to the root. A domain that is being removed answers
+  `409` to all of these, also when the removal starts while the change waits.
+- **The www redirect and its record.** `www_redirect` is for a root domain only
+  (`422 www_redirect_apex_only` for a subdomain). Turning it on adds a `www`
+  record to the records the domain needs. A zone CustomDomain™ hosts is
+  rewritten at once. A domain whose records were written through a connected
+  provider account is rewritten when `move_rewrite` is on. For any other domain,
+  the response has `customer_action_required: true`,
+  `connection.records_outdated` is sent, and the person adds the record. The
+  domain stays live meanwhile. Turning it off also stops the edge answering for
+  `www.` on that domain, unless that name is a connection of its own.
+- **Sandbox.** A Sandbox domain takes `client_label` only; the two redirects answer `403
   sandbox_not_allowed`.
-- **The audit log.** Every change is recorded as `connection.updated`, with the before and after of the fields
-  that changed, by the member or key that made it (`widget:<application id>` for an `app` token). A domain that
-  is being removed answers `409`. The redirects are stored before the name: if only `client_label` cannot be
-  written, the answer is `500`, the redirect change is stored and recorded, and sending the same body again writes
-  the name.
+- **The audit log.** Every change is recorded as `connection.updated`. It holds
+  the before and after of the fields that changed, and the member or key that
+  made it (`widget:<application id>` for an `app` token). A domain that is being
+  removed answers `409`. The redirects are stored before the name. If only
+  `client_label` cannot be written, the answer is `500`, but the redirect change
+  is stored and recorded. Sending the same body again writes the name.
 
-## The redirect template (provider-written)
+## The redirect template the provider writes [#the-redirect-template-provider-written]
 
 When the domain runs on a provider that implements the one-click (Domain
 Connect) protocol, forwarding can instead be written **at the provider**. The
@@ -113,21 +128,19 @@ variable:
 { "type": "REDIR301", "host": "@", "target": "%redirectTarget%", "ttl": 3600 }
 ```
 
-`REDIR301` is a pseudo-record native to the Domain Connect protocol (like
-`SPFM`): the provider's forwarding feature (not our edge) issues the 301 to
-`redirectTarget`, preserving path and query. A companion `apex-www` template
-covers the apex→www case the same way.
+`REDIR301` is a pseudo-record native to the Domain Connect protocol, like
+`SPFM`. The provider's forwarding feature, not our edge, issues the 301 to
+`redirectTarget` and keeps the path and query. A companion `apex-www` template
+covers the apex to www case the same way.
 
 **Only the one-click (Domain Connect) rail can apply the `redirect` template.**
-The OAuth and API-token rails **refuse** any template carrying a `REDIR301`/
-`REDIR302` record with `forwarding_not_supported`: a redirect is HTTP behavior,
-not a DNS record, and a provider's DNS API has no way to write one. Before the
-guard, the literal `REDIR301` was handed to the provider's DNS API and the
-poller then marked the connection live off a write that configured nothing. On
-those rails, serve the redirect from the edge instead (the section above), or
-set forwarding manually in the provider's own control panel. (The `apex-www`
-template is unaffected: it writes an apex `A` record plus a `www` CNAME, both of
-which those rails apply; the edge issues the apex→www redirect.)
+The OAuth and API-token rails **refuse** any template carrying a `REDIR301` or
+`REDIR302` record, with `forwarding_not_supported`. A redirect is HTTP behavior,
+not a DNS record, and a provider's DNS API has no way to write one. On those
+rails, serve the redirect from the edge instead (the section above), or set
+forwarding by hand in the provider's own control panel. The `apex-www` template
+is not affected. It writes an apex `A` record and a `www` CNAME, which those
+rails can apply, and the edge issues the apex to www redirect.
 
 ## Widget forwarding path
 
@@ -144,13 +157,13 @@ curl -X POST https://api.customdomain.ai/v1/connections/<ID>/domainconnect:start
 ```
 
 `redirectTarget` must be an `http` or `https` URL, or a bare host, at a public
-hostname (not an IP address, `localhost` or an internal name), with no user name
-or password; anything else answers `400 invalid_request` naming it, and the
-`redirect` template takes no other variable (see
-[Template variables](/docs/connect-flow/verify-and-go-live#template-variables)).
+hostname. It cannot be an IP address, `localhost` or an internal name, and it
+cannot hold a user name or password. Anything else answers `400 invalid_request`
+naming it. The `redirect` template takes no other variable (see [Template
+variables](/docs/connect-flow/verify-and-go-live#template-variables)).
 
-The response's `apply_url` is opened in the provider popup; once the customer
-approves, the provider writes the `REDIR301` record and the propagation poller
-promotes the connection to live. Choose this path when the domain stays on its
-current provider; choose the edge-served `redirect_to` / `www_redirect` above when
-the domain is proxied through the edge.
+The response's `apply_url` is opened in the provider popup. Once the customer
+approves, the provider writes the `REDIR301` record, and the DNS check promotes
+the connection to live. Choose this path when the domain stays on its current
+provider. Choose the edge-served `redirect_to` and `www_redirect` above when the
+domain is proxied through the edge.

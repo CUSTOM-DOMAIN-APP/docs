@@ -1,13 +1,22 @@
 ---
 title: Introduction
-description: "CustomDomain™ lets your users connect a domain they already own: it finds the DNS provider, writes or shows the records, verifies them and issues TLS."
+description: "Let your users connect a domain they already own."
+metaDescription: "CustomDomain™ lets your users connect a domain they already own: it finds the DNS provider, writes or shows the records, verifies them and issues TLS."
 ---
 
-Add CustomDomain™ to your product with a drop-in widget, the REST API or the MCP
-server, or connect a domain of your own in the console with no code.
+CustomDomain™ lets your users connect a domain they already own. It finds the DNS
+provider, writes or shows the records, checks them and issues HTTPS.
+
+Add it with a drop-in widget, the REST API or the MCP server. Or connect a domain
+of your own in the console, with no code.
+
+## Get started
 
 <Cards>
-  <Card title="Quickstart" href="/docs/getting-started/quickstart" description="Connect a first domain end to end in test mode, from your terminal. No real domain and no card." />
+  <Card icon={<Rocket />} title="Quickstart" href="/docs/getting-started/quickstart" description="Connect a first domain in the Sandbox. No real domain and no card." />
+  <Card icon={<LayoutTemplate />} title="Widget" href="/docs/getting-started/widget" description="Let your customers connect domains inside your product." />
+  <Card icon={<Code />} title="API" href="/docs/getting-started/api" description="Provision custom domains from your server." />
+  <Card icon={<Bot />} title="MCP" href="/docs/getting-started/mcp" description="Let an AI agent connect and check domains." />
 </Cards>
 
 ## How it works
@@ -18,11 +27,11 @@ server, or connect a domain of your own in the console with no code.
 
 ### Detect the provider
 
-A domain is entered in the widget, the console, the API or an agent.
-`POST /v1/domains:check` finds where its DNS is hosted and which of the six
-[ways to connect](/docs/concepts/glossary#ways-to-connect) can run there: a
-sign-in with the provider, the provider's one-click setup, a secure sign-in, a
-scoped API key, the records added by hand, or DNS hosting.
+You enter a domain in the widget, the console, the API or an agent.
+`POST /v1/domains:check` finds where its DNS is hosted and which
+[ways to connect](/docs/concepts/glossary#ways-to-connect) can run there.
+They are a sign-in with the provider, the provider's one-click setup, a secure
+sign-in, a scoped API key, the records added by hand, or DNS hosting.
 
 </Step>
 
@@ -31,32 +40,31 @@ scoped API key, the records added by hand, or DNS hosting.
 ### Write the records
 
 The best way in that can finish for this domain writes the records. Where the
-provider offers none, the exact rows are shown with that provider's own steps.
-Of the 217 providers in the census on 2026-10-31, 73 have an automatic path and
-144 are connected by hand ([DNS providers](/docs/dns/providers)).
+provider offers none, you see the exact rows with that provider's own steps.
+[DNS providers](/docs/dns/providers) shows how each provider connects.
 
 </Step>
 
 <Step>
 
-### Verify
+### Check the records
 
 The connection goes `live` once every record resolves to its expected value.
-Records written for the user usually verify within seconds. There is no separate
-ownership TXT record: control is proven by the way the records were written, or by
-the records appearing in the domain's own DNS
+Records written for you usually check out within seconds. There is no separate
+ownership TXT record. The way the records were written proves control, or the
+records appearing in the domain's own DNS do
 ([setup types](/docs/concepts/ownership-and-setup-types#control-is-proven-by-the-rail)).
 
 </Step>
 
 <Step>
 
-### Issue TLS
+### Issue HTTPS
 
 Once the domain is live, the CustomDomain™ edge issues its certificate on the
-first request and renews it on its own; on the Growth plan and up it also proxies
-the domain to your origin. Or point domains at your own infrastructure and serve
-TLS there ([Where domains point](/docs/connect-flow/routing)).
+first request and renews it on its own. On the Growth plan and up it also proxies
+the domain to your origin. You can also point domains at your own servers and
+serve HTTPS there ([Where domains point](/docs/connect-flow/routing)).
 
 </Step>
 
@@ -65,41 +73,38 @@ TLS there ([Where domains point](/docs/connect-flow/routing)).
 ## Pick your path
 
 <Cards>
-  <Card title="SaaS platform" href="/docs/use-cases/saas-platforms" description="Embed the widget so your users connect their own domains inside your product." />
-  <Card title="Agency" href="/docs/use-cases/agencies" description="Manage client domains in one workspace and hand the DNS step to whoever holds it." />
-  <Card title="Your own domain" href="/docs/use-cases/your-own-domain" description="Point a domain you own at something you run, with no code." />
-  <Card title="AI agent" href="/docs/use-cases/ai-agents" description="Let an agent connect and check domains through the MCP server." />
+  <Card icon={<Blocks />} title="SaaS platform" href="/docs/use-cases/saas-platforms" description="Embed the widget so your users connect their own domains." />
+  <Card icon={<Globe />} title="Your own domain" href="/docs/use-cases/your-own-domain" description="Point a domain you own at something you run." />
+  <Card icon={<Sparkles />} title="AI agent" href="/docs/use-cases/ai-agents" description="Let an agent connect and check domains." />
 </Cards>
 
 ## Build with
 
 <Cards>
-  <Card title="Widget" href="/docs/widget-sdk/overview" description="customdomain-js and @customdomain/react: the connect modal, in your branding." />
-  <Card title="REST API" href="/docs/api-reference" description="Every /v1 endpoint, its parameters, responses and errors." />
-  <Card title="Webhooks" href="/docs/webhooks/overview" description="Signed events when a domain goes live or fails, and when its certificate is issued or renewed." />
-  <Card title="MCP server" href="/docs/mcp/overview" description="Twenty-three tools at https://mcp.customdomain.ai/mcp, with scoped agent access." />
+  <Card icon={<LayoutTemplate />} title="Widget" href="/docs/widget-sdk/overview" description="The connect modal, in your branding." />
+  <Card icon={<Braces />} title="REST API" href="/docs/api-reference" description="Every /v1 endpoint, its parameters and errors." />
+  <Card icon={<Webhook />} title="Webhooks" href="/docs/webhooks/overview" description="Signed events when a domain goes live or fails." />
+  <Card icon={<Terminal />} title="MCP server" href="/docs/mcp/overview" description="Tools for agents, with scoped access you can revoke." />
 </Cards>
 
 ## When something is stuck
 
 [Troubleshooting](/docs/troubleshooting) covers domains waiting for their records,
-DNS mistakes and certificate issues, and the [FAQ](/docs/faq) answers the common
-questions. For how the pieces fit together, start at
+DNS mistakes and certificate issues. The [FAQ](/docs/faq) answers common
+questions. To see how the pieces fit, start at
 [Connections](/docs/concepts/connections) and [Architecture](/docs/concepts/architecture).
 
 ## For AI agents
 
-A machine-readable index of this documentation is at
-[`/docs/llms.txt`](/docs/llms.txt): every page, with its title, URL and
-description, so an agent can fetch exactly the page it needs. A site-root copy is
-served at [`/llms.txt`](https://docs.customdomain.ai/llms.txt). Every page is also
-served as Markdown at its own URL plus `.md` (this one is
-[`/docs.md`](/docs.md)), and each page links to it with
-`<link rel="alternate" type="text/markdown">`.
+A machine-readable index of these docs is at [`/docs/llms.txt`](/docs/llms.txt).
+It lists every page with its title, URL and description, so an agent can fetch
+exactly the page it needs. A copy is served at the site root,
+[`/llms.txt`](https://docs.customdomain.ai/llms.txt). Every page is also served as
+Markdown at its own URL plus `.md`. This one is [`/docs.md`](/docs.md), and each
+page links to its copy with `<link rel="alternate" type="text/markdown">`.
 
-Agents can also drive the product directly through the hosted
-[MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`: twenty-three
-tools for searching, connecting and managing domains. A human owner can also
-delegate scoped, revocable access to an agent via OAuth; see
-[Agent access](/docs/agents/overview). An installable
-[agent skill](/docs/agents/skills) teaches an agent to use them safely.
+Agents can also drive the product through the hosted
+[MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`. A person can
+give an agent scoped access they can revoke, through OAuth
+([Agent access](/docs/agents/overview)). An installable
+[agent skill](/docs/agents/skills) teaches an agent to use the tools safely.

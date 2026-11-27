@@ -1,5 +1,5 @@
 ---
-title: Revoke an account
+title: Remove an account (the key must still be revoked at the provider)
 full: true
 _openapi:
   preload:
@@ -11,7 +11,7 @@ _openapi:
     headings: []
     contents:
       - content: >-
-          Deletes the key and the account. Its domains stay connected and served,
+          Deletes CustomDomain™'s copy of the key and the account. Its domains stay connected and served,
           without continuous access; each domain's timeline records it. The answer
           says what that leaves: `used_by` is how many domains used the account, and
           `revoke_url` is the provider's page where the key itself is deleted. It

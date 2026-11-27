@@ -1,43 +1,39 @@
 ---
 title: Provider setup
-description: "What to create at each DNS provider so the records can be written for you, which server address to allow, and what each provider requires before you start."
+description: "What to create at each DNS provider before you start."
+metaDescription: "What to create at each DNS provider so the records can be written for you, which server address to allow, and what each provider requires before you start."
 ---
 
-To connect a domain with an API key, the customer (or you, on their behalf)
-creates a credential at the DNS provider. In the console each part of it is a
-**separate labeled field** (Namecheap asks for *API username* and *API key*,
-OVHcloud for a region and three keys), next to a link to the page where it is
-created and numbered steps, so nobody has to know a wire format. Calling the API
-directly, you send the parts joined into one `credential.token` with the matching
-`provider` key; the formats are listed in
-[DNS providers](/docs/dns/providers#using-a-provider-token-through-the-api).
+To connect a domain with an API key, the customer (or you, for them) creates a credential at the DNS provider.
+In the console, each part of it is a **separate labeled field**.
+Namecheap asks for *API username* and *API key*, and OVHcloud for a region and three keys.
+Each sits next to a link to the page where it is created and numbered steps, so nobody has to know a wire format.
+Calling the API directly, you send the parts joined into one `credential.token`, with the matching `provider` key.
+The formats are listed in [DNS providers](/docs/dns/providers#using-a-provider-token-through-the-api).
 
-Where a provider offers it, signing in with the provider, approving access at the
-provider, one-click setup or a Route 53 access role needs no key at all; see
-[DNS providers](/docs/dns/providers). Two more ways need no key pasted either.
-[Secure sign-in](/docs/guides/secure-sign-in) (offered to selected workspaces for
-now) has your customer sign in to the provider in a secure window, and where the
-provider allows it our software makes the key itself, as it does at
-[GoDaddy](#godaddy) and [Namecheap](#namecheap). [DNS hosting](/docs/dns/managed-dns)
-asks the domain's owner to change one setting where the domain was bought, its
-nameservers, and writes every record after that with no key. An API key is the
-fourth of the [six ways](/docs/concepts/glossary#ways-to-connect) to connect, and
-this page is about it.
+Some ways need no key at all, where a provider offers them.
+They are signing in with the provider, approving access at the provider, one-click setup, or a Route 53 access role (see [DNS providers](/docs/dns/providers)).
+Two more ways need no pasted key either.
+[Secure sign-in](/docs/guides/secure-sign-in), offered to selected workspaces for now, has your customer sign in to the provider in a secure window.
+Where the provider allows it, our software makes the key itself, as it does at [GoDaddy](#godaddy) and [Namecheap](#namecheap).
+[DNS hosting](/docs/dns/managed-dns) asks the domain's owner to change one setting where the domain was bought: its nameservers.
+It writes every record after that, with no key.
+An API key is the fourth of the [six ways](/docs/concepts/glossary#ways-to-connect) to connect, and this page is about it.
 
 > Give every credential the least it needs: permission to read and edit DNS
 > records on the zone. Never reuse an account-wide admin key.
 
 ## Our server's address, for allowlists
 
-Some providers only answer API calls from addresses on a list. On the hosted
-service, DNS writes come from **`100.48.24.176`**. It must be allowed at
-Namecheap, Dynadot, Epik, NameBright, Internet.bs, Combell, Vultr, WEDOS and REG.RU, at Subreg if it
-refuses the address, and on any IP restriction you set at ClouDNS, NameSilo, TransIP,
-GleSYS, Openprovider, NS1, Scaleway or Exoscale (an IAM policy with an IP condition at the
-last two). A Plesk or DirectAdmin server must accept calls from it too, since a host can
-limit its API to listed addresses and a firewall may block the rest. Moniker takes
-the address once, when its support team issues the key, rather than through a self-serve
-list.
+Some providers only answer API calls from addresses on a list.
+On the hosted service, DNS writes come from **`100.48.24.176`**.
+It must be allowed at Namecheap, Dynadot, Epik, NameBright, Internet.bs, Combell, Vultr, WEDOS and REG.RU.
+Allow it at Subreg too, if Subreg refuses the address.
+Allow it on any IP restriction you set at ClouDNS, NameSilo, TransIP, GleSYS, Openprovider, NS1, Scaleway or Exoscale.
+At the last two, that means an IAM policy with an IP condition.
+A Plesk or DirectAdmin server must accept calls from it too.
+A host can limit its API to listed addresses, and a firewall may block the rest.
+Moniker takes the address once, when its support team issues the key, instead of through a self-serve list.
 
 ## Registrars and DNS hosts
 
@@ -120,168 +116,155 @@ account. No approval of our service is needed.
 
 ### Amazon Route 53 (`route53`)
 
-- **Recommended: an access role.** The console offers it first for Route 53: you
-  create a role in your AWS account that lets us change the zone's records, so
-  there is no secret to paste, and you can delete the role any time.
-- **Or an IAM access key.** In the
-  [IAM console](https://console.aws.amazon.com/iam/home#/security_credentials),
-  use a user allowed `route53:ListHostedZonesByName`, plus
-  `route53:ListResourceRecordSets` and `route53:ChangeResourceRecordSets` on the
-  hosted zone, create an access key, and paste the **Access key ID** and
-  **Secret access key**. Temporary credentials (keys starting with `ASIA`) also
-  need the **Session token**.
+- **Recommended: an access role.** The console offers it first for Route 53.
+  You create a role in your AWS account that lets us change the zone's records.
+  There is no secret to paste, and you can delete the role any time.
+- **Or an IAM access key.** Open the [IAM console](https://console.aws.amazon.com/iam/home#/security_credentials).
+  Use a user allowed `route53:ListHostedZonesByName`.
+  It also needs `route53:ListResourceRecordSets` and `route53:ChangeResourceRecordSets` on the hosted zone.
+  Create an access key, then paste the **Access key ID** and **Secret access key**.
+  Temporary credentials (keys starting with `ASIA`) also need the **Session token**.
 
 ### Google Cloud DNS (`gcpdns`)
 
-Open [Cloud Shell](https://console.cloud.google.com/?cloudshell=true) in the
-project that holds the zone, signed in with the DNS Administrator role, run
-`gcloud auth print-access-token`, and paste the token with the project ID. The
-token expires within an hour, so it is used once and never kept.
+Open [Cloud Shell](https://console.cloud.google.com/?cloudshell=true) in the project that holds the zone.
+Sign in with the DNS Administrator role.
+Run `gcloud auth print-access-token`, and paste the token with the project ID.
+The token expires within an hour, so it is used once and never kept.
 
-On the hosted service you can also use **Sign in with Google Cloud**: sign in with
-the Google account that can edit the domain's public Cloud DNS zone. CustomDomain™
-finds the Google Cloud project that holds the zone and writes the records. It asks
-for these scopes: `openid`, `email`, `ndev.clouddns.readwrite` and
-`cloudplatformprojects.readonly`. Until Google finishes reviewing the app, Google
-may show a notice that it has not verified the app yet. The project ID and access
-token above stay available as the other option.
+On the hosted service you can also use **Sign in with Google Cloud**.
+Sign in with the Google account that can edit the domain's public Cloud DNS zone.
+CustomDomain™ finds the Google Cloud project that holds the zone, and writes the records.
+It asks for these scopes: `openid`, `email`, `ndev.clouddns.readwrite` and `cloudplatformprojects.readonly`.
+Until Google finishes reviewing the app, Google may show a notice that it has not verified the app yet.
+The project ID and access token above stay available as the other option.
 
 ### Azure DNS (`azuredns`)
 
-Open [Azure Cloud Shell](https://shell.azure.com/) as someone with **DNS Zone
-Contributor** on the zone's resource group, run
-`az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv`,
-and paste the token with the subscription ID and resource group. The token
-expires within about an hour, so it is used once and never kept.
+Open [Azure Cloud Shell](https://shell.azure.com/) as someone with **DNS Zone Contributor** on the zone's resource group.
+Run `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv`.
+Paste the token with the subscription ID and resource group.
+The token expires within about an hour, so it is used once and never kept.
 
-**Sign in with Azure DNS** skips all of the above: sign in
-with the Microsoft account that manages the zone, and we find the subscription
-and resource group that hold it among the subscriptions that account can list
-zones in. The zone must be a public Azure DNS zone (a private zone is never
-used), there must be only one such zone for the domain, and the account needs
-the Reader role on its subscription and a role that can edit the zone (DNS Zone
-Contributor); only the directory the account signs in to is searched. Azure
-also requires multifactor authentication for the change, and an organization
-that limits user consent needs an admin to approve CustomDomain™ once.
-Microsoft's consent screen asks to sign you in and view your basic profile and
-email address, plus Azure Service Management access as you; we use that access
-only to list subscriptions and DNS zones and to write the records into the one
-zone we found. When a check fails, the sign-in says which account you used (its
-email address, or its sign-in name when the account has no mailbox) and what to
-change.
+**Sign in with Azure DNS** skips all of the above.
+Sign in with the Microsoft account that manages the zone.
+We find the subscription and resource group that hold it, among the subscriptions that account can list zones in.
+The zone must be a public Azure DNS zone, and a private zone is never used.
+There must be only one such zone for the domain.
+The account needs the Reader role on its subscription, and a role that can edit the zone (DNS Zone Contributor).
+Only the directory the account signs in to is searched.
+Azure also requires multifactor authentication for the change.
+An organization that limits user consent needs an admin to approve CustomDomain™ once.
+Microsoft's consent screen asks to sign you in and view your basic profile and email address.
+It also asks for Azure Service Management access as you.
+We use that access only to list subscriptions and DNS zones, and to write the records into the one zone we found.
+When a check fails, the sign-in says which account you used and what to change.
+It shows the account's email address, or its sign-in name when the account has no mailbox.
 
 ## GoDaddy
 
-GoDaddy offers no OAuth sign-in to third parties and has not onboarded our
-one-click templates (Domain Connect), so there is no "Sign in with GoDaddy" of the
-usual kind. Four ways in run today, and the console and the widget show the ones
-that fit the domain, the recommended one first:
+GoDaddy offers no OAuth sign-in to third parties, and has not onboarded our one-click templates (Domain Connect).
+So there is no "Sign in with GoDaddy" of the usual kind.
+Four ways in run today.
+The console and the widget show the ones that fit the domain, the recommended one first:
 
-- **Secure sign-in.** Your customer signs in to GoDaddy in a temporary browser and
-  enters the code GoDaddy texts when the token is made. Our software makes a
-  Personal Access Token on GoDaddy's developer page, CustomDomain™ checks it and
-  keeps it, and the domain is connected through GoDaddy's API. If no token can be
-  made, the same session edits the domain's DNS page: a change that only adds
-  records goes ahead by itself, and one that replaces or removes a record waits
-  for your customer's approval. It is offered to selected workspaces, and the domain check
-  says whether it runs for a domain (`rails.cloud_browser`). See
-  [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
-- **A token you make yourself.** GoDaddy's API documentation grants domain
-  management access to any account that holds at least one domain (or is on a plan
-  with management access) and recommends Personal Access Tokens; the older key and
-  secret pairs (`sso-key`) are deprecated for the Domains API. Create a token with
-  only `domains.domain:read` and `domains.dns:update` and a short expiration.
+- **Secure sign-in.** Your customer signs in to GoDaddy in a temporary browser.
+  They enter the code GoDaddy texts when the token is made.
+  Our software makes a Personal Access Token on GoDaddy's developer page, and CustomDomain™ checks it and keeps it.
+  The domain then connects through GoDaddy's API.
+  If no token can be made, the same session edits the domain's DNS page.
+  A change that only adds records goes ahead by itself.
+  One that replaces or removes a record waits for your customer's approval.
+  It is offered to selected workspaces, and the domain check says whether it runs for a domain (`rails.cloud_browser`).
+  See [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
+- **A token you make yourself.** GoDaddy's API documentation grants domain management access to any account that holds at least one domain.
+  An account on a plan with management access gets it too.
+  GoDaddy recommends Personal Access Tokens.
+  The older key and secret pairs (`sso-key`) are deprecated for the Domains API.
+  Create a token with only `domains.domain:read` and `domains.dns:update`, and a short expiration.
 - **The records by hand.** It works on every GoDaddy account.
-- **DNS hosting.** The owner changes the domain's nameservers at GoDaddy to
-  CustomDomain™'s once, and every record is written after that (see
-  [Managed DNS](/docs/dns/managed-dns)). GoDaddy's API reads and changes
-  nameservers, so a connected GoDaddy key or a secure sign-in can make that change
-  for the owner; going back to GoDaddy's own DNS is done by secure sign-in or by
-  hand. Your customers are offered it only where your application turns DNS
-  hosting on (the [nameserver migration guide](/docs/guides/nameserver-migration)
-  calls that setting Domain maintenance).
+- **DNS hosting.** The owner changes the domain's nameservers at GoDaddy to CustomDomain™'s once.
+  Every record is written after that (see [Managed DNS](/docs/dns/managed-dns)).
+  GoDaddy's API reads and changes nameservers.
+  So a connected GoDaddy key or a secure sign-in can make that change for the owner.
+  Going back to GoDaddy's own DNS is done by secure sign-in or by hand.
+  Your customers are offered it only where your application turns DNS hosting on.
+  The [nameserver migration guide](/docs/guides/nameserver-migration) calls that setting Domain maintenance.
 
 Root domains need A records: GoDaddy has no ALIAS.
 
 ### The key a secure sign-in makes at GoDaddy
 
-The token carries GoDaddy's whole Domains and DNS group, which is more than the two
-scopes you tick when you make one yourself: DNS, nameservers and transfers. Its
-`rights` say what it reaches beyond the domain's DNS records, `transfer` here: it
-can also transfer the domain away from GoDaddy. The groups for GoDaddy's other
-products (Commerce, Email and Hosting) are never ticked. The console says it in a
-sentence on the domain's key card.
+The token carries GoDaddy's whole Domains and DNS group: DNS, nameservers and transfers.
+That's more than the two scopes you tick when you make one yourself.
+Its `rights` say what it reaches beyond the domain's DNS records.
+Here that is `transfer`: it can also transfer the domain away from GoDaddy.
+The groups for GoDaddy's other products (Commerce, Email and Hosting) are never ticked.
+The console says it in a sentence on the domain's key card.
 
-The token lasts one year, the longest GoDaddy offers, so it is watched. Thirty and
-seven days before its end your application gets `credential.expiring`, and your
-customer is sent a reconnect link when you gave us their address; see
-[When the key ends, and reconnecting](/docs/guides/secure-sign-in#reconnect).
+The token lasts one year, the longest GoDaddy offers, so it is watched.
+Thirty and seven days before its end, your application gets `credential.expiring`.
+Your customer is sent a reconnect link when you gave us their address.
+See [When the key ends, and reconnecting](/docs/guides/secure-sign-in#reconnect).
 
 ### Reuse of GoDaddy keys is held for now
 
-At other providers, a second secure sign-in for an account the workspace already
-keeps a key for swaps its new key into that
-[provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access)
-instead of adding another. At GoDaddy that is held for now: each sign-in keeps its
-own key. A second sign-in for the same GoDaddy account therefore leaves two
-tokens at GoDaddy, each named with the day and minute it was made so you can tell
-them apart on GoDaddy's token page, and the one you stop using is deleted there by
-hand, since no provider has an API that revokes a key.
+At other providers, a second secure sign-in for an account the workspace already keeps a key for swaps its new key into that [provider account](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access).
+It does not add another.
+At GoDaddy that is held for now, and each sign-in keeps its own key.
+So a second sign-in for the same GoDaddy account leaves two tokens at GoDaddy.
+Each is named with the day and minute it was made, so you can tell them apart on GoDaddy's token page.
+Delete the one you stop using there by hand, since no provider has an API that revokes a key.
 
-The hold also keeps GoDaddy keys out of any reuse beyond your own team. Saved
-access for returning customers is not offered at any provider yet, and when it is,
-GoDaddy is left out of it. A GoDaddy key a teammate made at a sign-in started in the
-console still connects your next domain of the same application, as at any other
-provider.
+The hold also keeps GoDaddy keys out of any reuse beyond your own team.
+Saved access for returning customers is not offered at any provider yet.
+When it is, GoDaddy is left out of it.
+A GoDaddy key a teammate made at a sign-in started in the console still connects your next domain of the same application, as at any other provider.
 
 ## Namecheap
 
-Namecheap has no sign-in switched on for third parties (sign-in through its MCP
-server is built but not switched on yet, see [below](#signing-in-with-the-provider)),
-and its API opens only to some accounts, so which way in runs depends on the
-account. The console and the widget show the ones that fit the domain, the
-recommended one first:
+Namecheap has no sign-in switched on for third parties.
+Sign-in through its MCP server is built but not switched on yet (see [below](#signing-in-with-the-provider)).
+Its API opens only to some accounts, so which way in runs depends on the account.
+The console and the widget show the ones that fit the domain, the recommended one first:
 
 - **Secure sign-in.** Your customer signs in to Namecheap in a temporary browser.
-  Where the account qualifies for the API, our software turns Namecheap's API
-  access on if it is off, adds `100.48.24.176` to the allowed list, and
-  CustomDomain™ keeps the account's own key; Namecheap shows its API terms and asks
-  for the account password, and both are your customer's to answer in the window.
-  For an account that does not qualify, the same session edits the domain's DNS
-  page (an added record goes ahead by itself; a replaced or removed one waits for
-  your customer's approval), and a domain whose DNS is
-  somewhere else ends the session with a message saying so. It is offered to
-  selected workspaces, and the domain check says whether it runs for a domain
-  (`rails.cloud_browser`). See [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
-- **An API key you make yourself.** Namecheap only turns the API on for accounts
-  with **20 or more domains**, a **balance of $50** or more, or **$50 spent in the
-  last 2 years**. Switch API access on under **Profile**, **Tools**, **Namecheap
-  API Access** and copy the API key; your API username is your Namecheap username.
-  **Whitelist `100.48.24.176`**: Namecheap rejects every request from an address
-  that is not on the list.
+  Where the account qualifies for the API, our software turns Namecheap's API access on if it is off.
+  It adds `100.48.24.176` to the allowed list, and CustomDomain™ keeps the account's own key.
+  Namecheap shows its API terms and asks for the account password, and both are your customer's to answer in the window.
+  For an account that does not qualify, the same session edits the domain's DNS page.
+  An added record goes ahead by itself, and a replaced or removed one waits for your customer's approval.
+  A domain whose DNS is somewhere else ends the session with a message saying so.
+  It is offered to selected workspaces, and the domain check says whether it runs for a domain (`rails.cloud_browser`).
+  See [Secure sign-in](/docs/guides/secure-sign-in#lasting-api-keys).
+- **An API key you make yourself.** Namecheap only turns the API on for some accounts.
+  The account needs **20 or more domains**, a **balance of $50** or more, or **$50 spent in the last 2 years**.
+  Switch API access on under **Profile**, **Tools**, **Namecheap API Access**, and copy the API key.
+  Your API username is your Namecheap username.
+  **Whitelist `100.48.24.176`**, because Namecheap rejects every request from an address that is not on the list.
 - **The records by hand.** Domains on Namecheap **hosting** nameservers are edited
   in cPanel's Zone Editor, not through this API; add those records by hand.
-- **DNS hosting.** The owner changes the domain's nameservers at Namecheap to
-  CustomDomain™'s once, and every record is written after that (see
-  [Managed DNS](/docs/dns/managed-dns)). Namecheap's API reads and changes
-  nameservers and can put a domain back on Namecheap's own DNS (BasicDNS), so a
-  connected Namecheap key or a secure sign-in can do the registrar side. Your
-  customers are offered it only where your application turns DNS hosting on.
+- **DNS hosting.** The owner changes the domain's nameservers at Namecheap to CustomDomain™'s once.
+  Every record is written after that (see [Managed DNS](/docs/dns/managed-dns)).
+  Namecheap's API reads and changes nameservers, and can put a domain back on Namecheap's own DNS (BasicDNS).
+  So a connected Namecheap key or a secure sign-in can do the registrar side.
+  Your customers are offered it only where your application turns DNS hosting on.
 
 Namecheap's API replaces the whole zone on each write. The adapter reads the zone
 and writes it back with only our records changed.
 
 ### The key a secure sign-in keeps at Namecheap
 
-The key is the account's own, not one made for us. Namecheap's keys have no scopes,
-so it holds every right Namecheap's API gives the account, transfers and renewals
-included where the API offers them: its `rights` say `account`. It has no end date,
-so it is never renewed. Because it is the account's own key, a second secure sign-in
-for the same account never leaves an older key behind at Namecheap. To end the
-access, remove the account in **Connected accounts** (that deletes our copy) and
-switch API access off where it was switched on.
+The key is the account's own, not one made for us.
+Namecheap's keys have no scopes.
+So it holds every right Namecheap's API gives the account, transfers and renewals included where the API offers them.
+Its `rights` say `account`.
+It has no end date, so it is never renewed.
+Because it is the account's own key, a second secure sign-in for the same account never leaves an older key behind at Namecheap.
+To end the access, remove the account in **Connected accounts**, which deletes our copy.
+Then switch API access off where it was switched on.
 
-## Remembering a key (optional)
+## Optionally remember a key [#remembering-a-key-optional]
 
 A provider key is used to write the records. In the console, **Remember this
 key for my *&lt;provider&gt;* account** starts ticked: untick it to use the key
@@ -293,84 +276,73 @@ A remembered key becomes a continuous
 [provider account](/docs/connect-flow/provider-accounts) for all of that
 account's domains, checked against the provider before it is kept. It is:
 
-- **sealed at rest**: encrypted with AES-256-GCM under the control plane's
-  `GRANT_ENCRYPTION_KEY` or `GRANT_ENCRYPTION_KEYS`;
+- **encrypted at rest**;
 - **server-side only**: the plaintext never leaves the server; the browser only
   ever sees the account's details (provider, a label, its domains and last use);
-- **one-click reusable**: the next time you connect a domain at that provider,
-  **Use saved key** applies the records without re-entering anything, and the
-  key puts records back if they disappear (where automatic repair is on) and
-  removes them when the domain is removed;
+- **one-click reusable**: the next time you connect a domain at that provider, **Use saved key** applies the records without re-entering anything.
+  The key puts records back if they disappear, where automatic repair is on.
+  It removes them when the domain is removed;
 - **revocable any time**: open the account on the console's **Connected
   accounts** page and choose **Revoke**; the key is deleted and its domains stay
   connected.
 
-A deployment with neither `GRANT_ENCRYPTION_KEY` nor `GRANT_ENCRYPTION_KEYS` cannot keep provider accounts, so
-its console keeps the key itself (AES-256-GCM under `WEB_SECRET_KEY`, one per
-workspace and provider), only to connect more domains. Keys saved that way are
-listed under **Keys to move** on the Connected accounts page until you move
-them to an account. Saving or removing one of them needs a member or above; a
-viewer only sees them.
+Keys the console kept before provider accounts existed are listed under **Keys to move** on the Connected accounts page.
+They stay there until you move them to an account.
+Removing one needs a member or above, and a viewer only sees them.
 
-Credentials that are passwords or expire within hours are never kept, whatever
-the request asks: ALL-INKL.COM KAS logins, Arsys API passwords, INWX, Subreg,
-Loopia and Plesk logins, Google Cloud DNS and Azure DNS access tokens, and
-Openprovider tokens. A Binary Lane token is never kept either, because it cannot
-be limited to DNS. See
-[Ownership & setup types](/docs/concepts/ownership-and-setup-types#optional-credential-reuse)
-and [Security](/docs/security/overview#provider-credentials).
+Some credentials are never kept, whatever the request asks: passwords, and tokens that expire within hours.
+They are ALL-INKL.COM KAS logins and Arsys API passwords.
+They also include INWX, Subreg, Loopia and Plesk logins.
+Google Cloud DNS and Azure DNS access tokens are not kept, and neither are Openprovider tokens.
+A Binary Lane token is never kept either, because it cannot be limited to DNS.
+See [Ownership & setup types](/docs/concepts/ownership-and-setup-types#optional-credential-reuse) and [Security](/docs/security/overview#provider-credentials).
 
 ## Connecting more domains on the same account
 
-For providers whose API can list an account's domains, among them **Cloudflare,
-GoDaddy, Amazon Route 53, Namecheap, IONOS, united-domains, Epik, NameBright and
-cPanel hosts (including o2switch)**, one key can connect the *other* domains on that account in a single step. After the first apply, the
-console offers **Connect more domains**, lists the account's other zones, and
-lets you **Select all** or pick a subset, with no need to re-enter the key. See
-[Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
+Some providers' APIs can list an account's domains.
+Among them are **Cloudflare, GoDaddy, Amazon Route 53, Namecheap, IONOS, united-domains, Epik, NameBright and cPanel hosts (including o2switch)**.
+For them, one key can connect the *other* domains on that account in a single step.
+After the first apply, the console offers **Connect more domains** and lists the account's other zones.
+You can **Select all** or pick a subset, with no need to re-enter the key.
+See [Bulk connect](/docs/connect-flow/verify-and-go-live#bulk-connect-more-domains-on-one-account).
 
 ## Signing in with the provider
 
-Signing in with the provider needs an OAuth app **registered with that provider
-under your company's identity**, which is a business step, not code. The hosted
-service has one for Cloudflare, DigitalOcean, DNSimple, Azure DNS
-(**Sign in with Azure DNS**; users in other organizations see an unverified
-publisher warning until the app has a verified publisher), Linode, Netlify,
-Vercel (the CustomDomain™ integration) and WordPress.com, and one for Google Cloud DNS
-(**Sign in with Google Cloud**; until Google finishes reviewing the app, Google may show a
-notice that it has not verified the app yet). It offers Porkbun's **Approve access at Porkbun**, which needs no
-registration, and the sign-in through Dynadot's and Unstoppable Domains' own
-MCP servers.
+Signing in with the provider needs an OAuth app **registered with that provider under your company's identity**.
+That is a business step, not code.
+The hosted service has one for Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Vercel (the CustomDomain™ integration) and WordPress.com.
+It has one for Azure DNS (**Sign in with Azure DNS**).
+Users in other organizations see an unverified publisher warning until the app has a verified publisher.
+It has one for Google Cloud DNS (**Sign in with Google Cloud**).
+Until Google finishes reviewing the app, Google may show a notice that it has not verified the app yet.
+It offers Porkbun's **Approve access at Porkbun**, which needs no registration.
+It also offers sign-in through Dynadot's and Unstoppable Domains' own MCP servers.
 
-That list says which sign-ins the product has and the hosted service is set up
-for. Whether the hosted service has each provider's OAuth app registered is
-confirmed one provider at a time, so do not promise a sign-in for DigitalOcean,
-Linode (Akamai Cloud) or Azure DNS from this page alone: `POST /v1/domains:check`
-says whether a sign-in runs for a domain (`rails.oauth.available`, with `reason`
-`oauth_client_not_registered` when the app is not registered), and the console and
-the widget follow it. Where a sign-in is not on, the provider's other ways in
-apply.
+That list says which sign-ins the product has and the hosted service is set up for.
+We confirm, one provider at a time, whether the hosted service has each provider's OAuth app registered.
+So do not promise a sign-in for DigitalOcean, Linode (Akamai Cloud) or Azure DNS from this page alone.
+`POST /v1/domains:check` says whether a sign-in runs for a domain (`rails.oauth.available`).
+It gives `reason` `oauth_client_not_registered` when the app is not registered.
+The console and the widget follow it.
+Where a sign-in is not on, the provider's other ways in apply.
 
 Built, but not yet switched on for the hosted service:
 
 - **Grant access at OVHcloud**, which needs an OVHcloud application for each
   region served.
 - **Sign in through the provider's MCP server** for Hostinger, Namecheap,
-  Spaceship, XServer Domain and Muumuu Domain. A deployment switches each one
-  on by listing it in `MCP_SIGNIN_PROVIDERS`; the hosted service lists only
-  Dynadot and Unstoppable Domains, and adds the others once the provider
-  approves CustomDomain™ and a live test passes.
+  Spaceship, XServer Domain and Muumuu Domain. Today it is on for Dynadot and
+  Unstoppable Domains; the others follow once the provider approves CustomDomain™
+  and a live test passes.
 
-Until a sign-in is on, an API key, one-click setup, secure sign-in where it is
-offered and adding the records by hand cover the same providers.
+Until a sign-in is on, the same providers are covered other ways.
+These are an API key, one-click setup, secure sign-in where it is offered, and adding the records by hand.
 
-[Secure sign-in](/docs/guides/secure-sign-in) is not one of these sign-ins. It
-needs no app registered with the provider, because your customer signs in on the
-provider's own pages in a temporary browser, and it exists for providers that offer
-no sign-in a third party can use, GoDaddy and Namecheap among them.
+[Secure sign-in](/docs/guides/secure-sign-in) is not one of these sign-ins.
+It needs no app registered with the provider, because your customer signs in on the provider's own pages in a temporary browser.
+It exists for providers that offer no sign-in a third party can use, GoDaddy and Namecheap among them.
 
-A sign-in is used once and dropped unless it is kept. CustomDomain™
-keeps sign-ins at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun,
-Vercel and WordPress.com by default, encrypted, and the console's **Keep this
-sign-in** box lets you use one once instead. See
-[Managed sign-in grants](/docs/connect-flow/managed-connections#managed-sign-in-grants).
+A sign-in is used once and dropped, unless it is kept.
+CustomDomain™ keeps sign-ins at Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Porkbun, Vercel and WordPress.com by default, encrypted.
+The console's **Keep this sign-in** box lets you use one once instead.
+See [Managed sign-in grants](/docs/connect-flow/managed-connections#managed-sign-in-grants).

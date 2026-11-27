@@ -1,11 +1,13 @@
 ---
 title: Console, connect your own domain
-description: "Connect your own domain with no code: sign up, tell us who the domains are for, add the DNS records, verify, and see the domain serving your app over HTTPS."
+icon: Server
+description: "Connect your own domain with no code."
+metaDescription: "Connect your own domain with no code: sign up, tell us who the domains are for, add the DNS records, verify, and see the domain serving your app over HTTPS."
 ---
 
 Use the console when the domain is **yours** and you want it to point at
-something you run. If your *customers* should connect *their* domains inside
-your product, that is the [widget](/docs/getting-started/widget), not this page.
+something you run. Want your *customers* to connect *their* domains inside your
+product? Use the [widget](/docs/getting-started/widget) instead.
 
 Two different people connect domains, and the console shows which did:
 
@@ -20,149 +22,147 @@ agents*.
 
 ## 1. Sign up and verify
 
-Sign up at [app.customdomain.ai](https://app.customdomain.ai/signup). A
-verification email is sent and its link (valid for **one hour**) must be
-clicked before you can reach the console: unverified accounts can't sign in
-or create API keys. You'll see a *Check your email* screen with **Resend the
-link**, and if your link expired, signing in re-sends a fresh one
-automatically. Google
-and GitHub follow the same rule: if the provider has not confirmed your email
-address, you land on *Check your email* and the link we send finishes the sign
-in. A provider that has not confirmed the address also cannot sign in as an
-existing account that has it: sign in with your password, then add Google or
-GitHub under **Settings, Security** (the provider must have confirmed the
-address for that too).
+Sign up at [app.customdomain.ai](https://app.customdomain.ai/signup).
+We send a verification email, and you click its link before you can reach the console.
+The link is valid for **one hour**.
+Unverified accounts can't sign in or create API keys.
+You'll see a *Check your email* screen with **Resend the link**.
+If your link expired, signing in sends a fresh one automatically.
+Google and GitHub follow the same rule.
+If the provider has not confirmed your email address, you land on *Check your email*, and the link we send finishes the sign in.
+Such a provider also cannot sign in to an existing account with that address.
+Sign in with your password instead, then add Google or GitHub under **Settings, Security**.
+The provider must have confirmed the address for that too.
 
-Under the form, passkey, Google and GitHub are one row of square icon buttons
-(hover or focus one for its name). Where Google sign in is set up, Google also
-shows its own **Sign in with Google** card at the top right of the sign in and
-sign up pages (Google One Tap). On the sign in page it can sign a returning
-person in without a click, unless you signed out on that browser since you last
-used it. On the sign up page it only offers: creating an account is always a
-click. It does not show on the invite page, inside a frame, or when your browser
-sends Do Not Track or Global Privacy Control, or you turned analytics off in
-cookie settings. It follows every rule the Google button does, including the
-email rule below.
+Under the form, passkey, Google and GitHub sit in one row of square icon buttons.
+Hover or focus one to see its name.
+Where Google sign in is set up, Google also shows its own **Sign in with Google** card at the top right of the sign in and sign up pages (Google One Tap).
+On the sign in page it can sign a returning person in without a click.
+It won't if you signed out on that browser since you last used it.
+On the sign up page it only offers: creating an account always takes a click.
+It does not show on the invite page or inside a frame.
+It also stays hidden when your browser sends Do Not Track or Global Privacy Control, or when you turned analytics off in cookie settings.
+It follows every rule the Google button does, including the email rule below.
 
-Tick the box under the heading to agree to the Terms of Service and Privacy
-Policy. Email, Google, GitHub and the Google card all wait for it. If you pick a
-Google account on the card before ticking, nothing is sent: the box says "Tick
-this box to continue with the Google account you chose", and ticking it
-signs you in with that account and records your agreement. If you already had an account
-before the box existed, or you came in through an invite or a Google or GitHub
-sign in from the sign in page, the console asks once, on a page of its own, and
-then takes you where you were going.
+Tick the box under the heading to agree to the Terms of Service and Privacy Policy.
+Email, Google, GitHub and the Google card all wait for it.
+If you pick a Google account on the card before ticking, nothing is sent.
+The box then says "Tick this box to continue with the Google account you chose".
+Ticking it signs you in with that account and records your agreement.
+Some people never saw the box: accounts made before it existed, invites, and Google or GitHub sign ins from the sign in page.
+For them the console asks once, on a page of its own, then takes them where they were going.
 
-**Signing up with Google or GitHub fills in the welcome.** When GitHub gives a
-company and a website on the profile, or the Google account is a Google Workspace
-account (a company's own domain, not Gmail), the welcome starts with that company
-name and website. Anything you typed yourself is never overwritten, and an
-address at a free mail service gets no company guess.
+**Signing up with Google or GitHub fills in the welcome.**
+GitHub may give a company and a website on the profile.
+A Google Workspace account uses a company's own domain, not Gmail.
+In either case the welcome starts with that company name and website.
+Anything you typed yourself is never overwritten.
+An address at a free mail service gets no company guess.
 
 The signup form also carries bot protection: a bot-check widget, signup rate
 limits, and disposable-email-address blocking. If the bot check fails, wait a
 moment and try again.
 
-Signed up with an email and a password? Once the welcome is done, **Overview**
-offers once to add Google or GitHub as another way to sign in: **Add Google**,
-**Add GitHub** or **Not now**. It only connects an account that uses the same
-email address as yours, and either answer is remembered on every device. You can
-do the same any time under **Settings, Security**.
+Signed up with an email and a password?
+Once the welcome is done, **Overview** offers once to add Google or GitHub as another way to sign in.
+The choices are **Add Google**, **Add GitHub** or **Not now**.
+It only connects an account that uses the same email address as yours.
+Either answer is remembered on every device.
+You can do the same any time under **Settings, Security**.
 
 ## 2. Tell us who the domains are for
 
-The first time you sign in, the welcome asks one question: **Who are you
-connecting domains for?** Two cards answer it, and a click on either moves on:
+A new workspace goes straight to the path for **My product's users**: "I run a product or platform. My users bring their own
+domains, through our widget or API." There is no question to answer first.
 
-- **My product's users**: "I run a product or platform. My users bring their own
-  domains, through our widget or API."
-- **My clients**: "I'm an agency or freelancer. I connect and look after domains
-  for the businesses I work for."
-
-Under the cards, the link **Just connecting a domain of my own?** is the third
-answer. Each answer sets up only the steps it needs, and the question must be
-answered. Every step after it has **Skip to dashboard** at the bottom right,
-which takes you to the console; what is left stays on the checklist on
-**Overview**, and **Change my answers** there opens the welcome again. A step
-whose own button does the work also has **Not now**, which moves on to the next step.
+A workspace that already chose another path keeps it. The older welcome asked **Who are you connecting domains for?**
+and also offered **My clients** and the link **Just connecting a domain of my own?**.
+Each answer sets up only the steps it needs.
+Every later step has **Skip to dashboard** at the bottom right, which takes you to the console.
+What is left stays on the checklist on **Overview**.
+**Change my answers** there opens the welcome again.
+A step whose own button does the work also has **Not now**, which moves to the next step.
 
 | You pick | The steps after the question |
 | --- | --- |
 | **My product's users** | Your product's website (see below), your brand with a live preview on the real widget, then who writes the code: **I am writing the code** or **My AI writes the code**. The same screen shows your application ID and your default key to copy. Then the widget code, or for your AI, the setup for the agent you use and one prompt to copy (it has your application ID, never your key). That is the last step |
-| **My clients** | A box to paste your domains into, with a client's name beside each (or one domain, if that is all you have). See [Many domains, and whose they are](#many-domains-and-whose-they-are) |
 | **Just connecting a domain of my own?** | Your domain, with an option to set up email on it in the same step |
 
-**I am writing the code** shows the widget code in four steps, each with a copy button: your key, a token route on your server, the widget for your framework with your application ID filled in, and the result. Then pick where to keep building, or **Try it now**.
+**I am writing the code** shows the widget code in four steps, each with a copy button.
+The steps are your key, a token route on your server, the widget for your framework with your application ID filled in, and the result.
+Then pick where to keep building, or **Try it now**.
 
-**What's your product's website?** is the step after **My product's users**. The
-address is filled in from a work email (not from free mail such as Gmail), and the
-page is read in the background while you type, so **Continue** works at any time.
-What it finds comes back as one sentence you can correct, such as "Looks like Acme
-is a website builder. Right?", with **Yes** and **Not quite**. A sentence we are
-sure of shows as already confirmed. **Not quite**, **No website yet**, or a site
-that says too little opens one optional line instead: "In a few words, what does
-Acme do?" What kind of product it is sets the widget options in your install code,
-the example customer domain in the brand preview, the prompt for your AI and the
-guide the code step links to. Your product name sits under it, filled in from the
-website or your email address; your customers see it on the widget.
+**What's your product's website?** is the step after **My product's users**.
+The address is filled in from a work email, not from free mail such as Gmail.
+We read the page in the background while you type, so **Continue** works at any time.
+What we find comes back as one sentence you can correct, with **Yes** and **Not quite**.
+For example: "Looks like Acme is a website builder. Right?"
+A sentence we are sure of shows as already confirmed.
+**Not quite**, **No website yet**, or a site that says too little opens one optional line instead: "In a few words, what does Acme do?"
+The kind of product sets several things for you.
+It picks the widget options in your install code and the example customer domain in the brand preview.
+It also picks the prompt for your AI and the guide the code step links to.
+Your product name sits under it, filled in from the website or your email address.
+Your customers see that name on the widget.
 
-The first screen asks nothing about AI agents. With **My product's users**, **My AI
-writes the code** is the agent path: pick the agent you use (Claude Code, Claude
-Desktop, Codex, Cursor, VS Code, ChatGPT or another), add CustomDomain™ to it with a
-command or a few fields, and copy the prompt. With **My clients** or a domain of
-your own, the last screen offers **Let an AI agent connect domains** ("It only does
-what you approve."), which opens the console's **MCP server** page with the setup
-for your agent. Most agents sign in with your account, so there is no key to paste,
-and an agent counts as connected only once it signed in and you approved what it may
-do. See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome)
-and [Agents](/docs/agents/overview).
+The first screen asks nothing about AI agents.
+With **My product's users**, **My AI writes the code** is the agent path.
+Pick the agent you use: Claude Code, Claude Desktop, Codex, Cursor, VS Code, ChatGPT or another.
+Add CustomDomain™ to it with a command or a few fields, and copy the prompt.
+With **My clients** or a domain of your own, the last screen offers **Let an AI agent connect domains** ("It only does what you approve.").
+It opens the console's **MCP server** page with the setup for your agent.
+Most agents sign in with your account, so there is no key to paste.
+An agent counts as connected only once it has signed in and you approved what it may do.
+See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome) and [Agents](/docs/agents/overview).
 
-Pointing a domain at a website needs the Growth plan: CustomDomain™ does not host
-websites, it serves your domain through its edge to a site hosted elsewhere
-(see [Where domains point](/docs/connect-flow/routing)). Once your own domain is
-connected, the last screen says so beside **Point it at my website**. Connecting
-the domain does not need it.
+Pointing a domain at a website needs the Growth plan.
+CustomDomain™ does not host websites.
+It serves your domain through its edge to a site hosted elsewhere (see [Where domains point](/docs/connect-flow/routing)).
+Once your own domain is connected, the last screen says so beside **Point it at my website**.
+Connecting the domain does not need the Growth plan.
 
-Everything else that can be worked out is filled in for you to confirm: your logo,
-name and brand color are read from your website, and for your own domain the welcome
-offers the one your work email is at. Change anything that is off.
+Everything else we can work out is filled in for you to confirm.
+Your logo, name and brand color are read from your website.
+For your own domain, the welcome offers the one your work email is at.
+Change anything that is off.
 
-The domain step finds where the domain is registered and hosted as soon as you
-type it, says whether we can set it up automatically or will show you the
-records, and opens the same connect widget your customers use. If it is not
-registered yet, it lists names close to it that you can buy, with the first year
-price, and links to the console's domain search to buy one. If you have no domain
-yet, **I don't have a domain yet** offers that search, or carrying on to connect
-one when you have it. When something is left, it says what and who can do it:
-anyone with access to your DNS host can finish it.
+The domain step finds where the domain is registered and hosted as soon as you type it.
+It says whether we can set it up automatically or will show you the records.
+Then it opens the same connect widget your customers use.
+If the domain is not registered yet, it says so.
+You can also carry on and connect one when you have it.
+When something is left, it says what and who can do it.
+Anyone with access to your DNS host can finish it.
 
-Your place and answers are saved on every step, so closing the tab and coming
-back resumes where you left off. Each step has its own address
-(`/welcome?step=brand`), so a refresh stays on it and the browser's Back goes
-where the **Back** button does, and a domain you already connected shows as
-connected. The last screen shows what you have and the one next action, with a
-few more to start with. While a domain waits for its DNS records it also offers to
-ping you when it is live, with **Notify me** and **Not now**: your browser asks only
-when you click, and it turns push on for a domain going live and nothing else (see
-[Notifications](/docs/guides/notifications)). Open the welcome again any time to change who the domains
-are for: from the first row of the checklist on **Overview**, or from **Change my
-answers** under the go-live list if you picked **My product's users**.
+Your place and answers are saved on every step.
+Close the tab and come back, and you resume where you left off.
+Each step has its own address (`/welcome?step=brand`), so a refresh stays on it.
+The browser's Back goes where the **Back** button does.
+A domain you already connected shows as connected.
+The last screen shows what you have and the one next action, with a few more to start with.
+While a domain waits for its DNS records, it also offers to ping you when it is live, with **Notify me** and **Not now**.
+Your browser asks only when you click.
+It turns push on for a domain going live and nothing else (see [Notifications](/docs/guides/notifications)).
+Open the welcome again any time to change who the domains are for.
+Use the first row of the checklist on **Overview**.
+If you picked **My product's users**, you can also use **Change my answers** under the go-live list.
 
-A short tour of the console follows. Replay it any time from the setup
-checklist on **Overview**. The checklist follows what you picked: for your own
-domain, connecting it (and setting up email, or pointing it at your site, if you
-chose those); for a few clients, connecting the first domain; always ending with
-inviting your team. For clients or your own domain, a **Your site is live** row also
-appears while a live domain has nothing to serve: it points at our edge, but no app
-address is set, so its visitors see an error page. The row stays open until every live
-domain serves something. If you chose **Let an AI agent connect domains**, an optional
-**Connect your agent** row is done when an agent has signed in and been approved, and
-says so by name; an agent that uses a key leaves nothing to see, so the row says that
-too. If you picked **My product's users**, the checklist is the go-live list below, and
-it ends with the same optional row when the welcome found your product is an AI app or
-agent builder.
+A short tour of the console follows.
+Replay it any time from the setup checklist on **Overview**.
+The checklist follows what you picked.
+For your own domain, it covers connecting it, plus email or pointing it at your site if you chose those.
+For a few clients, it covers connecting the first domain.
+It always ends with inviting your team.
+For clients or your own domain, a **Your site is live** row also appears while a live domain has nothing to serve.
+Such a domain points at our edge, but no app address is set, so its visitors see an error page.
+The row stays open until every live domain serves something.
+If you chose **Let an AI agent connect domains**, an optional **Connect your agent** row appears.
+It is done when an agent has signed in and been approved, and it names the agent.
+An agent that uses a key leaves nothing to see, so the row says that too.
+If you picked **My product's users**, the checklist is the go-live list below.
+It ends with the same optional row when the welcome found your product is an AI app or agent builder.
 
-### Your go-live list (My product's users) [#your-go-live-list-my-customers]
+### Your go-live list, My product's users [#your-go-live-list-my-customers]
 
 If you run a product and want your users to bring their own domains, **Overview**
 shows a go-live list. A row is done when something has happened that proves it,
@@ -171,39 +171,40 @@ not when you visited a page, and each row says what was checked:
 | Row | Done when |
 | --- | --- |
 | **Start your free trial** (owners and admins) | Billing is set up and a trial or a plan is running. A card starts the 14 day trial and nothing is charged until it ends. Creating API keys needs it |
-| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live, including one you connect from [**Try it live**](#try-it-live). A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in test mode on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
+| **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live, including one you connect from [**Try it live**](#try-it-live). A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in the Sandbox on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
 | **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count: it is the console's own, minted for you and not for a customer |
 | **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Growth plan) |
 | **Get told when a domain goes live** | A webhook delivery was answered with a success status |
 | **Make the widget yours** (optional) | A look was saved, for the workspace or for an application |
 | **Connect your first customer** | A real customer connected a domain through your widget, which is a connection that carries the customer id your server passed when it minted the token. A domain you connect from **Try it live** carries the console's own id for you (`console:<member>`), so it never counts as a customer, however many you try |
 
-Test mode is a separate application you switch to from the application switcher, marked
-**Test mode** wherever it appears. It needs no card, it is not counted or billed, and
+Sandbox is a separate application you switch to from the application switcher, marked
+**Sandbox** wherever it appears. It needs no card, it is not counted or billed, and
 its domains show on **Domains** and **Activity** only while you are switched to it. See
-[Test mode](/docs/guides/test-mode) for what each ending does and what it leaves out.
+[Sandbox](/docs/guides/test-mode) for what each ending does and what it leaves out.
 
-A row can be done and still warn: a default origin that failed its check, or a
-webhook whose newest delivery failed, each with a link to fix it. The list stays
-on **Overview** while any row warns, even when every required row is done, and it
-reads again when you come back to the tab, because most of these steps are
-finished somewhere else. A customer who connects makes the earlier rows done as
-well, since they cannot have connected without the widget opening and your server
-minting a token. A token minted straight at the API with your client secret is
-not seen by the console; your first customer proves it instead.
+A row can be done and still warn.
+Examples are a default origin that failed its check, or a webhook whose newest delivery failed.
+Each warning links to the fix.
+The list stays on **Overview** while any row warns, even when every required row is done.
+It reloads when you come back to the tab, because you finish most of these steps somewhere else.
+A customer who connects also marks the earlier rows done.
+They cannot have connected without the widget opening and your server minting a token.
+The console does not see a token minted straight at the API with your client secret.
+Your first customer proves it instead.
 
-**Dismiss** on the list hides it for you, on every device, and a reload shows no
-list. With the new menu (**Settings → General → Navigation**), **Help → Show the
-setup list** at the bottom of the menu brings it back (on a phone or tablet, **More**
-holds Help): it opens **Overview** with the list on it, and it stays through a reload.
-The list is yours to hide, not the workspace's: a teammate's list is theirs.
+**Dismiss** on the list hides it for you, on every device, and a reload shows no list.
+With the new menu (**Settings → General → Navigation**), **Help → Show the setup list** at the bottom of the menu brings it back.
+On a phone or tablet, **More** holds Help.
+It opens **Overview** with the list on it, and the list stays through a reload.
+The list is yours to hide, not the workspace's.
+A teammate's list is theirs.
 
-The list follows what the workspace's owner or an admin said: a teammate you invite
-sees the same go-live list (without the trial row, which is for owners and admins).
-In a workspace for clients or for your own domain, a teammate sees the usual
-checklist until they answer the welcome too. Your customers' domains are on
-**Domains**, on the **From your product (widget)** tab; the list itself opens on
-**All**.
+The list follows what the workspace's owner or an admin said.
+A teammate you invite sees the same go-live list, without the trial row, which is for owners and admins.
+In a workspace for clients or for your own domain, a teammate sees the usual checklist until they answer the welcome too.
+Your customers' domains are on **Domains**, on the **From your product (widget)** tab.
+The list itself opens on **All**.
 
 ## The console at a glance
 
@@ -217,67 +218,71 @@ checklist until they answer the welcome too. Your customers' domains are on
 | **Routing** | **Where domains point**: each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). **Connect an account** adds one in [three steps](#add-an-account). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Notifications** holds your own switches (push on this device, and the bell and push switch for each kind of alert) with **What we send** under them: one line per kind of email, and a closed row listing every email, who gets it and how to stop it (see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), its **Workspace ID** and **Default application ID** for support, the workspace, your role and the plan, and the console's version with the time it was built (for example "Nov 2, 2026, 14:05 UTC"). **Team**, **Billing**, **Usage** and **Applications** open under it. |
-| **Activity**, **Monitor**, **Buy a domain**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
+| **Activity**, **Monitor**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
 
-Every page opens with one line on what it is for and a **Docs** link to the part of
-these docs that explains it. A **?** beside a word that decides what you do next
-(**Managed**, a root domain, a CAA record, an account's access) gives one plain line
-and a link. The words the console uses are listed in the [Glossary](/docs/concepts/glossary).
+Every page opens with one line on what it is for.
+It also has a **Docs** link to the part of these docs that explains it.
+A **?** sits beside a word that decides what you do next, such as **Managed**, a root domain, a CAA record or an account's access.
+It gives one plain line and a link.
+The words the console uses are listed in the [Glossary](/docs/concepts/glossary).
 
 ### Navigation
 
-The console has one menu, and every workspace uses it. Since 2026-11-02 there is
-no **Classic** or **New (preview)** choice under **Settings → General**: that card
-is gone, and a workspace that had picked Classic now sees the same menu as
-everyone else.
+The console has one menu, and every workspace uses it.
+Since 2026-11-02 there is no **Classic** or **New (preview)** choice under **Settings → General**.
+That card is gone.
+A workspace that had picked Classic now sees the same menu as everyone else.
 
-The menu is grouped by what you are doing. At the top are the workspace, the
-application picker (from two applications), search and the main button. Then
-**Overview**, **Widget**, **Domains**, **Connected accounts**, **Activity** and
-**Analytics**; an **Integrate** group for **API keys & webhooks** and **Routing**;
-and **Settings**. **Buy a domain** and **MCP & agents** appear when you have
-switched them on. Docs, Help and your account menu (Profile, Security,
-Notification settings, Privacy, the theme, Sign out) are at the bottom. Related
-pages share one tab bar: **Settings** has General, Team & roles, Applications,
-Billing & usage, Notifications and Features; **Activity** has Inbox, History and
-DNS checks. On a phone, a top bar and a bar along the bottom of the screen carry
-the same places. The order follows who your domains are for (below), and no page
-is hidden.
+The menu is grouped by what you are doing.
+At the top are the workspace, the application picker (from two applications), search and the main button.
+Then come **Overview**, **Widget**, **Domains**, **Connected accounts**, **Activity** and **Analytics**.
+An **Integrate** group holds **API keys & webhooks** and **Routing**, followed by **Settings**.
+**MCP & agents** appears when you have switched it on.
+Docs, Help and your account menu sit at the bottom.
+The account menu holds Profile, Security, Notification settings, Privacy, the theme and Sign out.
+Related pages share one tab bar.
+**Settings** has General, Team & roles, Applications, Billing & usage, Notifications and Features.
+**Activity** has Inbox, History and DNS checks.
+On a phone, a top bar and a bar along the bottom of the screen carry the same places.
+The order follows who your domains are for (below), and no page is hidden.
 
 Activity and its DNS checks are always on, so **Settings → Features** no longer
 lists them as switches. Where this page says **API & SDK**, the menu now says **API keys &
 webhooks**, and **Monitor** is the **DNS checks** tab of **Activity**.
 
-With **New (preview)** and two or more applications, the application switcher in the
-menu (in the top bar on a phone) narrows the pages that list or count to one
-application, or **All applications**. **Overview** then counts only that application's
-domains and shows only its widget figures, with a line that says so and a link back to
-all of them. Its links to pages that narrow by application keep it: a count, **View all**
-and the source links open **Domains** on the same application, so the number you click is
-the number you land on, and a platform's **Keys and webhooks** shortcut opens that
-application's keys. The links to the widget, your team and your connected accounts open
-those pages as they are. The **Usage** card stays the workspace's, because the plan's
-domain allowance is, and says so: "This counts every application in your workspace, not
-only" the one you picked. The setup list is the workspace's too, so it does not narrow.
+With **New (preview)** and two or more applications, the application switcher narrows the pages that list or count.
+It sits in the menu, or in the top bar on a phone.
+You pick one application, or **All applications**.
+**Overview** then counts only that application's domains and shows only its widget figures.
+A line says so and links back to all of them.
+Its links to pages that narrow by application keep the choice.
+A count, **View all** and the source links open **Domains** on the same application.
+So the number you click is the number you land on.
+A platform's **Keys and webhooks** shortcut opens that application's keys.
+The links to the widget, your team and your connected accounts open those pages as they are.
+The **Usage** card stays the workspace's, because the plan's domain allowance is.
+It says so: "This counts every application in your workspace, not only" the one you picked.
+The setup list is the workspace's too, so it does not narrow.
 
 ### API keys and widget tokens
 
-Open **API & SDK**. Every workspace has a **default key** at the top of the page,
-made with the workspace and needing no card: owners can view and rotate it at any
-time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)).
-The key bar names the variable first: `CUSTOMDOMAIN_API_KEY` is a label above the
-masked key, and **Copy** copies the key alone, not the label, and says so. The
-same bar is on the welcome step that shows your key and on the **Install** tab, and
-the application ID there reads the same way. For another key, press
-**Create key**, give it a name and pick an **Environment**: Production
-(`cd_live_…`), Development or Staging (both `cd_test_…`). The full key is shown
-once ("Copy your new key now"); only a hash is kept. Admins and owners can create
-and revoke keys; for anyone else **Create key** and **Revoke** are off, and the page
-says why. Creating one needs a card on file, which starts the 14 day free trial
-(nothing is charged until it ends). Your first ten domains are free without a
-card, but another key is not, so a workspace without a card that presses **Create
-key** sees "Start your free trial to create API keys" with an **Add a card**
-link, and the key is created once the card is in.
+Open **API & SDK**.
+Every workspace has a **default key** at the top of the page, made with the workspace and needing no card.
+Owners can view and rotate it at any time, and everyone else sees its prefix (see [API keys](/docs/authentication/overview)).
+The key bar names the variable first: `CUSTOMDOMAIN_API_KEY` is a label above the masked key.
+**Copy** copies the key alone, not the label, and says so.
+The same bar is on the welcome step that shows your key and on the **Install** tab.
+The application ID there reads the same way.
+For another key, press **Create key**, give it a name and pick an **Environment**.
+The choices are Production (`cd_live_…`), Development or Staging (both `cd_test_…`).
+The full key is shown once ("Copy your new key now"), and we keep only a hash.
+Admins and owners can create and revoke keys.
+For anyone else, **Create key** and **Revoke** are off, and the page says why.
+Creating one needs a card on file, which starts the 14 day free trial.
+Nothing is charged until the trial ends.
+Your first ten domains are free without a card, but another key is not.
+A workspace without a card that presses **Create key** sees "Start your free trial to create API keys" with an **Add a card** link.
+The key is created once the card is in.
 
 #### API key or client secret [#key-or-secret]
 
@@ -293,23 +298,24 @@ shows them as two cards.
 Put the API key in your server's environment as `CUSTOMDOMAIN_API_KEY`. You do
 not need the client secret for an application made in the console: see below.
 
-The application the console made for you has a client secret, but the console
-keeps it sealed and never shows it. To mint widget tokens from your server, send
-one of these keys as the bearer to `POST /v1/tokens`;
-the **Install** tab on **Widget** writes the code for you. Do not rotate that
-application's secret: the console's copy would go stale and the preview and **Try
-it live** would stop working. See
-[Widget tokens](/docs/authentication/widget-tokens).
+The application the console made for you has a client secret.
+The console keeps it sealed and never shows it.
+To mint widget tokens from your server, send one of these keys as the bearer to `POST /v1/tokens`.
+The **Install** tab on **Widget** writes the code for you.
+Do not rotate that application's secret.
+The console's copy would go stale, and the preview and **Try it live** would stop working.
+See [Widget tokens](/docs/authentication/widget-tokens).
 
-Optional surfaces (the activity log, DNS monitoring, buying domains, the MCP
-server and agent access) are off until you need them: switch them on under
-**Settings → Features**. Owners and admins can switch them on; a member or viewer
-who opens a page that is off is told who can, with a link to that feature's docs,
-and is not offered a button. A workspace that already used one keeps it on, and
-agent access switches on by itself when you approve an agent. Each switch shows or
-hides a page and nothing else: **DNS monitoring** shows the **Monitor** page, and
-every live domain is checked, with alerts on drift, whether it is on or off. **Buy
-domains** shows **Buy a domain**, where you search for a name and buy it yourself.
+Optional surfaces stay off until you need them.
+They are the activity log, DNS monitoring, the MCP server and agent access.
+Switch them on under **Settings → Features**.
+Owners and admins can switch them on.
+A member or viewer who opens a page that is off is told who can, with a link to that feature's docs, and gets no button.
+A workspace that already used one keeps it on.
+Agent access switches on by itself when you approve an agent.
+Each switch shows or hides a page and nothing else.
+**DNS monitoring** shows the **Monitor** page.
+Every live domain is checked, with alerts on drift, whether the switch is on or off.
 
 ### The console follows who the domains are for
 
@@ -325,34 +331,39 @@ what **Overview** and **Domains** lead with.
 | **Overview** | The go-live list, then the domains that need attention (when any do), your customers' latest connections and the widget's week | The domains that need attention first, and which DNS providers they are with | With one domain, that domain: its status and the next step. With two or more, the counts and the domains that need attention (when any do) |
 | **Empty Domains page** | "Your customers' domains appear here", with the widget as the way on | "Add your domains", with a button to paste a list | "Connect your domain" |
 
-The counts on **Overview** include every domain of every application (or one
-application's, when the new menu is narrowed to it, see [Navigation](#navigation)),
-read from the same list **Domains** shows, and each count is the number its filter lists there.
-**Domains** opens on **All** whoever the domains are for, so a count on **Overview**
-opens the domains it counted, and a domain you look for is there whichever way it
-was connected. The source tabs narrow the list from there. The first-run tour
-follows the same layout. A workspace that has not said who its domains are for
-gets the console as it has always been.
+The counts on **Overview** include every domain of every application.
+When the new menu is narrowed to one application, they include only its domains (see [Navigation](#navigation)).
+They read from the same list **Domains** shows, and each count is the number its filter lists there.
+**Domains** opens on **All** whoever the domains are for.
+So a count on **Overview** opens the domains it counted.
+A domain you look for is there whichever way it was connected.
+The source tabs narrow the list from there.
+The first-run tour follows the same layout.
+A workspace that has not said who its domains are for gets the console as it has always been.
 
-A domain **needs attention** when its setup failed or stopped making progress, when
-its records were changed at the provider, or when it is still being set up 48 hours
-after it was added. Setup has no deadline, so a domain still waiting keeps being
-checked; it is listed so that somebody looks. A live domain needs attention too when
-its certificate is failing or about to expire, when a change to its records was left
-for you to fix, when its provider stopped accepting our access, or when it is **live,
-but has nothing to serve**: it points at our edge, but no app address is set, so its
-visitors see an error page. The console uses this one rule for the **Needs attention**
-count and card on **Overview** (the card is there in every mode when a domain needs
-attention, and each row says why, such as "Not finished, 6 days" or "HTTPS
-certificate: The certificate expired."), the **Needs attention** filter and the
-**Needs attention first** order on **Domains**, and the counts per client. A live domain
-that needs attention is under both **Live** and **Needs attention**.
+A domain **needs attention** in a few cases.
+Its setup failed or stopped making progress.
+Its records were changed at the provider.
+Or it is still being set up 48 hours after it was added.
+Setup has no deadline, so a domain still waiting keeps being checked.
+It is listed so that somebody looks.
+A live domain needs attention too in four cases.
+Its certificate is failing or about to expire.
+A change to its records was left for you to fix.
+Its provider stopped accepting our access.
+Or it is **live, but has nothing to serve**: it points at our edge, no app address is set, and its visitors see an error page.
+The console uses this one rule everywhere.
+It drives the **Needs attention** count and card on **Overview**.
+The card shows in every mode when a domain needs attention, and each row says why.
+Examples are "Not finished, 6 days" or "HTTPS certificate: The certificate expired."
+The same rule drives the **Needs attention** filter, the **Needs attention first** order on **Domains**, and the counts per client.
+A live domain that needs attention is under both **Live** and **Needs attention**.
 
-Change it any time under **Settings → What this workspace is for**, where the three
-answers are **My product's users**, **My clients** and **A domain of my own**. Owners and admins
-can change it; it changes the console for everyone in the workspace, and everyone else
-sees it read only. A teammate you invite sees the same console you do, whatever they
-answer in the welcome.
+Change it any time under **Settings → What this workspace is for**.
+The three answers there are **My product's users**, **My clients** and **A domain of my own**.
+Owners and admins can change it.
+It changes the console for everyone in the workspace, and everyone else sees it read only.
+A teammate you invite sees the same console you do, whatever they answer in the welcome.
 
 The **bell** at the top right holds your latest notifications: a domain going
 live, a domain that needs attention, a failed payment, and more. Turn on push
@@ -361,47 +372,48 @@ under **Settings → Notifications** to get them on your phone or computer too. 
 
 ### Applications
 
-The **Application** switcher at the top of the sidebar is always there, even
-with a single application. It lists your applications and offers **New
-application** and **Manage applications**. Use more than one to keep surfaces
-apart: Production and Staging, or one per product. Each application has its
-own widget credentials, API keys and domains; switching is remembered in your
-browser. Pages that list or count show every application: **Overview**,
-**Domains** (narrow it with its application filter), **Analytics** (all
-applications to start with) and the keys on **API & SDK**, each key named with
-its application. Pages that set one up act on the active application: **Widget**,
-**Domain routing**, **Connect a domain** (a new domain lands in it) and adding a
-webhook endpoint. A link to **Widget** with `?app=<application id>` switches to
-that application first. An API key works across the whole workspace (a test mode
-application's keys work only there), and a domain it connects lands in the key's
-application unless the call names another.
+The **Application** switcher at the top of the sidebar is always there, even with a single application.
+It lists your applications and offers **New application** and **Manage applications**.
+Use more than one to keep surfaces apart, such as Production and Staging, or one per product.
+Each application has its own widget credentials, API keys and domains.
+Your browser remembers which one you switched to.
+Pages that list or count show every application.
+These are **Overview**, **Domains** (narrow it with its application filter), **Analytics** (all applications to start with) and the keys on **API & SDK**.
+Each key is named with its application.
+Pages that set one up act on the active application.
+These are **Widget**, **Domain routing**, **Connect a domain** (a new domain lands in it) and adding a webhook endpoint.
+A link to **Widget** with `?app=<application id>` switches to that application first.
+An API key works across the whole workspace.
+A Sandbox application's keys work only there.
+A domain a key connects lands in the key's application unless the call names another.
 
 Viewers see applications and their domains but cannot create one or use its
-widget, and the console says so. Buying a domain, bulk connect and the widget's
+widget, and the console says so. Bulk connect and the widget's
 token need the `member` role or above.
 
 **New application** asks for a name (with one-tap suggestions such as
 *Staging*) and an environment (Production, Staging or Development). Once it
 exists you can switch to it or go straight to its widget.
 
-Each application has its own page: open it from **Applications** or from the
-switcher. Its summary counts the application's domains by status and reads out
-what its users are offered, **DNS hosting** and **Use their saved access**, each
-with a line on what it is, a link to its guide and a **Change** that opens its row in
-[Widget → Ways to connect](#ways-to-connect) (a viewer sees **View**). Its
-**Domains** (the ones that need attention first, each opening its details),
-**API keys**, **Routing** and **Settings** (the widget, **Rename**, **Switch to
-it**, a **DNS hosting** read-out and **Delete application**) are tabs. The
-**DNS hosting** section of **Settings** says whether DNS hosting is **Off**,
-**Offered** or **Offered first**, who runs it and **See hosted domains**,
-with the same **Change**; it is [set in Ways to connect](#domain-maintenance), so
-the setting is changed in one place. A test mode application has none. Deleting asks you to type the name, revokes the application's
-API keys, and is refused for your workspace's default application and for one
-that still has domains (disconnect them first). An application created through
-the API rather than in the console works the same, except that its widget
-can't be previewed here: its client secret was issued to whoever created it
-and was never stored in the console, so mint its tokens with `POST /v1/tokens`
-and that secret.
+Each application has its own page.
+Open it from **Applications** or from the switcher.
+Its summary counts the application's domains by status.
+It also reads out what its users are offered: **DNS hosting** and **Use their saved access**.
+Each has a line on what it is, a link to its guide and a **Change** button.
+**Change** opens its row in [Widget → Ways to connect](#ways-to-connect), and a viewer sees **View**.
+The page has tabs: **Domains**, **API keys**, **Routing** and **Settings**.
+**Domains** lists the ones that need attention first, and each opens its details.
+**Settings** holds the widget, **Rename**, **Switch to it**, a **DNS hosting** read-out and **Delete application**.
+The **DNS hosting** section says whether DNS hosting is **Off**, **Offered** or **Offered first**.
+It also says who runs it, links to **See hosted domains**, and has the same **Change**.
+DNS hosting is [set in Ways to connect](#domain-maintenance), so you change it in one place.
+A Sandbox application has none.
+Deleting asks you to type the name, and it revokes the application's API keys.
+It is refused for your workspace's default application and for one that still has domains.
+Disconnect them first.
+An application created through the API works the same, with one difference: its widget can't be previewed here.
+Its client secret went to whoever created it and was never stored in the console.
+Mint its tokens with `POST /v1/tokens` and that secret.
 
 ## 3. Connect a domain
 
@@ -423,10 +435,10 @@ plainly that you are on the console path. Enter the hostname:
 - `acme.com`: the root. It works everywhere, but the record depends on the
   provider; see [Root domains](/docs/dns/root-domains).
 
-The pre-flight refuses two things up front: a domain that doesn't resolve at
-all (unregistered, or never delegated at the registrar) and a hosting
-platform's own subdomain (`www.<name>.vercel.app`). Both used to sit on
-"waiting for DNS" for days.
+The pre-flight refuses two things up front.
+The first is a domain that doesn't resolve at all: unregistered, or never delegated at the registrar.
+The second is a hosting platform's own subdomain (`www.<name>.vercel.app`).
+Both used to sit on "waiting for DNS" for days.
 
 ## 4. Choose how to add the records
 
@@ -435,16 +447,16 @@ They are the [ways to connect](/docs/concepts/glossary#ways-to-connect) that fit
 the domain. The recommended one is open; the others are closed one-line rows under
 **Other ways to connect**, in this order:
 
-1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode,
-   Netlify, Vercel (by installing the CustomDomain™ integration) and
-   WordPress.com, plus **Approve access at Porkbun**. Approve once in a popup
-   and we add the records. Fastest. **Keep this sign-in** starts ticked: we
-   keep it, encrypted, so we can put the records back and remove them with the
-   domain; untick it to use the sign-in once. Sign in with Azure DNS
-   (a Microsoft account) and Sign in with Dynadot or Unstoppable Domains
-   (through the provider's MCP server) are used once. OVHcloud's consent page
-   and the other MCP server sign-ins are built but not switched on yet; see
-   [DNS providers](/docs/dns/providers#built-but-not-switched-on-yet).
+1. **Sign in with the provider**: Cloudflare, DigitalOcean, DNSimple, Linode, Netlify, Vercel (by installing the CustomDomain™ integration) and WordPress.com, plus **Approve access at Porkbun**.
+   Approve once in a popup and we add the records.
+   This is the fastest way.
+   **Keep this sign-in** starts ticked.
+   We keep it, encrypted, so we can put the records back and remove them with the domain.
+   Untick it to use the sign-in once.
+   Some sign-ins are always used once.
+   These are Azure DNS (a Microsoft account), and Dynadot or Unstoppable Domains (through the provider's MCP server).
+   OVHcloud's consent page and the other MCP server sign-ins are built but not switched on yet.
+   See [DNS providers](/docs/dns/providers#built-but-not-switched-on-yet).
 2. **One-click setup**: only where the provider serves our template
    (NameSilo, Glauca Digital, Domain Chief today). After you approve the change
    there, the provider sends you back here. GoDaddy, IONOS, Aruba,
@@ -455,34 +467,33 @@ the domain. The recommended one is open; the others are closed one-line rows und
    two above runs. **Open secure sign-in** opens the provider's own sign-in in a
    secure window, and we add the records. Changes that replace or remove a record wait for the customer's approval. See
    [Secure sign-in](/docs/guides/secure-sign-in).
-4. **API key**: paste a scoped provider credential, one labeled field per part,
-   with a link to where it is created, the steps and the one requirement that
-   matters; anything else, and the provider's notes, sit under a closed
-   **Details**. We keep it encrypted when
-   **Remember this key** stays ticked (untick it to use the key once). Any
-   GoDaddy account that holds a domain can create a Personal Access Token;
-   Namecheap's API needs an eligible account and our server's IP on its
-   allowlist. Route 53 offers an access role first, with no key to paste.
+4. **API key**: paste a scoped provider credential, one labeled field per part.
+   Each field links to where the credential is created, with the steps and the one requirement that matters.
+   Anything else, and the provider's notes, sit under a closed **Details**.
+   We keep it encrypted when **Remember this key** stays ticked.
+   Untick it to use the key once.
+   Any GoDaddy account that holds a domain can create a Personal Access Token.
+   Namecheap's API needs an eligible account and our server's IP on its allowlist.
+   Route 53 offers an access role first, with no key to paste.
 5. **Add the records** by hand: the exact rows to copy, with a link to your
    provider's DNS panel. Then **Check now**.
-6. **DNS hosting**: you change the domain's nameservers once, where it was
-   bought, and CustomDomain™ writes every record after that. It is not a row on
-   this page: it is the **DNS hosting** card at the foot of the domain's **DNS**
-   tab, and the application's **DNS hosting** setting decides whether your
-   customers are offered it in the widget ([set in Ways to connect](#domain-maintenance)). The
-   domain check reports the same verdict as `rails.nameservers`. See
-   [Managed DNS](/docs/dns/managed-dns).
+6. **DNS hosting**: you change the domain's nameservers once, where it was bought.
+   CustomDomain™ writes every record after that.
+   It is not a row on this page.
+   It is the **DNS hosting** card at the foot of the domain's **DNS** tab.
+   The application's **DNS hosting** setting decides whether the widget offers it to your customers ([set in Ways to connect](#domain-maintenance)).
+   The domain check reports the same verdict as `rails.nameservers`.
+   See [Managed DNS](/docs/dns/managed-dns).
 
-Under the detected DNS host the page also says whether your application offers
-DNS hosting to its users (**DNS hosting for your users: Offered**), with a line on
-what it is, a link to its guide and a **Change** to
-[its row in Ways to connect](#domain-maintenance).
+Under the detected DNS host, the page also says whether your application offers DNS hosting to its users.
+It reads **DNS hosting for your users: Offered**, with a line on what it is and a link to its guide.
+A **Change** link opens [its row in Ways to connect](#domain-maintenance).
 
 Not the one with DNS access? Under the records, **Send these records to a
 teammate** emails them to whoever is. Replies go to you.
 
-- An **owner or admin** sending to someone who isn't in the workspace also
-  invites them as a member; the email carries the records and the invite.
+- An **owner or admin** may send to someone who isn't in the workspace.
+  That also invites them as a member, and the email carries the records and the invite.
 - Someone **already in the workspace** gets the records and a link back to
   this domain's setup in the console.
 - A **member** can send the records but not invite: the email links a
@@ -496,17 +507,18 @@ domain that works with no account and invites nobody; see
 
 ## 5. Verify
 
-The connection sits in `pending` until the records resolve, then goes
-`live`. Records written for you (a sign-in, one-click setup or an API key)
-usually verify within seconds: a new connection is checked every five seconds
-at first, and when public DNS still has an old answer, we ask the domain's
-own nameservers instead. You can leave and come back:
+The connection sits in `pending` until the records resolve, then goes `live`.
+Records written for you usually verify within seconds.
+That covers a sign-in, one-click setup or an API key.
+A new connection is checked every five seconds at first.
+When public DNS still has an old answer, we ask the domain's own nameservers instead.
+You can leave and come back.
 **Domains** shows every connection with its reason and a **Resume** link.
-After three minutes of waiting the page offers a fallback. A stalled
-connection is *paused*, not failed: it keeps being checked every six hours.
+After three minutes of waiting, the page offers a fallback.
+A stalled connection is *paused*, not failed, and it keeps being checked every six hours.
 
-While a domain waits for its DNS, its row on **Domains** and the header of its
-page say how long it has waited, in three words:
+While a domain waits for its DNS, its row on **Domains** and the header of its page say how long it has waited.
+They use three words:
 
 | Status | When | What it means |
 | --- | --- | --- |
@@ -514,40 +526,39 @@ page say how long it has waited, in three words:
 | **Records found** | Our check has seen the records and DNS is still updating | Waiting for DNS to update. Usually minutes, sometimes a few hours. |
 | **Not finished** | After 30 minutes without the records, or a check that stalled | The row says "Started 3 days ago" and gives the next step, with **Finish setup** to open the domain's connect page. |
 
-These words describe the wait only. The connection's status in the API is
-unchanged (`pending`, `propagating`, `live`, `failed`), and a domain that is
-adding its records or waiting for its HTTPS certificate keeps its own label.
-"Started" means when the domain was added, since nothing records when you added
-the records.
+These words describe the wait only.
+The connection's status in the API is unchanged (`pending`, `propagating`, `live`, `failed`).
+A domain that is adding its records or waiting for its HTTPS certificate keeps its own label.
+"Started" means when the domain was added, since nothing records when you added the records.
 
-Every domain in your workspace opens on its detail page, whichever
-application it belongs to; the page names the application. A domain that
-isn't live leads with **What happened**: what the last attempt did (it timed
-out, the provider refused a key, it is still waiting for the records, or it is
-connected somewhere else), the next steps in order, and the action that fits:
-**Finish setup**, **Retry** (which restarts a failed attempt), or removing an
-attempt nobody will finish. Below it, a short history says when the domain
-was added and through what, and when its DNS was last checked.
+Every domain in your workspace opens on its detail page, whichever application it belongs to.
+The page names the application.
+A domain that isn't live leads with **What happened**.
+It says what the last attempt did.
+It may have timed out, the provider may have refused a key, it may still wait for the records, or it may be connected somewhere else.
+Then it lists the next steps in order and the action that fits.
+The actions are **Finish setup**, **Retry** (which restarts a failed attempt), or removing an attempt nobody will finish.
+Below it, a short history says when the domain was added and through what.
+It also says when its DNS was last checked.
 
-While a domain is waiting, its detail page offers **Get a ping when it is live**
-(owners and admins), so you can close the tab and be told the moment it connects;
-see [Notifications](/docs/guides/notifications). It also opens **What public DNS shows
-right now**: each record's Name to type, whether public DNS has it, what
-answers instead ("still points to Squarespace"), and the mistakes that block
-a connection even when a record looks right, such as the full hostname typed
-into the Name field or Cloudflare's proxy turned on. It is the same check the
-widget runs for your customers (`GET /v1/connections/{id}/diagnose`), and the
-page to send a customer whose domain is stuck.
+While a domain waits, owners and admins see **Get a ping when it is live** on its detail page.
+You can close the tab and be told the moment it connects (see [Notifications](/docs/guides/notifications)).
+The page also opens **What public DNS shows right now**.
+For each record it shows the Name to type, whether public DNS has it, and what answers instead ("still points to Squarespace").
+It also flags mistakes that block a connection even when a record looks right.
+Two common ones are the full hostname typed into the Name field and Cloudflare's proxy turned on.
+It is the same check the widget runs for your customers (`GET /v1/connections/{id}/diagnose`).
+Send a customer whose domain is stuck to this page.
 
 ### How CustomDomain™ reaches the domain, and who runs its DNS [#how-we-reach-a-domain]
 
 Under the actions, a domain's page says two things in plain words.
 
-**Who runs its DNS** is the first fact. It names the company whose servers answer for
-the domain (its [DNS host](/docs/concepts/glossary#dns-host)), or CustomDomain™ once we
-host the zone ([DNS hosting](/docs/dns/managed-dns)). A move to DNS hosting that is
-under way still shows the old company, with "moving to CustomDomain™" beside it, and a
-move that failed says it needs a look.
+**Who runs its DNS** is the first fact.
+It names the company whose servers answer for the domain (its [DNS host](/docs/concepts/glossary#dns-host)).
+Once we host the zone, it names CustomDomain™ ([DNS hosting](/docs/dns/managed-dns)).
+A move to DNS hosting that is under way still shows the old company, with "moving to CustomDomain™" beside it.
+A move that failed says it needs a look.
 
 **How CustomDomain™ reaches this domain** is a card. It says which access we keep to
 change the domain's records, in one line each:
@@ -563,32 +574,32 @@ change the domain's records, in one line each:
 | **Kept by your AWS access role** | A role in your AWS account. It can add and change records, not delete them. |
 | **Not kept** | We keep no access, so a change to the records needs you at the provider. |
 
-The card's buttons follow from that. **Re-apply now** writes the records again, and
-shows for any kept access that can write right now. **Stop managing** shows whenever the
-domain is managed and drops the sign-in or one-click setup we hold, leaving the records
-where they are. It shows even when the card says DNS hosting or **Not kept**: a managed
-domain that moved to DNS hosting keeps its old sign-in, and this is the way to let go of
-it. **Make this domain
-managed** shows only where it can run: nothing is kept yet, and the provider signs in
-or the deployment can offer one-click setup for it. **Change** opens a menu:
+The card's buttons follow from that.
+**Re-apply now** writes the records again, and shows for any kept access that can write right now.
+**Stop managing** shows whenever the domain is managed.
+It drops the sign-in or one-click setup we hold and leaves the records where they are.
+It shows even when the card says DNS hosting or **Not kept**.
+A managed domain that moved to DNS hosting keeps its old sign-in, and this is how you let go of it.
+**Make this domain managed** shows only where it can run.
+That means nothing is kept yet, and the provider signs in or the deployment can offer one-click setup for it.
+**Change** opens a menu:
 
-- **Use another account** (**Use a saved account** when none is kept) lists the saved
-  accounts that may act for this domain and writes its records with the one you pick. An
-  account has to be at the same DNS provider and still work. Admins and owners see the
-  workspace's accounts for the domain's application, and a member sees the ones they
-  connected, so the list can be empty.
+- **Use another account** lists the saved accounts that may act for this domain, and writes its records with the one you pick.
+  When none is kept, it reads **Use a saved account**.
+  An account has to be at the same DNS provider and still work.
+  Admins and owners see the workspace's accounts for the domain's application.
+  A member sees the ones they connected, so the list can be empty.
 - **Add an account** opens [Add an account](#add-an-account), where you can connect the provider's account once and use it for this domain and others.
-- **Host its DNS instead** opens a sheet that starts [DNS hosting](/docs/guides/nameserver-migration#start-one-domain)
-  for this one domain, whatever the application's DNS hosting setting says. It lists the
-  ways that would work for it: a saved account at the registrar (the company the domain is
-  registered with) that you may use, **Secure sign-in**, and **Change it yourself**, with
-  nothing picked until you pick. When the move cannot start (the plan's limit of hosted
-  domains, a registrar that keeps its own nameservers, a move already under way), the
-  sheet says why and has nothing to start. Once it has started, the page goes to the
-  domain's DNS tab, where the move is shown. A domain whose DNS is already ours shows
-  **See its DNS hosting** in its place, and one whose move is under way or failed shows
-  **See the DNS hosting move**. The connect page has the same button under the detected
-  DNS host.
+- **Host its DNS instead** opens a sheet that starts [DNS hosting](/docs/guides/nameserver-migration#start-one-domain) for this one domain.
+  It works whatever the application's DNS hosting setting says.
+  It lists the ways that would work, and nothing is picked until you pick.
+  The ways are a saved account at the registrar (the company the domain is registered with), **Secure sign-in**, and **Change it yourself**.
+  Sometimes the move cannot start, and the sheet says why with nothing to start.
+  Reasons include the plan's limit of hosted domains, a registrar that keeps its own nameservers, or a move already under way.
+  Once the move starts, the page goes to the domain's DNS tab, which shows the move.
+  A domain whose DNS is already ours shows **See its DNS hosting** instead.
+  One whose move is under way or failed shows **See the DNS hosting move**.
+  The connect page has the same button under the detected DNS host.
 
 A viewer sees the card with its buttons off, and the reason under them: members, admins
 and owners can change domains. The **Management** line under **Details** reads
@@ -603,72 +614,81 @@ was called **Edge**: it keeps its address, so old links still open it. **Setting
 the domain itself, one card each. The first three are fields with their own **Save**, so you can change
 them any time after the domain is set up:
 
-- **Who it is for** is the client or customer name the **Domains** list shows and filters by. Type a
-  name and **Save**; empty the field and **Save** to take it off. The name is yours: it is not shown to
-  your customers, and it is not the id your product gave the customer, which is shown under the field and
-  stays as it is ([whose a domain is](#many-domains-and-whose-they-are)). It can be up to 200 characters, and
-  characters that draw nothing (a right to left override, a zero width space, blank fillers) are dropped. A
-  name with nothing readable in it is refused; to take the name off, empty the field.
-- **www redirect**, on a root domain only (`acme.com`, not `shop.acme.com`), is a switch that sends visitors
-  of the root on to `www.` that domain. It is on every plan, and the **www redirect** fact on the
-  **Overview** opens this card. Turning it on adds a `www` record to the records the domain needs. After
-  **Save**, the card says whether we added the record for you (CustomDomain™ runs the domain's DNS, or a
-  connected account we keep can write it) or whether you add it where you manage DNS, with the record and a
-  link to the **DNS** tab. The domain stays live meanwhile. Turning it off also stops us answering for
-  `www.` that domain, unless you connected it as its own domain.
-- **Forwarding** sends every visit to another address, with the same path: type an `https://` address and
-  **Save**, or **Clear**. Forwarding is part of edge serving, so a workspace without it reads **Included on
-  Growth and up.**, a domain that points at your own servers reads **Not on the edge** (and its www redirect
-  does nothing there), and a deployment with edge serving off has no card. A refused address says why: it
-  must start with `https://`, it can't hold a user name or password, it must be a public domain name (not an
-  IP address, `localhost` or an internal name), it can't be a domain another CustomDomain™ workspace has
-  connected or claimed (one your own workspace serves is fine), and it can't send visitors round in a circle (to the domain itself, or through the
-  `www` redirect or your other forwards back to where they started) or through more than 8 forwards in a row.
-  See
-  [forwarding](/docs/connect-flow/forwarding#from-the-console).
+- **Who it is for** is the client or customer name the **Domains** list shows and filters by.
+  Type a name and **Save**.
+  To take it off, empty the field and **Save**.
+  The name is yours, and your customers never see it.
+  It is not the id your product gave the customer, which shows under the field and stays as it is ([whose a domain is](#many-domains-and-whose-they-are)).
+  It can be up to 200 characters.
+  Characters that draw nothing are dropped, such as a right to left override, a zero width space or blank fillers.
+  A name with nothing readable in it is refused.
+- **www redirect** sends visitors of a root domain on to `www.` that domain.
+  It shows on a root domain only (`acme.com`, not `shop.acme.com`).
+  It is on every plan, and the **www redirect** fact on **Overview** opens this card.
+  Turning it on adds a `www` record to the records the domain needs.
+  After **Save**, the card says who adds that record.
+  We add it when CustomDomain™ runs the domain's DNS or a connected account we keep can write it.
+  Otherwise you add it where you manage DNS, and the card shows the record and links to the **DNS** tab.
+  The domain stays live meanwhile.
+  Turning it off also stops us answering for `www.` that domain, unless you connected it as its own domain.
+- **Forwarding** sends every visit to another address, with the same path.
+  Type an `https://` address and **Save**, or **Clear**.
+  Forwarding is part of edge serving.
+  A workspace without edge serving reads **Included on Growth and up.**
+  A domain that points at your own servers reads **Not on the edge**, and its www redirect does nothing there.
+  A deployment with edge serving off has no card.
+  A refused address says why.
+  It must start with `https://`, and it can't hold a user name or password.
+  It must be a public domain name, not an IP address, `localhost` or an internal name.
+  It can't be a domain another CustomDomain™ workspace has connected or claimed, though one your own workspace serves is fine.
+  It can't send visitors round in a circle, back to where they started.
+  That includes the domain itself, or a loop through the `www` redirect or your other forwards.
+  It also can't pass through more than 8 forwards in a row.
+  See [forwarding](/docs/connect-flow/forwarding#from-the-console).
 - **Remove this domain** opens the same removal dialog as the **Overview**'s menu, and links
   [what removing does](/docs/connect-flow/offboarding).
 
 Members, admins and owners can change a domain's settings. A viewer reads the same cards as values, with
-**Remove domain** turned off and the reason under it. A test mode domain has **Who it is for** and
+**Remove domain** turned off and the reason under it. A Sandbox domain has **Who it is for** and
 **Remove this domain** only. Every change is recorded in the [audit log](/docs/security/overview) as
 **Domain settings changed**.
 
 ## 6. Serve something
 
-Live means the edge terminates TLS and proxies the domain to your
-application's **origin** (**Edge serving**). If you haven't set one, the domain shows a "not
-configured" page: set it under **Routing**, the page titled **Where domains
-point**, as the **Application address**, or point the domains straight at your own servers
-there instead. See [Where domains point](/docs/connect-flow/routing). The domain's **Serving** tab
-shows whether the edge serves it and where your application runs. Root-domain redirects
-(`www_redirect`) and forwarding are shown on its **Settings** tab and set with the API, as are per-path rules.
+Live means the edge terminates TLS and proxies the domain to your application's **origin** (**Edge serving**).
+If you haven't set an origin, the domain shows a "not configured" page.
+Set it under **Routing**, on the page titled **Where domains point**, as the **Application address**.
+Or point the domains straight at your own servers there instead.
+See [Where domains point](/docs/connect-flow/routing).
+The domain's **Serving** tab shows whether the edge serves it and where your application runs.
+Root-domain redirects (`www_redirect`) and forwarding show on its **Settings** tab.
+You set them with the API, along with per-path rules.
 
 ## 7. See its traffic
 
-Once the CustomDomain™ edge serves a domain, its detail page has a
-**Traffic** tab: requests by the kind of answer visitors got (success,
-redirects, client errors, server errors), data sent to visitors, how
-fast your origin answered (p95 and median time to first byte), approximate
-visitors, and when the last request arrived, over 24 hours, 7, 30 or 90 days.
-**Analytics** has a **Traffic** tab for the whole workspace (or one
-application), with the busiest domains ([below](#analytics)).
+Once the CustomDomain™ edge serves a domain, its detail page has a **Traffic** tab.
+It shows requests by the kind of answer visitors got: success, redirects, client errors and server errors.
+It also shows data sent to visitors and how fast your origin answered (p95 and median time to first byte).
+It adds approximate visitors and when the last request arrived.
+You can view 24 hours, 7, 30 or 90 days.
+**Analytics** has a **Traffic** tab for the whole workspace or one application, with the busiest domains ([below](#analytics)).
 
-Data sent to visitors counts the response bodies the edge relayed from your
-application and the pages the edge wrote itself: redirects, the page a domain
-shows when it has no application address yet, and its error page. Before
-2026-11-02 the edge's own pages were not counted, so a domain whose requests were
-all "nothing to serve" pages showed 0 B beside thousands of requests.
+Data sent to visitors counts two things.
+It counts the response bodies the edge relayed from your application.
+It also counts the pages the edge wrote itself: redirects, the page for a domain with no application address yet, and its error page.
+Before 2026-11-02 the edge's own pages were not counted.
+So a domain whose requests were all "nothing to serve" pages showed 0 B beside thousands of requests.
 
-Only traffic that passes through the edge is counted. A domain connected for
-DNS only points at your own servers, so its visitors never reach us; its page
-says so instead of showing zeros, and your hosting has those numbers.
+Only traffic that passes through the edge is counted.
+A domain connected for DNS only points at your own servers, so its visitors never reach us.
+Its page says so instead of showing zeros, and your hosting has those numbers.
 
-Counts arrive about a minute after each visit. No visitor's IP address is
-stored: visitors are estimated from a sketch of keyed hashes, and someone who
-visits on two days counts once on each. Hourly detail is kept 14 days and
-daily totals 400 days. The API has the same figures:
-`GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
+Counts arrive about a minute after each visit.
+No visitor's IP address is stored.
+Visitors are estimated from a sketch of keyed hashes.
+Someone who visits on two days counts once on each.
+Hourly detail is kept 14 days and daily totals 400 days.
+The API has the same figures: `GET /v1/connections/{id}/traffic` and `GET /v1/traffic`.
 
 ## Analytics [#analytics]
 
@@ -676,33 +696,34 @@ daily totals 400 days. The API has the same figures:
 
 ### Widget
 
-The widget funnel: sessions, how many entered a domain, were offered a rail, were
-shown records, and connected. **Most common stopping point** names the step people
-most often stopped at, and how many of the sessions that did not finish stopped
-there. The step is the last one a person saw before closing the widget. Until
-2026-11-02 the card nearly always read "Closed the widget", because closing
-overwrote the step; the control plane now keeps the step before the close, and
-sessions recorded earlier read correctly once it is updated. Steps with the same
-label add up.
+The widget funnel counts sessions at each step.
+The steps are entered a domain, offered a [way to connect](/docs/concepts/glossary), shown records, and connected.
+**Most common stopping point** names the step people most often stopped at.
+It also says how many of the unfinished sessions stopped there.
+The step is the last one a person saw before closing the widget.
+Until 2026-11-02 the card nearly always read "Closed the widget", because closing overwrote the step.
+The control plane now keeps the step before the close.
+Sessions recorded earlier read correctly once it is updated.
+Steps with the same label add up.
 
-**Is the widget installed?** Analytics, the widget card on **Overview** and the
-check on the **Install** tab all answer it the same way, from the sessions the
-widget records when it opens. A session is a **console test** when it came from
-your own console (**Try it live** and the welcome's domain step); every other
-session came from your product. You see one of:
+**Is the widget installed?**
+Analytics, the widget card on **Overview** and the check on the **Install** tab all answer it the same way.
+They read the sessions the widget records when it opens.
+A session is a **console test** when it came from your own console: **Try it live** and the welcome's domain step.
+Every other session came from your product.
+You see one of:
 
 - "Installed on yourapp.com, last seen 2 hours ago": the widget opened in your
   product. The site is the page's address without a path.
 - "Only seen on localhost": it opened only on your own machine so far.
 - "Not seen in your product yet": no session from your product has been recorded.
 
-Sessions are split into **in your product** and **console tests**, so your own
-clicks in **Try it live** never make the widget look installed. The **Design**
-preview opens no session. The API has it as `install` on
-[`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics),
-one entry per application with `product_sessions`, `test_sessions`, the same two
-counts inside the date range, `last_product_at`, `last_product_host` and
-`last_test_at`; an application with no session is not listed.
+Sessions are split into **in your product** and **console tests**.
+So your own clicks in **Try it live** never make the widget look installed.
+The **Design** preview opens no session.
+The API has it as `install` on [`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics), one entry per application.
+Each entry has `product_sessions`, `test_sessions`, the same two counts inside the date range, `last_product_at`, `last_product_host` and `last_test_at`.
+An application with no session is not listed.
 
 ### Traffic
 
@@ -719,34 +740,32 @@ Then three figures:
 - **Data sent to visitors**, the size of the response bodies (headers are not
   counted).
 
-**How requests were answered** splits the requests by what the visitor got, each
-with a one-line explanation: **Served (2xx)**, **Redirected (3xx)**, **Not served
-(4xx)** (the page does not exist, was refused, or the domain has no application
-address set yet) and **Application errors (5xx)** (your application did not answer
-or failed). The table of busiest domains has four columns: **Domain**,
-**Requests**, **Not served** (the share answered with a 4xx or 5xx) and **Last
-request**. The API has the same figures
-([`GET /v1/traffic`](/docs/api-reference/analytics/getTrafficSummary)).
+**How requests were answered** splits the requests by what the visitor got, with a line on each.
+**Served (2xx)** means the page loaded.
+**Redirected (3xx)** means the visitor was sent elsewhere.
+**Not served (4xx)** means the page does not exist, was refused, or the domain has no application address set yet.
+**Application errors (5xx)** means your application did not answer or failed.
+The table of busiest domains has four columns: **Domain**, **Requests**, **Not served** and **Last request**.
+**Not served** is the share answered with a 4xx or 5xx.
+The API has the same figures ([`GET /v1/traffic`](/docs/api-reference/analytics/getTrafficSummary)).
 
 ### Providers
 
 Where domains stall, by the DNS provider they are with:
 
-- A table with a row per provider and five columns: **DNS provider**, **Started**
-  (domains added in the period), **Connected** (how many are live now), **Rate**
-  and **Top reason stuck**, the most common reason that provider's unfinished
-  domains are stuck, or "Nothing stuck".
-- **Time to go live** counts the live domains by how long they took from being
-  added: under 5 minutes, 5 minutes to 1 hour, 1 hour to 1 day, over a day.
-- **How domains connect** lists each way of connecting and each domain type (root
-  domain, subdomain) with domains added, how many are live and the median time to
-  go live.
+- A table with a row per provider and five columns.
+  **DNS provider** names it, and **Started** counts domains added in the period.
+  **Connected** counts how many are live now, next to **Rate**.
+  **Top reason stuck** names the most common reason that provider's unfinished domains are stuck, or "Nothing stuck".
+- **Time to go live** counts the live domains by how long they took from being added.
+  The bands are under 5 minutes, 5 minutes to 1 hour, 1 hour to 1 day, and over a day.
+- **How domains connect** lists each way of connecting and each domain type (root domain, subdomain).
+  For each it shows domains added, how many are live and the median time to go live.
 
-The API returns the same on
-[`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics):
-`top_stuck`, `top_stuck_count` and `median_seconds_to_live` on each provider,
-`median_seconds_to_live` on each method and domain type, and `time_to_live`
-beside `stuck`, all under `connections`.
+The API returns the same on [`GET /v1/analytics/connect`](/docs/api-reference/analytics/getConnectAnalytics), all under `connections`.
+Each provider has `top_stuck`, `top_stuck_count` and `median_seconds_to_live`.
+Each method and domain type has `median_seconds_to_live`.
+`time_to_live` sits beside `stuck`.
 
 #### The numbers in the API [#analytics-api]
 
@@ -771,13 +790,11 @@ customers have used secure sign-in.
   changes, done. Each stage shows how many sessions reached it and the share lost
   since the stage before. A session you finished by hand and one still running are
   counted apart and are not a loss.
-- **Time per step.** For each step, the median and the slowest tenth, as a bar:
-  opening the browser, your customer signing in, reading the DNS page and
-  planning, review and start, and writing the records.
-- **Why sessions stopped,** in plain words: the browser did not start, left at
-  sign in, code never entered, could not finish at the provider, provider stopped
-  the sign-in, timed out, cancelled, changes failed, or something else. Each session is filed
-  under one reason.
+- **Time per step.** For each step, a bar shows the median and the slowest tenth.
+  The steps are opening the browser, your customer signing in, reading the DNS page and planning, review and start, and writing the records.
+- **Why sessions stopped,** in plain words.
+  The reasons are: the browser did not start, left at sign in, code never entered, could not finish at the provider, provider stopped the sign-in, timed out, cancelled, changes failed, or something else.
+  Each session is filed under one reason.
 - **Recent runs.** The newest sessions with their provider, outcome and total time.
   Open one to see its steps as a timeline, with the seconds since the run began.
   Steps are fixed words: a timeline never holds a code, a password, a domain or
@@ -795,19 +812,18 @@ and [`GET /v1/analytics/secure-sign-in/sessions/{sid}`](/docs/api-reference/anal
 Two more panels on **Analytics** appear once there is something to count. Both
 follow the date range and the application picker, like the rest of the page.
 
-- **Devices and places**, on the **Widget** tab: the widget sessions by device
-  (desktop, phone, tablet), top countries and browsers, each a ranked list, and
-  how often a session on each kind of device connected its domain. Counts only:
-  no IP address, city or single session is ever shown. See
-  [what a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
-- **Secure sign-in**, on the **Providers** tab (a summary, with a link to the
-  [Secure sign-in tab](#secure-sign-in-tab)), when your customers used
-  [secure sign-in](/docs/guides/secure-sign-in): sessions started, signed in and
-  done, the average time to sign in and to done, a table per DNS provider
-  (started, signed in, changes shown, applied, done), and why the rest stopped
-  ("Human check on screen", "Code or approval never came", "Customer cancelled"
-  and so on), counted without and with a proxy in the customer's country. A reason
-  a proxy could change is marked **A proxy can change this**.
+- **Devices and places**, on the **Widget** tab, ranks the widget sessions by device (desktop, phone, tablet).
+  It also ranks top countries and browsers.
+  It shows how often a session on each kind of device connected its domain.
+  These are counts only: no IP address, city or single session is ever shown.
+  See [what a widget session records](/docs/widget-sdk/reference#what-a-widget-session-records).
+- **Secure sign-in** appears on the **Providers** tab when your customers used [secure sign-in](/docs/guides/secure-sign-in).
+  It is a summary, with a link to the [Secure sign-in tab](#secure-sign-in-tab).
+  It counts sessions started, signed in and done, with the average time to sign in and to done.
+  A table per DNS provider counts started, signed in, changes shown, applied and done.
+  It also says why the rest stopped, such as "Human check on screen", "Code or approval never came" or "Customer cancelled".
+  Each reason is counted without and with a proxy in the customer's country.
+  A reason a proxy could change is marked **A proxy can change this**.
 
 The API has both: `audience` and `secure_sign_in` on `GET /v1/analytics/connect`.
 
@@ -821,47 +837,48 @@ provider, the domain's page has a **Provider API key** card:
   **Needs the end user to sign in again** or **Ended**.
 - When it ends, its name at the provider, when it was checked, and when it was
   renewed and a reconnect link last went out.
-- **What it can do**, when the key reaches more than the domain's DNS, in a
-  sentence: "This key can also transfer the domain away from Spaceship, and make
-  charges on the account (renewals and purchases)."
+- **What it can do**, when the key reaches more than the domain's DNS.
+  It reads as a sentence, such as: "This key can also transfer the domain away from Spaceship, and make charges on the account (renewals and purchases)."
 - **Send reconnect link** emails your customer a link to sign in again when you
   gave us their address, and copies the link otherwise. **Copy reconnect link**
   copies one to pass on. A link works once, for 14 days
   ([reconnecting](/docs/guides/secure-sign-in#reconnect)).
-- After a renewal, a note that the old key still exists at the provider, with a
-  link to the provider's keys page to revoke it there.
+- After a renewal, a note says the old key still exists at the provider.
+  It links to the provider's keys page so you can revoke it there.
 
-**Connected accounts** lists such a key with the badge **Made at sign in**. Its
-sheet shows the domain, when the key ends, its name, scopes, when it was checked
-and the account's name or number at the provider where the page showed one, never the key. A key
-your customer's sign-in made serves only that customer's domains. Either kind is renewed by a
-new sign-in, never by pasting a key, so its only action is **Remove**.
-Removing it deletes CustomDomain™'s copy; the key itself stays at the provider
-until it is revoked there. A domain's timeline says when the key was made,
-renewed, nearing its end or refused.
+**Connected accounts** lists such a key with the badge **Made at sign in**.
+Its sheet shows the domain, when the key ends, its name, scopes and when it was checked.
+It also shows the account's name or number at the provider, where the page showed one.
+It never shows the key.
+A key your customer's sign-in made serves only that customer's domains.
+Either kind is renewed by a new sign-in, never by pasting a key, so its only action is **Remove**.
+Removing it deletes CustomDomain™'s copy.
+The key itself stays at the provider until it is revoked there.
+A domain's timeline says when the key was made, renewed, nearing its end or refused.
 
 ## Many domains, and whose they are
 
-If you manage domains for clients, or have a lot of your own, you don't have to
-connect them one at a time. After **My clients**, the welcome's next screen is a
-box: paste a column from a spreadsheet, a line of addresses or
-a list of links, in any mix. The same box is on **Domains** under **Add
-several**, up to 200 at a time.
+If you manage domains for clients, or have a lot of your own, you don't connect them one at a time.
+After **My clients**, the welcome's next screen is a box.
+Paste a column from a spreadsheet, a line of addresses or a list of links, in any mix.
+The same box is on **Domains** under **Add several**, up to 200 at a time.
 
-- **What it reads.** An address gives its host, a repeat is added once and
-  counted, and anything that is not a domain is listed and left out. Nothing you
-  typed is thrown away: what could not be added stays in the box.
+- **What it reads.** An address gives its host.
+  A repeat is added once and counted.
+  Anything that is not a domain is listed and left out.
+  Nothing you typed is thrown away: what could not be added stays in the box.
 - **Whose it is.** A name typed above the box is shown next to every domain
   below it. A name after a comma or a tab on a line (`beta.org, Beta Bakery`) is
   used for that domain instead. A domain already in your workspace is left as it
   was. The name can be changed later: open the domain's **Settings** tab, type
   another name and **Save**, or empty the field to take it off.
-- **The first ten domains are free.** A new workspace connects its first ten
-  domains without a card, and the rest once the free trial has started. The box
-  says so before you paste, with **Start free trial** beside it (nothing is
-  charged for 14 days). It adds what it can now and keeps the rest in the box,
-  and after the trial starts you land back on the same page with the rest still
-  there. A teammate who is not an owner or an admin is told to ask one of them.
+- **The first ten domains are free.**
+  A new workspace connects its first ten domains without a card, and the rest once the free trial has started.
+  The box says so before you paste, with **Start free trial** beside it.
+  Nothing is charged for 14 days.
+  It adds what it can now and keeps the rest in the box.
+  After the trial starts, you land back on the same page with the rest still there.
+  A teammate who is not an owner or an admin is told to ask one of them.
 - **Adding is not connecting.** A list puts the domains in your workspace, each
   waiting for its DNS records. Finish each the way you would finish one, from its
   row on **Domains**, or send the step to the person who has the DNS (below).
@@ -873,21 +890,22 @@ On **Domains**, a workspace for clients says **client** where the others say
   client.
 - **Order** shows newest first (the default), oldest first, domain, client, or
   what needs attention first.
-- **Export CSV** saves exactly the rows shown, in the order shown: domain,
-  status, client, DNS host, when it was added and from where, the application,
-  and what is left to do. It opens in a spreadsheet. A client name that starts
-  with `=`, `+`, `-` or `@` is saved as text, so a spreadsheet never runs it.
+- **Export CSV** saves exactly the rows shown, in the order shown.
+  Each row has the domain, status, client, DNS host, when and where it was added, the application, and what is left to do.
+  It opens in a spreadsheet.
+  A client name that starts with `=`, `+`, `-` or `@` is saved as text, so a spreadsheet never runs it.
 
 A domain's own page says "For Acme Dental" in a workspace for clients, where it
 would say who connected it elsewhere.
 
 ### A link for the client
 
-**Send these records to a teammate** also invites its recipient to the workspace
-when an owner or an admin sends it, which is wrong for a client who has the DNS.
-**Copy a link for the client** (in the ⋯ menu of a row on **Domains**, and beside
-the email option on the connect step; it reads **Copy a setup link** in other
-workspaces) makes a link for that one domain instead:
+When an owner or an admin uses **Send these records to a teammate**, it also invites the recipient to the workspace.
+That is wrong for a client who has the DNS.
+**Copy a link for the client** makes a link for that one domain instead.
+Find it in the ⋯ menu of a row on **Domains**, and beside the email option on the connect step.
+Other workspaces see it as **Copy a setup link**.
+The link shows:
 
 - Whoever opens it finishes that domain with no account, and nobody is invited.
   The page carries your workspace's name and nothing about its billing.
@@ -906,27 +924,31 @@ are too long for a pop-up on a phone. Nothing is chosen for you.
    the domain, and a DNS host runs the records that say where a name goes. If you are not sure who
    runs your domain's DNS, type a domain you have there and **Find it** looks it up. A company that connects
    one domain at a time is named and sent to the connect page, because there is no account to add.
-2. **How to connect.** Only that company's ways, easiest first. **Sign in to the company** opens a
-   secure window over the page: you sign in, we make the API key for you, and we show what it
-   can do and when it ends. **Paste an API key** shows the company's own steps and the page where
-   the key is made, then **Check the key** reads the domains it reaches. A company whose key is
-   used once says why, and links to [what that means](/docs/connect-flow/provider-accounts#credentials-that-are-used-once).
+2. **How to connect.** Only that company's ways, easiest first.
+   **Sign in to the company** opens a secure window over the page.
+   You sign in, we make the API key for you, and we show what it can do and when it ends.
+   **Paste an API key** shows the company's own steps and the page where the key is made.
+   Then **Check the key** reads the domains it reaches.
+   A company whose key is used once says why, and links to [what that means](/docs/connect-flow/provider-accounts#credentials-that-are-used-once).
    With more than one application, you also say which one the key and its domains are for.
-3. **What it may do.** Every domain in the account, or only the ones you tick. A company that cannot
-   list its domains asks for one domain the key manages, so we can check the key. Then which
-   [applications may use the key](/docs/connect-flow/provider-accounts#which-applications-may-use-it)
-   (an admin or an owner can share a sign-in's key with the others), and whether it is
-   [kept or used once](/docs/connect-flow/provider-accounts#access).
+3. **What it may do.** Pick every domain in the account, or only the ones you tick.
+   A company that cannot list its domains asks for one domain the key manages, so we can check the key.
+   Then pick which [applications may use the key](/docs/connect-flow/provider-accounts#which-applications-may-use-it).
+   An admin or an owner can share a sign-in's key with the others.
+   Last, choose whether it is [kept or used once](/docs/connect-flow/provider-accounts#access).
 
-Then **Connect N domains now** writes the records of the domains the account may use, each into
-the application you choose, and says what happened to each one. **Later** leaves them for the
-account's own page. If you close the sign-in window, go back, or take more than ten minutes,
-nothing is kept and the page names the key it already made, with the provider's page that deletes it
-(going back to the first step keeps naming it there, and choosing the same company again names it on its step 2).
-If a domain's result does not come back, the page says it cannot tell whether that domain connected, and
-**Try the ones that failed again** offers it once more, into the same application, so a repeat never connects a domain twice.
-A viewer cannot add an account. The same steps, with the calls behind them, are in
-[Provider accounts](/docs/connect-flow/provider-accounts#add-an-account-in-the-console).
+Then **Connect N domains now** writes the records of the domains the account may use.
+Each goes into the application you choose, and the page says what happened to each one.
+**Later** leaves them for the account's own page.
+Sometimes nothing is kept: you close the sign-in window, go back, or take more than ten minutes.
+The page then names the key it already made, with the provider's page that deletes it.
+Going back to the first step keeps naming it there.
+Choosing the same company again names it on its step 2.
+If a domain's result does not come back, the page says it cannot tell whether that domain connected.
+**Try the ones that failed again** offers it once more, into the same application.
+So a repeat never connects a domain twice.
+A viewer cannot add an account.
+The same steps, with the calls behind them, are in [Provider accounts](/docs/connect-flow/provider-accounts#add-an-account-in-the-console).
 
 ## Who added each domain [#where-each-domain-came-from]
 
@@ -940,13 +962,12 @@ small icon for the way it was created. The tabs above the list filter by it
 | **Added in the console** | **Console** | You or a teammate, here. A domain you opened with **Try it live** reads **Console, try it live** and names the member. |
 | **Via the API or agents** | **API**, **Agent** or **MCP** | Your server with an API key, an AI agent you authorized, or the MCP server. |
 
-A row does not say a name twice: the client name you typed when you added a
-domain here shows only where **Added by** has no name of its own. The list opens
-on **All**, and nothing sits above it but the filters (on a phone, the status,
-application and sort filters and **Export CSV** wait behind **Filters**). What
-needs someone is under the **Needs attention** filter, which shows how many
-domains it holds. Domains added before sources were recorded (September 2026) say
-nothing and are listed under **All** only.
+A row does not say a name twice.
+The client name you typed here shows only where **Added by** has no name of its own.
+The list opens on **All**, and nothing sits above it but the filters.
+On a phone, the status, application and sort filters and **Export CSV** wait behind **Filters**.
+What needs someone is under the **Needs attention** filter, which shows how many domains it holds.
+Domains added before sources were recorded (September 2026) say nothing, and are listed under **All** only.
 
 The API returns the same fact as `created_via` on every connection
 (`widget`, `console`, `api`, `agent`, `mcp`, or empty when not recorded). A member
@@ -955,32 +976,41 @@ or key name is not part of that field yet, so **Added by** cannot show one. The
 
 ## See which domains we host, and which we keep no access to [#hosting-and-access-filters]
 
-Under the filters on **Domains**, two buttons narrow the list in one click. Each shows
-how many domains it lists in the application you are looking at, counted before
-search and the other filters, and turns off with a second click. A button shows
-while it lists something or is on, and on a phone it is not behind **Filters**, so
-from **Overview** it is one click to **Domains** and one on the button.
+Under the filters on **Domains**, two buttons narrow the list in one click.
+Each shows how many domains it lists in the application you are looking at.
+That count comes before search and the other filters.
+A second click turns a button off.
+A button shows while it lists something or is on.
+On a phone it is not behind **Filters**.
+So from **Overview** it is one click to **Domains** and one on the button.
 
 | Button | Lists | Address |
 | --- | --- | --- |
 | **DNS hosted by us** | The domains whose [DNS hosting](/docs/dns/managed-dns) is live: a zone of ours serves them, whoever runs its nameservers. A move that is still under way is not in it. | `?dns_hosting=hosted` |
 | **No saved access** | The domains where we keep nothing to change the DNS for you: no connected account, no kept sign-in or one-click setup, no AWS access role, and no hosting of ours (a hosted domain, or a zone of ours being set up or failed). A move to a DNS host or to your own nameservers links no zone of ours, so the domain is listed until it is hosted. A test domain keeps nothing and serves nothing, and a domain whose hosting we could not read is unknown, so neither is listed. An account whose key was revoked or needs reconnecting still counts as access in this list; the domain's page says what is wrong. The **?** beside it explains [saved access](/docs/connect-flow/provider-accounts#whose-key-it-is-and-saved-access). | `?access=none` |
 
-The two combine with each other and with the status, source, application and client
-filters; a domain whose DNS we host is never under **No saved access**, because
-hosting is how we change its records, and neither is a zone of ours that is being set up. The same addresses work as links.
+The two combine with each other and with the status, source, application and client filters.
+A domain whose DNS we host is never under **No saved access**, because hosting is how we change its records.
+Neither is a zone of ours that is being set up.
+The same addresses work as links.
 
-From a laptop up, the list has a **DNS host** column: who runs the domain's DNS.
-It says **CustomDomain™** (with a note, **DNS hosting** or **at Cloudflare**)
-for a hosted domain, **Your own nameservers** when the platform's own serve it, and
-otherwise the provider the domain is at, with **moving to CustomDomain™** while a
-move is under way and **DNS hosting needs a look** when one failed. A hosted domain
-no longer shows the provider it came from. On a phone and a tablet the same words
-sit beside the status. **Export CSV** has the same **DNS host** column.
+From a laptop up, the list has a **DNS host** column that says who runs the domain's DNS.
+A hosted domain shows **CustomDomain™**, with a note: **DNS hosting** or **at Cloudflare**.
+**Your own nameservers** means the platform's own serve it.
+Otherwise it shows the provider the domain is at.
+While a move is under way it adds **moving to CustomDomain™**, and **DNS hosting needs a look** when one failed.
+A hosted domain no longer shows the provider it came from.
+On a phone and a tablet, the same words sit beside the status.
+**Export CSV** has the same **DNS host** column.
 
 ## Connected accounts [#connected-accounts]
 
-**Connected accounts** is every provider key and kept sign-in we hold so your domains can be changed for you. It is one list, a line for each account. Open a line for the account's sheet: its facts, its name, the domains it may configure, and the buttons to connect more domains, check the key, give it a new key or remove it. [What the sheet does](#account-sheet) depends on how the key was made.
+**Connected accounts** lists every provider key and kept sign-in we hold so we can change your domains for you.
+It is one list, with a line for each account.
+Open a line for the account's sheet.
+It shows the account's facts, its name and the domains it may configure.
+It also has buttons to connect more domains, check the key, give it a new key or remove it.
+[What the sheet does](#account-sheet) depends on how the key was made.
 
 ### What needs you
 
@@ -998,25 +1028,61 @@ The accounts that need you come first, under **Needs you**, and each one says wh
 ### What every line says
 
 - **How it was made and by whom.** A pasted key says who pasted it (a teammate's e-mail, or the API key's name). A key a secure sign-in made says who started the sign-in, or that it was made when **a customer** signed in. It never names your customer.
-- **What it can do.** In plain words: put back records it wrote that disappeared (where automatic repair is on), remove them when a domain is removed, and re-apply them when asked. A one time key says it connects the domains you chose now and is then deleted. A key a sign-in made also says what it can do beyond DNS records, such as transferring the domain away or making charges on the account, when the provider gave it that right.
-- **Its domains, last use and end.** How many domains it keeps in sync, when it was last used, and when it ends: **No end date** for a pasted key, the key's own date for a sign-in key, and the hour a one time key is deleted by.
+- **What it can do.** It says in plain words what the account can do.
+  It can put back records it wrote that disappeared, where automatic repair is on.
+  It can remove them when a domain is removed, and re-apply them when asked.
+  A one time key says it connects the domains you chose now and is then deleted.
+  A key a sign-in made also says what it can do beyond DNS records, when the provider gave it that right.
+  Examples are transferring the domain away or making charges on the account.
+- **Its domains, last use and end.** It shows how many domains it keeps in sync and when it was last used.
+  It also shows when it ends.
+  A pasted key reads **No end date**.
+  A sign-in key shows the key's own date.
+  A one time key shows the hour it is deleted by.
 
 ### The account's sheet [#account-sheet]
 
 - **Rename.** **Rename** beside the badges changes the account's name, one to 80 characters with no line breaks or invisible characters in it. A name can be an e-mail address, so it is hidden when a session is recorded.
-- **Domains it may configure.** The list of domains is in the sheet: open the account, tick the domains, **Save**. A pasted key and a key a secure sign-in made list the domains the key reaches. For a key a sign-in made, each domain you add is read with the key first, and one the key does not reach is named and nothing is saved. A key your customer made can only lose domains: it lists the ones it has, never asks the provider, and is never given more. [What each kind of key allows](/docs/connect-flow/provider-accounts#what-each-kind-of-account-allows).
+- **Domains it may configure.** The list of domains is in the sheet.
+  Open the account, tick the domains, and **Save**.
+  A pasted key and a key a secure sign-in made list the domains the key reaches.
+  For a key a sign-in made, we read each domain you add with the key first.
+  If the key does not reach one, we name it and save nothing.
+  A key your customer made can only lose domains.
+  It lists the ones it has, never asks the provider, and is never given more.
+  See [What each kind of key allows](/docs/connect-flow/provider-accounts#what-each-kind-of-account-allows).
 - **Applications that may use it.** A key a sign-in made belongs to one application. An admin or an owner ticks the others that may use it. A pasted key serves every application, and a customer's key only its own. [Which applications may use it](/docs/connect-flow/provider-accounts#which-applications-may-use-it).
 - **Connect more domains.** Lists what the key reaches that you have not connected, and any other domain you type. Choose the application and connect; each domain says what happened.
 - **Check now.** Reads the key at the provider and says it works, was refused, or could not be reached. A key is checked once a day by itself.
-- **Sign in again.** For a key a sign-in made. You sign in to the provider again over the page and **Use the new key** swaps it in: the same account, with its name, domains and settings. We name the old key and link the provider's page where you delete it. A pasted key is replaced with **Replace key**, by pasting a new one; a customer's key is renewed when your customer signs in again.
-- **Remove.** Says how many domains use the account (they stay connected, but we can no longer repair them or remove their records) and, once done, links the page at the provider that deletes the key.
-- **Who holds the limit.** One line says whether the provider or CustomDomain™ keeps the key to the domains you picked, for example "CustomDomain™ uses this key only for the domains you pick. GoDaddy itself lets it reach the whole account." [Who enforces the limit](/docs/connect-flow/provider-accounts#who-enforces-the-limit).
+- **Sign in again.** This is for a key a sign-in made.
+  You sign in to the provider again over the page, and **Use the new key** swaps it in.
+  It keeps the same account, with its name, domains and settings.
+  We name the old key and link the provider's page where you delete it.
+  You replace a pasted key with **Replace key**, by pasting a new one.
+  A customer's key is renewed when your customer signs in again.
+- **Remove.** It says how many domains use the account.
+  They stay connected, but we can no longer repair them or remove their records.
+  Once removed, it links the page at the provider that deletes the key.
+- **Who holds the limit.** One line says whether the provider or CustomDomain™ keeps the key to the domains you picked.
+  For example: "CustomDomain™ uses this key only for the domains you pick. GoDaddy itself lets it reach the whole account."
+  See [Who enforces the limit](/docs/connect-flow/provider-accounts#who-enforces-the-limit).
 
-An admin, an owner or the member who connected the account may do all of this; for a key your customer made, an admin or an owner. A member who did not connect the account, and a viewer, see each button off with the reason under them.
+An admin, an owner or the member who connected the account may do all of this.
+For a key your customer made, an admin or an owner may.
+A member who did not connect the account, and a viewer, see each button off with the reason under it.
 
 ### Your customers' keys [#customers-keys]
 
-The keys your customers made when they signed in to their own provider in the widget are one line, for example **12 keys from your customers**, so a product with thousands of customers keeps a short list. It opens **Keys from your customers**: one line per key, the same facts as above, a search by name, domain or customer id (a viewer searches by name and domain), and **Show more** for the next 25. A customer's key serves only that customer's domains and acts only in their own sign-in; its sheet offers **Remove** alone, so when one needs attention its line says your customer signs in again. The line says **Made when a customer signed in**.
+The keys your customers made in the widget, when they signed in to their own provider, share one line.
+For example, **12 keys from your customers**.
+So a product with thousands of customers keeps a short list.
+The line opens **Keys from your customers**, with one line per key and the same facts as above.
+You can search by name, domain or customer id, and a viewer searches by name and domain.
+**Show more** loads the next 25.
+A customer's key serves only that customer's domains and acts only in their own sign-in.
+Its sheet offers **Remove** alone.
+So when one needs attention, its line says your customer signs in again.
+The line says **Made when a customer signed in**.
 
 ### Domains with no saved access
 
@@ -1024,29 +1090,27 @@ Under the list, **Domains with no saved access** opens [Domains](#hosting-and-ac
 
 ## Design the widget
 
-**Widget → Design** is where the widget gets your look. The preview is the
-widget itself, the one your customers get, running on example data: nothing
-here is sent anywhere, and no domain or connection is needed.
+**Widget → Design** is where the widget gets your look.
+The preview is the widget itself, the one your customers get, running on example data.
+Nothing here is sent anywhere, and you need no domain or connection.
 
-Step through the journey with the row above the preview (enter the domain,
-detect the provider, sign in, apply, connected), open the other screens under
-**More screens** (existing records, manual setup, an error and more), and pick
-the steps of a checklist. Three screens that your code only reaches in some
-cases are there too, each with a line saying when: **Instructions sent** (after
-the person emails the records to someone with access, which reports
-`FINISHED_SUCCESSFULLY_LINK_SHARED`), **Email setup** (only when you open the
-widget with `enableEmail`: the mail records to add first) and **Remove a
-domain** (only when you open it with `mode: "remove"`: what happens to the
-records). Five more are the screens the widget draws in cases your code does not
-control: **Provider not supported**, **Reconnected**, **Remove: sign in**,
-**Remove: done** and **Paused session**. The preview has no "choose how to
-reconnect" screen, because the widget has none, and it does not draw a
-saved-access card yet. Each screen says which status it
-reports to your code. Look at the widget in light or dark, on a computer or a
-phone, and in any language it speaks.
+Step through the journey with the row above the preview.
+The steps are enter the domain, detect the provider, sign in, apply and connected.
+Open the other screens under **More screens**, such as existing records, manual setup or an error.
+You can also pick the steps of a checklist.
+Three screens your code only reaches in some cases are there too, each with a line saying when.
+**Instructions sent** shows after the person emails the records to someone with access, and reports `FINISHED_SUCCESSFULLY_LINK_SHARED`.
+**Email setup** shows only when you open the widget with `enableEmail`, and lists the mail records to add first.
+**Remove a domain** shows only when you open it with `mode: "remove"`, and says what happens to the records.
+Five more are screens the widget draws in cases your code does not control.
+They are **Provider not supported**, **Reconnected**, **Remove: sign in**, **Remove: done** and **Paused session**.
+The preview has no "choose how to reconnect" screen, because the widget has none.
+It does not draw a saved-access card yet.
+Each screen says which status it reports to your code.
+View the widget in light or dark, on a computer or a phone, and in any language it speaks.
 
-Under **Ways to connect** is the screen a person gets for each way a domain can
-be connected, so you can see them all without a domain that needs each one:
+Under **Ways to connect** is the screen a person gets for each way a domain can connect.
+So you can see them all without a domain that needs each one:
 
 | Screen | What the person sees |
 | --- | --- |
@@ -1057,29 +1121,27 @@ be connected, so you can see them all without a domain that needs each one:
 | **DNS hosting: moving** | The steps while it moves (copy settings, security check, make the change, live), here waiting for a sign-in where they bought the domain. |
 | **Reconnect** | One sign-in that renews the access we keep for a domain. |
 
-Their buttons only say that this is a preview and send nothing, except the
-secure sign-in's, which opens a sample of the sign-in window (below). A link to
-the Design tab can name one of these screens with `stage=` (`secure-sign-in`,
-`one-click`, `dns-hosting-first`, `dns-hosting`, `dns-hosting-move` or
-`reconnect`), so another page can open the preview on it:
-**Preview this** on [Ways to connect](#ways-to-connect) does.
+Their buttons only say this is a preview, and send nothing.
+The one exception is secure sign-in, which opens a sample of the sign-in window (below).
+A link to the Design tab can name one of these screens with `stage=`.
+The values are `secure-sign-in`, `one-click`, `dns-hosting-first`, `dns-hosting`, `dns-hosting-move` or `reconnect`.
+So another page can open the preview on one, as **Preview this** on [Ways to connect](#ways-to-connect) does.
 
 ### See the sign-in window [#see-the-sign-in-window]
 
-On the **Secure sign-in** screen, the button opens the window your customers
-sign in to their provider in, so you can see it without a provider account or a
-domain. It is a sample: it runs on example data (IONOS and `app.acme.com`), it
-sends nothing, it keeps nothing, and it never hands the widget a result. Every
-field in it is locked and filled in, and a **Sample** bar under the title says so,
-so nobody types a real password into it.
+On the **Secure sign-in** screen, the button opens the window your customers use to sign in to their provider.
+You can see it without a provider account or a domain.
+It is a sample that runs on example data: IONOS and `app.acme.com`.
+It sends nothing, keeps nothing, and never hands the widget a result.
+Every field in it is locked and filled in.
+A **Sample** bar under the title says so, so nobody types a real password into it.
 
-With the preview at computer width the sample opens in the same modal a customer
-sees on a computer: a centred card over the dimmed widget. With the preview at
-phone width, or on a phone, it opens as a sheet over the whole widget, as it
-does for a customer on a phone. Either way it opens inside the preview and never
-as a window of its own. Press its buttons (**Sign in**, **Continue**, **Approve
-and make these changes**) or **Back** and **Next** at the foot to go through its
-six screens:
+With the preview at computer width, the sample opens in the modal a customer sees on a computer.
+That is a centred card over the dimmed widget.
+At phone width, or on a phone, it opens as a sheet over the whole widget, as it does for a customer on a phone.
+Either way it opens inside the preview, never as a window of its own.
+Press its buttons to go through its six screens: **Sign in**, **Continue** and **Approve and make these changes**.
+You can also use **Back** and **Next** at the foot:
 
 1. **Sign in**, the form with the provider's own words for its fields.
 2. **One-time code**, the code the provider emails, here already filled in.
@@ -1088,16 +1150,17 @@ six screens:
 5. **Review, only if a record is replaced**, every record we would add or remove, in full.
 6. **Done**, with the records ticked.
 
-The sample's plan replaces a record, so it shows Review, and a note under the screens says so. A real sign-in whose
-plan only adds records skips Review: it goes from "Getting things ready" to "Making the changes", then Done
-([when your customer approves](/docs/guides/secure-sign-in#review)).
+The sample's plan replaces a record, so it shows Review, and a note under the screens says so.
+A real sign-in whose plan only adds records skips Review.
+It goes from "Getting things ready" to "Making the changes", then Done ([when your customer approves](/docs/guides/secure-sign-in#review)).
 
-While **Secure sign-in** is open, the row above the preview names the same six screens. Only a page of
-the console itself, shown by the console, can open the sample: the same address
-opened any other way (a link, a window opened by any page, another site's page,
-or a customer's own page that holds the widget) shows an empty page, and the
-real sign-in window never turns into the sample. Closing the sample, or picking
-another screen of the preview, ends it; it has no effect on any domain.
+While **Secure sign-in** is open, the row above the preview names the same six screens.
+Only a page of the console itself, shown by the console, can open the sample.
+Opened any other way, the same address shows an empty page.
+That covers a link, a window opened by any page, another site's page, and a customer's own page that holds the widget.
+The real sign-in window never turns into the sample.
+Closing the sample, or picking another screen of the preview, ends it.
+It has no effect on any domain.
 
 | Group | What you set |
 | --- | --- |
@@ -1107,40 +1170,41 @@ another screen of the preview, ends it; it has no effect on any domain.
 | **Behavior** | Light, dark or match the device; the confetti; the close button; the progress steps. |
 | **Screens and options** | "Add the records instead" on the sign-in screen, "Let an AI assistant do it" and "Email these instructions". It also reads out the application's DNS hosting setting (**DNS hosting: Off**, **Offered** or **Offered first**), with a **Change** (**View** for a viewer) that opens its row in [Ways to connect](#domain-maintenance): that setting, not the widget, decides whether users are offered DNS hosting. |
 
-**Each application has its own look.** The designer edits the application
-chosen in the sidebar. **Save** gives that application a look of its own.
-**Save as the workspace default** (under the ⋯ menu) sets the look every
-application without its own uses, and **Use the workspace default for this
-application** drops the application's own look. Saving needs an owner or admin.
-The install code and **Try it live** use the saved look; the preview shows what
-you have not saved yet. The install code carries only what differs from the
-widget's own look, so an untouched color or corner radius is not written into it.
+**Each application has its own look.**
+The designer edits the application chosen in the sidebar.
+**Save** gives that application a look of its own.
+**Save as the workspace default**, under the ⋯ menu, sets the look for every application without its own.
+**Use the workspace default for this application** drops the application's own look.
+Saving needs an owner or admin.
+The install code and **Try it live** use the saved look.
+The preview shows what you have not saved yet.
+The install code carries only what differs from the widget's own look.
+So an untouched color or corner radius is not written into it.
 
-For the logo, **Upload** (or drop a file on it). PNG, JPEG, WebP, GIF (its
-first frame), AVIF and SVG are accepted. Your browser prepares every upload the
-same way, so logos look consistent: fully transparent edges are trimmed, the
-image is fit inside 512 by 160 pixels (256 by 80 on screen at 2x), and it is
-saved as a PNG under 200 KB. An SVG is converted to a PNG; the SVG itself is
-never stored. Each logo is shown on the surface it will sit on, and you'll see a
-warning when it would be hard to see there, or when it has a solid background
-that would show as a box. The upload is hosted at once and appears in the
-preview; it belongs to the application when you press **Save**.
+For the logo, use **Upload** or drop a file on it.
+It accepts PNG, JPEG, WebP, GIF (its first frame), AVIF and SVG.
+Your browser prepares every upload the same way, so logos look consistent.
+It trims fully transparent edges and fits the image inside 512 by 160 pixels (256 by 80 on screen at 2x).
+It saves the result as a PNG under 200 KB.
+An SVG is converted to a PNG, and the SVG itself is never stored.
+Each logo shows on the surface it will sit on.
+You'll see a warning when it would be hard to see there, or when a solid background would show as a box.
+The upload is hosted at once and appears in the preview.
+It belongs to the application when you press **Save**.
 
-Uploaded logos are served from `https://app.customdomain.ai/brand/logo/…`
-at a URL named for the file's content, so it never changes and is cached
-for a year. **Replace** uploads a new one; **Remove** clears it from the design.
-Earlier uploads stay available at their URLs (your 20 most recent, and any an
-application still uses), because a widget you already shipped keeps the logo
-URL it was pasted with until you update its code. You can still paste the URL of
-a logo you host yourself (HTTPS) instead.
+Uploaded logos are served from `https://app.customdomain.ai/brand/logo/…`.
+Each URL is named for the file's content, so it never changes and is cached for a year.
+**Replace** uploads a new one, and **Remove** clears it from the design.
+Earlier uploads stay available at their URLs: your 20 most recent, and any an application still uses.
+That's because a widget you already shipped keeps its logo URL until you update its code.
+You can still paste the URL of a logo you host yourself (HTTPS) instead.
 
 ## Ways to connect
 
-**Widget → Ways to connect** shows what your users are offered when they connect
-a domain, one row per way, for the application named under the title. Each row
-has one line on what it is and a link to its docs page. A person's provider is
-the company that runs the domain's DNS, the settings that point it at your
-product.
+**Widget → Ways to connect** shows what your users are offered when they connect a domain.
+It has one row per way, for the application named under the title.
+Each row has one line on what it is and a link to its docs page.
+A person's provider is the company that runs the domain's DNS: the settings that point it at your product.
 
 | Row | What it is | Who can change it |
 | --- | --- | --- |
@@ -1151,35 +1215,32 @@ product.
 | **DNS hosting** | **Off**, **Offer it** or **Offer it first**, saved when you pick one ([the guide](/docs/guides/nameserver-migration)). Turning it on from Off starts with CustomDomain™ running it. **Who runs it** has **Change**, which opens the settings form (CustomDomain™ or your own account, and whether to show it first). **See hosted domains** opens **Domains** narrowed to the domains it hosts ([DNS hosting](#domain-maintenance)). | Owners, admins and members. |
 
 A viewer sees every control off with the reason, and can still follow **See hosted
-domains**. A test mode application keeps no saved access and never offers DNS
+domains**. A Sandbox application keeps no saved access and never offers DNS
 hosting, and its rows say so.
 
-Every row the widget has a screen for has **Preview this**. It opens **Design**
-on that screen (Sign in, Secure sign-in, Manual setup, and for DNS hosting the
-offered-first or the consent screen, whichever your setting shows), the same as a
-link to `/app/embed?tab=branding&stage=secure-sign-in`. The preview only follows
-what is on: a way that is off for your workspace has no **Preview this**. A link
-to `/app/embed?tab=ways#dns-hosting` opens this tab at the DNS hosting row, and
-`/app/embed?tab=ways&app=<application id>#dns-hosting` does the same for that
-application: it is the address every **Change** on the application's pages, in the
-designer and on the connect page links to (`#saved-access` is the saved access row).
+Every row the widget has a screen for has **Preview this**.
+It opens **Design** on that screen: Sign in, Secure sign-in, Manual setup, or for DNS hosting the offered-first or consent screen your setting shows.
+It works the same as a link to `/app/embed?tab=branding&stage=secure-sign-in`.
+The preview only follows what is on, so a way that is off for your workspace has no **Preview this**.
+A link to `/app/embed?tab=ways#dns-hosting` opens this tab at the DNS hosting row.
+`/app/embed?tab=ways&app=<application id>#dns-hosting` does the same for that application.
+Every **Change** on the application's pages, in the designer and on the connect page links there.
+`#saved-access` is the saved access row.
 
 ### DNS hosting [#domain-maintenance]
 
-The **DNS hosting** row of Ways to connect is where the setting is changed. It
-used to be a section of an application's **Settings** tab, called **Domain
-maintenance**; **Settings**, the application's summary, the widget designer and
-the connect page now show its value with a **Change** that opens this row.
+The **DNS hosting** row of Ways to connect is where you change the setting.
+It used to be a section of an application's **Settings** tab, called **Domain maintenance**.
+Now **Settings**, the application's summary, the widget designer and the connect page show its value.
+Each has a **Change** that opens this row.
 
-With it on, your platform keeps your users' domains working for them (records
-stay correct, certificates renew, problems get fixed) once each user agrees in
-the widget. One
-setting where the user bought the domain changes, its *nameservers*, which say
-who runs the domain's DNS. The guide is
-[the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
-A test mode application has none. **Off**, **Offer it** and **Offer it first**
-save when you pick one; **Change** beside **Who runs it** opens the form, which
-has:
+With it on, your platform keeps your users' domains working for them once each user agrees in the widget.
+Records stay correct, certificates renew, and problems get fixed.
+The user changes one setting where they bought the domain: its *nameservers*, which say who runs the domain's DNS.
+See [the DNS hosting guide (nameserver migration)](/docs/guides/nameserver-migration).
+A Sandbox application has none.
+**Off**, **Offer it** and **Offer it first** save when you pick one.
+**Change** beside **Who runs it** opens the form, which has:
 
 - **Host your users' DNS**, a switch, off by default. Nothing changes for
   your users until you **Save**; once saved, each user is asked when they connect
@@ -1188,102 +1249,96 @@ has:
   for) stays; what keeps it working (its DNS) moves to whoever runs it. A **?**
   beside DNS, registrar and nameservers gives one plain line and a link to the
   guide.
-- **Who runs it**: **CustomDomain™** (recommended, the default; nothing to set up)
-  or **Your own account** (pick one of your connected Cloudflare, Amazon Route 53,
-  Google Cloud DNS or Azure DNS accounts; only this application uses it). Under
-  **Advanced**, **Use your own nameservers instead** takes 2 to 13 nameservers, one
-  per line.
+- **Who runs it**: **CustomDomain™** or **Your own account**.
+  CustomDomain™ is recommended and the default, with nothing to set up.
+  **Your own account** lets you pick one of your connected Cloudflare, Amazon Route 53, Google Cloud DNS or Azure DNS accounts.
+  Only this application uses it.
+  Under **Advanced**, **Use your own nameservers instead** takes 2 to 13 nameservers, one per line.
 - **Show it as the first choice**: users see it first, and adding records stays
   one tap away. Off, it is a quiet second choice.
-- **See hosted domains**, beside the setting once it is on: a link to **Domains**
-  narrowed to this application's hosted domains (`?app=<application id>&dns_hosting=hosted`,
-  [below](#hosting-and-access-filters)). It shows no number: **DNS hosted by us**
-  on **Domains** lists every hosted domain, including a zone you started and never
-  moved, so a count of the domains moved would not match the list it opens. The
-  **DNS host** column says who runs each one. The figures and rows that used to sit
-  under the section (domains being set up, the typical setup time, why some
-  stopped) are those columns and chips now.
+- **See hosted domains** sits beside the setting once it is on.
+  It links to **Domains** narrowed to this application's hosted domains (`?app=<application id>&dns_hosting=hosted`, [below](#hosting-and-access-filters)).
+  It shows no number.
+  **DNS hosted by us** on **Domains** lists every hosted domain, including a zone you started and never moved.
+  So a count of the domains moved would not match the list it opens.
+  The **DNS host** column says who runs each one.
+  The figures that used to sit under the section are those columns and chips now.
+  They covered domains being set up, the typical setup time and why some stopped.
 
 The API calls the switches `mode` (`off`, `offer`, `prefer`) and **Who runs it**
 `target`; the guide has [how they map](/docs/guides/nameserver-migration#turn-it-on).
 
-A hosted domain shows a **DNS hosting** section on its **DNS** tab: its
-status, three steps (**Copying settings**, **Waiting for the registrar**,
-**Live**), the next thing to do, and, when its settings could only be read from
-outside, what to check and **The records look right, continue**
-([the copy](/docs/guides/nameserver-migration#the-copy)). It names the registrar,
-where the nameservers are changed, only when it is known, and shows where its
-records are, its nameservers under **Technical details**, and the ways back:
-**Move back**, and **Move back to GoDaddy's DNS** (the registrar's own DNS) beside
-it, or in its place once the old nameservers no longer answer
-([what moving back does](/docs/guides/nameserver-migration#moving-back)).
+A hosted domain shows a **DNS hosting** section on its **DNS** tab.
+It shows the status and three steps: **Copying settings**, **Waiting for the registrar** and **Live**.
+It also shows the next thing to do.
+When its settings could only be read from outside, it says what to check and offers **The records look right, continue** ([the copy](/docs/guides/nameserver-migration#the-copy)).
+It names the registrar, where the nameservers are changed, only when it is known.
+It shows where its records are, with its nameservers under **Technical details**.
+It also shows the ways back: **Move back**, and **Move back to GoDaddy's DNS** (the registrar's own DNS).
+The second sits beside the first, or replaces it once the old nameservers no longer answer ([what moving back does](/docs/guides/nameserver-migration#moving-back)).
 
 ## Install the widget [#install]
 
 **Widget → Install** is the tab a link to **Widget** opens. It has two ways in:
 
-- **Hand it to your coding agent.** **Copy prompt** copies one block of text for
-  Claude Code, Cursor, Codex or any agent that edits your project. **See the
-  prompt** shows it first. It holds your application ID, the install guide, the SDK
-  reference, the `llms.txt` index, the agent skill and the MCP server, the server
-  language and page framework you picked below, and the steps in order. It never
-  holds a secret: the key stays in your server's environment, you set it yourself,
-  and the prompt tells the agent never to ask you to paste it.
-- **Is it installed?** A line above the steps says whether the widget has opened in
-  your product ("Installed on yourapp.com, last seen 2 hours ago", "Only seen on
-  localhost" or "Not seen in your product yet"). Console tests do not count: see
-  [Analytics](#analytics).
-- **Four steps by hand**, with code for your language on tabs (each tab has its
-  language's mark). The first step, minting a token on your server, has **Get your
-  API key**: it opens the form that makes a key on **API keys & webhooks**. You see
-  the key once; store it as `CUSTOMDOMAIN_API_KEY`.
+- **Hand it to your coding agent.** **Copy prompt** copies one block of text for any agent that edits your project, such as Claude Code, Cursor or Codex.
+  **See the prompt** shows it first.
+  It holds your application ID, the install guide, the SDK reference, the `llms.txt` index, the agent skill and the MCP server.
+  It also holds the server language and page framework you picked below, and the steps in order.
+  It never holds a secret.
+  The key stays in your server's environment, and you set it yourself.
+  The prompt tells the agent never to ask you to paste it.
+- **Is it installed?** A line above the steps says whether the widget has opened in your product.
+  It reads "Installed on yourapp.com, last seen 2 hours ago", "Only seen on localhost" or "Not seen in your product yet".
+  Console tests do not count (see [Analytics](#analytics)).
+- **Four steps by hand**, with code for your language on tabs.
+  Each tab has its language's mark.
+  The first step mints a token on your server, and has **Get your API key**.
+  It opens the form that makes a key on **API keys & webhooks**.
+  You see the key once, so store it as `CUSTOMDOMAIN_API_KEY`.
 
 ## Try it live
 
-**Widget → Try it live** opens the real widget, the one your customers get, over
-the console page, with the look you saved and a short-lived token the console
-mints for you. Everything it connects is real: the domain shows under
-**Domains** and counts as one of your domains.
+**Widget → Try it live** opens the real widget, the one your customers get, over the console page.
+It uses the look you saved and a short-lived token the console mints for you.
+Everything it connects is real.
+The domain shows under **Domains** and counts as one of your domains.
 
-The card leads with **Open the widget** and a small picture of the widget in your
-brand color. The language and the **Root domains also connect www** switch are
-under **Options**, and a line under the card links to **Design the widget** (or
-**Edit the design**) to change the look.
+The card leads with **Open the widget** and a small picture of the widget in your brand color.
+The language and the **Root domains also connect www** switch are under **Options**.
+A line under the card links to **Design the widget** or **Edit the design** to change the look.
 
-Type a domain you own in **Domain to try** (optional) and press **Open the widget**. The
-token is then bound to that domain, and the widget starts on it, so the whole
-flow runs as it does for a customer who arrived with a domain: the provider is
-found, and where the DNS host offers it, the
-[secure sign-in](/docs/guides/secure-sign-in) is offered (**Open secure
-sign-in**), which only runs for a token bound to the domain and to the person
-using it. Nothing changes at your DNS host until you approve it. Leave the field
-empty and the widget opens on its first screen, as before.
+Type a domain you own in **Domain to try** (optional) and press **Open the widget**.
+The token is then bound to that domain, and the widget starts on it.
+So the flow runs as it does for a customer who arrived with a domain, and the provider is found.
+Where the DNS host offers it, the widget offers the [secure sign-in](/docs/guides/secure-sign-in) (**Open secure sign-in**).
+It only runs for a token bound to the domain and to the person using it.
+Nothing changes at your DNS host until you approve it.
+Leave the field empty and the widget opens on its first screen, as before.
 
-Every token minted here is the console's own: it carries `console:<your member
-id>` as its `end_user_ref`, a prefix the console reserves for its tests and no
-customer id starts with. That is what keeps a test apart from a customer:
+Every token minted here is the console's own.
+It carries `console:<your member id>` as its `end_user_ref`.
+The console reserves that prefix for its tests, and no customer id starts with it.
+That keeps a test apart from a customer:
 
-- The go-live list's **Run your first connection** row is done when the domain
-  is live, and **Connect your first customer** never is, however many domains
-  you try. The owner's nudges count customers the same way.
-- Wherever the console names who a domain is for (**Domains** and its client
-  filter, the recent domains on the Overview, search, and the top of the domain's
-  own page), the domain is labelled **Try it live (your member id)** where a
-  customer's domain shows the customer's id.
-- An API key the secure sign-in makes at the DNS host belongs to that test's end
-  user (**Connected accounts** says so), never to the workspace, so a test never
-  widens a key your customers' domains are served with. See
-  [The API key a secure sign-in made](#provider-api-key).
+- The go-live list's **Run your first connection** row is done when the domain is live.
+  **Connect your first customer** never is, however many domains you try.
+  The owner's nudges count customers the same way.
+- The console names who a domain is for on **Domains** and its client filter, the recent domains on Overview, search, and the top of the domain's page.
+  In all these places the domain reads **Try it live (your member id)**, where a customer's domain shows the customer's id.
+- An API key the secure sign-in makes at the DNS host belongs to that test's end user, and **Connected accounts** says so.
+  It never belongs to the workspace.
+  So a test never widens a key your customers' domains are served with.
+  See [The API key a secure sign-in made](#provider-api-key).
 - A webhook for the domain carries `user_id: "console:<member id>"`, which your
   receiver can skip.
 
 A test minted here does not prove **Mint widget tokens on your server**: that
-row needs your backend's own route. In test mode the same card connects made up
-`.test` names and counts for nothing; see [Test mode](/docs/guides/test-mode).
+row needs your backend's own route. In the Sandbox the same card connects made up
+`.test` names and counts for nothing; see [Sandbox](/docs/guides/test-mode).
 
 ## What the console is *not*
 
-It is one application in your workspace. Everything it does is an API call
-you could make yourself (the [API](/docs/getting-started/api) page maps each
-step), and its **Widget** and **API & SDK** pages are where the other paths
-begin.
+It is one application in your workspace.
+Everything it does is an API call you could make yourself, and the [API](/docs/getting-started/api) page maps each step.
+Its **Widget** and **API & SDK** pages are where the other paths begin.
