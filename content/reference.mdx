@@ -44,7 +44,8 @@ applied together); `caa`; email: `email-spf`, `email-dkim`, `email-dmarc`,
 
 ## Error envelope and codes [#error-envelope--codes]
 
-Every error is `{ "code", "title", "details"? }`. `code` is a stable machine
+Every error is `{ "code", "title", "details"?, "request_id"? }`. `request_id` is the id of the request, the same
+value as the `X-Request-Id` response header: quote it when you write to support. `code` is a stable machine
 string:
 
 | `code` | HTTP | Meaning |
