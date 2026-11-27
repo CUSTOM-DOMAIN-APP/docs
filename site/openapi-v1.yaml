@@ -6295,6 +6295,49 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
+  /attempts:export:
+    get:
+      operationId: exportAttempts
+      summary: Export connection attempts as CSV
+      tags: [Attempts]
+      description: >-
+        The rows `GET /attempts` would list for the same filters, newest first, as one CSV file.
+        The range is at most 31 days (default: the last 31 days). A workspace may export six times an
+        hour. A range with more than 100,000 rows, or a file over 20 MB, answers 413: narrow the range.
+        A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with a leading
+        apostrophe. API key; any member role.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: from, in: query, required: false, description: Only attempts at or after this time (RFC 3339). Defaults to 31 days before `to`., schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: false, description: Only attempts before this time (RFC 3339). Defaults to now., schema: { type: string, format: date-time } }
+        - name: outcome
+          in: query
+          required: false
+          description: Keep only this result. `result` is the same filter.
+          schema: { type: string, enum: [connected, needs_attention, failed] }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string, enum: [csv], default: csv }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - { name: provider, in: query, required: false, description: Keep only attempts on this provider., schema: { type: string } }
+        - { name: end_user_ref, in: query, required: false, description: Keep only attempts by this end user id., schema: { type: string, maxLength: 256 } }
+        - { name: q, in: query, required: false, description: Keep only domains that start with this text., schema: { type: string } }
+        - { name: sandbox, in: query, required: false, description: Read Sandbox attempts (`true`) or live ones (`false`)., schema: { type: boolean } }
+      responses:
+        '200':
+          description: The CSV file
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+
   /share/{token}:
     # API-13: this route is served at the ROOT, not under /v1. The document's
     # global `servers` are /v1-suffixed, and without this override the published
