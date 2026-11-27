@@ -107,6 +107,11 @@ export function stringifyComponent(rawNode: unknown, _parent: unknown, state: St
     }
     case "TypeTable":
       return typeTable(node);
+    case "OpenInConsole": {
+      // The button reads as one link to the console screen.
+      const to = stringAttribute(node, "to");
+      return to ? `[${stringAttribute(node, "label") ?? "Open in console"}](https://app.customdomain.ai${to})` : undefined;
+    }
   }
   return undefined;
 }

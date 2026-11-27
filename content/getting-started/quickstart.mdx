@@ -31,6 +31,8 @@ Every workspace has a **default key** from the start. In the console, open
 `CUSTOMDOMAIN_API_KEY=cd_live_…`, with **Copy** beside it. Admins and other
 members see only its prefix, so ask an owner if you are one of them.
 
+<OpenInConsole to="/app/keys" label="Open Keys in console" />
+
 Put it in an environment variable, so it never ends up in a file or a prompt:
 
 ```bash
@@ -49,6 +51,8 @@ not the key.
 
 Send `"sandbox": true` when you create the application. A Sandbox application
 needs no card.
+
+<OpenInConsole to="/app/apps" label="Open Applications in console" />
 
 ```bash tab="cURL"
 curl -X POST https://api.customdomain.ai/v1/applications \
@@ -156,6 +160,8 @@ with `200`, which is how it behaves for a real domain too.
 
 Read the connection until its `status` is `live`. In the Sandbox that happens about
 15 seconds after it was created.
+
+<OpenInConsole to="/app/domains" label="Open Domains in console" />
 
 ```bash tab="cURL"
 curl https://api.customdomain.ai/v1/connections/con_... \
