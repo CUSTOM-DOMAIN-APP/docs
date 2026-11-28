@@ -7030,6 +7030,29 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
+  /webhooks/{id}/resume:
+    post:
+      operationId: resumeWebhook
+      summary: Resume a paused webhook endpoint
+      tags: [Webhooks]
+      description: >-
+        Resumes a webhook endpoint that was paused, and sends the events that waited. An endpoint that is not paused is
+        left as it is. An id that is not the caller's answers 404. A delegated agent token needs `app:write`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['app:write']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The endpoint
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /webhook-deliveries:
     get:
       operationId: listWebhookDeliveries
@@ -14896,6 +14919,10 @@ components:
             signed with it: each POST carries X-JE-Timestamp (unix seconds) and
             X-JE-Signature (sha256=hex of HMAC-SHA256 over "<timestamp>.<rawBody>").
             Reject deliveries whose timestamp is outside a ~5-minute window.
+        paused_at:
+          type: [string, 'null']
+          format: date-time
+          description: Set while the endpoint is paused.
         created_at: { type: string, format: date-time }
     WebhookDelivery:
       type: object
