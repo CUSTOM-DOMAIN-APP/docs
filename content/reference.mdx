@@ -79,6 +79,8 @@ the page that uses them.
 ## Webhook signature
 
 - Headers: `X-JE-Timestamp: <unix seconds>` and `X-JE-Signature: sha256=<hex>`.
+  The same values are also sent as `CustomDomain-Timestamp` and
+  `CustomDomain-Signature`.
 - Algorithm: HMAC-SHA256 over `${timestamp}.${rawBody}` (the timestamp, a dot,
   then the exact request body), keyed by the endpoint's signing secret
   (`whsec_…`). Reject deliveries whose timestamp is outside a ~5-minute window.
