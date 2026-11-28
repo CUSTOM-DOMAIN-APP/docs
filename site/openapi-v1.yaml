@@ -7036,8 +7036,13 @@ paths:
       summary: Recent webhook delivery attempts for the caller's tenant
       tags: [Webhooks]
       description: >-
+        One row for every try to send an event to an endpoint, newest first. A try that failed and will be tried again carries
+        `next_attempt_at`.
+
         API key: all the tenant's apps. Widget JWT: the calling app.
-        `?app_id=` narrows to one application; `?type=` filters by event type. A delegated agent token needs `app:read`.
+        `?app_id=` narrows to one application; `?type=` filters by event type; `?endpoint_id=` and `?event_id=` narrow to one endpoint or one event.
+        Page with `limit` (1 to 200, 50 when only `cursor` is sent) and `cursor` (the `next_cursor` of the previous answer) until `next_cursor` is absent.
+        Sent with neither, it answers the newest 100 and no `next_cursor`. Rows are kept 30 days. A delegated agent token needs `app:read`.
       security:
         - apiKey: []
         - widgetJWT: []
@@ -7045,6 +7050,10 @@ paths:
       parameters:
         - { name: app_id, in: query, required: false, schema: { type: string } }
         - { name: type, in: query, required: false, schema: { type: string } }
+        - { name: endpoint_id, in: query, required: false, schema: { type: string } }
+        - { name: event_id, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: cursor, in: query, required: false, schema: { type: string } }
       responses:
         '200':
           description: Deliveries
@@ -7058,8 +7067,43 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/WebhookDelivery' }
                   count: { type: integer }
+                  next_cursor: { type: string, description: Present only while more rows remain. }
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /webhook-deliveries/{id}:
+    get:
+      operationId: getWebhookDelivery
+      summary: One webhook delivery attempt, with the other attempts for its event
+      tags: [Webhooks]
+      description: >-
+        The attempt, and in `history` every attempt to send the same event to the same endpoint, oldest first (this one
+        included). An id that is not the caller's answers 404. A delegated agent token needs `app:read`.
+      security:
+        - apiKey: []
+        - widgetJWT: []
+        - agentToken: ['app:read']
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: The delivery
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/WebhookDelivery' }
+                  - type: object
+                    required: [history]
+                    properties:
+                      history:
+                        type: array
+                        items: { $ref: '#/components/schemas/WebhookDelivery' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------- Billing
@@ -14908,10 +14952,11 @@ components:
         event_id: { type: string }
         event_type: { type: string }
         domain: { type: string }
-        attempts: { type: integer }
-        status_code: { type: integer, description: HTTP status of the final attempt (0 = no response) }
+        attempts: { type: integer, description: 'Which try this row is for the event (1 for the first POST).' }
+        status_code: { type: integer, description: HTTP status of this attempt (0 = no response) }
         delivered: { type: boolean }
         error: { type: string }
+        next_attempt_at: { type: string, format: date-time, description: When the next try is due; present only on a failed try that will be retried. }
         created_at: { type: string, format: date-time }
     CertStatus:
       type: string
