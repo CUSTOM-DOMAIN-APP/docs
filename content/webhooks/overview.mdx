@@ -236,6 +236,10 @@ Additional conditional fields ride connection events:
   with `?app_id=` and `?type=`). The log keeps the last 50 per application.
   A delivery that is still being retried appears once it succeeds or is given
   up on.
+- An endpoint that keeps failing for a long time may be paused. Its events
+  wait, the workspace owners and admins get one email, and `paused_at` is set
+  on the endpoint. Resume it with `POST /v1/webhooks/{id}/resume` when your
+  receiver is ready; the waiting events are then sent.
 
 Endpoints should be **idempotent**: the same event can arrive more than once on
 retry. Deduplicate on the envelope `id`, or on `domain` + `type`.
