@@ -13,6 +13,13 @@ Each delivery carries these headers:
 - `X-JE-Event-Id: evt_…`: the event `id`, the same on every retry. Use it to
   deduplicate.
 
+The same three values are also sent as `CustomDomain-Timestamp`,
+`CustomDomain-Signature` and `CustomDomain-Event-Id`. Read either set; new
+code should use the `CustomDomain-*` names.
+
+A delivery can arrive more than once and out of order. Drop repeats by the
+event `id`, and order by `created_at`.
+
 Binding the timestamp into the signature lets you reject **replays**: check that
 the timestamp is recent (a 5-minute window is recommended) before trusting the
 payload. Each attempt, including retries, is re-signed with a fresh timestamp.
