@@ -7063,6 +7063,40 @@ paths:
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------- Billing
+  /webhook-deliveries/{id}/replay:
+    post:
+      operationId: replayWebhookDelivery
+      summary: Send a failed webhook event again
+      tags: [Webhooks]
+      description: >-
+        Queues the event of a failed delivery again for the same endpoint. A failed event can be sent again for up to 30 days;
+        one that was delivered, is still being tried, is past that time, or whose endpoint was deleted answers 409. An id that
+        is not the caller's answers 404. A delegated agent token needs `app:write`.
+      security:
+        - widgetJWT: []
+        - apiKey: []
+        - agentToken: ['app:write']
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, event_id, endpoint_id, status]
+                properties:
+                  id: { type: string }
+                  event_id: { type: string }
+                  endpoint_id: { type: string }
+                  status: { type: string, enum: [queued] }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ------------------------------------------------------------------ Attempts
   /plans:
     get:
       operationId: listPlans
