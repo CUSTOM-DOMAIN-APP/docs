@@ -422,6 +422,18 @@ paths:
           required: false
           schema: { type: string }
           description: Required only when listing with the management key.
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Applications
@@ -435,6 +447,10 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Application' }
                   count: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
@@ -713,6 +729,19 @@ paths:
       security:
         - apiKey: []
         - agentToken: ['member:read']
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Members
@@ -725,6 +754,11 @@ paths:
                   members:
                     type: array
                     items: { $ref: '#/components/schemas/Member' }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
   /members:preview:
@@ -6295,6 +6329,49 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
+  /attempts:export:
+    get:
+      operationId: exportAttempts
+      summary: Export connection attempts as CSV
+      tags: [Attempts]
+      description: >-
+        The rows `GET /attempts` would list for the same filters, newest first, as one CSV file.
+        The range is at most 31 days (default: the last 31 days). A workspace may export six times an
+        hour. A range with more than 100,000 rows, or a file over 20 MB, answers 413: narrow the range.
+        A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with a leading
+        apostrophe. API key; any member role.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: from, in: query, required: false, description: Only attempts at or after this time (RFC 3339). Defaults to 31 days before `to`., schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: false, description: Only attempts before this time (RFC 3339). Defaults to now., schema: { type: string, format: date-time } }
+        - name: outcome
+          in: query
+          required: false
+          description: Keep only this result. `result` is the same filter.
+          schema: { type: string, enum: [connected, needs_attention, failed] }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string, enum: [csv], default: csv }
+        - { name: app_id, in: query, required: false, schema: { type: string } }
+        - { name: provider, in: query, required: false, description: Keep only attempts on this provider., schema: { type: string } }
+        - { name: end_user_ref, in: query, required: false, description: Keep only attempts by this end user id., schema: { type: string, maxLength: 256 } }
+        - { name: q, in: query, required: false, description: Keep only domains that start with this text., schema: { type: string } }
+        - { name: sandbox, in: query, required: false, description: Read Sandbox attempts (`true`) or live ones (`false`)., schema: { type: boolean } }
+      responses:
+        '200':
+          description: The CSV file
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+
   /share/{token}:
     # API-13: this route is served at the ROOT, not under /v1. The document's
     # global `servers` are /v1-suffixed, and without this override the published
@@ -6547,8 +6624,11 @@ paths:
 
         A delegated agent token needs `domains:purchase`; the grant's monthly
         spend cap is charged first, and a purchase that would pass it answers
-        `409`. A tenant API key is refused with `401`. A workspace that billing
-        refuses answers `402`.
+        `409`. A delegated agent must also send the `quote_id` from
+        `POST /registrar/purchase-quote` and the `confirm_code` the person
+        received by email; without a current quote it answers `400`, and a
+        wrong code answers `403`. A tenant API key is refused with `401`. A
+        workspace that billing refuses answers `402`.
       security:
         - widgetJWT: []
         - agentToken: ['domains:purchase']
@@ -6563,6 +6643,8 @@ paths:
               required: [domain, buyer]
               properties:
                 domain: { type: string }
+                quote_id: { type: string, description: A delegated agent only. The quote_id of a current quote for this domain. }
+                confirm_code: { type: string, description: A delegated agent only. The code the person received by email. }
                 buyer:
                   type: object
                   required: [email]
@@ -6579,6 +6661,49 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '402': { $ref: '#/components/responses/BillingRequired' }
         '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /registrar/purchase-quote:
+    post:
+      operationId: quoteAgentPurchase
+      summary: Quote a purchase for a delegated agent
+      tags: [Registrar]
+      description: >-
+        For a delegated agent token with `domains:purchase`. Returns the price
+        and a `quote_id`, and emails the person who approved the grant a code
+        for this purchase. The code is never in the answer. Send the `quote_id`
+        and the code to `POST /registrar/purchase`. A quote is good for a short
+        time and one purchase. Off while purchasing is off.
+      security:
+        - agentToken: ['domains:purchase']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string }
+      responses:
+        '200':
+          description: Quote
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quote_id: { type: string }
+                  domain: { type: string }
+                  price_cents: { type: integer }
+                  currency: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  confirmation: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/ForbiddenOrSuspended' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
   # ------------------------------------------------------------------ Monitor
@@ -6832,6 +6957,18 @@ paths:
           required: false
           schema: { type: string }
           description: Narrow to one application, which is how a live key reaches a test mode application's endpoints.
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Endpoints
@@ -6844,6 +6981,11 @@ paths:
                   webhooks:
                     type: array
                     items: { $ref: '#/components/schemas/WebhookEndpoint' }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
@@ -8636,6 +8778,19 @@ paths:
       security:
         - widgetJWT: []
         - apiKey: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Rows per page, 1 to 200 (larger values are clamped). Without `limit` and `cursor` every row is returned in one answer; with either, a page holds 50 rows unless you set this.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: cursor
+          in: query
+          required: false
+          description: >-
+            Opaque cursor taken verbatim from a previous response's `next_cursor`.
+            Omit for the first page. A malformed cursor is a `400`.
+          schema: { type: string }
       responses:
         '200':
           description: Certificates
@@ -8647,6 +8802,11 @@ paths:
                   certificates:
                     type: array
                     items: { $ref: '#/components/schemas/Certificate' }
+                  next_cursor:
+                    type: string
+                    description: >-
+                      Present only when further rows remain. Pass it back as `?cursor=` to fetch the next page.
+        '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
 
@@ -11175,8 +11335,11 @@ components:
         - challenge_required
         - changed_elsewhere
         - check_domain_required
+        - confirm_code_invalid
+        - confirm_code_required
         - confirmation_mismatch
         - confirmation_required
+        - confirmation_unavailable
         - conflict
         - connection_removal_vetoed
         - connection_vetoed
@@ -11233,6 +11396,12 @@ components:
         - provider_unavailable
         - ProviderAuthenticationError
         - quota_exceeded
+        - quote_domain_mismatch
+        - quote_expired
+        - quote_invalid
+        - quote_price_changed
+        - quote_required
+        - quote_used
         - rate_limited
         - reach_quota
         - reauthorization_required
@@ -11267,6 +11436,8 @@ components:
         - scope_all_needs_list
         - serves_every_application
         - service_unavailable
+        - spend_cap_exceeded
+        - spend_cap_required
         - stripe_error
         - target_not_allowed
         - token_not_bound
