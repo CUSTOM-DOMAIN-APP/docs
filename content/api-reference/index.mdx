@@ -79,6 +79,11 @@ sync when a code changes.
   domain (an existing, non-failed connection is replayed with `200`).
   `POST /v1/registrar/purchase` **requires** an `Idempotency-Key` header so a
   registration is never charged twice.
+- **Rate limits**: responses on rate limited routes carry `RateLimit-Limit`,
+  `RateLimit-Remaining` and `RateLimit-Reset` (seconds), for the tightest limit
+  that applies to the call. A `429` carries `Retry-After`: wait that many
+  seconds before the next request. `GET /v1/limits` returns the limits that
+  apply to your key and workspace, with what each has used.
 - **Scoping**: list endpoints are tenant-scoped by the authenticated
   credential, never by a query parameter. Cross-tenant ids simply match nothing.
 - **Versioning**: the surface is under `/v1`, additive-only within a version;
