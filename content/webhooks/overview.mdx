@@ -236,6 +236,8 @@ Additional conditional fields ride connection events:
   with `?app_id=` and `?type=`). The log keeps the last 50 per application.
   A delivery that is still being retried appears once it succeeds or is given
   up on.
+- Send a failed event again: `POST /v1/webhook-deliveries/{id}/replay`, for up
+  to 30 days after it failed.
 
 Endpoints should be **idempotent**: the same event can arrive more than once on
 retry. Deduplicate on the envelope `id`, or on `domain` + `type`.
