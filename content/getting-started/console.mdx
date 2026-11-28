@@ -115,11 +115,11 @@ Most agents sign in with your account, so there is no key to paste.
 An agent counts as connected only once it has signed in and you approved what it may do.
 See [MCP: drive it from an agent](/docs/getting-started/mcp#set-up-an-agent-from-the-welcome) and [Agents](/docs/agents/overview).
 
-Pointing a domain at a website needs the Growth plan.
+Pointing a domain at a website needs the Edge plan.
 CustomDomain™ does not host websites.
 It serves your domain through its edge to a site hosted elsewhere (see [Where domains point](/docs/connect-flow/routing)).
 Once your own domain is connected, the last screen says so beside **Point it at my website**.
-Connecting the domain does not need the Growth plan.
+Connecting the domain does not need the Edge plan.
 
 Everything else we can work out is filled in for you to confirm.
 Your logo, name and brand color are read from your website.
@@ -173,7 +173,7 @@ not when you visited a page, and each row says what was checked:
 | **Start your free trial** (owners and admins) | Billing is set up and a trial or a plan is running. A card starts the 14 day trial and nothing is charged until it ends. Creating API keys needs it |
 | **Run your first connection** (then **Try the widget with your own domain**) | A domain connected through the widget is live, including one you connect from [**Try it live**](#try-it-live). A real domain counts as one of your domains, which is why this row says so. **Start** opens four ways to begin: see the widget as your customers do, connect a domain you own, try the whole flow in the Sandbox on made up `.test` names (they use nothing), or copy a prompt for your AI agent with your application ID. The same choice opens once by itself after the welcome; **Skip** closes it for good, and the row stays open until a real domain is live |
 | **Mint widget tokens on your server** | Your backend asked for a widget token with an API key (the route from the **Install** tab, written for your backend). A token minted from the console's **Try it live** does not count: it is the console's own, minted for you and not for a customer |
-| **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Growth plan) |
+| **Choose where customers' domains point** | Your own infrastructure is set as the target, or a default origin is set for the edge (which needs the Edge plan) |
 | **Get told when a domain goes live** | A webhook delivery was answered with a success status |
 | **Make the widget yours** (optional) | A look was saved, for the workspace or for an application |
 | **Connect your first customer** | A real customer connected a domain through your widget, which is a connection that carries the customer id your server passed when it minted the token. A domain you connect from **Try it live** carries the console's own id for you (`console:<member>`), so it never counts as a customer, however many you try |
@@ -215,7 +215,7 @@ The list itself opens on **All**.
 | **Analytics** | Four tabs: the widget funnel, with **Devices and places** under it and the step people most often stop at; **Traffic**, for what your domains receive at the edge; **Providers**, for how many domains each DNS provider started and connected, how long it took and why the rest are stuck; and **Secure sign-in**, for how long a secure sign-in takes and where people stop. See [Analytics](#analytics). |
 | **Widget** | Four tabs: Design (the widget itself, every screen, light and dark, with a look for each application), [Ways to connect](#ways-to-connect) (what your users are offered, and the DNS hosting setting), Install (code for your framework, a **Get your API key** button, and **Hand it to your coding agent**; the tab a link to Widget opens) and [Try it live](#try-it-live) (the real widget on a domain you type, as a test that is never counted as a customer). |
 | **API & SDK** | Server-side API keys: the workspace's default key at the top, then every application's keys, each named with its application when you have more than one, and **Create key** for more. A Webhooks tab and a Guides tab for the first request and the SDK. |
-| **Hosting** | Each application's domains go through the edge to your site (**Edge serving**, on the Growth plan) or straight to your own servers. |
+| **Hosting** | Each application's domains go through the edge to your site (**Edge serving**, on the Edge plan and up) or straight to your own servers. |
 | **Connected accounts** | The DNS provider keys and the sign ins we keep so your domains can be changed for you, including the API keys a secure sign-in made (**Made at sign in**). The ones that need you come first, each row says how its key was made and what it can do, and your customers' keys are one row with [their own page](#customers-keys). **Connect an account** adds one in [three steps](#add-an-account). |
 | **Settings** | Account, Security, Notifications and Privacy, and the optional features. **Notifications** holds your own switches (push on this device, and the bell and push switch for each kind of alert) with **What we send** under them: one line per kind of email, and a closed row listing every email, who gets it and how to stop it (see [Email](/docs/guides/notifications#email)). **General** shows the workspace's name (**Rename** changes it and no application's), its **Workspace ID** and **Default application ID** for support, the workspace, your role and the plan, and the console's version with the time it was built (for example "Nov 2, 2026, 14:05 UTC"). **Team**, **Billing**, **Usage** and **Applications** open under it. |
 | **Activity**, **Monitor**, **MCP server**, **Agents** | Optional pages, off until you switch them on under **Settings → Features**. **Activity** is the workspace's timeline: domain changes, webhook deliveries and account events. |
@@ -638,7 +638,7 @@ them any time after the domain is set up:
 - **Forwarding** sends every visit to another address, with the same path.
   Type an `https://` address and **Save**, or **Clear**.
   Forwarding is part of edge serving.
-  A workspace without edge serving reads **Included on Growth and up.**
+  A workspace without edge serving reads **Included on the Edge plan and up.**
   A domain that points at your own servers reads **Not on the edge**, and its www redirect does nothing there.
   A deployment with edge serving off has no card.
   A refused address says why.

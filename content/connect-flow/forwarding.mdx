@@ -56,10 +56,12 @@ curl -X PATCH https://api.customdomain.ai/v1/connections/<ID> \
 ```
 
 Send `"redirect_to": ""` to clear a redirect. The edge picks up the intent within one ask-cache TTL, with no
-redeploy. When neither is set, the domain is proxied to its origin as usual.
+redeploy. When neither is set, the domain is proxied to its origin as usual. Edge serving is included on the Edge, Scale and
+Enterprise plans; on Starter and Pro these calls return `402` with the code
+`plan_upgrade_required`.
 
-- **The plan.** `redirect_to` needs edge serving, which is included on Growth,
-  Premium and Enterprise. On Starter and Startup, setting or changing it returns
+- **The plan.** `redirect_to` needs edge serving, which is included on the Edge,
+  Scale and Enterprise plans. On Starter and Pro, setting or changing it returns
   `402` with the code `plan_upgrade_required`. Clearing one never does.
   `www_redirect` is on every plan, and so is `client_label`. Where the
   deployment has edge serving off, `redirect_to` returns `503`.

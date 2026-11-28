@@ -13,8 +13,8 @@ info:
   version: "1.0"
   description: >-
     APIs for connecting your customers' domains to your product:
-    Connect (DNS) · Secure (SSL) · Sell (domain resale) · Monitor (DNS drift),
-    plus tenancy, members, billing, and webhooks.
+    DNS setup, certificates (SSL), edge serving and DNS drift monitoring,
+    plus domain search, tenancy, members, billing, and webhooks.
 
 
     Four credential types authenticate the surface. A **management key** gates
@@ -1471,10 +1471,10 @@ paths:
                   format: uri
                   description: >-
                     Origin the edge reverse-proxies this connection's traffic to
-                    (Power). Validated on the way in: it must be an absolute
+                    (edge serving, the `Power` entitlement). Validated on the way in: it must be an absolute
                     `http(s)` URL with a public host; private, loopback and
-                    cloud-metadata targets are rejected with a `400`. Power is
-                    part of the Growth plan and up: on a plan without it the
+                    cloud-metadata targets are rejected with a `400`. Edge serving is
+                    part of the Edge plan (`growth`) and up: on a plan without it the
                     create is refused with `402 plan_upgrade_required` and
                     nothing is stored. Omit to leave the edge on its own router.
                 www_redirect: { type: boolean, default: false, description: Serve an apex↔www redirect for this connection. }
@@ -8992,7 +8992,7 @@ paths:
       tags: [Applications]
       description: >-
         `mode: edge` (the default) points customer domains at the platform edge,
-        which proxies their traffic to your origin (Power, Growth plan and up,
+        which proxies their traffic to your origin (edge serving, the Edge plan and up,
         once a default origin is set; without one the edge answers 421). `mode: custom` points them at your
         own infrastructure: subdomains get a CNAME to `cname_target`; a root
         domain gets an ALIAS, ANAME or flattened CNAME to it on providers that
@@ -11483,7 +11483,10 @@ components:
       enum: [owner, admin, member, viewer]
     PlanId:
       type: string
-      description: '`free` is retired: legacy workspaces still carry it until they subscribe, and it cannot be bought or assigned.'
+      description: >-
+        The plan's stable identifier. Display names differ: `starter` is Starter, `startup` is Pro,
+        `growth` is Edge, `premium` is Scale and `enterprise` is Enterprise. `free` is retired: legacy
+        workspaces still carry it until they subscribe, and it cannot be bought or assigned.
       enum: [starter, startup, growth, premium, enterprise, free]
     Entitlements:
       type: object
@@ -11500,7 +11503,7 @@ components:
       type: object
       properties:
         id: { $ref: '#/components/schemas/PlanId' }
-        name: { type: string }
+        name: { type: string, description: 'Display name (Starter, Pro, Edge, Scale, Enterprise). A label, not an identifier: key on `id`.' }
         price_cents: { type: integer, description: Monthly price in US cents; 0 when not public. }
         public_price: { type: boolean }
         domains_per_year: { type: integer, description: The marketed annual allowance. }
@@ -13406,7 +13409,7 @@ components:
             Where the edge sends every visit to the domain (a `301`, keeping
             the visit's path and query): a plain `https://` address of a public
             domain, `""` to clear it. It needs edge serving, which comes with
-            Growth and up: `402` `plan_upgrade_required` on a plan without it
+            the Edge plan and up: `402` `plan_upgrade_required` on a plan without it
             and `503` where the deployment has it off (clearing a forward needs
             neither). `400` for an address that is not https (`http:`,
             `javascript:`, `data:`, a scheme-less address), has a username or
@@ -14807,7 +14810,7 @@ components:
           enum: ['test', 'live', '']
           description: The Stripe key mode the control plane is running against; empty when billing is unconfigured.
         plan: { $ref: '#/components/schemas/PlanId' }
-        plan_name: { type: string, description: 'The plan''s display name, e.g. `Growth`.' }
+        plan_name: { type: string, description: 'The plan''s display name, e.g. `Edge`. A label, not an identifier: key on `plan`.' }
         quota:
           type: integer
           description: >-
