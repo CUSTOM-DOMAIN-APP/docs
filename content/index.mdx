@@ -96,12 +96,15 @@ questions. To see how the pieces fit, start at
 
 ## For AI agents
 
-A machine-readable index of these docs is at [`/docs/llms.txt`](/docs/llms.txt).
-It lists every page with its title, URL and description, so an agent can fetch
-exactly the page it needs. A copy is served at the site root,
-[`/llms.txt`](https://docs.customdomain.ai/llms.txt). Every page is also served as
-Markdown at its own URL plus `.md`. This one is [`/docs.md`](/docs.md), and each
-page links to its copy with `<link rel="alternate" type="text/markdown">`.
+A machine-readable index of this documentation is at
+[`/docs/llms.txt`](/docs/llms.txt): every page, with its title, URL and
+description, so an agent can fetch exactly the page it needs. A site-root copy is
+served at [`/llms.txt`](https://docs.customdomain.ai/llms.txt). Every page is also
+served as Markdown, at its own URL plus `.md` (this one is [`/docs.md`](/docs.md))
+or at its own URL to a request that sends `Accept: text/markdown`. Each page names
+its Markdown with `<link rel="alternate" type="text/markdown">` and a `Link`
+header. [For AI agents](/docs/for-ai-agents) lists short briefs that answer the
+common questions an agent researching CustomDomain™ is asked.
 
 Agents can also drive the product through the hosted
 [MCP server](/docs/mcp/overview) at `https://mcp.customdomain.ai/mcp`. A person can

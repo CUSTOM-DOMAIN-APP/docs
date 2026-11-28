@@ -1,22 +1,19 @@
+/**
+ * The Markdown form of a docs page, served at /docs/<slug>.md (and /docs.md for the docs home), to a request whose
+ * Accept prefers text/markdown (proxy.ts), at /agents/brief/<name>.md for the agent briefs, and copied by the page's
+ * "Copy Markdown" button. Written pages come from fumadocs-mdx's processed Markdown, with the "For AI agents" section
+ * filled in (lib/agent-surface.ts) and every link made absolute. The generated API reference pages hold no prose of
+ * their own, so their Markdown is written from the same openapi-v1.yaml entry they render.
+ */
+
 import { source } from "@/lib/source";
 import { openapi } from "@/lib/openapi";
+import { FOR_AGENTS_PLACEHOLDER, forAgentsMarkdown } from "@/lib/agent-surface";
+import { SITE, absoluteLinks, markdownPath } from "@/lib/negotiate";
 
-// The Markdown form of a docs page, served at /docs/<slug>.md (and /docs.md for
-// the docs home) and copied by the page's "Copy Markdown" button.
-//
-// Written pages come from fumadocs-mdx's processed Markdown: the MDX with its
-// components reduced to their text. The generated API reference pages hold no
-// prose of their own (each one is a single component that renders an operation
-// of openapi-v1.yaml), so their Markdown is written from the same spec entry.
-
-export const SITE = "https://docs.customdomain.ai";
+export { SITE, markdownPath };
 
 type Page = NonNullable<ReturnType<typeof source.getPage>>;
-
-/** The .md URL of a page: /docs.md for the docs home, /docs/<slug>.md otherwise. */
-export function markdownPath(url: string): string {
-  return url === "/docs" ? "/docs.md" : `${url}.md`;
-}
 
 export async function pageMarkdown(page: Page, description: string | undefined): Promise<string> {
   const head = [`# ${page.data.title}`, ""];
@@ -25,9 +22,13 @@ export async function pageMarkdown(page: Page, description: string | undefined):
 
   const operations = await apiOperations(page);
   const body = operations ? await operationsMarkdown(operations) : await page.data.getText("processed");
-  // MDX comments ({/* ... */}) are notes for editors, not content.
-  const text = body.replace(/^\{\/\*[\s\S]*?\*\/\}[ \t]*\n?/gm, "").trim();
-  return `${head.join("\n")}\n${text}\n`;
+  const text = body
+    // MDX comments ({/* ... */}) are notes for editors, not content.
+    .replace(/^\{\/\*[\s\S]*?\*\/\}[ \t]*\n?/gm, "")
+    // <ForAgents /> (mdx-markdown.ts) becomes the section's text, as the setting serves it.
+    .replace(FOR_AGENTS_PLACEHOLDER, () => forAgentsMarkdown({ heading: false }))
+    .trim();
+  return `${head.join("\n")}\n${absoluteLinks(text)}\n`;
 }
 
 // ---- generated API reference pages ----

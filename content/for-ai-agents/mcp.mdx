@@ -1,0 +1,51 @@
+---
+title: "Brief: for AI agents that need domains (MCP)"
+description: "The hosted CustomDomain™ MCP server: how an agent connects, the access a person approves, the tools, and the order to call them in."
+---
+
+## Connect
+
+- **Endpoint:** `https://mcp.customdomain.ai/mcp` (Streamable HTTP; registry name
+  `ai.customdomain/mcp`). In Claude Code:
+
+  ```bash
+  claude mcp add --transport http customdomain https://mcp.customdomain.ai/mcp
+  ```
+
+- **Access a person approves.** An agent signs in with OAuth, and an owner of the
+  workspace approves exactly which scopes it gets (`domains:read`,
+  `domains:connect`, `domains:disconnect`, `domains:purchase`). The grant can be
+  revoked at any time. An API key also works, but it carries the whole workspace's
+  authority.
+- **No tool takes DNS records as input.** Record values come from the server's
+  vetted templates, which closes off a prompt injection that ends in an arbitrary
+  DNS write.
+- **Buying a domain through MCP is off** on the hosted service.
+
+## The order to call the tools in
+
+1. `discover-provider { domain }`: read only. Where the domain's DNS lives and which
+   ways can connect it. Call it before promising anything.
+2. `connect-domain { domain }`: creates the connection and returns a `link` for the
+   person to finish. It never writes DNS itself. When `discover-provider` answers
+   `recommendedRail: "saved_access"`, the workspace already keeps a key that may act
+   for the domain: `find-saved-access` lists it, and `use-saved-access` writes the
+   records with it once the person agrees.
+3. `check-connection-status { connectionId }`: `pending`, `propagating`, `live` or
+   `failed`. Stop when `connected` is `true`.
+4. If it is not live: `diagnose-connection` says record by record what is missing,
+   and `recheck-connection` checks again once the person has fixed it.
+
+The server has 23 tools; the live list is at
+`https://mcp.customdomain.ai/.well-known/agent/mcp.json`. Ask the person before
+anything that takes a domain offline (`disconnect-domain`), changes its nameservers
+(`migrate-nameservers`, `rollback-nameservers`) or writes its records with a saved
+key (`use-saved-access`): each needs `confirm`, and without it nothing is changed.
+
+## Read next
+
+- [MCP: drive it from an agent](/docs/getting-started/mcp): setup per client and
+  what a failed call answers.
+- [MCP server](/docs/mcp/overview): every tool, its arguments and its scope.
+- [Agent skill](/docs/agents/skills): the instructions that teach an agent to use
+  the tools safely.

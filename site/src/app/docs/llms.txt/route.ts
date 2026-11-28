@@ -1,13 +1,14 @@
-import { llms } from "fumadocs-core/source";
-import { source } from "@/lib/source";
+/**
+ * llms.txt for the /docs tree (docs.customdomain.ai/docs/llms.txt; https://llmstxt.org/): the agent instructions
+ * (lib/agent-instructions.ts), the "For AI agents" section, then a Markdown outline of every page in sidebar order
+ * with its title and description (lib/llms.ts). Rendered on each request from the page list the site was built with.
+ */
+
+import { llmsIndex } from "@/lib/llms";
 import { withAgentInstructions } from "@/lib/agent-instructions";
 
-// llms.txt index for the /docs tree: a Markdown outline of every page, in
-// sidebar order, with titles/descriptions. See https://llmstxt.org/.
-const { index } = llms(source);
-
 export function GET() {
-  return new Response(withAgentInstructions(index()), {
+  return new Response(withAgentInstructions(llmsIndex()), {
     headers: { "content-type": "text/markdown; charset=utf-8" },
   });
 }

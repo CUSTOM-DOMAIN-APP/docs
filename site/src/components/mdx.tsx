@@ -1,8 +1,11 @@
 /**
  * Every component an MDX page may use without importing it: Fumadocs' defaults (Cards, Callout, code block tabs)
- * plus Steps, Tabs, Accordions and TypeTable, keyboard-scrollable tables, zoomable images, the npm usage card, and the docs icon set
+ * plus Steps, Tabs, Accordions and TypeTable, keyboard-scrollable tables, zoomable images, the npm usage card,
+ * <ForAgents />, the "For AI agents" section (components/for-agents.tsx), and the docs icon set
  * (src/components/section-icons.tsx) so a card can take an icon, as on Better Auth's introduction page:
  * `<Card icon={<Rocket />} title="Quickstart" href="/docs/getting-started/quickstart" />`.
+ * A component added here that holds text also needs a case in mdx-markdown.ts, or its text is missing from the
+ * page's Markdown.
  */
 
 import defaultMdxComponents from "fumadocs-ui/mdx";
@@ -14,6 +17,7 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { TypeTable } from "fumadocs-ui/components/type-table";
 import { OpenInConsole } from "@/components/open-in-console";
 import { UsageStats } from "@/components/usage-stats";
+import { ForAgents } from "@/components/for-agents";
 import type { MDXComponents } from "mdx/types";
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -37,6 +41,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     TypeTable,
     // Live npm usage card: drop <UsageStats /> into any .mdx page.
     UsageStats,
+    // The "For AI agents" section, on content/for-ai-agents/index.mdx.
+    ForAgents,
     // The button below a console step: <OpenInConsole to="/app/keys" label="Open Keys in console" />.
     OpenInConsole,
     ...components,

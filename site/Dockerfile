@@ -18,12 +18,20 @@ WORKDIR /repo
 COPY . .
 WORKDIR /repo/site
 ENV NEXT_TELEMETRY_DISABLED=1
+# The agent surface (src/lib/agent-surface.ts): "on" (the default), "briefs" (no
+# context link) or "off". The pages are built with it, so set it as a build arg
+# (compose: build.args.DOCS_AGENT_SURFACE). The runner stage keeps the same value
+# for the server, which reads it again for /agents/*.
+ARG DOCS_AGENT_SURFACE=on
+ENV DOCS_AGENT_SURFACE=${DOCS_AGENT_SURFACE}
 RUN npm ci
 RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
+ARG DOCS_AGENT_SURFACE=on
+ENV DOCS_AGENT_SURFACE=${DOCS_AGENT_SURFACE}
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 # Next "standalone" output. outputFileTracingRoot is pinned to the repo root
 # (see next.config.ts -- required so the build can resolve ../content), so

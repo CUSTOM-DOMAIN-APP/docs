@@ -1,11 +1,16 @@
+/**
+ * Every docs page's Markdown copy, built once per page at build time like the HTML. Two addresses reach it, and this
+ * path itself is never linked: /docs/<slug>.md (and /docs.md for the docs home) through next.config.ts, and
+ * /agents/brief/<name>.md (proxy.ts). A copy is noindex and names the HTML page as canonical (lib/negotiate.ts,
+ * markdownHeaders). The page's own address, asked for as Markdown, is answered by app/docs-md-accept instead.
+ */
+
 import { notFound } from "next/navigation";
 import { source } from "@/lib/source";
 import { pageDescription } from "@/lib/page-description";
-import { SITE, pageMarkdown } from "@/lib/markdown";
+import { pageMarkdown } from "@/lib/markdown";
+import { markdownHeaders } from "@/lib/negotiate";
 
-// Every docs page as Markdown. next.config.ts rewrites /docs/<slug>.md (and
-// /docs.md for the docs home) here, so this path itself is never linked. Built
-// once per page at build time, like the HTML.
 export const revalidate = false;
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug?: string[] }> }) {
@@ -14,12 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug?: 
   if (!page) notFound();
 
   return new Response(await pageMarkdown(page, pageDescription(slug, page)), {
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      // The HTML page is the one to index; this is the same content for agents and tools.
-      Link: `<${SITE}${page.url}>; rel="canonical"`,
-      "X-Robots-Tag": "noindex",
-    },
+    headers: markdownHeaders(page.url, "copy"),
   });
 }
 

@@ -1,0 +1,38 @@
+---
+title: "Brief: email domains (SPF, DKIM, DMARC)"
+description: "How CustomDomain™ adds the email records for Google Workspace, Microsoft 365 or Zoho with a domain: MX, SPF merged into one record, DKIM and DMARC."
+---
+
+Connecting a domain points its web traffic at a product. The email records (`MX`,
+and `TXT` or `CNAME` records for SPF, DKIM and DMARC) can be added the same way, in
+the same connection.
+
+## What CustomDomain™ does
+
+- **Merges SPF instead of adding a second record.** A domain must have exactly one
+  `v=spf1` record. An `SPFM` record adds your mechanisms to the record already
+  published, deduplicated, with one terminal `all` and the existing policy kept, so
+  a merge never loosens it. A merge that would pass 10 DNS lookups or 255 characters
+  is refused (`spf_merge_failed`).
+- **Fills the standard records for three providers.** Google Workspace, Microsoft
+  365 (with your tenant's MX host) and Zoho. For Zoho's EU data center the MX host
+  is `mx.zoho.eu` and the SPF include `spf.zoho.eu`.
+- **Takes settings, never raw records,** on the automatic rails and the MCP tool
+  `add-email`: a mail host, an SPF include, a DKIM selector and target, a DMARC
+  report address. Each value is checked before anything is written.
+- **Warns before writing.** The pre-flight (`POST /v1/domains:check`) reports
+  conflicting records it sees in public DNS, SPF clashes included.
+
+## What it does not do
+
+- **DKIM keys come from your mail provider.** They are unique per domain and made in
+  the provider's admin console, so they cannot be derived. Add the selector record
+  the provider gives you.
+- **DMARC policy is yours to tighten.** Start at `p=none`, confirm that legitimate
+  mail passes DKIM and SPF, then move to `quarantine` and `reject`.
+
+## Read next
+
+- [Email DNS and SPF merge](/docs/dns/email-dns): the records per provider, the
+  merge rules and a full email setup in one request.
+- [MCP server](/docs/mcp/overview): the `add-email` tool and its arguments.

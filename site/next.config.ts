@@ -31,10 +31,8 @@ const nextConfig: NextConfig = {
       // <link rel="alternate" type="text/markdown">.
       { source: "/docs.md", destination: "/docs-md" },
       { source: "/docs/:path*.md", destination: "/docs-md/:path*" },
-      // The same Markdown for a request that asks for it (Accept: text/markdown), at the page's own URL.
-      // After the ".md" rules, which match first, so a ".md" URL is never rewritten twice.
-      { source: "/docs", has: [{ type: "header", key: "accept", value: ".*text/markdown.*" }], destination: "/docs-md" },
-      { source: "/docs/:path*", has: [{ type: "header", key: "accept", value: ".*text/markdown.*" }], destination: "/docs-md/:path*" },
+      // A request that asks for Markdown (Accept: text/markdown) at a page's own address is answered by src/proxy.ts,
+      // which rewrites it to app/docs-md-accept.
     ];
   },
   // A docs page answers HTML or Markdown by the Accept header, so a cache must key on it.
